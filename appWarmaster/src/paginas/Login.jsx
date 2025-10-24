@@ -3,11 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../servicios/AuthContext";
 
+import '../estilos/login.css';
+
 function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -17,28 +20,36 @@ function Login() {
         setLoading(true);
         setError("");
         
-        console.log("Iniciando Sesión...");
+        console.log('🔄 Intentando login...');
         
         try {
-            const result = await login(email, password);
+            const user = await login(email, password);
             
-            if (result.success) {
-                console.log("Login exitoso");
-                navigate("/dashboard"); // Redirigir al dashboard o página principal
+            console.log('📊 Resultado del login:', user);
+
+            const token =localStorage.getItem(`token`)
+            
+            if (user && token) {
+                console.log('✅ Login exitoso, redirigiendo a home...');
+                
+                // Pequeño delay para asegurar que el estado se actualice
+                setTimeout(() => {
+                    navigate('/', { replace: true });
+                }, 100);
             } else {
-                setError(result.error || "Error al iniciar sesión");
+                console.log('❌ Faltan datos de autenticación (usuario o token).');
+                setError('Error al iniciar sesión. Faltan datos del usuario o token.');
             }
         } catch (err) {
+            console.error("❌ Error en handleSubmit:", err);
             setError("Error de conexión. Intenta nuevamente.");
-            console.error("Error en login:", err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleTogglePassword = () => {
-        const passwordInput = document.getElementById('password');
-        passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+        setShowPassword(prev => !prev);
     };
 
     const volverInicio = () => {
@@ -52,7 +63,14 @@ function Login() {
                 <h2>LOGIN:</h2>
                 
                 {error && (
-                    <div className="error-message" style={{color: 'red', marginBottom: '10px'}}>
+                    <div className="error-message" style={{
+                        color: 'red',
+                        backgroundColor: '#ffe6e6',
+                        padding: '10px',
+                        borderRadius: '4px',
+                        marginBottom: '15px',
+                        border: '1px solid red'
+                    }}>
                         {error}
                     </div>
                 )}
@@ -66,17 +84,19 @@ function Login() {
                     placeholder="Email"
                     required
                     disabled={loading}
+                    autoComplete="email"
                 />
                 
                 <label htmlFor="password">Contraseña:</label>
                 <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
                     id="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Contraseña" 
                     required
                     disabled={loading}
+                    autoComplete="current-password"
                 />
 
                 <div className="checkBoxPassword">
@@ -84,6 +104,7 @@ function Login() {
                     <input 
                         type="checkbox" 
                         id="seePassword"
+                        checked={showPassword}
                         onChange={handleTogglePassword}
                         disabled={loading}
                     />

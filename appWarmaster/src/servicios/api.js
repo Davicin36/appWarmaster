@@ -45,18 +45,38 @@ class TorneosApi {
     });
   }
 
-  async register(userData) {
-    return this.request('/authRutas/register', {
+  async registros(userData) {
+    return this.request('/authRutas/registro', {
       method: 'POST',
       body: userData,
     });
   }
 
+  async verificarToken(token) {
+    return this.request('/authRutas/verificar', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  }
+
+  async cambiarPassword(data, token) {
+    return this.request('/authRutas/cambiar-password', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: data
+    });
+  }
+/** 
   async logout() {
     return this.request('/authRutas/logout', {
       method: 'POST',
     });
   }
+  */
 
   // ==========================================
   // MÉTODOS DE TORNEOS
@@ -169,4 +189,5 @@ class TorneosApi {
 
 // Exportar instancia singleton
 export const torneosApi = new TorneosApi();
+
 export default torneosApi;

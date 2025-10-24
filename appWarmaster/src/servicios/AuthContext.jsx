@@ -1,7 +1,9 @@
-// contexts/AuthContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// ✅ AuthContext.jsx - OPTIMIZADO para evitar múltiples renders
+import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 
 const AuthContext = createContext();
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -15,96 +17,106 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Verificar si hay un usuario guardado al cargar la app
+  // ==================================================
+  // 🔐 Verificar token al cargar
+  // ==================================================
   useEffect(() => {
-    const verificarToken = async () => {
+    const inicializarAuth = async () => {
       const token = localStorage.getItem('token');
       
-      if (token) {
-        try {
-          const response = await fetch('/api/authRutas/verificar', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setUser(data.data.usuario);
-            } else {
-              // Token inválido, limpiar localStorage
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-            }
-          } else {
-            // Token inválido, limpiar localStorage
-            localStorage.removeItem('token');
+      if (!token) {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+            console.log('🧠 Usuario restaurado desde localStorage');
+          } catch (error) {
+            console.error('Error parseando usuario:', error);
             localStorage.removeItem('user');
           }
-        } catch (error) {
-          console.error('Error verificando token:', error);
+        }
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/authRutas/verificar`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          const usuarioBackend = data.data.usuario;
+          setUser(usuarioBackend);
+          localStorage.setItem('user', JSON.stringify(usuarioBackend));
+          console.log('✅ Usuario verificado desde backend');
+        } else {
+          console.warn('⚠️ Token inválido');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setUser(null);
         }
+      } catch (error) {
+        console.error('❌ Error verificando token:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    verificarToken();
+    inicializarAuth();
   }, []);
 
+  // ==================================================
+  // 🔑 Login
+  // ==================================================
   const login = async (email, password) => {
+    setLoading(true);
     try {
-      // Petición a tu API usando email como tu backend espera
-      const response = await fetch('/api/authRutas/login', {
+      const response = await fetch(`${API_BASE_URL}/authRutas/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Error en el login');
-      }
+      if (response.ok &&  data.data?.token) {
+        const userData = data.data.usuario;
+        const token = data.data.token;
 
-      if (data.success) {
-        // Guardar usuario en estado y localStorage
-        setUser(data.data.usuario);
-        localStorage.setItem('user', JSON.stringify(data.data.usuario));
-        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', token);
+        setUser(userData);
+        setLoading(false);
 
-        return { success: true };
+        return userData;
       } else {
-        throw new Error(data.message || 'Error en el login');
+        setLoading(false);
+        return data.mensaje || 'Credenciales inválidas' ;
       }
     } catch (error) {
-      console.error('Error en login:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Error en login:', error);
+      setLoading(false);
+      throw new error (error.message ||  'Error de conexión con el servidor') ;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-  };
-
-  const register = async (userData) => {
+  // ==================================================
+  // 🧍 Registro
+  // ==================================================
+  const registro = async (userData) => {
     try {
-      const response = await fetch('/api/authRutas/registro', {
+      const response = await fetch(`${API_BASE_URL}/authRutas/registro`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre: userData.nombre,
           apellidos: userData.apellidos,
@@ -116,56 +128,109 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.mensaje || 'Error al registrar usuario');
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al registrar usuario');
-      }
-
-      return { success: true, data: data.data };
+      return data.data ;
     } catch (error) {
-      console.error('Error en registro:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Error en registro:', error);
+       throw new error (error.message ||  'Error de conexión con el servidor') ;
     }
   };
 
+  // ==================================================
+  // 🔒 Cambiar contraseña
+  // ==================================================
   const cambiarPassword = async (passwordActual, passwordNueva) => {
     try {
       const token = localStorage.getItem('token');
-      
-      const response = await fetch('/api/authRutas/cambiar-password', {
+      if (!token) return { error: 'No hay sesión activa' };
+
+      const response = await fetch(`${API_BASE_URL}/authRutas/cambiar-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          passwordActual,
-          passwordNueva
-        })
+        body: JSON.stringify({ passwordActual, passwordNueva })
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.mensaje || 'Error al cambiar contraseña');
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al cambiar contraseña');
-      }
-
-      return { success: true, message: data.message };
+      return { message: data.mensaje };
     } catch (error) {
-      console.error('Error cambiando contraseña:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Error cambiando contraseña:', error);
+       throw new error (error.message ||  'Error de conexión con el servidor') ;
     }
   };
 
-  const value = {
-    user,
-    login,
-    logout,
-    register,
-    cambiarPassword,
-    loading,
-    isAuthenticated: !!user
+  // ⭐ Convertir jugador a organizador
+const convertirOrganizador = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      return { error: 'No hay sesión activa' };
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/authRutas/convertir-organizador`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data?.data?.usuario) {
+      const usuarioActualizado = data.data.usuario;
+      
+      // Actualizar localStorage
+      localStorage.setItem('user', JSON.stringify(usuarioActualizado));
+      
+      // Actualizar estado
+      setUser (usuarioActualizado);
+      
+      console.log('✅ Rol actualizado a organizador:', usuarioActualizado.rol);
+      
+      return usuarioActualizado ;
+    } else {
+      const errorMsg = data?.mensaje || 'Error al cambiar rol';
+      return { error: errorMsg };
+    }
+  } catch (error) {
+    console.error('❌ Error cambiando rol:', error);
+    return { error: 'Error de conexión' };
+  }
+};
+
+  // ==================================================
+  // 🚪 Logout
+  // ==================================================
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    console.log('👋 Sesión cerrada');
   };
+
+  // ==================================================
+  // ⚡ CRÍTICO: Memorizar el valor del contexto
+  // ==================================================
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      loading,
+      login,
+      logout,
+      registro,
+      cambiarPassword,
+      convertirOrganizador
+    }),
+    [user, loading] // ✅ Solo recalcula cuando user o loading cambien
+  );
 
   return (
     <AuthContext.Provider value={value}>

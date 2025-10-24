@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../servicios/AuthContext";
 
+import '../estilos/registrarse.css';
+
 function Registrarse() {
     const [formData, setFormData] = useState({
         nombre: "",
@@ -17,7 +19,7 @@ function Registrarse() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     
-    const { register } = useAuth();
+    const { registro } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -49,7 +51,7 @@ function Registrarse() {
         }
         
         try {
-            const result = await register(formData);
+            const result = await registro(formData);
             
             if (result.success) {
                 setSuccess("Usuario registrado exitosamente");

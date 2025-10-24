@@ -2,6 +2,8 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { promisify } = require('util');
+
 const { pool } = require('../config/bd');
 const { 
   validarEmail, 
@@ -86,30 +88,28 @@ router.post('/registro', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    // Validar campos requeridos
-    const camposFaltantes = validarCamposRequeridos(req.body, ['email', 'password']);
-    if (camposFaltantes.length > 0) {
+
+    // Validar campos
+    if (!email || !password) {
       return res.status(400).json(
-        errorResponse(`Campos requeridos: ${camposFaltantes.join(', ')}`)
+        errorResponse('Email y contraseña son requeridos')
       );
     }
-    
-    // Buscar usuario por email
+
+    // Buscar usuario
     const [usuarios] = await pool.execute(
-      `SELECT id, nombre, apellidos, nombre_alias, club, email, password, rol 
-       FROM usuarios WHERE email = ?`,
+      'SELECT * FROM usuarios WHERE email = ?',
       [email]
     );
-    
+
     if (usuarios.length === 0) {
       return res.status(401).json(
         errorResponse('Credenciales inválidas')
       );
     }
-    
+
     const usuario = usuarios[0];
-    
+
     // Verificar contraseña
     const passwordValida = await bcrypt.compare(password, usuario.password);
     
@@ -118,20 +118,18 @@ router.post('/login', async (req, res) => {
         errorResponse('Credenciales inválidas')
       );
     }
-    
-    // Crear token JWT
+
+    // Generar token
     const token = jwt.sign(
-      { 
-        userId: usuario.id, 
-        email: usuario.email, 
-        rol: usuario.rol 
-      },
+      { userId: usuario.id,
+        email: usuario.email
+       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    
-    // Respuesta exitosa
-    res.json(
+
+    // ✅ CRÍTICO: Debe devolver success: true
+    return res.json(
       successResponse('Login exitoso', {
         token,
         usuario: {
@@ -145,10 +143,10 @@ router.post('/login', async (req, res) => {
         }
       })
     );
-    
+
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json(
+    return res.status(500).json(
       errorResponse('Error interno del servidor')
     );
   }
@@ -157,10 +155,14 @@ router.post('/login', async (req, res) => {
 // ==========================================
 // VERIFICAR TOKEN
 // ==========================================
+// ✅ Al inicio del archivo, convierte jwt.verify a Promise
+const verifyToken = promisify(jwt.verify);
+
 router.get('/verificar', async (req, res) => {
   try {
+    // Extraer token del header
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader.split(' ')[1];
     
     if (!token) {
       return res.status(401).json(
@@ -168,47 +170,50 @@ router.get('/verificar', async (req, res) => {
       );
     }
     
-    // Verificar token
-    jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
-      if (err) {
-        return res.status(401).json(
-          errorResponse('Token inválido o expirado')
-        );
-      }
-      
-      // Buscar usuario actualizado en la base de datos
-      const [usuarios] = await pool.execute(
-        `SELECT id, nombre, apellidos, nombre_alias, club, email, rol 
-         FROM usuarios WHERE id = ?`,
-        [decoded.userId]
+    // ✅ Verificar token (ahora es una Promise)
+    let decoded;
+    try {
+      decoded = await verifyToken(token, process.env.JWT_SECRET);
+    } catch (err) {
+      console.error('Error verificando token:', err.message);
+      return res.status(401).json(
+        errorResponse('Token inválido o expirado')
       );
-      
-      if (usuarios.length === 0) {
-        return res.status(401).json(
-          errorResponse('Usuario no encontrado')
-        );
-      }
-      
-      const usuario = usuarios[0];
-      
-      res.json(
-        successResponse('Token válido', {
-          usuario: {
-            id: usuario.id,
-            nombre: usuario.nombre,
-            apellidos: usuario.apellidos,
-            nombre_alias: usuario.nombre_alias,
-            club: usuario.club,
-            email: usuario.email,
-            rol: usuario.rol
-          }
-        })
+    }
+    
+    // Buscar usuario en la base de datos
+    const [usuarios] = await pool.execute(
+      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol 
+       FROM usuarios WHERE id = ?`,
+      [decoded.userId]
+    );
+    
+    if (usuarios.length === 0) {
+      return res.status(401).json(
+        errorResponse('Usuario no encontrado')
       );
-    });
+    }
+    
+    const usuario = usuarios[0];
+    
+    // Respuesta exitosa
+    return res.json(
+      successResponse('Token válido', {
+        usuario: {
+          id: usuario.id,
+          nombre: usuario.nombre,
+          apellidos: usuario.apellidos,
+          nombre_alias: usuario.nombre_alias,
+          club: usuario.club,
+          email: usuario.email,
+          rol: usuario.rol
+        }
+      })
+    );
     
   } catch (error) {
     console.error('Error en verificación:', error);
-    res.status(500).json(
+    return res.status(500).json(
       errorResponse('Error interno del servidor')
     );
   }
@@ -219,14 +224,23 @@ router.get('/verificar', async (req, res) => {
 // ==========================================
 router.post('/cambiar-password', async (req, res) => {
   try {
+    //extraemos el token
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader.split(' ')[1];
     
     if (!token) {
       return res.status(401).json(errorResponse('Token no proporcionado'));
     }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    //veririficar token
+     let decoded;
+      try {
+        decoded = await verifyToken(token, process.env.JWT_SECRET);
+      } catch (err) {
+          return res.status(401).json(
+              errorResponse('Token inválido o expirado')
+          );
+        }
+
     const { passwordActual, passwordNueva } = req.body;
     
     // Validar campos
@@ -243,7 +257,7 @@ router.post('/cambiar-password', async (req, res) => {
       );
     }
     
-    // Obtener usuario actual
+    // Obtener usuario actual y obtener su contraseña
     const [usuarios] = await pool.execute(
       'SELECT password FROM usuarios WHERE id = ?',
       [decoded.userId]
@@ -268,12 +282,83 @@ router.post('/cambiar-password', async (req, res) => {
       [passwordEncriptada, decoded.userId]
     );
     
-    res.json(successResponse('Contraseña cambiada exitosamente'));
+    return res.status(200).json(
+      successResponse('Contraseña cambiada exitosamente'));
     
   } catch (error) {
     console.error('Error cambiando contraseña:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
+
+// ==========================================
+// CAMBIAR ROL A ORGANIZADOR
+// ==========================================
+router.post('/convertir-organizador', async (req, res) => {
+  try {
+    // Extraer token
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json(
+        errorResponse('Token no proporcionado')
+      );
+    }
+    
+    // Verificar token
+    let decoded;
+    try {
+      decoded = await verifyToken(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json(
+        errorResponse('Token inválido o expirado')
+      );
+    }
+    
+    // Actualizar rol del usuario a 'organizador'
+    await pool.execute(
+      'UPDATE usuarios SET rol = ? WHERE id = ?',
+      ['organizador', decoded.userId]
+    );
+    
+    // Obtener datos actualizados del usuario
+    const [usuarios] = await pool.execute(
+      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol 
+       FROM usuarios WHERE id = ?`,
+      [decoded.userId]
+    );
+    
+    if (usuarios.length === 0) {
+      return res.status(404).json(
+        errorResponse('Usuario no encontrado')
+      );
+    }
+    
+    const usuario = usuarios[0];
+    
+    // ✅ Respuesta exitosa con datos actualizados
+    return res.status(200).json(
+      successResponse('Rol actualizado a organizador', {
+        usuario: {
+          id: usuario.id,
+          nombre: usuario.nombre,
+          apellidos: usuario.apellidos,
+          nombre_alias: usuario.nombre_alias,
+          club: usuario.club,
+          email: usuario.email,
+          rol: usuario.rol
+        }
+      })
+    );
+    
+  } catch (error) {
+    console.error('❌ Error cambiando rol:', error);
+    return res.status(500).json(
+      errorResponse('Error interno del servidor')
+    );
+  }
+});
+
 
 module.exports = router;

@@ -11,7 +11,7 @@ const {
   paginar
 } = require('../utils/helpers');
 
-const router = express.Router();
+const router = express.Router(); 
 
 // ==========================================
 // OBTENER TODOS LOS TORNEOS (CON PAGINACIÓN)

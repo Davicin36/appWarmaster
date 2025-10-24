@@ -1,8 +1,13 @@
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { useAuth } from '../servicios/AuthContext';
 
 import  '../estilos/principal.css';
 
+import NavbarLogin from '../componente/NavbarLogin';
+
 function Principal() {
+
+    const { isAuthenticated } = useAuth();
 
     const torneosJugados = [
         { id: 1, nombre: 'Torneo Saga ReinoDelNorte', fecha: '2025-10-18', Organizador: 'Reino del Norte', ganador: 'Nacho Berzal' }
@@ -10,17 +15,15 @@ function Principal() {
 
     return (
         <div>
-            <h1>TUS TORNEOS GESTIONADOS</h1>
-            <nav>
-                <Link to="/">Inicio</Link>
-                <Link to="/login">Ir a Login</Link>
-                <Link to="/registrarse">Registrarse</Link>
-            </nav>
-
+            {isAuthenticated ? (
+                <NavbarLogin />
+                ) : null
+            }
             <section>
                 <h2>Bienvenido a la página principal de gestión de torneos de WARGAMES</h2>
                 <p>Aquí podrás crear, gestionar y seguir tus torneos de WARGAMES de manera sencilla y eficiente.</p>
             </section>
+
        
 
             <section>

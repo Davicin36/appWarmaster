@@ -1,0 +1,113 @@
+/* Estilos específicos para el componente Registrarse */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 450px;
+  margin: 0 auto;
+  text-align: left;
+  padding: 2rem;
+  background: linear-gradient(145deg, #f5f5dc, #faf8f5);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(93, 64, 55, 0.15);
+  border: 1px solid #d7ccc8;
+}
+
+.register-form h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #5d4037;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Estilos específicos para campos opcionales */
+.register-form input[placeholder*="opcional"] {
+  border-style: dashed;
+  border-color: #a1887f;
+  background-color: #f9f7f4;
+}
+
+.register-form input[placeholder*="opcional"]:focus {
+  border-style: solid;
+  border-color: #4caf50;
+  background-color: #f9fff9;
+}
+
+/* Estilos para campos requeridos */
+.register-form input[required] {
+  border-left: 4px solid #4caf50;
+  background-color: #fafafa;
+}
+
+.register-form input[required]:focus {
+  border-left: 4px solid #2e7d32;
+  background-color: #f9fff9;
+}
+
+/* Validación visual para confirmación de contraseña */
+.register-form input[name="confirmPassword"]:invalid {
+  border-color: #8d4e41;
+  background-color: #fdf7f7;
+}
+
+.register-form input[name="confirmPassword"]:valid {
+  border-color: #4caf50;
+  background-color: #f9fff9;
+}
+
+/* Estilos específicos para el párrafo de login */
+.register-form p {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #8d6e63;
+}
+
+/* Hover effects específicos para registro */
+.register-form button[type="submit"] {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  border: 2px solid transparent;
+}
+
+.register-form button[type="submit"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #388e3c, #2e7d32);
+  border-color: #5d4037;
+  box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
+}
+
+/* Animación para el estado de carga */
+.register-form button[type="submit"]:disabled {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #bcaaa4, #a1887f);
+}
+
+.register-form button[type="submit"]:disabled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Efectos especiales para labels de campos requeridos */
+.register-form label[for="nombre"]::after,
+.register-form label[for="apellidos"]::after,
+.register-form label[for="email"]::after,
+.register-form label[for="password"]::after,
+.register-form label[for="confirmPassword"]::after {
+  content: " *";
+  color: #8d4e41;
+  font-weight: bold;
+}

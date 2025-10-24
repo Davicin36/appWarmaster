@@ -34,16 +34,22 @@ const validarFecha = (fecha) => {
 };
 
 // Función para formatear respuesta de error
-const errorResponse = (message, details = null) => {
-  const response = { error: message };
-  if (details) response.details = details;
+const successResponse = (message, data = null) => {
+  const response = { 
+    success: true,
+    mensaje: message 
+  };
+  if (data) response.data = data;
   return response;
 };
 
-// Función para formatear respuesta de éxito
-const successResponse = (message, data = null) => {
-  const response = { mensaje: message };
-  if (data) response.data = data;
+// ✅ CORRECTO - Con success: false y mensaje consistente
+const errorResponse = (message, details = null) => {
+  const response = { 
+    success: false,  
+    mensaje: message  
+  };
+  if (details) response.details = details;
   return response;
 };
 
