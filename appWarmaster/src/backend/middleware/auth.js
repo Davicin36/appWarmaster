@@ -6,7 +6,7 @@ const verificarToken = (req, res, next) => {
   try {
     // Obtener token del header Authorization
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader.split(' ')[1]; // Bearer TOKEN
     
     if (!token) {
       return res.status(401).json({ 
@@ -48,31 +48,8 @@ const verificarOrganizador = (req, res, next) => {
   next();
 };
 
-// Middleware opcional - permite acceso sin token pero agrega info si existe
-const tokenOpcional = (req, res, next) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (token) {
-      jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (!err) {
-          req.userId = decoded.userId;
-          req.userEmail = decoded.email;
-          req.userRole = decoded.rol;
-        }
-      });
-    }
-    
-    next();
-  } catch (error) {
-    // Si hay error, continuar sin autenticación
-    next();
-  }
-};
 
 module.exports = {
   verificarToken,
-  verificarOrganizador,
-  tokenOpcional
+  verificarOrganizador
 };

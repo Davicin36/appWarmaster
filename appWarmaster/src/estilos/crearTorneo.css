@@ -1,0 +1,445 @@
+/* ============================================
+   CREAR TORNEO - Estilos siguiendo el tema
+   ============================================ */
+
+.crear-torneo-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.crear-torneo-container h1 {
+  color: #5d4037;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  text-shadow: 2px 2px 4px rgba(93, 64, 55, 0.2);
+  font-weight: 700;
+}
+
+/* ============================================
+   MENSAJE DE ERROR
+   ============================================ */
+
+.crear-torneo-container .error-message {
+  color: #8d4e41;
+  background-color: #fdf2f2;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #d7ccc8;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  text-align: left;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   FORMULARIO PRINCIPAL
+   ============================================ */
+
+.torneo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: left;
+  padding: 2rem;
+  background: linear-gradient(145deg, #f5f5dc, #faf8f5);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(93, 64, 55, 0.15);
+  border: 1px solid #d7ccc8;
+}
+
+/* ============================================
+   FIELDSETS
+   ============================================ */
+
+.torneo-form fieldset {
+  border: 2px solid #d7ccc8;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 0;
+  background: linear-gradient(145deg, #fafafa, #f9f9f9);
+  transition: all 0.3s ease;
+}
+
+.torneo-form fieldset:hover {
+  border-color: #8d6e63;
+  background: linear-gradient(145deg, #ffffff, #fafafa);
+  box-shadow: 0 4px 12px rgba(93, 64, 55, 0.1);
+}
+
+.torneo-form legend {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #5d4037;
+  padding: 0 15px;
+  background: linear-gradient(135deg, #f5f5dc, #faf8f5);
+  border-radius: 6px;
+  border: 1px solid #d7ccc8;
+}
+
+/* ============================================
+   LABELS
+   ============================================ */
+
+.torneo-form label {
+  display: block;
+  font-weight: 1000;
+  color: #5d4037;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.torneo-form label:first-of-type {
+  margin-top: 0;
+}
+
+/* ============================================
+   INPUTS Y SELECTS
+   ============================================ */
+
+.torneo-form input[type="text"],
+.torneo-form input[type="date"],
+.torneo-form input[type="number"],
+.torneo-form select {
+  padding: 0.5em;
+  font-size: 1em;
+  border: 1px solid #a1887f;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+  background-color: #fafafa;
+  color: #000000;
+  font-family: inherit;
+}
+
+.torneo-form input:focus,
+.torneo-form select:focus {
+  outline: none;
+  border-color: #4caf50;
+  background-color: #f9fff9;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  color: #000000;
+}
+
+.torneo-form input:disabled,
+.torneo-form select:disabled {
+  background-color: #efebe9;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.torneo-form input::placeholder {
+  color: #a1887f;
+  font-style: italic;
+}
+
+/* Estilos específicos para input number */
+.torneo-form input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.torneo-form input[type="number"]::-webkit-inner-spin-button,
+.torneo-form input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 35px;
+}
+
+/* ============================================
+   SELECT - Flecha personalizada
+   ============================================ */
+
+.torneo-form select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d4037' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 40px;
+}
+
+.torneo-form select:disabled {
+  cursor: not-allowed;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1887f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+/* ============================================
+   FORM ACTIONS (BOTONES)
+   ============================================ */
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #d7ccc8;
+}
+
+.btn-primary,
+.btn-secondary {
+  flex: 1;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 3px 6px rgba(76, 175, 80, 0.3);
+}
+
+/* Botón primario - Verde (Crear Torneo) */
+.btn-primary {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  border-color: #5d4037;
+  background: linear-gradient(135deg, #388e3c, #2e7d32);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4);
+}
+
+.btn-primary:focus,
+.btn-primary:focus-visible {
+  outline: 4px auto rgba(93, 64, 55, 0.3);
+}
+
+.btn-primary:disabled {
+  background: linear-gradient(135deg, #bcaaa4, #a1887f);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* Botón secundario - Marrón (Cancelar) */
+.btn-secondary {
+  background: linear-gradient(135deg, #8d6e63, #6d4c41);
+  color: white;
+  box-shadow: 0 3px 6px rgba(141, 110, 99, 0.3);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d4c41, #5d4037);
+  border-color: #4caf50;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(141, 110, 99, 0.4);
+}
+
+.btn-secondary:focus,
+.btn-secondary:focus-visible {
+  outline: 4px auto rgba(93, 64, 55, 0.3);
+}
+
+.btn-secondary:disabled {
+  background: linear-gradient(135deg, #bcaaa4, #a1887f);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* ============================================
+   LOADING STATE - Animación para botón
+   ============================================ */
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:disabled::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* ============================================
+   ESTADOS DE VALIDACIÓN
+   ============================================ */
+
+.torneo-form input:required:invalid:not(:placeholder-shown),
+.torneo-form select:required:invalid {
+  border-color: #d32f2f;
+  background-color: #ffebee;
+}
+
+.torneo-form input:required:valid:not(:placeholder-shown) {
+  border-color: #4caf50;
+  background-color: #f1f8e9;
+}
+
+/* ============================================
+   RESPONSIVE - Adaptación móvil
+   ============================================ */
+
+@media (max-width: 768px) {
+  .crear-torneo-container {
+    padding: 1rem;
+  }
+
+  .crear-torneo-container h1 {
+    font-size: 2rem;
+  }
+
+  .torneo-form {
+    padding: 1.5rem;
+  }
+
+  .torneo-form fieldset {
+    padding: 1rem;
+  }
+
+  .torneo-form legend {
+    font-size: 1rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .crear-torneo-container {
+    padding: 0.5rem;
+  }
+
+  .crear-torneo-container h1 {
+    font-size: 1.5rem;
+  }
+
+  .torneo-form {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .torneo-form fieldset {
+    padding: 0.75rem;
+  }
+
+  .torneo-form legend {
+    font-size: 0.9rem;
+    padding: 0 10px;
+  }
+
+  .torneo-form label {
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+  }
+
+  .torneo-form input,
+  .torneo-form select {
+    font-size: 0.9rem;
+    padding: 0.45em;
+  }
+}
+
+/* ============================================
+   ANIMACIONES DE ENTRADA
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.torneo-form {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.torneo-form fieldset {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.torneo-form fieldset:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.torneo-form fieldset:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.torneo-form fieldset:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* ============================================
+   ACCESIBILIDAD
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .torneo-form,
+  .torneo-form fieldset,
+  .error-message {
+    animation: none;
+  }
+
+  .btn-primary:hover:not(:disabled),
+  .btn-secondary:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ============================================
+   UTILIDADES
+   ============================================ */
+
+.torneo-form input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(32%) sepia(20%) saturate(900%) hue-rotate(346deg) brightness(94%) contrast(90%);
+}
+
+.torneo-form input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(45%) sepia(65%) saturate(450%) hue-rotate(75deg) brightness(96%) contrast(90%);
+}

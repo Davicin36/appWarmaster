@@ -163,8 +163,9 @@ export const AuthProvider = ({ children }) => {
        throw new error (error.message ||  'Error de conexión con el servidor') ;
     }
   };
-
-  // ⭐ Convertir jugador a organizador
+//=========================================
+  // ⭐ CONVERTIR JUGADOR A ORGANIZADOR
+  //========================================
 const convertirOrganizador = async () => {
   try {
     const token = localStorage.getItem('token');

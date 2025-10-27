@@ -1,5 +1,6 @@
 // routes/torneos.js
 const express = require('express');
+const jwt = require('jsonwebtoken'); // ✅ Agregar este import
 const { pool } = require('../config/bd');
 const { verificarToken, verificarOrganizador } = require('../middleware/auth');
 const { 
@@ -13,13 +14,30 @@ const {
 
 const router = express.Router(); 
 
-// ==========================================
-// OBTENER TODOS LOS TORNEOS (CON PAGINACIÓN)
-// ==========================================
-router.get('/', verificarToken, async (req, res) => {
+// =========================================================
+// OBTENER TODOS LOS TORNEOS (CON PAGINACIÓN) Y SIN AUTENTICACIÓN
+// =========================================================
+router.get('/', async (req, res) => {
   try {
+    console.log('📥 GET /api/torneos - Petición recibida');
+    
     const { page = 1, limit = 10, buscar = '' } = req.query;
     const { limit: limitNum, offset } = paginar(page, limit);
+    
+    // ✅ Obtener userId del token si existe
+    let userId = null;
+    const authHeader = req.headers['authorization'];
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.userId;
+        console.log(`✅ Usuario autenticado: ${userId}`);
+      } catch (err) {
+        // Token inválido o no proporcionado, continuar sin userId
+        console.log('ℹ️ Sin autenticación o token inválido');
+      }
+    }
     
     let whereClause = '';
     let params = [];
@@ -31,8 +49,8 @@ router.get('/', verificarToken, async (req, res) => {
       params = [searchTerm, searchTerm, searchTerm];
     }
     
-    // Consulta principal con información del creador y participantes
-    const [torneos] = await pool.execute(`
+    // ✅ Consulta principal con verificación de inscripción del usuario
+    const [torneos] = await pool.execute(`  
       SELECT 
         ts.id,
         ts.nombre_torneo,
@@ -41,11 +59,14 @@ router.get('/', verificarToken, async (req, res) => {
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
+        ts.puntos_banda,
+        ts.created_by,
         ts.created_at,
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.club as creador_club,
-        COUNT(p.id) as total_participantes
+        COUNT(DISTINCT p.id) as total_participantes,
+        MAX(CASE WHEN p.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneo_saga ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN participantes p ON ts.id = p.torneo_id
@@ -53,7 +74,9 @@ router.get('/', verificarToken, async (req, res) => {
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
       LIMIT ? OFFSET ?
-    `, [...params, limitNum, offset]);
+    `, [userId, ...params, limitNum, offset]);
+    
+    console.log(`✅ ${torneos.length} torneos encontrados`);
     
     // Contar total para paginación
     const [totalRows] = await pool.execute(`
@@ -67,7 +90,7 @@ router.get('/', verificarToken, async (req, res) => {
     
     res.json(
       successResponse('Torneos obtenidos exitosamente', {
-        torneos,
+        torneosSaga: torneos,
         paginacion: {
           paginaActual: parseInt(page),
           totalPaginas: totalPages,
@@ -78,16 +101,31 @@ router.get('/', verificarToken, async (req, res) => {
     );
     
   } catch (error) {
-    console.error('Error al obtener torneos:', error);
+    console.error('❌ Error al obtener torneos:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
 
 // ==========================================
-// OBTENER UN TORNEO ESPECÍFICO
+// OBTENER UN TORNEO ESPECÍFICO (PÚBLICO)
 // ==========================================
-router.get('/:id', verificarToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
+    console.log(`📥 GET /api/torneos/${req.params.id}`);
+    
+    // ✅ Obtener userId del token si existe
+    let userId = null;
+    const authHeader = req.headers['authorization'];
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.userId;
+      } catch (err) {
+        // Token inválido o no proporcionado, continuar sin userId
+      }
+    }
+    
     const [torneos] = await pool.execute(`
       SELECT 
         ts.*,
@@ -95,13 +133,14 @@ router.get('/:id', verificarToken, async (req, res) => {
         u.apellidos as creador_apellidos,
         u.email as creador_email,
         u.club as creador_club,
-        COUNT(p.id) as total_participantes
+        COUNT(DISTINCT p.id) as total_participantes,
+        MAX(CASE WHEN p.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneo_saga ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN participantes p ON ts.id = p.torneo_id
       WHERE ts.id = ?
       GROUP BY ts.id
-    `, [req.params.id]);
+    `, [userId, req.params.id]);
     
     if (torneos.length === 0) {
       return res.status(404).json(
@@ -116,31 +155,45 @@ router.get('/:id', verificarToken, async (req, res) => {
     );
     
   } catch (error) {
-    console.error('Error al obtener torneo:', error);
+    console.error('❌ Error al obtener torneo:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
 
 // ==========================================
-// CREAR NUEVO TORNEO
+// CREAR NUEVO TORNEO (REQUIERE AUTENTICACIÓN)
 // ==========================================
-router.post('/', verificarToken, verificarOrganizador, async (req, res) => {
+router.post('/', verificarToken, async (req, res) => {
   try {
+    console.log('📥 POST /api/torneos - Creando torneo');
+    
     const { 
       nombre_torneo, 
       rondas_max, 
       epoca_torneo, 
       fecha_inicio, 
       fecha_fin, 
-      ubicacion 
+      ubicacion,
+      puntos_banda,
+      partida_ronda_1,
+      partida_ronda_2,
+      partida_ronda_3,
+      partida_ronda_4,
+      partida_ronda_5
     } = req.body;
+    
+    console.log('📦 Datos recibidos:', req.body);
     
     // Validar campos requeridos
     const camposFaltantes = validarCamposRequeridos(req.body, [
       'nombre_torneo', 
       'rondas_max', 
       'epoca_torneo', 
-      'fecha_inicio'
+      'fecha_inicio',
+      'puntos_banda',
+      'partida_ronda_1',
+      'partida_ronda_2',
+      'partida_ronda_3'
     ]);
     
     if (camposFaltantes.length > 0) {
@@ -150,9 +203,15 @@ router.post('/', verificarToken, verificarOrganizador, async (req, res) => {
     }
     
     // Validar número de rondas
-    if (rondas_max < 1 || rondas_max > 20) {
+    if (rondas_max < 3 || rondas_max > 5) {
       return res.status(400).json(
-        errorResponse('El número de rondas debe estar entre 1 y 20')
+        errorResponse('El número de rondas debe estar entre 3 y 5')
+      );
+    }
+
+    if (puntos_banda < 4 || puntos_banda > 8) {
+      return res.status(400).json(
+        errorResponse('Los puntos de banda deben estar entre 4 y 8')
       );
     }
     
@@ -168,12 +227,31 @@ router.post('/', verificarToken, verificarOrganizador, async (req, res) => {
         errorResponse('La fecha de fin debe ser posterior a la fecha de inicio')
       );
     }
+
+    // ✅ Verificar rol del usuario y convertir a organizador si es necesario
+    const [usuarios] = await pool.execute(
+      'SELECT rol FROM usuarios WHERE id = ?',
+      [req.userId]
+    );
+
+    let rolActualizado = usuarios[0].rol;
+
+    if (usuarios[0].rol !== 'organizador') {
+      await pool.execute(
+        'UPDATE usuarios SET rol = ? WHERE id = ?',
+        ['organizador', req.userId]
+      );
+      rolActualizado = 'organizador';
+      console.log(`✅ Usuario ${req.userId} convertido a organizador`);
+    }
     
     // Crear el torneo
     const [resultado] = await pool.execute(
       `INSERT INTO torneo_saga 
-       (nombre_torneo, rondas_max, epoca_torneo, fecha_inicio, fecha_fin, ubicacion, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (nombre_torneo, rondas_max, epoca_torneo, fecha_inicio, fecha_fin, ubicacion, 
+        puntos_banda, partida_ronda_1, partida_ronda_2, partida_ronda_3, 
+        partida_ronda_4, partida_ronda_5, created_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         rondas_max, 
@@ -181,20 +259,30 @@ router.post('/', verificarToken, verificarOrganizador, async (req, res) => {
         fecha_inicio, 
         fecha_fin || null, 
         ubicacion || null, 
+        puntos_banda,
+        partida_ronda_1,
+        partida_ronda_2,
+        partida_ronda_3,
+        partida_ronda_4 || null,
+        partida_ronda_5 || null,
         req.userId
       ]
     );
+    
+    console.log(`✅ Torneo creado con ID: ${resultado.insertId}`);
     
     res.status(201).json(
       successResponse('Torneo creado exitosamente', {
         torneoId: resultado.insertId,
         nombre_torneo,
-        epoca_torneo
+        epoca_torneo, 
+        created_by: req.userId,
+        rol_actualizado: rolActualizado
       })
     );
     
   } catch (error) {
-    console.error('Error al crear torneo:', error);
+    console.error('❌ Error al crear torneo:', error);
     
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json(
