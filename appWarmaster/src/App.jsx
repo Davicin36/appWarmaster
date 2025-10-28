@@ -11,7 +11,8 @@ import Perfil from './paginas/Perfil.jsx';
 
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
-import AdministarTorneo from './componente/AdministarTorneo.jsx';
+import AdministrarTorneo from './componente/AdministrarTorneo.jsx';
+import Inscripcion from './componente/inscripcion.jsx';
 
 function App() {
 
@@ -40,12 +41,16 @@ function App() {
             element={<CrearTorneo />} 
         />
         <Route 
-            path='/administarTorneo' 
-            element={<AdministarTorneo />} 
+            path='/administrarTorneo/:torneoId' 
+            element={<AdministrarTorneo />} 
         />
         <Route 
             path='/perfil' 
             element={<Perfil />} 
+        />
+        <Route 
+            path='/Inscripcion/:torneoId' 
+            element={<Inscripcion />} 
         />
       </Routes>
     </AuthProvider>

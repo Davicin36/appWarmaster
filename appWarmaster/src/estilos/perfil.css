@@ -1,0 +1,354 @@
+/* ========================================
+   ESTILOS PARA PERFIL DE USUARIO
+   ======================================== */
+
+.perfil-container {
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.perfil-container h1 {
+  text-align: center;
+  color: white;
+  margin-bottom: 30px;
+  font-size: 2.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.perfil-card {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+/* ========================================
+   SECCIONES
+   ======================================== */
+
+.perfil-card section {
+  padding: 30px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.perfil-card section:last-child {
+  border-bottom: none;
+}
+
+.perfil-card h2 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+/* ========================================
+   INFORMACIÓN DEL USUARIO
+   ======================================== */
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.info-item label {
+  display: block;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.info-item p {
+  color: #333;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.rol-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.rol-badge.organizador {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.rol-badge.jugador {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+/* ========================================
+   SEGURIDAD / CAMBIO DE CONTRASEÑA
+   ======================================== */
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.password-form {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.password-form .form-group {
+  margin-bottom: 15px;
+}
+
+.password-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.password-form input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.password-form input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.password-form input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================
+   CONVERSIÓN A ORGANIZADOR
+   ======================================== */
+
+.organizador-section {
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  border-radius: 8px;
+  border: none !important;
+}
+
+.organizador-section h2 {
+  color: #2d3436;
+}
+
+.organizador-section p {
+  color: #636e72;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.btn-upgrade {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+}
+
+.btn-upgrade:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+}
+
+.btn-upgrade:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ========================================
+   CERRAR SESIÓN
+   ======================================== */
+
+.logout-section {
+  text-align: center;
+  background: #f8f9fa;
+}
+
+.btn-danger {
+  padding: 14px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(235, 51, 73, 0.3);
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(235, 51, 73, 0.4);
+}
+
+.btn-danger:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   BOTONES GENERALES
+   ======================================== */
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn-primary,
+.btn-secondary {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-secondary {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f8f9ff;
+  transform: translateY(-2px);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   MENSAJES
+   ======================================== */
+
+.error-message {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  animation: slideDown 0.3s ease;
+}
+
+.error-message::before {
+  content: "⚠️";
+  margin-right: 10px;
+}
+
+.success-message {
+  background-color: #efe;
+  border: 1px solid #cfc;
+  color: #363;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  animation: slideDown 0.3s ease;
+}
+
+.success-message::before {
+  content: "✓";
+  margin-right: 10px;
+  font-size: 1.2rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   RESPONSIVO
+   ======================================== */
+
+@media (max-width: 768px) {
+  .perfil-container h1 {
+    font-size: 2rem;
+  }
+
+  .perfil-card section {
+    padding: 20px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}

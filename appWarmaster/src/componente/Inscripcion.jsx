@@ -1,7 +1,7 @@
 import React  from "react";
 import {  useNavigate } from "react-router-dom";
 
-function AdministarTorneo(){
+function Inscripcion(){
 
     const navigate = useNavigate();
 
@@ -10,7 +10,7 @@ function AdministarTorneo(){
     };
     return(
         <div>
-            <h1>Administar Torneo</h1>
+            <h1>Gestionar Inscripción al torneo de </h1>
             <button type="button" onClick={volverInicio} >
                 Atrás
             </button>
@@ -18,4 +18,4 @@ function AdministarTorneo(){
     )   
 }
 
-export default AdministarTorneo;
+export default Inscripcion;

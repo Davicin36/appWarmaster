@@ -25,6 +25,8 @@ CREATE TABLE torneo_saga (
   fecha_fin DATE,
   ubicacion VARCHAR(200),
   puntos_banda INT NOT NULL,
+  participantes_max INT NOT NULL,
+  estado ENUM('pendiente', 'en_curso', 'finalizado') DEFAULT 'pendiente';
   partida_ronda_1 VARCHAR(100) NOT NULL,
   partida_ronda_2 VARCHAR(100) NOT NULL,
   partida_ronda_3 VARCHAR(100) NOT NULL,

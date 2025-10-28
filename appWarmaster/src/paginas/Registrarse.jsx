@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
 import { useAuth } from "../servicios/AuthContext";
-
-import '../estilos/registrarse.css';
 
 function Registrarse() {
     const [formData, setFormData] = useState({
@@ -18,6 +15,7 @@ function Registrarse() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [showPasswords, setShowPasswords] = useState(false);
     
     const { registro } = useAuth();
     const navigate = useNavigate();
@@ -28,46 +26,64 @@ function Registrarse() {
             ...prev,
             [name]: value
         }));
+        if (error) setError("");
+        if (success) setSuccess("");
+    };
+
+    const validarFormulario = () => {
+        if (formData.password !== formData.confirmPassword) {
+            setError("Las contraseñas no coinciden");
+            return false;
+        }
+
+        if (formData.password.length < 6) {
+            setError("La contraseña debe tener al menos 6 caracteres");
+            return false;
+        }
+
+        if (!formData.nombre || !formData.apellidos || !formData.email || !formData.password) {
+            setError("Por favor, completa todos los campos requeridos");
+            return false;
+        }
+
+        return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!validarFormulario()) {
+            return;
+        }
+
         setLoading(true);
         setError("");
         setSuccess("");
         
-        // Validar que las contraseñas coincidan
-        if (formData.password !== formData.confirmPassword) {
-            setError("Las contraseñas no coinciden");
-            setLoading(false);
-            return;
-        }
-
-        // Validar longitud de contraseña
-        if (formData.password.length < 6) {
-            setError("La contraseña debe tener al menos 6 caracteres");
-            setLoading(false);
-            return;
-        }
-        
         try {
-            const result = await registro(formData);
+            const { ...datosRegistro } = formData;
             
-            if (result.success) {
-                setSuccess("Usuario registrado exitosamente");
-                // Redirigir al login después de 2 segundos
+            const resultado = await registro(datosRegistro);
+            
+            if (resultado.success) {
+                setSuccess("Usuario registrado exitosamente! Redirigiendo...");
+                
                 setTimeout(() => {
                     navigate("/login");
                 }, 2000);
             } else {
-                setError(result.error || "Error al registrar usuario");
+                setError(resultado.error || "Error al registrar usuario");
             }
         } catch (err) {
-            setError("Error de conexión. Intenta nuevamente.");
             console.error("Error en registro:", err);
+            setError("Error de conexion. Intenta nuevamente.");
         } finally {
             setLoading(false);
         }
+    };
+
+    const togglePasswordsVisibility = () => {
+        setShowPasswords(prev => !prev);
     };
 
     const volverInicio = () => {
@@ -75,112 +91,156 @@ function Registrarse() {
     };
 
     return (
-        <div>
-            <h1>Gestión de Torneos de WARGAMES</h1>
+        <div className="register-container">
+            <h1>Gestion de Torneos de WARGAMES</h1>
+            
             <form className="register-form" onSubmit={handleSubmit}>
-                <h2>REGISTRO:</h2>
+                <h2>CREAR CUENTA</h2>
                 
                 {error && (
-                    <div className="error-message" style={{color: 'red', marginBottom: '10px'}}>
+                    <div className="error-message">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div className="success-message" style={{color: 'green', marginBottom: '10px'}}>
+                    <div className="success-message">
                         {success}
                     </div>
                 )}
                 
-                <label htmlFor="nombre">Nombre*:</label>
-                <input 
-                    type="text" 
-                    id="nombre"
-                    name="nombre"
-                    value={formData.nombre}
-                    onChange={handleChange}
-                    placeholder="Nombre"
-                    required
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="nombre">Nombre*:</label>
+                    <input 
+                        type="text" 
+                        id="nombre"
+                        name="nombre"
+                        value={formData.nombre}
+                        onChange={handleChange}
+                        placeholder="Tu nombre"
+                        required
+                        disabled={loading}
+                    />
+                </div>
 
-                <label htmlFor="apellidos">Apellidos*:</label>
-                <input 
-                    type="text" 
-                    id="apellidos"
-                    name="apellidos"
-                    value={formData.apellidos}
-                    onChange={handleChange}
-                    placeholder="Apellidos"
-                    required
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="apellidos">Apellidos*:</label>
+                    <input 
+                        type="text" 
+                        id="apellidos"
+                        name="apellidos"
+                        value={formData.apellidos}
+                        onChange={handleChange}
+                        placeholder="Tus apellidos"
+                        required
+                        disabled={loading}
+                    />
+                </div>
 
-                <label htmlFor="nombre_alias">Nombre Alias:</label>
-                <input 
-                    type="text" 
-                    id="nombre_alias"
-                    name="nombre_alias"
-                    value={formData.nombre_alias}
-                    onChange={handleChange}
-                    placeholder="Nombre Alias (opcional)"
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="nombre_alias">Nombre Alias:</label>
+                    <input 
+                        type="text" 
+                        id="nombre_alias"
+                        name="nombre_alias"
+                        value={formData.nombre_alias}
+                        onChange={handleChange}
+                        placeholder="Alias o nickname (opcional)"
+                        disabled={loading}
+                    />
+                </div>
 
-                <label htmlFor="club">Club:</label>
-                <input 
-                    type="text" 
-                    id="club"
-                    name="club"
-                    value={formData.club}
-                    onChange={handleChange}
-                    placeholder="Club (opcional)"
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="club">Club:</label>
+                    <input 
+                        type="text" 
+                        id="club"
+                        name="club"
+                        value={formData.club}
+                        onChange={handleChange}
+                        placeholder="Nombre de tu club (opcional)"
+                        disabled={loading}
+                    />
+                </div>
                 
-                <label htmlFor="email">Email*:</label>
-                <input 
-                    type="email" 
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Email"
-                    required
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="email">Email*:</label>
+                    <input 
+                        type="email" 
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="tu-email@ejemplo.com"
+                        required
+                        disabled={loading}
+                        autoComplete="email"
+                    />
+                </div>
                 
-                <label htmlFor="password">Contraseña*:</label>
-                <input 
-                    type="password" 
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Contraseña (mínimo 6 caracteres)" 
-                    required
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="password">Contraseña*:</label>
+                    <input 
+                        type={showPasswords ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Minimo 6 caracteres" 
+                        required
+                        disabled={loading}
+                        autoComplete="new-password"
+                    />
+                </div>
 
-                <label htmlFor="confirmPassword">Confirmar Contraseña*:</label>
-                <input 
-                    type="password" 
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Confirmar Contraseña" 
-                    required
-                    disabled={loading}
-                />
+                <div className="form-group">
+                    <label htmlFor="confirmPassword">Confirmar Contraseña*:</label>
+                    <input 
+                        type={showPasswords ? "text" : "password"}
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Repite tu contraseña" 
+                        required
+                        disabled={loading}
+                        autoComplete="new-password"
+                    />
+                </div>
+
+                <div className="checkbox-group">
+                    <input 
+                        type="checkbox" 
+                        id="showPasswords"
+                        checked={showPasswords}
+                        onChange={togglePasswordsVisibility}
+                        disabled={loading}
+                    />
+                    <label htmlFor="showPasswords">Mostrar contraseñas</label>
+                </div>
                 
-                <button type="submit" disabled={loading}>
-                    {loading ? "Registrando..." : "Registrarse"}
-                </button>
-                <button type="button" onClick={volverInicio} disabled={loading}>
-                    Atrás
-                </button>
-                <p>¿Ya tienes cuenta? <Link to="/login">Inicia sesión aquí</Link></p>
+                <div className="button-group">
+                    <button 
+                        type="submit" 
+                        className="btn-primary"
+                        disabled={loading}
+                    >
+                        {loading ? "Registrando..." : "Crear Cuenta"}
+                    </button>
+                    
+                    <button 
+                        type="button" 
+                        className="btn-secondary"
+                        onClick={volverInicio} 
+                        disabled={loading}
+                    >
+                        Volver
+                    </button>
+                </div>
+                
+                <p className="login-link">
+                    ¿Ya tienes cuenta? <Link to="/login">Inicia sesion aqui</Link>
+                </p>
             </form>
         </div>
     );

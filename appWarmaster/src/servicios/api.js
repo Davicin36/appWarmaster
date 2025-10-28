@@ -7,77 +7,39 @@ class TorneosApi {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      credentials: 'include', // Para manejar cookies/sessions
-      ...options,
-    };
-
-    if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body);
-    }
-
-    try {
-      const response = await fetch(url, config);
+      const url = `${this.baseURL}${endpoint}`;
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
+      // ✅ Obtener el token del localStorage
+      const token = localStorage.getItem('token');
       
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
-  }
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }), // ✅ Agregar token si existe
+          ...options.headers,
+        },
+        credentials: 'include',
+        ...options,
+      };
 
-  // ==========================================
-  // MÉTODOS DE AUTENTICACIÓN
-  // ==========================================
-  async login(credentials) {
-    return this.request('/authRutas/login', {
-      method: 'POST',
-      body: credentials,
-    });
-  }
-
-  async registros(userData) {
-    return this.request('/authRutas/registro', {
-      method: 'POST',
-      body: userData,
-    });
-  }
-
-  async verificarToken(token) {
-    return this.request('/authRutas/verificar', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
+      if (config.body && typeof config.body === 'object') {
+        config.body = JSON.stringify(config.body);
       }
-    });
-  }
 
-  async cambiarPassword(data, token) {
-    return this.request('/authRutas/cambiar-password', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: data
-    });
-  }
-/** 
-  async logout() {
-    return this.request('/authRutas/logout', {
-      method: 'POST',
-    });
-  }
-  */
+      try {
+        const response = await fetch(url, config);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
+}
 
   // ==========================================
   // MÉTODOS DE TORNEOS
@@ -115,6 +77,61 @@ class TorneosApi {
     return this.request(`/torneos/${torneoId}/clasificacion-general`);
   }
 
+// Obtener jugadores de un torneo
+async getJugadoresTorneo(torneoId) {
+  return this.request(`/torneos/${torneoId}/jugadores`);
+}
+
+// Obtener partidas de un torneo
+async getPartidasTorneo(torneoId) {
+  return this.request(`/torneos/${torneoId}/partidas`);
+}
+
+// Obtener clasificación de un torneo
+async getClasificacionTorneo(torneoId) {
+  return this.request(`/torneos/${torneoId}/clasificacion`);
+}
+
+// Cambiar estado del torneo
+async cambiarEstadoTorneo(id, estado) {
+  return this.request(`/torneos/${id}/estado`, {
+    method: 'PUT',
+    body: { estado },
+  });
+}
+
+// ==========================================
+// MÉTODOS DE PARTIDAS
+// ==========================================
+async getPartidas(torneoId = null) {
+  const endpoint = torneoId ? `/partidas?torneo=${torneoId}` : '/partidas';
+  return this.request(endpoint);
+}
+
+async getPartida(id) {
+  return this.request(`/partidas/${id}`);
+}
+
+async createPartida(partida) {
+  return this.request('/partidas', {
+    method: 'POST',
+    body: partida,
+  });
+}
+
+async updatePartida(id, partida) {
+  return this.request(`/partidas/${id}`, {
+    method: 'PUT',
+    body: partida,
+  });
+}
+
+async deletePartida(id) {
+  return this.request(`/partidas/${id}`, {
+    method: 'DELETE',
+  });
+}
+
   // ==========================================
   // MÉTODOS DE PARTICIPANTES
   // ==========================================
@@ -148,7 +165,7 @@ class TorneosApi {
   }
 
   // ==========================================
-  // MÉTODOS DE CHOQUE DE BANDAS
+  // MÉTODOS DE ESCENARIO - CHOQUE DE BANDAS
   // ==========================================
   async getChoqueBandas(torneoId = null) {
     const endpoint = torneoId ? `/choque-bandas?torneo=${torneoId}` : '/choque-bandas';
@@ -179,12 +196,134 @@ class TorneosApi {
     });
   }
 
+  
   // ==========================================
-  // MÉTODO PARA HEALTH CHECK
+  // MÉTODOS DE ESCENARIO - AVANCE
   // ==========================================
-  async healthCheck() {
-    const response = await fetch('http://localhost:5000/health');
-    return response.json();
+  async getAvances(torneoId = null) {
+    const endpoint = torneoId ? `/avance?torneo=${torneoId}` : '/avance';
+    return this.request(endpoint);
+  }
+
+  async getAvence(id) {
+    return this.request(`/avance/${id}`);
+  }
+
+  async createAvance(avance) {
+    return this.request('/avance', {
+      method: 'POST',
+      body: avance,
+    });
+  }
+
+  async updateAvance(id, avance) {
+    return this.request(`/avance/${id}`, {
+      method: 'PUT',
+      body: avance,
+    });
+  }
+
+  async deleteAvance(id) {
+    return this.request(`/avance/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+
+  // ==========================================
+  // MÉTODOS DE ESCENARIO - CONQUISTA
+  // ==========================================
+  async getConquistas(torneoId = null) {
+    const endpoint = torneoId ? `/conquista?torneo=${torneoId}` : '/conquista';
+    return this.request(endpoint);
+  }
+
+  async getConquista(id) {
+    return this.request(`/conquista/${id}`);
+  }
+
+  async createConquista(conquista) {
+    return this.request('/conquista', {
+      method: 'POST',
+      body: conquista,
+    });
+  }
+
+  async updateConquista(id, conquista) {
+    return this.request(`/conquista/${id}`, {
+      method: 'PUT',
+      body: conquista,
+    });
+  }
+
+  async deleteConquista(id) {
+    return this.request(`/conquista/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+   // ==========================================
+  // MÉTODOS DE ESCENARIO - DESACRALIZACIÓN
+  // ==========================================
+  async getDesacralizaciones(torneoId = null) {
+    const endpoint = torneoId ? `/desacralizacion?torneo=${torneoId}` : '/desacralizacion';
+    return this.request(endpoint);
+  }
+
+  async getDesacralizacion(id) {
+    return this.request(`/desacralizacion/${id}`);
+  }
+
+  async createDesacralizacion(desacralizacion) {
+    return this.request('/desacralizacion', {
+      method: 'POST',
+      body: desacralizacion,
+    });
+  }
+
+  async updateDesacralizacion(id, desacralizacion) {
+    return this.request(`/desacralizacion/${id}`, {
+      method: 'PUT',
+      body: desacralizacion,
+    });
+  }
+
+  async deleteDesacralizacion(id) {
+    return this.request(`/desacralizacion/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+   // ==========================================
+  // MÉTODOS DE ESCENARIO - CAPTURA
+  // ==========================================
+  async getCapturas(torneoId = null) {
+    const endpoint = torneoId ? `/captura?torneo=${torneoId}` : '/captura';
+    return this.request(endpoint);
+  }
+
+  async getCaptura(id) {
+    return this.request(`/captura/${id}`);
+  }
+
+  async createCaptura(captura) {
+    return this.request('/captura', {
+      method: 'POST',
+      body: captura,
+    });
+  }
+
+  async updateCaptura(id, captura) {
+    return this.request(`/captura/${id}`, {
+      method: 'PUT',
+      body: captura,
+    });
+  }
+
+  async deleteCaptura(id) {
+    return this.request(`/captura/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

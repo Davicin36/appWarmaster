@@ -504,4 +504,183 @@ router.get('/usuario/:userId', verificarToken, async (req, res) => {
   }
 });
 
+/// ==========================================
+// OBTENER JUGADORES/PARTICIPANTES DE UN TORNEO
+// ==========================================
+router.get('/:id/jugadores', async (req, res) => {
+  try {
+    const torneoId = req.params.id;
+    console.log(`📥 GET /api/torneos/${torneoId}/jugadores`);
+    
+    const [jugadores] = await pool.execute(`
+      SELECT 
+        u.id,
+        CONCAT(u.nombre, ' ', COALESCE(u.apellidos, '')) as nombre,
+        u.club,
+        p.faccion as ejercito,
+        p.composicion_ejercito
+      FROM participantes p
+      INNER JOIN usuarios u ON p.jugador_id = u.id
+      WHERE p.torneo_id = ?
+      ORDER BY u.nombre
+    `, [torneoId]);
+    
+    console.log(`✅ ${jugadores.length} jugadores encontrados`);
+    
+    res.json(jugadores);
+    
+  } catch (error) {
+    console.error('❌ Error al obtener jugadores:', error);
+    console.error('❌ Error detallado:', error.message);
+    res.status(500).json({ error: 'Error interno del servidor', detalle: error.message });
+  }
+});
+
+// ==========================================
+// OBTENER PARTIDAS DE UN TORNEO (SOLO CHOQUE BANDAS)
+// ==========================================
+router.get('/:id/partidas', async (req, res) => {
+  try {
+    const torneoId = req.params.id;
+    console.log(`📥 GET /api/torneos/${torneoId}/partidas`);
+    
+    const [partidas] = await pool.execute(`
+      SELECT 
+        cb.id,
+        cb.torneo_id,
+        cb.jugador1_id,
+        cb.jugador2_id,
+        cb.puntos_masacre_cr_j1 as puntos_masacre_j1,
+        cb.puntos_masacre_cr_j2 as puntos_masacre_j2,
+        cb.puntos_cr_j1 as puntos_victoria_j1,
+        cb.puntos_cr_j2 as puntos_victoria_j2,
+        cb.puntos_torneo_cr_j1 as puntos_torneo_j1,
+        cb.puntos_torneo_cr_j2 as puntos_torneo_j2,
+        cb.resultado_cr as resultado,
+        cb.ronda,
+        cb.created_at,
+        CONCAT(j1.nombre, ' ', COALESCE(j1.apellidos, '')) as jugador1_nombre,
+        CONCAT(j2.nombre, ' ', COALESCE(j2.apellidos, '')) as jugador2_nombre
+      FROM choque_bandas cb
+      INNER JOIN usuarios j1 ON cb.jugador1_id = j1.id
+      INNER JOIN usuarios j2 ON cb.jugador2_id = j2.id
+      WHERE cb.torneo_id = ?
+      ORDER BY cb.ronda DESC, cb.id DESC
+    `, [torneoId]);
+    
+    console.log(`✅ ${partidas.length} partidas encontradas`);
+    
+    res.json(partidas);
+    
+  } catch (error) {
+    console.error('❌ Error al obtener partidas:', error);
+    console.error('❌ Error detallado:', error.message);
+    res.status(500).json({ error: 'Error interno del servidor', detalle: error.message });
+  }
+});
+
+// ==========================================
+// OBTENER DATOS DE CLASIFICACIÓN (sin ordenar)
+// ==========================================
+router.get('/:id/clasificacion', async (req, res) => {
+  try {
+    const torneoId = req.params.id;
+    console.log(`📥 GET /api/torneos/${torneoId}/clasificacion`);
+
+    // Comprobamos que haya participantes
+    const [participantes] = await pool.execute(
+      'SELECT COUNT(*) AS total FROM participantes WHERE torneo_id = ?',
+      [torneoId]
+    );
+
+    if (participantes[0].total === 0) {
+      console.log('ℹ️ No hay participantes en este torneo');
+      return res.json([]);
+    }
+
+    // Obtenemos datos crudos para que el frontend calcule clasificación
+    const [datos] = await pool.execute(`
+      SELECT 
+        u.id AS jugador_id,
+        CONCAT(u.nombre, ' ', COALESCE(u.apellidos, '')) AS nombre_jugador,
+        u.club,
+        p.id AS participante_id,
+        p.faccion,
+        
+        -- Puntos de torneo
+        COALESCE(SUM(
+          CASE 
+            WHEN cb.jugador1_id = u.id THEN cb.puntos_torneo_cr_j1
+            WHEN cb.jugador2_id = u.id THEN cb.puntos_torneo_cr_j2
+            ELSE 0
+          END
+        ), 0) AS puntos_torneo,
+
+        -- Puntos de masacre
+        COALESCE(SUM(
+          CASE 
+            WHEN cb.jugador1_id = u.id THEN cb.puntos_masacre_cr_j1
+            WHEN cb.jugador2_id = u.id THEN cb.puntos_masacre_cr_j2
+            ELSE 0
+          END
+        ), 0) AS puntos_masacre,
+
+        -- Puntos de victoria (puntos_cr)
+        COALESCE(SUM(
+          CASE 
+            WHEN cb.jugador1_id = u.id THEN cb.puntos_cr_j1
+            WHEN cb.jugador2_id = u.id THEN cb.puntos_cr_j2
+            ELSE 0
+          END
+        ), 0) AS puntos_victoria,
+
+        -- Número de partidas jugadas
+        COUNT(DISTINCT cb.id) AS partidas_jugadas,
+
+        -- Victorias / Empates / Derrotas
+        SUM(
+          CASE 
+            WHEN (cb.jugador1_id = u.id AND cb.resultado_cr = 'victoria_j1') OR 
+                 (cb.jugador2_id = u.id AND cb.resultado_cr = 'victoria_j2') THEN 1
+            ELSE 0
+          END
+        ) AS victorias,
+
+        SUM(
+          CASE 
+            WHEN cb.resultado_cr = 'empate' AND 
+                 (cb.jugador1_id = u.id OR cb.jugador2_id = u.id) THEN 1
+            ELSE 0
+          END
+        ) AS empates,
+
+        SUM(
+          CASE 
+            WHEN (cb.jugador1_id = u.id AND cb.resultado_cr = 'victoria_j2') OR 
+                 (cb.jugador2_id = u.id AND cb.resultado_cr = 'victoria_j1') THEN 1
+            ELSE 0
+          END
+        ) AS derrotas
+
+      FROM participantes p
+      INNER JOIN usuarios u ON p.jugador_id = u.id
+      LEFT JOIN choque_bandas cb 
+        ON (cb.jugador1_id = u.id OR cb.jugador2_id = u.id)
+        AND cb.torneo_id = ?
+      WHERE p.torneo_id = ?
+      GROUP BY u.id, u.nombre, u.apellidos, u.club, p.id, p.faccion
+    `, [torneoId, torneoId]);
+
+    console.log(`✅ Clasificación generada con ${datos.length} jugadores`);
+    res.json(datos);
+
+  } catch (error) {
+    console.error('❌ Error al obtener clasificación:', error);
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      detalle: error.message
+    });
+  }
+});
+
 module.exports = router;
