@@ -8,7 +8,7 @@ const { testConnection } = require('./config/bd');
 
 // Importar rutas
 const authRoutes = require('./routes/authRutas');
-const torneosRoutes = require('./routes/torneos'); 
+const torneosSagaRoutes = require('./routes/torneosSaga'); 
 
 const app = express();
 
@@ -55,7 +55,7 @@ app.get('/api/test', (req, res) => {
 
 // Rutas principales
 app.use('/api/authRutas', authRoutes);
-app.use('/api/torneos', torneosRoutes);  // ✅ Esta es la línea crítica
+app.use('/api/torneosSaga', torneosSagaRoutes);  // ✅ Esta es la línea crítica
 
 // ==========================================
 // MANEJADOR DE RUTAS NO ENCONTRADAS
@@ -79,7 +79,7 @@ app.listen(PORT, async () => {
   console.log('🌐 URL:', `http://localhost:${PORT}`);
   console.log('📋 Health check:', `http://localhost:${PORT}/health`);
   console.log('🧪 Test API:', `http://localhost:${PORT}/api/test`);
-  console.log('🏆 Torneos:', `http://localhost:${PORT}/api/torneos`);
+  console.log('🏆 Torneos:', `http://localhost:${PORT}/api/torneosSaga`);
   console.log('='.repeat(50) + '\n');
   
   // Test de conexión a BD

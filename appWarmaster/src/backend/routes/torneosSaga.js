@@ -1,6 +1,7 @@
-// routes/torneos.js
+// routes/torneosSaga.js
 const express = require('express');
-const jwt = require('jsonwebtoken'); // ✅ Agregar este import
+const jwt = require('jsonwebtoken'); 
+const multer = require('multer');
 const { pool } = require('../config/bd');
 const { verificarToken, verificarOrganizador } = require('../middleware/auth');
 const { 
@@ -14,31 +15,36 @@ const {
 
 const router = express.Router(); 
 
+// ==========================================
+// CONFIGURACIÓN DE MULTER PARA SUBIDA DE PDF
+// ==========================================
+// Configurar multer para guardar en memoria
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Límite de 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Solo permitir PDFs
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos PDF'), false);
+    }
+  }
+});
+
 // =========================================================
 // OBTENER TODOS LOS TORNEOS (CON PAGINACIÓN) Y SIN AUTENTICACIÓN
 // =========================================================
 router.get('/', async (req, res) => {
   try {
-    console.log('📥 GET /api/torneos - Petición recibida');
+    console.log('📥 GET /api/torneosSaga - Petición recibida');
     
     const { page = 1, limit = 10, buscar = '' } = req.query;
     const { limit: limitNum, offset } = paginar(page, limit);
-    
-    // ✅ Obtener userId del token si existe
-    let userId = null;
-    const authHeader = req.headers['authorization'];
-    if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        userId = decoded.userId;
-        console.log(`✅ Usuario autenticado: ${userId}`);
-      } catch (err) {
-        // Token inválido o no proporcionado, continuar sin userId
-        console.log('ℹ️ Sin autenticación o token inválido');
-      }
-    }
-    
+       
     let whereClause = '';
     let params = [];
     
@@ -49,7 +55,7 @@ router.get('/', async (req, res) => {
       params = [searchTerm, searchTerm, searchTerm];
     }
     
-    // ✅ Consulta principal con verificación de inscripción del usuario
+    // ✅ Consulta principal con TODOS los campos (EXCEPTO el BLOB del PDF)
     const [torneos] = await pool.execute(`  
       SELECT 
         ts.id,
@@ -60,6 +66,15 @@ router.get('/', async (req, res) => {
         ts.fecha_fin,
         ts.ubicacion,
         ts.puntos_banda,
+        ts.participantes_max,
+        ts.estado,
+        ts.partida_ronda_1,
+        ts.partida_ronda_2,
+        ts.partida_ronda_3,
+        ts.partida_ronda_4,
+        ts.partida_ronda_5,
+        ts.bases_nombre,
+        ts.base_tamaño,
         ts.created_by,
         ts.created_at,
         u.nombre as creador_nombre,
@@ -106,29 +121,67 @@ router.get('/', async (req, res) => {
   }
 });
 
+// =========================================================
+// DESCARGAR PDF DE BASES DEL TORNEO
+// =========================================================
+router.get('/:id/bases-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [result] = await pool.execute(
+      'SELECT bases_torneo, bases_nombre FROM torneo_saga WHERE id = ?',
+      [id]
+    );
+    
+    if (result.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
+    
+    const torneo = result[0];
+    
+    if (!torneo.bases_torneo) {
+      return res.status(404).json(errorResponse('Este torneo no tiene bases en PDF'));
+    }
+    
+    // Establecer headers para descarga de PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${torneo.bases_nombre || 'bases_torneo.pdf'}"`);
+    res.send(torneo.bases_torneo);
+    
+  } catch (error) {
+    console.error('❌ Error al descargar PDF:', error);
+    res.status(500).json(errorResponse('Error al descargar el PDF'));
+  }
+});
+
 // ==========================================
 // OBTENER UN TORNEO ESPECÍFICO (PÚBLICO)
 // ==========================================
 router.get('/:id', async (req, res) => {
   try {
-    console.log(`📥 GET /api/torneos/${req.params.id}`);
-    
-    // ✅ Obtener userId del token si existe
-    let userId = null;
-    const authHeader = req.headers['authorization'];
-    if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        userId = decoded.userId;
-      } catch (err) {
-        // Token inválido o no proporcionado, continuar sin userId
-      }
-    }
-    
+    console.log(`📥 GET /api/torneosSaga/${req.params.id}`);
+
     const [torneos] = await pool.execute(`
       SELECT 
-        ts.*,
+        ts.id,
+        ts.nombre_torneo,
+        ts.rondas_max,
+        ts.epoca_torneo,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.ubicacion,
+        ts.puntos_banda,
+        ts.participantes_max,
+        ts.estado,
+        ts.partida_ronda_1,
+        ts.partida_ronda_2,
+        ts.partida_ronda_3,
+        ts.partida_ronda_4,
+        ts.partida_ronda_5,
+        ts.bases_nombre,
+        ts.base_tamaño,
+        ts.created_by,
+        ts.created_at,
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.email as creador_email,
@@ -163,9 +216,9 @@ router.get('/:id', async (req, res) => {
 // ==========================================
 // CREAR NUEVO TORNEO (REQUIERE AUTENTICACIÓN)
 // ==========================================
-router.post('/', verificarToken, async (req, res) => {
+router.post('/', verificarToken, upload.single('bases_pdf'), async (req, res) => {
   try {
-    console.log('📥 POST /api/torneos - Creando torneo');
+    console.log('📥 POST /api/torneosSaga - Creando torneo');
     
     const { 
       nombre_torneo, 
@@ -175,6 +228,8 @@ router.post('/', verificarToken, async (req, res) => {
       fecha_fin, 
       ubicacion,
       puntos_banda,
+      participantes_max,
+      estado,
       partida_ronda_1,
       partida_ronda_2,
       partida_ronda_3,
@@ -183,6 +238,7 @@ router.post('/', verificarToken, async (req, res) => {
     } = req.body;
     
     console.log('📦 Datos recibidos:', req.body);
+    console.log('📄 Archivo PDF:', req.file ? req.file.originalname : 'No adjunto');
     
     // Validar campos requeridos
     const camposFaltantes = validarCamposRequeridos(req.body, [
@@ -191,6 +247,7 @@ router.post('/', verificarToken, async (req, res) => {
       'epoca_torneo', 
       'fecha_inicio',
       'puntos_banda',
+      'participantes_max',
       'partida_ronda_1',
       'partida_ronda_2',
       'partida_ronda_3'
@@ -214,6 +271,12 @@ router.post('/', verificarToken, async (req, res) => {
         errorResponse('Los puntos de banda deben estar entre 4 y 8')
       );
     }
+
+    if (participantes_max < 4 || participantes_max > 100) {
+      return res.status(400).json(
+        errorResponse('El número de participantes debe estar entre 4 y 100')
+      );
+    }
     
     // Validar fechas
     if (!validarFecha(fecha_inicio)) {
@@ -231,7 +294,7 @@ router.post('/', verificarToken, async (req, res) => {
     // ✅ Verificar rol del usuario y convertir a organizador si es necesario
     const [usuarios] = await pool.execute(
       'SELECT rol FROM usuarios WHERE id = ?',
-      [req.userId]
+      [req.userId] // ✅ Usar directamente req.userId del middleware
     );
 
     let rolActualizado = usuarios[0].rol;
@@ -239,19 +302,32 @@ router.post('/', verificarToken, async (req, res) => {
     if (usuarios[0].rol !== 'organizador') {
       await pool.execute(
         'UPDATE usuarios SET rol = ? WHERE id = ?',
-        ['organizador', req.userId]
+        ['organizador', req.userId] // ✅ Usar directamente req.userId
       );
       rolActualizado = 'organizador';
       console.log(`✅ Usuario ${req.userId} convertido a organizador`);
+    }
+    
+    // ✅ Preparar datos del PDF si existe
+    let basesPdf = null;
+    let basesNombre = null;
+    let baseTamaño = null;
+    
+    if (req.file) {
+      basesPdf = req.file.buffer;
+      basesNombre = req.file.originalname;
+      baseTamaño = req.file.size;
+      console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
     }
     
     // Crear el torneo
     const [resultado] = await pool.execute(
       `INSERT INTO torneo_saga 
        (nombre_torneo, rondas_max, epoca_torneo, fecha_inicio, fecha_fin, ubicacion, 
-        puntos_banda, partida_ronda_1, partida_ronda_2, partida_ronda_3, 
-        partida_ronda_4, partida_ronda_5, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        puntos_banda, participantes_max, estado, partida_ronda_1, partida_ronda_2, 
+        partida_ronda_3, partida_ronda_4, partida_ronda_5, bases_torneo, 
+        bases_nombre, base_tamaño, created_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         rondas_max, 
@@ -260,12 +336,17 @@ router.post('/', verificarToken, async (req, res) => {
         fecha_fin || null, 
         ubicacion || null, 
         puntos_banda,
+        participantes_max,
+        estado || 'pendiente',
         partida_ronda_1,
         partida_ronda_2,
         partida_ronda_3,
         partida_ronda_4 || null,
         partida_ronda_5 || null,
-        req.userId
+        basesPdf,
+        basesNombre,
+        baseTamaño,
+        req.userId // ✅ Usar directamente req.userId
       ]
     );
     
@@ -276,7 +357,8 @@ router.post('/', verificarToken, async (req, res) => {
         torneoId: resultado.insertId,
         nombre_torneo,
         epoca_torneo, 
-        created_by: req.userId,
+        tiene_bases_pdf: !!req.file,
+        created_by: req.userId, // ✅ Usar directamente req.userId
         rol_actualizado: rolActualizado
       })
     );
@@ -284,6 +366,20 @@ router.post('/', verificarToken, async (req, res) => {
   } catch (error) {
     console.error('❌ Error al crear torneo:', error);
     
+    // Manejar error de Multer
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json(
+          errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
+        );
+      }
+      return res.status(400).json(errorResponse(error.message));
+    }
+    
+    if (error.message === 'Solo se permiten archivos PDF') {
+      return res.status(400).json(errorResponse(error.message));
+    }
+
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json(
         errorResponse('Ya existe un torneo con esa época')
@@ -298,7 +394,7 @@ router.post('/', verificarToken, async (req, res) => {
 // ==========================================
 // ACTUALIZAR TORNEO
 // ==========================================
-router.put('/:id', verificarToken, verificarOrganizador, async (req, res) => {
+router.put('/:id', verificarToken, verificarOrganizador, upload.single('bases_pdf'), async (req, res) => {
   try {
     const torneoId = req.params.id;
     const { 
@@ -307,8 +403,21 @@ router.put('/:id', verificarToken, verificarOrganizador, async (req, res) => {
       epoca_torneo, 
       fecha_inicio, 
       fecha_fin, 
-      ubicacion 
+      ubicacion,
+      puntos_banda,
+      participantes_max,
+      estado,
+      partida_ronda_1,
+      partida_ronda_2,
+      partida_ronda_3,
+      partida_ronda_4,
+      partida_ronda_5,
+      eliminar_pdf // Flag para eliminar el PDF existente
     } = req.body;
+    
+    console.log(`📝 PUT /api/torneosSaga/${torneoId} - Actualizando torneo`);
+    console.log('📦 Datos recibidos:', req.body);
+    console.log('📄 Nuevo PDF:', req.file ? req.file.originalname : 'No adjunto');
     
     // Verificar que el torneo existe y el usuario es el creador
     const [torneoExistente] = await pool.execute(
@@ -328,6 +437,25 @@ router.put('/:id', verificarToken, verificarOrganizador, async (req, res) => {
       );
     }
     
+    // Validaciones
+    if (rondas_max && (rondas_max < 3 || rondas_max > 5)) {
+      return res.status(400).json(
+        errorResponse('El número de rondas debe estar entre 3 y 5')
+      );
+    }
+
+    if (puntos_banda && (puntos_banda < 4 || puntos_banda > 8)) {
+      return res.status(400).json(
+        errorResponse('Los puntos de banda deben estar entre 4 y 8')
+      );
+    }
+
+    if (participantes_max && (participantes_max < 4 || participantes_max > 100)) {
+      return res.status(400).json(
+        errorResponse('El número de participantes debe estar entre 4 y 100')
+      );
+    }
+    
     // Validar fechas si se proporcionan
     if (fecha_inicio && !validarFecha(fecha_inicio)) {
       return res.status(400).json(
@@ -340,24 +468,31 @@ router.put('/:id', verificarToken, verificarOrganizador, async (req, res) => {
         errorResponse('La fecha de fin debe ser posterior a la fecha de inicio')
       );
     }
+
+    // Validar estado
+    if (estado && !['pendiente', 'en_curso', 'finalizado'].includes(estado)) {
+      return res.status(400).json(
+        errorResponse('Estado inválido. Debe ser: pendiente, en_curso o finalizado')
+      );
+    }
     
     // Construir consulta de actualización dinámicamente
     const camposActualizar = [];
     const valores = [];
     
-    if (nombre_torneo) {
+    if (nombre_torneo !== undefined) {
       camposActualizar.push('nombre_torneo = ?');
       valores.push(nombre_torneo);
     }
-    if (rondas_max) {
+    if (rondas_max !== undefined) {
       camposActualizar.push('rondas_max = ?');
       valores.push(rondas_max);
     }
-    if (epoca_torneo) {
+    if (epoca_torneo !== undefined) {
       camposActualizar.push('epoca_torneo = ?');
       valores.push(epoca_torneo);
     }
-    if (fecha_inicio) {
+    if (fecha_inicio !== undefined) {
       camposActualizar.push('fecha_inicio = ?');
       valores.push(fecha_inicio);
     }
@@ -369,6 +504,61 @@ router.put('/:id', verificarToken, verificarOrganizador, async (req, res) => {
       camposActualizar.push('ubicacion = ?');
       valores.push(ubicacion);
     }
+    if (puntos_banda !== undefined) {
+      camposActualizar.push('puntos_banda = ?');
+      valores.push(puntos_banda);
+    }
+    if (participantes_max !== undefined) {
+      camposActualizar.push('participantes_max = ?');
+      valores.push(participantes_max);
+    }
+    if (estado !== undefined) {
+      camposActualizar.push('estado = ?');
+      valores.push(estado);
+    }
+    if (partida_ronda_1 !== undefined) {
+      camposActualizar.push('partida_ronda_1 = ?');
+      valores.push(partida_ronda_1);
+    }
+    if (partida_ronda_2 !== undefined) {
+      camposActualizar.push('partida_ronda_2 = ?');
+      valores.push(partida_ronda_2);
+    }
+    if (partida_ronda_3 !== undefined) {
+      camposActualizar.push('partida_ronda_3 = ?');
+      valores.push(partida_ronda_3);
+    }
+    if (partida_ronda_4 !== undefined) {
+      camposActualizar.push('partida_ronda_4 = ?');
+      valores.push(partida_ronda_4);
+    }
+    if (partida_ronda_5 !== undefined) {
+      camposActualizar.push('partida_ronda_5 = ?');
+      valores.push(partida_ronda_5);
+    }
+    
+    // ✅ Manejar PDF
+    // Opción 1: Se subió un nuevo PDF
+    if (req.file) {
+      camposActualizar.push('bases_torneo = ?');
+      valores.push(req.file.buffer);
+      
+      camposActualizar.push('bases_nombre = ?');
+      valores.push(req.file.originalname);
+      
+      camposActualizar.push('base_tamaño = ?');
+      valores.push(req.file.size);
+      
+      console.log(`📄 Nuevo PDF: ${req.file.originalname} (${req.file.size} bytes)`);
+    }
+    // Opción 2: Se solicita eliminar el PDF existente
+    else if (eliminar_pdf === 'true' || eliminar_pdf === true) {
+      camposActualizar.push('bases_torneo = NULL');
+      camposActualizar.push('bases_nombre = NULL');
+      camposActualizar.push('base_tamaño = NULL');
+      console.log('🗑️ Eliminando PDF existente');
+    }
+    // Opción 3: No se hace nada con el PDF (se mantiene el actual si existe)
     
     if (camposActualizar.length === 0) {
       return res.status(400).json(
@@ -383,17 +573,31 @@ router.put('/:id', verificarToken, verificarOrganizador, async (req, res) => {
       valores
     );
     
+    console.log(`✅ Torneo ${torneoId} actualizado exitosamente`);
+    
     res.json(
-      successResponse('Torneo actualizado exitosamente')
+      successResponse('Torneo actualizado exitosamente', {
+        torneoId,
+        pdf_actualizado: !!req.file,
+        pdf_eliminado: eliminar_pdf === 'true' || eliminar_pdf === true
+      })
     );
     
   } catch (error) {
-    console.error('Error al actualizar torneo:', error);
+    console.error('❌ Error al actualizar torneo:', error);
     
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json(
-        errorResponse('Ya existe un torneo con esa época')
-      );
+    // Manejar error de Multer
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json(
+          errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
+        );
+      }
+      return res.status(400).json(errorResponse(error.message));
+    }
+    
+    if (error.message === 'Solo se permiten archivos PDF') {
+      return res.status(400).json(errorResponse(error.message));
     }
     
     const mensaje = manejarErrorDB(error);
@@ -459,16 +663,35 @@ router.get('/usuario/:userId', verificarToken, async (req, res) => {
   try {
     const userId = req.params.userId;
     
-    // Solo permitir ver torneos propios o si es organizador
-    if (req.userId !== parseInt(userId) && req.userRole !== 'organizador') {
+    // Solo permitir ver torneos propios
+    if (req.userId !== parseInt(userId)) {
       return res.status(403).json(
         errorResponse('No tienes permisos para ver torneos de otro usuario')
       );
     }
     
+    // ✅ Torneos creados - con todos los campos nuevos
     const [torneosCreados] = await pool.execute(`
       SELECT 
-        ts.*,
+        ts.id,
+        ts.nombre_torneo,
+        ts.rondas_max,
+        ts.epoca_torneo,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.ubicacion,
+        ts.puntos_banda,
+        ts.participantes_max,
+        ts.estado,
+        ts.partida_ronda_1,
+        ts.partida_ronda_2,
+        ts.partida_ronda_3,
+        ts.partida_ronda_4,
+        ts.partida_ronda_5,
+        ts.bases_nombre,
+        ts.base_tamaño,
+        ts.created_by,
+        ts.created_at,
         COUNT(p.id) as total_participantes
       FROM torneo_saga ts 
       LEFT JOIN participantes p ON ts.id = p.torneo_id
@@ -477,9 +700,28 @@ router.get('/usuario/:userId', verificarToken, async (req, res) => {
       ORDER BY ts.created_at DESC
     `, [userId]);
     
+    // ✅ Torneos participando - con todos los campos nuevos
     const [torneosParticipando] = await pool.execute(`
       SELECT 
-        ts.*,
+        ts.id,
+        ts.nombre_torneo,
+        ts.rondas_max,
+        ts.epoca_torneo,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.ubicacion,
+        ts.puntos_banda,
+        ts.participantes_max,
+        ts.estado,
+        ts.partida_ronda_1,
+        ts.partida_ronda_2,
+        ts.partida_ronda_3,
+        ts.partida_ronda_4,
+        ts.partida_ronda_5,
+        ts.bases_nombre,
+        ts.base_tamaño,
+        ts.created_by,
+        ts.created_at,
         p.faccion,
         p.composicion_ejercito,
         COUNT(p2.id) as total_participantes
@@ -504,13 +746,13 @@ router.get('/usuario/:userId', verificarToken, async (req, res) => {
   }
 });
 
-/// ==========================================
+// ==========================================
 // OBTENER JUGADORES/PARTICIPANTES DE UN TORNEO
 // ==========================================
 router.get('/:id/jugadores', async (req, res) => {
   try {
     const torneoId = req.params.id;
-    console.log(`📥 GET /api/torneos/${torneoId}/jugadores`);
+    console.log(`📥 GET /api/torneosSaga/${torneoId}/jugadores`);
     
     const [jugadores] = await pool.execute(`
       SELECT 
@@ -537,12 +779,12 @@ router.get('/:id/jugadores', async (req, res) => {
 });
 
 // ==========================================
-// OBTENER PARTIDAS DE UN TORNEO (SOLO CHOQUE BANDAS)
+// OBTENER PARTIDAS DE UN TORNEO
 // ==========================================
 router.get('/:id/partidas', async (req, res) => {
   try {
     const torneoId = req.params.id;
-    console.log(`📥 GET /api/torneos/${torneoId}/partidas`);
+    console.log(`📥 GET /api/torneosSaga/${torneoId}/partidas`);
     
     const [partidas] = await pool.execute(`
       SELECT 
@@ -585,7 +827,7 @@ router.get('/:id/partidas', async (req, res) => {
 router.get('/:id/clasificacion', async (req, res) => {
   try {
     const torneoId = req.params.id;
-    console.log(`📥 GET /api/torneos/${torneoId}/clasificacion`);
+    console.log(`📥 GET /api/torneosSaga/${torneoId}/clasificacion`);
 
     // Comprobamos que haya participantes
     const [participantes] = await pool.execute(

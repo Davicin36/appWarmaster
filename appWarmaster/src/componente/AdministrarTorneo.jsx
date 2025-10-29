@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import torneosApi from '../servicios/api.js';
+import torneosSagaApi from '../servicios/apiSaga.js';
 
 import '../estilos/administrarTorneo.css';
 
@@ -44,14 +44,14 @@ function AdministrarTorneo() {
         setError('');
         
         // Cargar información del torneo
-        const response = await torneosApi.getTorneo(torneoId);
+        const response = await torneosSagaApi.getTorneo(torneoId);
         // ✅ Acceder a data.torneo en lugar de directamente a la respuesta
         const dataTorneo = response.data?.torneo || response.torneo || response;
         setTorneo(dataTorneo);
         
         // Cargar jugadores del torneo
         try {
-            const dataJugadores = await torneosApi.getJugadoresTorneo(torneoId);
+            const dataJugadores = await torneosSagaApi.getJugadoresTorneo(torneoId);
             // ✅ Los jugadores vienen directamente como array
             setJugadores(Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []);
         } catch (err) {
@@ -61,7 +61,7 @@ function AdministrarTorneo() {
         
         // Cargar partidas
         try {
-            const dataPartidas = await torneosApi.getPartidasTorneo(torneoId);
+            const dataPartidas = await torneosSagaApi.getPartidasTorneo(torneoId);
             setPartidas(Array.isArray(dataPartidas) ? dataPartidas : dataPartidas.data || []);
         } catch (err) {
             console.log('No hay partidas todavía', err);
@@ -70,7 +70,7 @@ function AdministrarTorneo() {
         
         // Cargar clasificación
         try {
-            const dataClasificacion = await torneosApi.getClasificacionTorneo(torneoId);
+            const dataClasificacion = await torneosSagaApi.getClasificacionTorneo(torneoId);
             setClasificacion(Array.isArray(dataClasificacion) ? dataClasificacion : dataClasificacion.data || []);
         } catch (err) {
             console.log('No hay clasificación todavía', err);
@@ -102,7 +102,7 @@ function AdministrarTorneo() {
         }
 
         try {
-            await torneosApi.createPartida({
+            await torneosSagaApi.createPartida({
                 torneo_id: torneoId,
                 ...nuevaPartida
             });
@@ -131,7 +131,7 @@ function AdministrarTorneo() {
         }
 
         try {
-            await torneosApi.cambiarEstadoTorneo(torneoId, nuevoEstado);
+            await torneosSagaApi.cambiarEstadoTorneo(torneoId, nuevoEstado);
             alert('Estado actualizado correctamente');
             await cargarDatosTorneo();
         } catch (error) {
