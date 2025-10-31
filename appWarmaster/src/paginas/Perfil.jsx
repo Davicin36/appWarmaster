@@ -1,6 +1,9 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
+
+import apiUsuarios from "../servicios/apiUsuarios.js";
+import torneosSagaApi from "../servicios/apiSaga.js";
 
 function Perfil() {
     const { user, logout, cambiarPassword, convertirOrganizador, actualizarUsuario } = useAuth();
@@ -34,8 +37,14 @@ function Perfil() {
     const [loadingOrganizador, setLoadingOrganizador] = useState(false);
     const [errorOrganizador, setErrorOrganizador] = useState("");
 
+    // 🆕 CAMBIO 1: Estados para torneos del usuario
+    const [torneosCreados, setTorneosCreados] = useState([]);
+    const [torneosParticipando, setTorneosParticipando] = useState([]);
+    const [loadingTorneos, setLoadingTorneos] = useState(true);
+    const [errorTorneos, setErrorTorneos] = useState("");
+
     // Sincronizar datos cuando cambia el usuario
-    React.useEffect(() => {
+    useEffect(() => {
         if (user) {
             setDatosEdicion({
                 nombre: user.nombre || "",
@@ -46,6 +55,41 @@ function Perfil() {
             });
         }
     }, [user]);
+
+    // 🆕 CAMBIO 2: Cargar torneos del usuario
+    useEffect(() => {
+    const cargarTorneosUsuario = async () => {
+        if (!user?.id) return;
+
+        try {
+            setLoadingTorneos(true);
+            setErrorTorneos("");
+
+            console.log('📥 Cargando torneos del usuario:', user.id);
+
+            const response = await torneosSagaApi.getTorneosUsuario(user.id);
+            
+            console.log('✅ Respuesta de torneos:', response);
+
+            // Verificar estructura de respuesta
+            if (response.success || response.data) {
+                const data = response.data || response;
+                setTorneosCreados(data.torneosCreados || []);
+                setTorneosParticipando(data.torneosParticipando || []);
+                console.log('✅ Torneos cargados correctamente');
+            } else {
+                setErrorTorneos(response.error || "Error al cargar torneos");
+            }
+        } catch (error) {
+            console.error("❌ Error al cargar torneos:", error);
+            setErrorTorneos(error.message || "Error de conexión");
+        } finally {
+            setLoadingTorneos(false);
+        }
+    };
+
+    cargarTorneosUsuario();
+}, [user]);
 
     const handleEdicionChange = (e) => {
         const { name, value } = e.target;
@@ -88,43 +132,33 @@ function Perfil() {
     };
 
     const handleGuardarCambios = async () => {
-        if (!validarEdicion()) return;
+    if (!validarEdicion()) return;
 
-        setLoadingEdicion(true);
-        setErrorEdicion("");
-        setSuccessEdicion("");
+    setLoadingEdicion(true);
+    setErrorEdicion("");
+    setSuccessEdicion("");
 
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/usuariosRutas/actualizar-perfil', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(datosEdicion)
-            });
+    try {
+        const data = await apiUsuarios.actualizarPerfil(datosEdicion);
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                actualizarUsuario(data.data.usuario);
-                setSuccessEdicion("Perfil actualizado exitosamente");
-                setModoEdicion(false);
-                
-                setTimeout(() => {
-                    setSuccessEdicion("");
-                }, 3000);
-            } else {
-                setErrorEdicion(data.error || "Error al actualizar perfil");
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            setErrorEdicion("Error de conexion");
-        } finally {
-            setLoadingEdicion(false);
+        if (data.success) {
+            actualizarUsuario(data.data.usuario);
+            setSuccessEdicion("✅ Perfil actualizado exitosamente");
+            setModoEdicion(false);
+            
+            setTimeout(() => {
+                setSuccessEdicion("");
+            }, 3000);
+        } else {
+            setErrorEdicion(data.error || "Error al actualizar perfil");
         }
-    };
+    } catch (error) {
+        console.error("❌ Error:", error);
+        setErrorEdicion(error.message || "Error de conexión");
+    } finally {
+        setLoadingEdicion(false);
+    }
+};
 
     const handleCancelarEdicion = () => {
         setModoEdicion(false);
@@ -230,25 +264,45 @@ function Perfil() {
         }
     };
 
+    // 🆕 CAMBIO 3: Función para formatear fechas
+    const formatearFecha = (fecha) => {
+        if (!fecha) return "Sin fecha";
+        return new Date(fecha).toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    };
+
+    // 🆕 CAMBIO 4: Función para obtener clase de estado
+    const getEstadoClase = (estado) => {
+        const estados = {
+            'pendiente': 'estado-pendiente',
+            'en_curso': 'estado-encurso',
+            'finalizado': 'estado-finalizado'
+        };
+        return estados[estado] || 'estado-pendiente';
+    };
+
     if (!user) {
         return null;
     }
 
     return (
         <div className="perfil-container">
-            <h1>Mi Perfil</h1>
+            <h1>👤 Mi Perfil</h1>
             
             <div className="perfil-card">
-                {/* Seccion de informacion personal editable */}
+                {/* Seccion de informacion personal */}
                 <section className="info-section">
                     <div className="section-header">
-                        <h2>Informacion Personal</h2>
+                        <h2>📋 Información Personal</h2>
                         {!modoEdicion && (
                             <button 
                                 className="btn-secondary"
                                 onClick={() => setModoEdicion(true)}
                             >
-                                Editar Perfil
+                                ✏️ Editar Perfil
                             </button>
                         )}
                     </div>
@@ -342,7 +396,7 @@ function Perfil() {
                                     onClick={handleGuardarCambios}
                                     disabled={loadingEdicion}
                                 >
-                                    {loadingEdicion ? "Guardando..." : "Guardar Cambios"}
+                                    {loadingEdicion ? "⏳ Guardando..." : "✅ Guardar Cambios"}
                                 </button>
                                 
                                 <button 
@@ -351,7 +405,7 @@ function Perfil() {
                                     onClick={handleCancelarEdicion}
                                     disabled={loadingEdicion}
                                 >
-                                    Cancelar
+                                    ❌ Cancelar
                                 </button>
                             </div>
                         </form>
@@ -380,9 +434,108 @@ function Perfil() {
                             <div className="info-item">
                                 <label>Rol:</label>
                                 <p className={`rol-badge ${user.rol}`}>
-                                    {user.rol === 'organizador' ? 'Organizador' : 'Jugador'}
+                                    {user.rol === 'organizador' ? '⚔️ Organizador' : '🎮 Jugador'}
                                 </p>
                             </div>
+                        </div>
+                    )}
+                </section>
+
+                {/* 🆕 CAMBIO 5: Sección de Torneos Creados */}
+                {user.rol === 'organizador' && (
+                    <section className="torneos-section">
+                        <div className="section-header">
+                            <h2>🏆 Mis Torneos Creados ({torneosCreados.length})</h2>
+                            <Link to="/crear-torneo" className="btn-primary">
+                                ➕ Crear Torneo
+                            </Link>
+                        </div>
+
+                        {loadingTorneos ? (
+                            <div className="loading-message">⏳ Cargando torneos...</div>
+                        ) : errorTorneos ? (
+                            <div className="error-message">{errorTorneos}</div>
+                        ) : torneosCreados.length === 0 ? (
+                            <div className="empty-message">
+                                <p>📝 Aún no has creado ningún torneo</p>
+                            </div>
+                        ) : (
+                            <div className="torneos-grid">
+                                {torneosCreados.map(torneo => (
+                                    <div key={torneo.id} className="torneo-card">
+                                        <div className="torneo-header">
+                                            <h3>{torneo.nombre_torneo}</h3>
+                                            <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
+                                                {torneo.estado?.toUpperCase() || 'PENDIENTE'}
+                                            </span>
+                                        </div>
+                                        <div className="torneo-info">
+                                            <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
+                                            <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
+                                            <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                            <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
+                                            {torneo.ubicacion && (
+                                                <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
+                                            )}
+                                        </div>
+                                        <Link 
+                                            to={`/administrarTorneo/${torneo.id}`} 
+                                            className="btn-primary"
+                                        >
+                                            ⚙️ Administrar Torneo
+                                        </Link>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {/* 🆕 CAMBIO 6: Sección de Torneos en los que Participa */}
+                <section className="torneos-section">
+                    <div className="section-header">
+                        <h2>🎮 Torneos en los que Participo ({torneosParticipando.length})</h2>
+                    </div>
+
+                    {loadingTorneos ? (
+                        <div className="loading-message">⏳ Cargando torneos...</div>
+                    ) : errorTorneos ? (
+                        <div className="error-message">{errorTorneos}</div>
+                    ) : torneosParticipando.length === 0 ? (
+                        <div className="empty-message">
+                            <p>🎯 Aún no estás inscrito en ningún torneo</p>
+                            <Link to="/" className="btn-secondary">
+                                Ver torneos disponibles
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="torneos-grid">
+                            {torneosParticipando.map(torneo => (
+                                <div key={torneo.id} className="torneo-card participando">
+                                    <div className="torneo-header">
+                                        <h3>{torneo.nombre_torneo}</h3>
+                                        <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
+                                            {torneo.estado?.toUpperCase() || 'PENDIENTE'}
+                                        </span>
+                                    </div>
+                                    <div className="torneo-info">
+                                        <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
+                                        <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
+                                        <p><strong>⚔️ Mi Facción:</strong> {torneo.faccion || 'No especificada'}</p>
+                                        <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                        <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
+                                        {torneo.ubicacion && (
+                                            <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
+                                        )}
+                                    </div>
+                                    <Link 
+                                        to={`/torneo/${torneo.id}`} 
+                                        className="btn-primary"
+                                    >
+                                        👁️ Ver Torneo
+                                    </Link>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </section>
@@ -390,13 +543,13 @@ function Perfil() {
                 {/* Seccion de cambio de contraseña */}
                 <section className="password-section">
                     <div className="section-header">
-                        <h2>Seguridad</h2>
+                        <h2>🔒 Seguridad</h2>
                         {!mostrarCambioPassword && (
                             <button 
                                 className="btn-secondary"
                                 onClick={() => setMostrarCambioPassword(true)}
                             >
-                                Cambiar Contraseña
+                                🔑 Cambiar Contraseña
                             </button>
                         )}
                     </div>
@@ -456,7 +609,7 @@ function Perfil() {
                                     className="btn-primary"
                                     disabled={loadingPassword}
                                 >
-                                    {loadingPassword ? "Actualizando..." : "Actualizar Contraseña"}
+                                    {loadingPassword ? "⏳ Actualizando..." : "✅ Actualizar Contraseña"}
                                 </button>
                                 
                                 <button 
@@ -474,7 +627,7 @@ function Perfil() {
                                     }}
                                     disabled={loadingPassword}
                                 >
-                                    Cancelar
+                                    ❌ Cancelar
                                 </button>
                             </div>
                         </form>
@@ -484,9 +637,9 @@ function Perfil() {
                 {/* Seccion de conversion a organizador */}
                 {user.rol === 'jugador' && (
                     <section className="organizador-section">
-                        <h2>Quieres organizar torneos?</h2>
+                        <h2>⚔️ ¿Quieres organizar torneos?</h2>
                         <p>
-                            Conviertete en organizador para poder crear y gestionar tus propios torneos.
+                            Conviértete en organizador para poder crear y gestionar tus propios torneos.
                         </p>
                         
                         {errorOrganizador && (
@@ -499,8 +652,8 @@ function Perfil() {
                             disabled={loadingOrganizador}
                         >
                             {loadingOrganizador 
-                                ? "Procesando..." 
-                                : "Convertirse en Organizador"
+                                ? "⏳ Procesando..." 
+                                : "🚀 Convertirse en Organizador"
                             }
                         </button>
                     </section>
@@ -512,7 +665,7 @@ function Perfil() {
                         className="btn-danger"
                         onClick={handleLogout}
                     >
-                        Cerrar Sesion
+                        🚪 Cerrar Sesión
                     </button>
                 </section>
             </div>

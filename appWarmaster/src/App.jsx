@@ -13,6 +13,7 @@ import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
 import AdministrarTorneo from './componente/AdministrarTorneo.jsx';
 import Inscripcion from './componente/inscripcion.jsx';
+import GestionPartida from './componente/GestionPartida.jsx';
 
 function App() {
 
@@ -51,6 +52,10 @@ function App() {
         <Route 
             path='/Inscripcion/:torneoId' 
             element={<Inscripcion />} 
+        />
+        <Route 
+            path='/gestionPartidas/:torneoId' 
+            element={<GestionPartida />} 
         />
       </Routes>
     </AuthProvider>

@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
-
-
+import torneosSagaApi from '../servicios/apiSaga.js';
 import '../estilos/crearTorneo.css';
 
 function CrearTorneo() {
@@ -10,7 +9,7 @@ function CrearTorneo() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     
-    // Estados para TODOS los campos del formulario
+    // 🆕 CAMBIO 1: Agregado estado para participantes_max y archivo PDF
     const [nombreTorneo, setNombreTorneo] = useState("");
     const [rondasMax, setRondasMax] = useState(3);
     const [epoca, setEpoca] = useState("");
@@ -18,6 +17,8 @@ function CrearTorneo() {
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
     const [puntosBanda, setPuntosBanda] = useState(6);
+    const [participantesMax, setParticipantesMax] = useState(16); // 🆕 NUEVO
+    const [archivoPDF, setArchivoPDF] = useState(null); // 🆕 NUEVO
     const [partidaRonda1, setPartidaRonda1] = useState("");
     const [partidaRonda2, setPartidaRonda2] = useState("");
     const [partidaRonda3, setPartidaRonda3] = useState("");
@@ -45,123 +46,144 @@ function CrearTorneo() {
         "Captura"
     ];
 
-    // Función para crear torneo
-    const crearTorneo = async (torneoData) => {
-        try {
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                return {
-                    success: false,
-                    error: 'No hay sesión activa'
-                };
+    // 🆕 CAMBIO 2: Función para manejar la selección de archivo PDF
+    const handleArchivoPDF = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validar que sea PDF
+            if (file.type !== 'application/pdf') {
+                setError('Solo se permiten archivos PDF');
+                e.target.value = '';
+                return;
             }
             
-            const response = await fetch('http://localhost:5000/api/torneos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(torneoData)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                return {
-                    success: false,
-                    error: data.message || 'Error al crear el torneo'
-                };
+            // Validar tamaño (máximo 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                setError('El archivo PDF no puede superar los 5MB');
+                e.target.value = '';
+                return;
             }
-
-            return {
-                success: true,
-                data: data.data
-            };
-
-        } catch (error) {
-            console.error('Error en crearTorneo:', error);
-            return {
-                success: false,
-                error: 'Error de conexión con el servidor'
-            };
+            
+            setArchivoPDF(file);
+            setError(''); // Limpiar error si había
+            console.log('📄 PDF seleccionado:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
         }
     };
 
+    // 🆕 CAMBIO 3: Actualizada la función handleSubmit para usar FormData y torneosSagaApi
     const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    
-    // Validaciones del cliente
-    if (!nombreTorneo.trim()) {
-        setError("El nombre del torneo es obligatorio");
-        setLoading(false);
-        return;
-    }
-
-    if (!epoca) {
-        setError("Debes seleccionar una época");
-        setLoading(false);
-        return;
-    }
-
-    if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) {
-        setError("Debes seleccionar escenarios para las primeras 3 rondas");
-        setLoading(false);
-        return;
-    }
-
-    if (rondasMax >= 4 && !partidaRonda4) {
-        setError("Debes seleccionar el escenario para la ronda 4");
-        setLoading(false);
-        return;
-    }
-
-    if (rondasMax >= 5 && !partidaRonda5) {
-        setError("Debes seleccionar el escenario para la ronda 5");
-        setLoading(false);
-        return;
-    }
-    
-    console.log("Iniciando creación del torneo...");
-    
-    try {
-        // ✅ ELIMINAR LA CONVERSIÓN - El backend lo hace automáticamente
-        const torneoData = {
-            nombre_torneo: nombreTorneo,
-            rondas_max: parseInt(rondasMax),
-            epoca_torneo: epoca,
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin || null,
-            ubicacion: ubicacion || null,
-            puntos_banda: parseInt(puntosBanda),
-            partida_ronda_1: partidaRonda1,
-            partida_ronda_2: partidaRonda2,
-            partida_ronda_3: partidaRonda3,
-            partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
-            partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null
-        };
+        e.preventDefault();
+        setLoading(true);
+        setError("");
         
-        console.log("📤 Enviando datos del torneo:", torneoData);
-        
-        const result = await crearTorneo(torneoData);
-        
-        if (result.success) {
-            console.log("✅ Torneo creado con éxito");
-            alert(`¡Torneo "${nombreTorneo}" creado exitosamente!\nAhora eres un organizador.`);
-            navigate("/");
-        } else {
-            setError(result.error || "Error al crear el Torneo");
+        // Validaciones del cliente
+        if (!nombreTorneo.trim()) {
+            setError("El nombre del torneo es obligatorio");
+            setLoading(false);
+            return;
         }
-    } catch (err) {
-        setError("Error de conexión. Intenta nuevamente.");
-        console.error("Error:", err);
-    } finally {
-        setLoading(false);
-    }
-};
+
+        if (!epoca) {
+            setError("Debes seleccionar una época");
+            setLoading(false);
+            return;
+        }
+
+        if (!fechaInicio) {
+            setError("La fecha de inicio es obligatoria");
+            setLoading(false);
+            return;
+        }
+
+        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) {
+            setError("Debes seleccionar escenarios para las primeras 3 rondas");
+            setLoading(false);
+            return;
+        }
+
+        if (rondasMax >= 4 && !partidaRonda4) {
+            setError("Debes seleccionar el escenario para la ronda 4");
+            setLoading(false);
+            return;
+        }
+
+        if (rondasMax >= 5 && !partidaRonda5) {
+            setError("Debes seleccionar el escenario para la ronda 5");
+            setLoading(false);
+            return;
+        }
+
+        if (participantesMax < 4 || participantesMax > 100) {
+            setError("El número de participantes debe estar entre 4 y 100");
+            setLoading(false);
+            return;
+        }
+        
+        console.log("📤 Iniciando creación del torneo...");
+        
+        try {
+            // 🔧 CAMBIO 4: Usar FormData cuando hay PDF, JSON cuando no hay
+            let torneoData;
+            
+            if (archivoPDF) {
+                // Si hay PDF, usar FormData
+                console.log("📄 Preparando FormData con PDF...");
+                torneoData = new FormData();
+                torneoData.append('nombre_torneo', nombreTorneo);
+                torneoData.append('rondas_max', parseInt(rondasMax));
+                torneoData.append('epoca_torneo', epoca);
+                torneoData.append('fecha_inicio', fechaInicio);
+                torneoData.append('fecha_fin', fechaFin || '');
+                torneoData.append('ubicacion', ubicacion || '');
+                torneoData.append('puntos_banda', parseInt(puntosBanda));
+                torneoData.append('participantes_max', parseInt(participantesMax));
+                torneoData.append('partida_ronda_1', partidaRonda1);
+                torneoData.append('partida_ronda_2', partidaRonda2);
+                torneoData.append('partida_ronda_3', partidaRonda3);
+                torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
+                torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
+                torneoData.append('bases_pdf', archivoPDF);
+            } else {
+                // Si no hay PDF, usar JSON normal
+                console.log("📝 Preparando datos JSON sin PDF...");
+                torneoData = {
+                    nombre_torneo: nombreTorneo,
+                    rondas_max: parseInt(rondasMax),
+                    epoca_torneo: epoca,
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin || null,
+                    ubicacion: ubicacion || null,
+                    puntos_banda: parseInt(puntosBanda),
+                    participantes_max: parseInt(participantesMax),
+                    partida_ronda_1: partidaRonda1,
+                    partida_ronda_2: partidaRonda2,
+                    partida_ronda_3: partidaRonda3,
+                    partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
+                    partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null
+                };
+            }
+            
+            console.log("📤 Enviando datos del torneo...");
+            
+            // 🔧 CAMBIO 5: Usar torneosSagaApi en lugar de fetch directo
+            const result = await torneosSagaApi.createTorneo(torneoData);
+            
+            console.log("✅ Respuesta del servidor:", result);
+            
+            if (result.success || result.data) {
+                console.log("✅ Torneo creado con éxito");
+                alert(`¡Torneo "${nombreTorneo}" creado exitosamente!\n${archivoPDF ? 'Bases PDF subidas correctamente.\n' : ''}Ahora eres un organizador.`);
+                navigate("/");
+            } else {
+                setError(result.error || "Error al crear el Torneo");
+            }
+        } catch (err) {
+            console.error("❌ Error completo:", err);
+            setError(err.message || "Error de conexión. Intenta nuevamente.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const volverInicio = () => {
         navigate('/');
@@ -169,16 +191,17 @@ function CrearTorneo() {
 
     return (
         <div className="crear-torneo-container">
-            <h1>Crear Torneo SAGA</h1>
+            <h1>⚔️ Crear Torneo SAGA</h1>
             
             {error && (
                 <div className="error-message" style={{
                     backgroundColor: '#fee',
                     color: '#c33',
-                    padding: '10px',
+                    padding: '15px',
                     borderRadius: '5px',
-                    marginBottom: '15px',
-                    border: '1px solid #c33'
+                    marginBottom: '20px',
+                    border: '1px solid #c33',
+                    fontWeight: 'bold'
                 }}>
                     ⚠️ {error}
                 </div>
@@ -244,6 +267,24 @@ function CrearTorneo() {
                         required
                         disabled={loading}
                     />
+
+                    {/* 🆕 CAMBIO 6: Nuevo campo para participantes máximos */}
+                    <label htmlFor="participantesMax">Participantes Máximos:*</label>
+                    <input 
+                        name="participantesMax" 
+                        id="participantesMax" 
+                        type="number"
+                        min="4"
+                        max="100"
+                        value={participantesMax}
+                        onChange={(e) => setParticipantesMax(e.target.value)}
+                        placeholder="Ej: 16, 24, 32"
+                        required
+                        disabled={loading}
+                    />
+                    <small style={{ color: '#666', fontSize: '0.9em', display: 'block', marginTop: '-10px' }}>
+                        Mínimo 4, máximo 100 participantes
+                    </small>
                 </fieldset>
 
                 {/* FECHAS Y UBICACIÓN */}
@@ -283,6 +324,45 @@ function CrearTorneo() {
                         placeholder="Ciudad, Local, etc."
                         disabled={loading}
                     />
+                </fieldset>
+
+                {/* 🆕 CAMBIO 7: Nueva sección para bases PDF */}
+                <fieldset>
+                    <legend>📄 Bases del Torneo (Opcional)</legend>
+                    
+                    <label htmlFor="basesPDF">Subir Bases en PDF:</label>
+                    <input 
+                        name="basesPDF" 
+                        id="basesPDF" 
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleArchivoPDF}
+                        disabled={loading}
+                        style={{
+                            padding: '10px',
+                            border: '2px dashed #4a7c2e',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            backgroundColor: '#f9f9f9'
+                        }}
+                    />
+                    <small style={{ color: '#666', fontSize: '0.9em', display: 'block', marginTop: '5px' }}>
+                        📎 Formato: PDF | Tamaño máximo: 5MB
+                    </small>
+                    
+                    {archivoPDF && (
+                        <div style={{
+                            marginTop: '10px',
+                            padding: '10px',
+                            background: '#e8f5e9',
+                            border: '1px solid #4caf50',
+                            borderRadius: '5px',
+                            color: '#2e7d32'
+                        }}>
+                            ✅ Archivo seleccionado: <strong>{archivoPDF.name}</strong> 
+                            ({(archivoPDF.size / 1024).toFixed(2)} KB)
+                        </div>
+                    )}
                 </fieldset>
 
                 {/* ESCENARIOS POR RONDA */}

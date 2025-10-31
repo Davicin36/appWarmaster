@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../servicios/AuthContext';
-import torneosApi from '../servicios/api';  
+
+import torneosSagaApi from '../servicios/apiSaga';  
 
 import NavbarLogin from '../componente/NavbarLogin';
 
@@ -39,7 +40,7 @@ function Principal() {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const data = await torneosApi.request('/torneos?limit=50', {
+            const data = await torneosSagaApi.request('/torneosSaga?limit=50', {
                 method: 'GET',
                 headers
             });
@@ -180,7 +181,7 @@ function Principal() {
                                                 onClick={() => apuntarseATorneo(torneo.id)}
                                                 disabled={torneo.usuario_inscrito}
                                             >
-                                                {torneo.usuario_inscrito ? '✅ Inscrito' : '✅ Inscribirse'}
+                                                {torneo.usuario_inscrito ? '✅ Administrar Incripción' : '✅ Inscribirse'}
                                             </button>
                                            <button 
                                             className="btn-ver-detalles"

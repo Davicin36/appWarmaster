@@ -1,24 +1,5 @@
 // utils/helpers.js
 
-// Función para calcular el resultado de una partida
-const calcularResultado = (puntosJ1, puntosJ2) => {
-  if (puntosJ1 > puntosJ2) return 'victoria_j1';
-  if (puntosJ2 > puntosJ1) return 'victoria_j2';
-  return 'empate';
-};
-
-// Función para calcular puntos de torneo basado en el resultado
-const calcularPuntosTorneo = (resultado, jugador) => {
-  if (resultado === 'empate') return 1;
-  if (
-    (resultado === 'victoria_j1' && jugador === 1) ||
-    (resultado === 'victoria_j2' && jugador === 2)
-  ) {
-    return 3; // Victoria
-  }
-  return 0; // Derrota
-};
-
 // Función para validar email
 const validarEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -113,8 +94,48 @@ const paginar = (page = 1, limit = 10) => {
   return { limit: parseInt(limit), offset: parseInt(offset) };
 };
 
+
+const tablaPuntuacion = [
+    {rango : [0, 0], vencedor : 10.5 , perdedor : 10},
+    {rango : [1, 3], vencedor : 11, perdedor : 9}, 
+    {rango : [4, 6], vencedor : 12, perdedor : 8}, 
+    {rango : [7, 10], vencedor : 13, perdedor : 7}, 
+    {rango : [11, 15], vencedor : 14, perdedor : 6}, 
+    {rango : [16, 20], vencedor : 15, perdedor : 5}, 
+    {rango : [21, 25], vencedor : 16, perdedor : 4}, 
+    {rango : [26, 30], vencedor : 17, perdedor : 3}, 
+    {rango : [31, 35], vencedor : 18, perdedor : 2},
+    {rango : [36, Infinity], vencedor : 19, perdedor : 1}, 
+]
+
+// Función para calcular el resultado de una partida
+const calcularPuntosTorneo = (puntosPartidaJ1, puntosPartidaJ2, jugador1Id, primerJugadorId) => {
+    const diferencia = Math.abs(puntosPartidaJ1 - puntosPartidaJ2)
+    const jugadorVencedor = puntosPartidaJ1 > puntosPartidaJ2
+
+    //aqui consigo la puntuacion para cada jugador.
+    const fila = tablaPuntuacion.find(
+        dif => diferencia >= dif.rango[0] && diferencia <= dif.rango[1]
+    )
+
+    if(!fila){
+        throw new Error (`No se encontro un resultado adecuado para la partida, ${diferencia}`)    
+    }
+    //en caso de empate a 0
+    if (diferencia === 0) {
+      const j1PrimerJugador = jugador1Id ===primerJugadorId;
+      return j1PrimerJugador
+        ? { j1: 10.5, j2: 10 } 
+        : { j1: 10, j2: 10.5}
+    }
+
+    // Asignar puntos según quién ganó
+    return jugadorVencedor
+        ? { j1: fila.vencedor, j2: fila.perdedor }
+        : { j1: fila.perdedor, j2: fila.vencedor };
+};
+
 module.exports = {
-  calcularResultado,
   calcularPuntosTorneo,
   validarEmail,
   validarFecha,

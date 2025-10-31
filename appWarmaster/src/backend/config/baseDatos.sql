@@ -76,6 +76,7 @@ CREATE TABLE partidas_saga (
   resultado_cr ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
   ronda INT DEFAULT 1,
   fecha_partida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  primer_jugador BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),

@@ -8,15 +8,14 @@ class TorneosSagaApi {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     
-    // ✅ Obtener el token del localStorage
     const token = localStorage.getItem('token');
     
-    // ✅ Detectar si el body es FormData
+    // Detectar FormData automáticamente, Necesario para subir archivos PDF sin convertir a JSON
     const isFormData = options.body instanceof FormData;
     
     const config = {
       headers: {
-        // ✅ NO agregar Content-Type si es FormData (el navegador lo hace automáticamente)
+        // l navegador debe establecer el Content-Type automáticamente con el boundary
         ...(!isFormData && { 'Content-Type': 'application/json' }),
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
@@ -25,7 +24,7 @@ class TorneosSagaApi {
       ...options,
     };
 
-    // ✅ Solo convertir a JSON si NO es FormData
+    // FormData se envía tal cual, no se puede convertir a JSON
     if (config.body && typeof config.body === 'object' && !isFormData) {
       config.body = JSON.stringify(config.body);
     }
@@ -45,9 +44,10 @@ class TorneosSagaApi {
     }
   }
 
-  // ==========================================
+  // ====================
   // MÉTODOS DE TORNEOS
-  // ==========================================
+  // ====================
+
   async getTorneos() {
     return this.request('/torneosSaga');
   }
@@ -56,7 +56,6 @@ class TorneosSagaApi {
     return this.request(`/torneosSaga/${id}`);
   }
 
-  // ✅ Acepta tanto JSON como FormData
   async createTorneo(torneoData) {
     return this.request('/torneosSaga', {
       method: 'POST',
@@ -64,7 +63,6 @@ class TorneosSagaApi {
     });
   }
 
-  // ✅ Acepta tanto JSON como FormData
   async updateTorneo(id, torneoData) {
     return this.request(`/torneosSaga/${id}`, {
       method: 'PUT',
@@ -72,13 +70,20 @@ class TorneosSagaApi {
     });
   }
 
+  async inscribirse(torneoId, inscripcionData) {
+    return this.request(`/torneosSaga/${torneoId}/inscripcion`, {
+      method: 'POST',
+      body: inscripcionData,
+    });
+  }
+
+
   async deleteTorneo(id) {
     return this.request(`/torneosSaga/${id}`, {
       method: 'DELETE',
     });
   }
 
-  // ✅ NUEVO - Descargar PDF de bases del torneo
   async descargarBasesPDF(torneoId) {
     const token = localStorage.getItem('token');
     const url = `${this.baseURL}/torneosSaga/${torneoId}/bases-pdf`;
@@ -95,10 +100,7 @@ class TorneosSagaApi {
         throw new Error('Error al descargar el PDF');
       }
 
-      // Obtener el blob del PDF
       const blob = await response.blob();
-      
-      // Obtener el nombre del archivo del header
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'bases_torneo.pdf';
       if (contentDisposition) {
@@ -108,7 +110,6 @@ class TorneosSagaApi {
         }
       }
 
-      // Crear un enlace temporal y descargarlo
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -125,27 +126,31 @@ class TorneosSagaApi {
     }
   }
 
-  // Clasificación general
-  async getClasificacionGeneral(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/clasificacion-general`);
+  //====================================================
+  //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
+//====================================================
+
+  //Torneos de cada usuario
+  async getTorneosUsuario(userId) {
+    return this.request(`/torneosSaga/usuario/${userId}`);
   }
 
-  // Obtener jugadores de un torneo
+  //jugadores que hay en cada torneo
   async getJugadoresTorneo(torneoId) {
     return this.request(`/torneosSaga/${torneoId}/jugadores`);
   }
 
-  // Obtener partidas de un torneo
+  //partidas de los torneos
   async getPartidasTorneo(torneoId) {
     return this.request(`/torneosSaga/${torneoId}/partidas`);
   }
 
-  // Obtener clasificación de un torneo
+  //clasificacion de los torneos
   async getClasificacionTorneo(torneoId) {
     return this.request(`/torneosSaga/${torneoId}/clasificacion`);
   }
 
-  // Cambiar estado del torneo
+  //para cambiar el estado de los torneos
   async cambiarEstadoTorneo(id, estado) {
     return this.request(`/torneosSaga/${id}/estado`, {
       method: 'PUT',
@@ -156,6 +161,7 @@ class TorneosSagaApi {
   // ==========================================
   // MÉTODOS DE PARTIDAS
   // ==========================================
+
   async getPartidas(torneoId = null) {
     const endpoint = torneoId ? `/partidas?torneo=${torneoId}` : '/partidas';
     return this.request(endpoint);
@@ -185,11 +191,18 @@ class TorneosSagaApi {
     });
   }
 
+  async getHistorialPartidas(torneoId) {
+  return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga`);
+}
+
   // ==========================================
   // MÉTODOS DE PARTICIPANTES
   // ==========================================
+
   async getParticipantes(torneoId = null) {
-    const endpoint = torneoId ? `/participantes?torneo=${torneoId}` : '/participantes';
+    const endpoint = torneoId 
+      ? `/torneosSaga/${torneoId}/participantes` 
+      : '/participantes';
     return this.request(endpoint);
   }
 
@@ -211,14 +224,13 @@ class TorneosSagaApi {
     });
   }
 
-  async deleteParticipante(id) {
-    return this.request(`/participantes/${id}`, {
+// El endpoint necesita tanto torneoId como jugadorId en la URL
+  async deleteParticipante(torneoId, jugadorId) {
+    return this.request(`/torneosSaga/${torneoId}/participantes/${jugadorId}`, {
       method: 'DELETE',
     });
   }
 }
 
-// Exportar instancia singleton
 export const torneosSagaApi = new TorneosSagaApi();
-
 export default torneosSagaApi;

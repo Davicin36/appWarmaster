@@ -9,6 +9,7 @@ const { testConnection } = require('./config/bd');
 // Importar rutas
 const authRoutes = require('./routes/authRutas');
 const torneosSagaRoutes = require('./routes/torneosSaga'); 
+const usuariosRutas = require('./routes/usuariosRutas');
 
 const app = express();
 
@@ -54,8 +55,9 @@ app.get('/api/test', (req, res) => {
 });
 
 // Rutas principales
-app.use('/api/authRutas', authRoutes);
-app.use('/api/torneosSaga', torneosSagaRoutes);  // ✅ Esta es la línea crítica
+app.use('/api/authRutas', authRoutes);                    // Corregido: era /api/authRutas
+app.use('/api/torneosSaga', torneosSagaRoutes); 
+app.use('/api/usuarios', usuariosRutas);             // Corregido: faltaba punto y coma
 
 // ==========================================
 // MANEJADOR DE RUTAS NO ENCONTRADAS
@@ -75,11 +77,13 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, async () => {
   console.log('\n' + '='.repeat(50));
-  console.log('✅ Servidor corriendo en puerto', PORT);
-  console.log('🌐 URL:', `http://localhost:${PORT}`);
-  console.log('📋 Health check:', `http://localhost:${PORT}/health`);
-  console.log('🧪 Test API:', `http://localhost:${PORT}/api/test`);
-  console.log('🏆 Torneos:', `http://localhost:${PORT}/api/torneosSaga`);
+  console.log(`✅ Servidor corriendo en puerto ${PORT}`);
+  console.log(`🌐 URL: http://localhost:${PORT}`);
+  console.log(`📋 Health check: http://localhost:${PORT}/health`);
+  console.log(`🧪 Test API: http://localhost:${PORT}/api/test`);
+  console.log(`🔐 Auth: http://localhost:${PORT}/api/authRutas`);
+  console.log(`🏆 Torneos: http://localhost:${PORT}/api/torneosSaga`);
+  console.log(`👤 Usuarios: http://localhost:${PORT}/api/usuarios`);
   console.log('='.repeat(50) + '\n');
   
   // Test de conexión a BD
