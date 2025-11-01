@@ -26,14 +26,14 @@ function CrearTorneo() {
     const [partidaRonda5, setPartidaRonda5] = useState("");
 
     const epocaTorneo = [
-        "Antigüedad",
-        "Hannibal",
+        "Alejandro",
+        "Ánibal",
         "Vikingos",
         "Invasiones",
         "Cruzadas",
         "Caballeria",
         "Edad de la Magia",
-        "Antigüedad/Hanibal",
+        "Alejandro/Ánibal",
         "Vikingos/Invasiones",
         "Cruzadas/Caballería",
     ];
@@ -164,6 +164,16 @@ function CrearTorneo() {
             }
             
             console.log("📤 Enviando datos del torneo...");
+
+            // 👇 AÑADE ESTO ANTES DE LLAMAR A LA API
+if (archivoPDF) {
+  console.log("📦 Contenido del FormData:");
+  for (let [key, value] of torneoData.entries()) {
+    console.log(`  ${key}:`, value);
+  }
+} else {
+  console.log("📦 Datos JSON:", JSON.stringify(torneoData, null, 2));
+}
             
             // 🔧 CAMBIO 5: Usar torneosSagaApi en lugar de fetch directo
             const result = await torneosSagaApi.createTorneo(torneoData);

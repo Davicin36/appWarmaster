@@ -6,44 +6,47 @@ class TorneosSagaApi {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    
-    const token = localStorage.getItem('token');
-    
-    // Detectar FormData automáticamente, Necesario para subir archivos PDF sin convertir a JSON
-    const isFormData = options.body instanceof FormData;
-    
-    const config = {
-      headers: {
-        // l navegador debe establecer el Content-Type automáticamente con el boundary
-        ...(!isFormData && { 'Content-Type': 'application/json' }),
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers,
-      },
-      credentials: 'include',
-      ...options,
-    };
+  const url = `${this.baseURL}${endpoint}`;
+  
+  const token = localStorage.getItem('token');
+  const isFormData = options.body instanceof FormData;
+  
+  const config = {
+    headers: {
+      ...(!isFormData && { 'Content-Type': 'application/json' }),
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    },
+    credentials: 'include',
+    ...options,
+  };
 
-    // FormData se envía tal cual, no se puede convertir a JSON
-    if (config.body && typeof config.body === 'object' && !isFormData) {
-      config.body = JSON.stringify(config.body);
-    }
-
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
+  if (config.body && typeof config.body === 'object' && !isFormData) {
+    config.body = JSON.stringify(config.body);
   }
 
+  try {
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      // 👇 AÑADE ESTOS LOGS
+      console.error("❌ Status:", response.status);
+      console.error("❌ URL:", url);
+      
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ Error del servidor:", errorData); // 👈 IMPORTANTE
+
+      
+      
+      throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
   // ====================
   // MÉTODOS DE TORNEOS
   // ====================

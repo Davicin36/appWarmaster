@@ -10,30 +10,114 @@ import '../estilos/inscripcion.css';
 // DATOS DE BANDAS POR ÉPOCA
 // ==========================================
 const BANDAS_POR_EPOCA = {
-  "Antigüedad": [
-    {nombre: "IBEROS" },
-    { id: 2, nombre: "Cartagineses", puntos: 500 },
-    { id: 3, nombre: "Griegos", puntos: 500 },
-    { id: 4, nombre: "Persas", puntos: 500 },
-    { id: 5, nombre: "Galos", puntos: 500 },
-    { id: 6, nombre: "Germanos", puntos: 500 }
-  ],
   "Vikingos": [
-    { id: 7, nombre: "Bizantinos", puntos: 500 },
-    { id: 8, nombre: "Vikingos", puntos: 500 },
-    { id: 9, nombre: "Normandos", puntos: 500 },
-    { id: 10, nombre: "Árabes", puntos: 500 },
-    { id: 11, nombre: "Cruzados", puntos: 500 },
-    { id: 12, nombre: "Mongoles", puntos: 500 }
+    {nombre: "VIKINGOS" },
+    {nombre: "JOMSVIKINGS" },
+    {nombre: "GALESES" },
+    {nombre: "ANGLO-DANESES" },
+    {nombre: "ANGLO-SAJONES" },
+    {nombre: "NORSE-GAELS" },
+    {nombre: "CAROLINGIOS" },
+    {nombre: "NORMANDOS" },
+    {nombre: "IRLANDESES" },
+    {nombre: "PAGAN RUSS" },
+    {nombre: "ESCOTOS" },
+    {nombre: "ÚLTIMOS ROMANOS" },
+    {nombre: "PUEBLOS GERMÁNICOS" },
+    {nombre: "LOMBARDOS" },
+    {nombre: "PUEBLOS DE LAS ESTEPAS" },
+    {nombre: "OMEYAS" }
+  ],
+  "Invasiones": [
+   {nombre: "ROMANOS" },
+    {nombre: "GODOS" },
+    {nombre: "GALESES" },
+    {nombre: "FRANCOS" },
+    {nombre: "BRITANOS" },
+    {nombre: "SAJONES" },
+    {nombre: "PICTOS" },
+    {nombre: "HUNOS" },
+    {nombre: "SASÁNIDAS" },
+    {nombre: "ESCOTOS" },
+    {nombre: "ALT CLUT Y MANACO GODODDIN" },
+    {nombre: "CYMRY" },
+    {nombre: "VÁNDALOS" },
   ],
   "Edad de la Magia": [
-    { id: 13, nombre: "Tercios Españoles", puntos: 500 },
-    { id: 14, nombre: "Otomanos", puntos: 500 },
-    { id: 15, nombre: "Ingleses Tudor", puntos: 500 },
-    { id: 16, nombre: "Franceses", puntos: 500 },
-    { id: 17, nombre: "Suizos", puntos: 500 },
-    { id: 18, nombre: "Alemanes", puntos: 500 }
-  ]
+   {nombre: "GRANDES REINOS" },
+    {nombre: "SEÑORES DE LA NATURALEZA" },
+    {nombre: "LEGIONES DE LOS NO MUERTOS" },
+    {nombre: "LA HORDA" },
+    {nombre: "OTROS MUNDOS" },
+    {nombre: "PUEBLOS SUBTERRÁNEOS" }
+  ],
+  "Ánibal": [
+    {nombre: "IBEROS" },
+    {nombre: "CARTAGINESES" },
+    {nombre: "GALESES" },
+    {nombre: "REPÚBLICA DE ROMA" },
+    {nombre: "GALOS"},
+    {nombre: "NÚMIDAS" },
+    {nombre: "GRAECULI-SIRACUSSA" },
+    {nombre: "GRAECULI-EPIRO" },
+    {nombre: "GRAECULI-ITALIOTAS" }
+  ],
+  "Alejandro": [
+    {nombre: "PERSAS-MEDOS" },
+    {nombre: "PERSAS-AQUEMÉNIDAS" },
+    {nombre: "TRACIOS" },
+    {nombre: "MACEDONIOS" },
+    {nombre: "INDIOS" },
+    {nombre: "SUCESORES-GRECIA" },
+    {nombre: "SUCESORES-EGIPTO" },
+    {nombre: "SUCESORES-ASIA" },
+    {nombre: "CIUDADES GRIEGAS-ATENAS" },
+    {nombre: "CIUDADES GRIEGAS-LACEDEMONIOS" },
+    {nombre: "CIUDADES GRIEGAS-TESALIOS" },
+    {nombre: "CIUDADES GRIEGAS-TEBANOS" }
+  ],
+  "Cruzadas": [
+    {nombre: "BIZANTINOS" },
+    {nombre: "CRUZADAS" },
+    {nombre: "ORDENSTAAT" },
+    {nombre: "MOROS" },
+    {nombre: "MILITES CHRISTI" },
+    {nombre: "MUTTATAWI'A" },
+    {nombre: "PUEBLOS PAGANOS" },
+    {nombre: "POLACOS" },
+    {nombre: "SARRACERNOS" },
+    {nombre: "ESPAÑOLES" },
+    {nombre: "MONGOLES" },
+    {nombre: "CUMANOS" },
+    {nombre: "INCURSORES PAGANOS" },
+    {nombre: "ARMENIOS DE CILICIA" },
+    {nombre: "HÚNGAROS DE ÁRPÁD" },
+    {nombre: "CRUZADOS DE MONTFORT" },
+    {nombre: "CÁTAROS" }
+  ],
+  "Caballeria": [
+    {nombre: "INGLESES" },
+    {nombre: "FRANCESES" },
+    {nombre: "FRANCESES-COMPAÑIA DE ORDENANZA" },
+    {nombre: "COMPAÑIAS LIBRES" },
+    {nombre: "BORGOÑESES" },
+    {nombre: "BORGOÑESES-COMPAÑIA DE ORDENANZA" },
+    {nombre: "FLAMENCOS" },
+    {nombre: "ESCOCESES-SCHILTRONS" },
+    {nombre: "ESCOCESES-COMPAÑIAS PROFESIONALES" },
+    {nombre: "SUIZOS" },
+    {nombre: "BRETONES" },
+    {nombre: "CASTELLANOS" },
+    {nombre: "GERMANOS" },
+    {nombre: "HUSITAS" },
+    {nombre: "CONDOTIEROS-FLORENCIA" },
+    {nombre: "CONDOTIEROS-ESTADOS PONTIFICIOS" },
+    {nombre: "CONDOTIEROS-MILÁN" },
+    {nombre: "CONDOTIEROS-REINO DE NÁPOLES" },
+    {nombre: "CONDOTIEROS-VENECIA" },
+    {nombre: "YORK" },
+    {nombre: "LANCASTER" }
+  ],
 };
 
 function Inscripcion() {
@@ -106,6 +190,7 @@ function Inscripcion() {
   // ==========================================
   // HANDLERS
   // ==========================================
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setPuntos((prev) => ({ ...prev, [name]: Number(value) }));
@@ -130,7 +215,7 @@ function Inscripcion() {
     }
 
     const totalPuntos = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;
-    const puntosMaximos = torneo?.puntos_banda || 500;
+    const puntosMaximos = torneo?.puntos_banda || 24;
     
     if (totalPuntos !== puntosMaximos) {
       setError(`Los puntos deben sumar exactamente ${puntosMaximos}`);
@@ -153,12 +238,22 @@ function Inscripcion() {
         detalleMercenarios: detalleMercenarios || null
       };
 
+      // 👇 AÑADE ESTOS
+      console.log("📤 ==========================================");
+      console.log("📤 Torneo ID:", torneoId);
+      console.log("📤 User ID:", user.id);
+      console.log("📤 User completo:", user);
+      console.log("📤 Banda seleccionada:", bandaSeleccionada);
+      console.log("📤 Datos completos:", inscripcionData);
+      console.log("📤 ==========================================");
+
       console.log("📤 Enviando inscripción:", inscripcionData);
+
       const resultado = await torneosSagaApi.inscribirse(torneoId, inscripcionData);
       
       if (resultado.success) {
         alert("¡Inscripción realizada con éxito!");
-        navigate(`/torneo/${torneoId}`);
+        navigate('/');
       }
       
     } catch (err) {
@@ -201,8 +296,8 @@ function Inscripcion() {
   }
 
   // Obtener bandas disponibles según la época del torneo
-  const bandasDisponibles = BANDAS_POR_EPOCA[torneo?.epoca_torneo || torneo?.epoca] || [];
-  const puntosMaximos = torneo?.puntos_banda || 500;
+  const bandasDisponibles = BANDAS_POR_EPOCA[torneo?.epoca_torneo] || [];
+  const puntosMaximos = torneo?.puntos_banda || 24;
   const puntosActuales = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;
 
   // ==========================================
@@ -280,8 +375,8 @@ function Inscripcion() {
           >
             <option value="">-- Selecciona una banda --</option>
             {bandasDisponibles.length > 0 ? (
-              bandasDisponibles.map((banda) => (
-                <option key={banda.id} value={banda.nombre}>
+              bandasDisponibles.map((banda, index) => (
+                <option key={index} value={banda.nombre}>
                   {banda.nombre}
                 </option>
               ))

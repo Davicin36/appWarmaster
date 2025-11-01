@@ -47,14 +47,14 @@ function AdministrarTorneo() {
 
     // Listas de opciones
     const epocaTorneo = [
-        "Antigüedad",
-        "Hannibal",
+        "Alejandro",
+        "Ánibal",
         "Vikingos",
         "Invasiones",
         "Cruzadas",
         "Caballeria",
         "Edad de la Magia",
-        "Antigüedad/Hanibal",
+        "Alejandro/Ánibal",
         "Vikingos/Invasiones",
         "Cruzadas/Caballería",
     ];
@@ -1041,6 +1041,7 @@ function AdministrarTorneo() {
                                         <th>Jugador</th>
                                         <th>Club</th>
                                         <th>Facción</th>
+                                        <th>Pts Masacre</th>
                                         <th>Pts Torneo</th>
                                         <th>Pts Victoria</th>
                                     </tr>
@@ -1057,8 +1058,9 @@ function AdministrarTorneo() {
                                             <td className="nombre-jugador">{jugador.nombre_completo || jugador.nombre}</td>
                                             <td>{jugador.club || '-'}</td>
                                             <td>{jugador.faccion || '-'}</td>
-                                            <td className="puntos-destacado">{jugador.puntos_torneo || 0}</td>
-                                            <td>{jugador.puntos_victoria || 0}</td>
+                                            <td>{jugador.puntos_masacre || 0}</td>
+                                            <td >{jugador.puntos_torneo || 0}</td>
+                                            <td className="puntos-destacado">{jugador.puntos_victoria || 0}</td>
                                         </tr>
                                     ))}
                                 </tbody>

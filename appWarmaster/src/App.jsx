@@ -12,7 +12,7 @@ import Perfil from './paginas/Perfil.jsx';
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
 import AdministrarTorneo from './componente/AdministrarTorneo.jsx';
-import Inscripcion from './componente/inscripcion.jsx';
+import Inscripcion from './componente/Inscripcion.jsx';
 import GestionPartida from './componente/GestionPartida.jsx';
 
 function App() {
