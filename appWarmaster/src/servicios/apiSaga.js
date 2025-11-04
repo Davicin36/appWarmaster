@@ -48,26 +48,26 @@ class TorneosSagaApi {
   }
 }
   // ====================
-  // MÉTODOS DE TORNEOS
+  // MÉTODOS DE TORNEOS ✅ TODOS OK
   // ====================
 
-  async getTorneos() {
+  async obtenerTorneos() {
     return this.request('/torneosSaga');
   }
 
-  async getTorneo(id) {
-    return this.request(`/torneosSaga/${id}`);
+  async obtenerTorneo(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}`);
   }
 
-  async createTorneo(torneoData) {
+  async crearTorneo(torneoData) {
     return this.request('/torneosSaga', {
       method: 'POST',
       body: torneoData,
     });
   }
 
-  async updateTorneo(id, torneoData) {
-    return this.request(`/torneosSaga/${id}`, {
+  async actualizarTorneo(torneoId, torneoData) {
+    return this.request(`/torneosSaga/${torneoId}`, {
       method: 'PUT',
       body: torneoData,
     });
@@ -80,13 +80,121 @@ class TorneosSagaApi {
     });
   }
 
+  async obtenerMiInscripcion(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}/mi-inscripcion`);
+}
 
-  async deleteTorneo(id) {
-    return this.request(`/torneosSaga/${id}`, {
+async actualizarInscripcion(torneoId, datosInscripcion) {
+    return this.request(`/torneosSaga/${torneoId}/inscripcion`, {
+        method: 'PUT',
+        body: datosInscripcion
+    });
+}
+
+  async eliminarTorneo(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}`, {
       method: 'DELETE',
     });
   }
 
+  async eliminarParticipante(torneoId, jugadorId) {
+    return this.request(`/torneosSaga/${torneoId}/participantes/${jugadorId}`, {
+      method: 'DELETE',
+    });
+  }
+
+//====================================================
+// //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
+//====================================================
+
+  //Torneos de cada usuario
+  async obtenerTorneosUsuario(userId) {
+    return this.request(`/torneosSaga/usuario/${userId}`);
+  }
+
+  //jugadores que hay en cada torneo
+  async obtenerJugadoresTorneo(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}/jugadores`);
+  }
+
+  //partidas de los torneos
+  async obtenerPartidasTorneo(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}/partidas`);
+  }
+
+  //clasificacion de los torneos
+  async obtenerClasificacionTorneo(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}/clasificacion`);
+  }
+
+  //para cambiar el estado de los torneos
+  async cambiarEstadoTorneo(torneoId, estado) {
+    return this.request(`/torneosSaga/${torneoId}/estado/${estado}`, {
+      method: 'PUT',
+      body: { estado },
+    });
+  }
+
+// ========================
+// // MÉTODOS DE PARTIDAS
+// ========================
+//obtener partidas de un torneo
+  async obtenerPartidas(torneoId = null) {
+    return this.request (`/torneosSaga/${torneoId}/partidas`)
+  }
+
+  //obtener una partida concreta
+  async obtenerPartida(partidaId, torneoId) {
+    return this.request(`/torneosSaga/${torneoId}partidas/${partidaId}`);
+  }
+
+  //crear una partida nueva
+  async registrarPartida(partida) {
+    return this.request('/partidas', {
+      method: 'POST',
+      body: partida,
+    });
+  }
+
+  async saveEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
+  return this.request(`/torneosSaga/${torneoId}/emparejamientos`, {
+    method: 'POST',
+    body: {
+      torneo_id: torneoId,
+      emparejamientos: emparejamientos,
+      ronda: ronda
+    }
+  });
+}
+
+  async actualizarPartida(partidaId, torneoId, partida) {
+    return this.request(`/torneosSaga/${torneoId}/partidas/${partidaId}`, {
+      method: 'PUT',
+      body: partida,
+    });
+  }
+
+  async eliminarPartida(partidaId, torneoId) {
+    return this.request(`/torneosSaga/${torneoId}/partidas/${partidaId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async obtenerHistorialPartidas(torneoId) {
+  return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga`);
+}
+
+async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
+  return this.request (`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}/primer-jugador/${jugadorId}`, {
+    method: 'PUT ',
+  })
+}
+
+
+//=======================================================================
+//=======================================================================
+
+  //metodo para la descarga de bases en PDF
   async descargarBasesPDF(torneoId) {
     const token = localStorage.getItem('token');
     const url = `${this.baseURL}/torneosSaga/${torneoId}/bases-pdf`;
@@ -127,111 +235,6 @@ class TorneosSagaApi {
       console.error('Error al descargar PDF:', error);
       throw error;
     }
-  }
-
-  //====================================================
-  //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
-//====================================================
-
-  //Torneos de cada usuario
-  async getTorneosUsuario(userId) {
-    return this.request(`/torneosSaga/usuario/${userId}`);
-  }
-
-  //jugadores que hay en cada torneo
-  async getJugadoresTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/jugadores`);
-  }
-
-  //partidas de los torneos
-  async getPartidasTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/partidas`);
-  }
-
-  //clasificacion de los torneos
-  async getClasificacionTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/clasificacion`);
-  }
-
-  //para cambiar el estado de los torneos
-  async cambiarEstadoTorneo(id, estado) {
-    return this.request(`/torneosSaga/${id}/estado`, {
-      method: 'PUT',
-      body: { estado },
-    });
-  }
-
-  // ==========================================
-  // MÉTODOS DE PARTIDAS
-  // ==========================================
-
-  async getPartidas(torneoId = null) {
-    const endpoint = torneoId ? `/partidas?torneo=${torneoId}` : '/partidas';
-    return this.request(endpoint);
-  }
-
-  async getPartida(id) {
-    return this.request(`/partidas/${id}`);
-  }
-
-  async createPartida(partida) {
-    return this.request('/partidas', {
-      method: 'POST',
-      body: partida,
-    });
-  }
-
-  async updatePartida(id, partida) {
-    return this.request(`/partidas/${id}`, {
-      method: 'PUT',
-      body: partida,
-    });
-  }
-
-  async deletePartida(id) {
-    return this.request(`/partidas/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async getHistorialPartidas(torneoId) {
-  return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga`);
-}
-
-  // ==========================================
-  // MÉTODOS DE PARTICIPANTES
-  // ==========================================
-
-  async getParticipantes(torneoId = null) {
-    const endpoint = torneoId 
-      ? `/torneosSaga/${torneoId}/participantes` 
-      : '/participantes';
-    return this.request(endpoint);
-  }
-
-  async getParticipante(id) {
-    return this.request(`/participantes/${id}`);
-  }
-
-  async createParticipante(participante) {
-    return this.request('/participantes', {
-      method: 'POST',
-      body: participante,
-    });
-  }
-
-  async updateParticipante(id, participante) {
-    return this.request(`/participantes/${id}`, {
-      method: 'PUT',
-      body: participante,
-    });
-  }
-
-// El endpoint necesita tanto torneoId como jugadorId en la URL
-  async deleteParticipante(torneoId, jugadorId) {
-    return this.request(`/torneosSaga/${torneoId}/participantes/${jugadorId}`, {
-      method: 'DELETE',
-    });
   }
 }
 

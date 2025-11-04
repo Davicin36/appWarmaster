@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
 
 import torneosSagaApi from '../servicios/apiSaga.js';
@@ -124,6 +124,10 @@ function Inscripcion() {
   const navigate = useNavigate();
   const { torneoId } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
+  
+  // ✅ DETECTAR MODO EDICIÓN
+  const modoEdicion = location.pathname.includes('editar-inscripcion');
   
   // Estados
   const [torneo, setTorneo] = useState(null);
@@ -139,53 +143,67 @@ function Inscripcion() {
   const [error, setError] = useState("");
 
   // ==========================================
-  // DEBUG - Ver qué datos llegan
+  // CARGAR DATOS DEL TORNEO Y LA INSCRIPCIÓN
   // ==========================================
   useEffect(() => {
-    console.log("🔍 DEBUG - Usuario del contexto:", user);
-    console.log("🔍 DEBUG - Torneo ID desde params:", torneoId);
-  }, [user, torneoId]);
-
-  // ==========================================
-  // CARGAR DATOS DEL TORNEO
-  // ==========================================
-  useEffect(() => {
-    const cargarTorneo = async () => {
+    const cargarDatos = async () => {
       try {
         setLoading(true);
         setError("");
         
         console.log("📡 Cargando torneo con ID:", torneoId);
-        const data = await torneosSagaApi.getTorneo(torneoId);
         
-        console.log("📦 Respuesta completa de la API:", data);
-        console.log("📊 Datos del torneo:", data.data);
+        // Cargar torneo
+        const dataTorneo = await torneosSagaApi.obtenerTorneo(torneoId);
         
-        if (data.success && data.data) {
-          // Verificar la estructura de datos
-          const torneoData = data.data.torneo || data.data;
+        if (dataTorneo.success && dataTorneo.data) {
+          const torneoData = dataTorneo.data.torneo || dataTorneo.data;
           console.log("✅ Torneo cargado:", torneoData);
           setTorneo(torneoData);
-        } else {
-          console.error("❌ No se pudo cargar el torneo:", data);
-          setError(data.message || "No se pudo cargar el torneo");
         }
+
+        // ✅ SI ES MODO EDICIÓN, CARGAR INSCRIPCIÓN EXISTENTE
+if (modoEdicion) {
+  try {
+    console.log("📝 Modo edición - Cargando inscripción existente...");
+    const dataInscripcion = await torneosSagaApi.obtenerMiInscripcion(torneoId);
+    
+    if (dataInscripcion.success && dataInscripcion.data) {
+      const inscripcion = dataInscripcion.data;
+      console.log("✅ Inscripción cargada:", inscripcion);
+      
+      // Pre-llenar el formulario con los datos existentes
+      setBandaSeleccionada(inscripcion.faccion || inscripcion.banda_tipo || "");
+      setPuntos({
+        guardias: parseFloat(inscripcion.puntos_guardias || 0),
+        guerreros: parseFloat(inscripcion.puntos_guerreros || 0),
+        levas: parseFloat(inscripcion.puntos_levas || 0),
+        mercenarios: parseFloat(inscripcion.puntos_mercenarios || 0),
+      });
+      setDetalleMercenarios(inscripcion.detalle_mercenarios || "");
+    }
+  } catch (err) {
+    console.error("❌ Error al cargar inscripción:", err);
+    setError("No se pudo cargar tu inscripción actual");
+  }
+}
+        
       } catch (err) {
-        console.error("❌ Error al cargar torneo:", err);
-        setError(err.message || "Error al cargar los datos del torneo");
+        console.error("❌ Error al cargar datos:", err);
+        setError(err.message || "Error al cargar los datos");
       } finally {
         setLoading(false);
       }
     };
 
     if (torneoId) {
-      cargarTorneo();
+      cargarDatos();
     } else {
       console.error("❌ No hay torneoId en los parámetros");
       setError("ID de torneo no encontrado");
       setLoading(false);
     }
-  }, [torneoId]);
+  }, [torneoId, modoEdicion]);
 
   // ==========================================
   // HANDLERS
@@ -193,9 +211,9 @@ function Inscripcion() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setPuntos((prev) => ({ ...prev, [name]: Number(value) }));
+    setPuntos((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
 
-    if (name === "mercenarios" && Number(value) === 0) {
+    if (name === "mercenarios" && parseFloat(value) === 0) {
       setDetalleMercenarios("");
     }
   };
@@ -214,10 +232,12 @@ function Inscripcion() {
       return;
     }
 
-    const totalPuntos = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;
+    const totalPuntos = parseFloat(
+      (puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios).toFixed(2)
+    );
     const puntosMaximos = torneo?.puntos_banda || 24;
     
-    if (totalPuntos !== puntosMaximos) {
+    if (Math.abs(totalPuntos - puntosMaximos) > 0.01) {
       setError(`Los puntos deben sumar exactamente ${puntosMaximos}`);
       return;
     }
@@ -238,26 +258,31 @@ function Inscripcion() {
         detalleMercenarios: detalleMercenarios || null
       };
 
-      // 👇 AÑADE ESTOS
       console.log("📤 ==========================================");
+      console.log(`📤 ${modoEdicion ? 'EDITANDO' : 'CREANDO'} INSCRIPCIÓN`);
       console.log("📤 Torneo ID:", torneoId);
       console.log("📤 User ID:", user.id);
-      console.log("📤 User completo:", user);
-      console.log("📤 Banda seleccionada:", bandaSeleccionada);
-      console.log("📤 Datos completos:", inscripcionData);
+      console.log("📤 Datos:", inscripcionData);
       console.log("📤 ==========================================");
 
-      console.log("📤 Enviando inscripción:", inscripcionData);
-
-      const resultado = await torneosSagaApi.inscribirse(torneoId, inscripcionData);
+      let resultado;
+      
+      if (modoEdicion) {
+        // ✅ ACTUALIZAR INSCRIPCIÓN EXISTENTE
+        resultado = await torneosSagaApi.actualizarInscripcion(torneoId, inscripcionData);
+        alert("✅ ¡Inscripción actualizada con éxito!");
+      } else {
+        // ✅ CREAR NUEVA INSCRIPCIÓN
+        resultado = await torneosSagaApi.inscribirse(torneoId, inscripcionData);
+        alert("✅ ¡Inscripción realizada con éxito!");
+      }
       
       if (resultado.success) {
-        alert("¡Inscripción realizada con éxito!");
         navigate('/');
       }
       
     } catch (err) {
-      console.error("❌ Error al inscribirse:", err);
+      console.error("❌ Error al procesar inscripción:", err);
       setError(err.message || "Error al procesar la inscripción");
     }
   };
@@ -272,7 +297,7 @@ function Inscripcion() {
   if (loading) {
     return (
       <div className="loading-container">
-        <p>Cargando datos del torneo...</p>
+        <p>Cargando datos...</p>
       </div>
     );
   }
@@ -305,7 +330,16 @@ function Inscripcion() {
   // ==========================================
   return (
     <div className="inscripcion-container">
-      <h1>Inscripción al Torneo: {torneo?.nombre || "Cargando..."}</h1>
+      {/* ✅ TÍTULO DINÁMICO SEGÚN MODO */}
+      <h1>
+        {modoEdicion ? '✏️ Editar Inscripción' : '📝 Inscripción al Torneo'}: {torneo?.nombre || "Cargando..."}
+      </h1>
+      
+      {modoEdicion && (
+        <div className="info-message">
+          ℹ️ Estás editando tu inscripción actual. Realiza los cambios necesarios y confirma.
+        </div>
+      )}
       
       {/* INFORMACIÓN DEL USUARIO */}
       <section className="info-usuario">
@@ -392,12 +426,12 @@ function Inscripcion() {
         <section className="puntos-section">
           <h3>Distribución de Puntos</h3>
           <p className="puntos-info">
-            Total: <strong>{puntosActuales}</strong> / {puntosMaximos} puntos
+            Total: <strong>{puntosActuales.toFixed(1)}</strong> / {puntosMaximos} puntos
             {puntosActuales > puntosMaximos && (
               <span className="puntos-excedidos"> ⚠️ ¡Has excedido el límite!</span>
             )}
             {puntosActuales < puntosMaximos && (
-              <span className="puntos-faltantes"> ⚠️ Te faltan {puntosMaximos - puntosActuales} puntos</span>
+              <span className="puntos-faltantes"> ⚠️ Te faltan {(puntosMaximos - puntosActuales).toFixed(1)} puntos</span>
             )}
           </p>
 
@@ -412,6 +446,7 @@ function Inscripcion() {
                 onChange={handleChange}
                 min="0"
                 max={puntosMaximos}
+                step="0.5"
               />
             </div>
 
@@ -425,6 +460,7 @@ function Inscripcion() {
                 onChange={handleChange}
                 min="0"
                 max={puntosMaximos}
+                step="0.5"
               />
             </div>
 
@@ -438,6 +474,7 @@ function Inscripcion() {
                 onChange={handleChange}
                 min="0"
                 max={puntosMaximos}
+                step="0.5"
               />
             </div>
 
@@ -451,6 +488,7 @@ function Inscripcion() {
                 onChange={handleChange}
                 min="0"
                 max={puntosMaximos}
+                step="0.5"
               />
             </div>
           </div>
@@ -476,7 +514,7 @@ function Inscripcion() {
         {/* BOTONES */}
         <div className="button-group">
           <button type="submit" className="btn-primary">
-            Confirmar Inscripción
+            {modoEdicion ? '✅ Guardar Cambios' : '✅ Confirmar Inscripción'}
           </button>
           <button type="button" className="btn-secondary" onClick={volverAtras}>
             Cancelar

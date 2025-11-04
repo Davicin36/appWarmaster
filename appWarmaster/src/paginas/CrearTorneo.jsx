@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
+
 import torneosSagaApi from '../servicios/apiSaga.js';
+
 import '../estilos/crearTorneo.css';
 
 function CrearTorneo() {
@@ -46,7 +48,7 @@ function CrearTorneo() {
         "Captura"
     ];
 
-    // 🆕 CAMBIO 2: Función para manejar la selección de archivo PDF
+    //Función para manejar la selección de archivo PDF
     const handleArchivoPDF = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -70,7 +72,6 @@ function CrearTorneo() {
         }
     };
 
-    // 🆕 CAMBIO 3: Actualizada la función handleSubmit para usar FormData y torneosSagaApi
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -174,9 +175,7 @@ if (archivoPDF) {
 } else {
   console.log("📦 Datos JSON:", JSON.stringify(torneoData, null, 2));
 }
-            
-            // 🔧 CAMBIO 5: Usar torneosSagaApi en lugar de fetch directo
-            const result = await torneosSagaApi.createTorneo(torneoData);
+            const result = await torneosSagaApi.crearTorneo(torneoData);
             
             console.log("✅ Respuesta del servidor:", result);
             

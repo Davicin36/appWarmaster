@@ -1,8 +1,8 @@
-import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { AuthContext } from './UsoContexto';
 
 import { autentificacionApi } from './AutentificacionApi';
-
-const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

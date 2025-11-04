@@ -3,6 +3,8 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
+// ✅ Al inicio del archivo, convierte jwt.verify a Promise
+const verifyToken = promisify(jwt.verify);
 
 const { pool } = require('../config/bd');
 const { 
@@ -15,10 +17,8 @@ const {
 
 const router = express.Router();
 
-// ==========================================
-// REGISTRO DE USUARIO
-// ==========================================
-router.post('/registro', async (req, res) => {
+// ======REGISTRO DE USUARIO=======
+router.post('authRutas/registro', async (req, res) => {
   try {
     const { nombre, apellidos, nombre_alias, club, email, password } = req.body;
     
@@ -82,10 +82,8 @@ router.post('/registro', async (req, res) => {
   }
 });
 
-// ==========================================
-// LOGIN
-// ==========================================
-router.post('/login', async (req, res) => {
+// ======LOGIN=========
+router.post('/authRutas/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -152,13 +150,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ==========================================
-// VERIFICAR TOKEN
-// ==========================================
-// ✅ Al inicio del archivo, convierte jwt.verify a Promise
-const verifyToken = promisify(jwt.verify);
-
-router.get('/verificar', async (req, res) => {
+// ======VERIFICAR TOKEN=======
+router.get('/authRutas/verificar', async (req, res) => {
   try {
     // Extraer token del header
     const authHeader = req.headers['authorization'];
@@ -219,10 +212,8 @@ router.get('/verificar', async (req, res) => {
   }
 });
 
-// ==========================================
-// CAMBIAR CONTRASEÑA
-// ==========================================
-router.post('/cambiar-password', async (req, res) => {
+// ======CAMBIAR CONTRASEÑA==========
+router.post('/authRutas/cambiar-password', async (req, res) => {
   try {
     //extraemos el token
     const authHeader = req.headers['authorization'];
@@ -291,10 +282,8 @@ router.post('/cambiar-password', async (req, res) => {
   }
 });
 
-// ==========================================
-// CAMBIAR ROL A ORGANIZADOR
-// ==========================================
-router.post('/convertir-organizador', async (req, res) => {
+// =======CAMBIAR ROL A ORGANIZADOR========
+router.post('/authRutas/convertir-organizador', async (req, res) => {
   try {
     // Extraer token
     const authHeader = req.headers['authorization'];

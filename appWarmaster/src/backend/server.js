@@ -55,9 +55,9 @@ app.get('/api/test', (req, res) => {
 });
 
 // Rutas principales
-app.use('/api/authRutas', authRoutes);                    // Corregido: era /api/authRutas
-app.use('/api/torneosSaga', torneosSagaRoutes); 
-app.use('/api/usuarios', usuariosRutas);             // Corregido: faltaba punto y coma
+app.use('/api', authRoutes);                    
+app.use('/api', torneosSagaRoutes); 
+app.use('/api/usuarios', usuariosRutas);         
 
 // ==========================================
 // MANEJADOR DE RUTAS NO ENCONTRADAS

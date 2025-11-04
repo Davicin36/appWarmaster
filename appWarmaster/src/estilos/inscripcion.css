@@ -370,6 +370,16 @@
   transform: translateY(-2px);
 }
 
+.info-message {
+    background: #dbeafe;
+    border-left: 4px solid #3b82f6;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    color: #1e40af;
+    font-size: 0.95rem;
+}
+
 /* ==========================================
    RESPONSIVE
    ========================================== */

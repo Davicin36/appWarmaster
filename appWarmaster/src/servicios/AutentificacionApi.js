@@ -38,17 +38,17 @@ class AutentificacionApi {
     }
   }
 
+    async registro(userData) {
+    return this.request('/authRutas/registro', {
+      method: 'POST',
+      body: userData,
+    });
+  }
+
   async login(credentials) {
     return this.request('/authRutas/login', {
       method: 'POST',
       body: credentials,
-    });
-  }
-
-  async registro(userData) {
-    return this.request('/authRutas/registro', {
-      method: 'POST',
-      body: userData,
     });
   }
 

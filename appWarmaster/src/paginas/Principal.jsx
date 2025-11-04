@@ -40,10 +40,7 @@ function Principal() {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const data = await torneosSagaApi.request('/torneosSaga?limit=50', {
-                method: 'GET',
-                headers
-            });
+            const data = await torneosSagaApi.obtenerTorneos()
             
             console.log('✅ Datos recibidos:', data);
             
@@ -176,19 +173,27 @@ function Principal() {
                                                     🔧 Administrar
                                                 </button>
                                             )}
-                                            <button 
-                                                className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
-                                                onClick={() => apuntarseATorneo(torneo.id)}
-                                                disabled={torneo.usuario_inscrito}
-                                            >
-                                                {torneo.usuario_inscrito ? '✅ Administrar Incripción' : '✅ Inscribirse'}
-                                            </button>
                                            <button 
+                                                className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
+                                                onClick={() => {
+                                                    if (torneo.usuario_inscrito) {
+                                                        // ✅ Si ya está inscrito, ir a editar inscripción
+                                                        navigate(`/torneosSaga/${torneo.id}/editar-inscripcion`);
+                                                    } else {
+                                                        // Si no está inscrito, proceso normal
+                                                        apuntarseATorneo(torneo.id);
+                                                    }
+                                                }}
+                                            >
+                                                {torneo.usuario_inscrito ? '✏️ Administrar Inscripción' : '✅ Inscribirse'}
+                                        </button>
+
+                                        <button 
                                             className="btn-ver-detalles"
-                                                onClick={() => navigate(`/torneo/${torneo.id}`)}
-                                            >   
-                                                👁️ Ver
-                                            </button>
+                                            onClick={() => navigate(`/torneosSaga/${torneo.id}/detalles`)}
+                                        >   
+                                            👁️ Ver Detalles
+                                        </button>
                                         </td>
                                     </tr>
                                 ))}

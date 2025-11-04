@@ -8,10 +8,11 @@ import Principal from './paginas/Principal.jsx';
 import Registrarse from './paginas/Registrarse.jsx';
 import CrearTorneo from './paginas/CrearTorneo.jsx';
 import Perfil from './paginas/Perfil.jsx';
+import AdministrarTorneo from './paginas/AdministrarTorneo.jsx';
+import VerTorneos from './paginas/VerTorneos.jsx';
 
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
-import AdministrarTorneo from './componente/AdministrarTorneo.jsx';
 import Inscripcion from './componente/Inscripcion.jsx';
 import GestionPartida from './componente/GestionPartida.jsx';
 
@@ -57,9 +58,17 @@ function App() {
             path='/gestionPartidas/:torneoId' 
             element={<GestionPartida />} 
         />
+        <Route
+            path='/torneosSaga/:torneoId/detalles'
+            element={<VerTorneos />}
+        />
+        <Route
+            path='/torneosSaga/:torneoId/editar-inscripcion'
+            element={<Inscripcion />}
+        />
       </Routes>
     </AuthProvider>
   )
 }
 
-export default App
+export default App;

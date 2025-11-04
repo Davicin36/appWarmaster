@@ -14,7 +14,7 @@ const generarEmparejamientosIniciales = async (torneoId) => {
     
     try{
 
-        const dataJugadores = await torneosSagaApi.getJugadoresTorneo(torneoId)
+        const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId)
         const jugadores = Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []
     
         if (jugadores.length < 2) {
@@ -70,7 +70,7 @@ export const generarEmparejamientosSuizo = async (torneoId, ronda) => {
         }
 
         // Obtener clasificación actual
-        const clasificacion = await torneosSagaApi.getClasificacionTorneo(torneoId);
+        const clasificacion = await torneosSagaApi.obtenerClasificacionTorneo(torneoId);
         if (!Array.isArray(clasificacion) || clasificacion.length < 2) {
             throw new Error("Se necesitan al menos 2 jugadores para poder realizar los emparejamientos");
         }
@@ -92,7 +92,7 @@ export const generarEmparejamientosSuizo = async (torneoId, ronda) => {
         }
 
         // Obtener historial de enfrentamientos anteriores
-        const historial = (await torneosSagaApi.getHistorialPartidas(torneoId)) || [];
+        const historial = (await torneosSagaApi.obtenerHistorialPartidas(torneoId)) || [];
         const historialSet = new Set(
             historial.flatMap(e => [
                 `${e.jugador1_id}-${e.jugador2_id}`,
@@ -210,6 +210,6 @@ export const generarEmparejamientosSuizo = async (torneoId, ronda) => {
         return emparejamientos;
     } catch (error) {
         console.error("❌ Error al generar emparejamientos suizos:", error.message || error);
-        throw new Error(`Error generando emparejamientos: ${error.message || error}`);
+        return [];
     }
 };

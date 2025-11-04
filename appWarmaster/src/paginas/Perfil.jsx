@@ -67,7 +67,7 @@ function Perfil() {
 
             console.log('📥 Cargando torneos del usuario:', user.id);
 
-            const response = await torneosSagaApi.getTorneosUsuario(user.id);
+            const response = await torneosSagaApi.obtenerTorneosUsuario(user.id);
             
             console.log('✅ Respuesta de torneos:', response);
 
