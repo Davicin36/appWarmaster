@@ -4,7 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import torneosSagaApi from '../servicios/apiSaga.js';
 import { generarEmparejamientosSuizo } from "../funciones/emparejamientos.js";
 
-// Importar componentes de vistas - VERIFICA QUE LA RUTA SEA CORRECTA
 import VistaGeneral from '../componente/vistas/VistaGeneral';
 import VistaJugadores from '../componente/vistas/VistaJugadores';
 import VistaClasificacion from '../componente/vistas/VistaClasificacion';
@@ -142,6 +141,53 @@ function AdministrarTorneo() {
             setLoading(false);
         }
     };
+
+    const marcarComoPagado = async (jugadorId, nombreJugador) => {
+        try {
+            const confirmar = window.confirm(
+                `¿Confirmar que ${nombreJugador} ha pagado la inscripción?`
+            );
+            
+            if (!confirmar) return;
+
+            await torneosSagaApi.actualizarPago(torneoId, jugadorId, { 
+                pagado: 'pagado' 
+            });
+
+            // Recargar los datos del torneo
+            await cargarDatosTorneo();
+            
+            alert('✅ Pago registrado exitosamente');
+
+        } catch (error) {
+            console.error('Error al marcar como pagado:', error);
+            alert('❌ Error al registrar el pago: ' + error.message);
+        }
+    };
+
+    const marcarComoPendiente = async (jugadorId, nombreJugador) => {
+        try {
+            const confirmar = window.confirm(
+                `¿Marcar el pago de ${nombreJugador} como pendiente?`
+            );
+            
+            if (!confirmar) return;
+
+            await torneosSagaApi.actualizarPago(torneoId, jugadorId, { 
+                pagado: 'pendiente' 
+            });
+
+            // Recargar los datos del torneo
+            await cargarDatosTorneo();
+            
+            alert('⏳ Estado actualizado a pendiente');
+
+        } catch (error) {
+            console.error('Error al marcar como pendiente:', error);
+            alert('❌ Error al actualizar estado: ' + error.message);
+        }
+    };
+
 
     // ==========================================
     // FUNCIONES DE EDICIÓN DEL TORNEO
@@ -515,6 +561,8 @@ function AdministrarTorneo() {
                         torneo={torneo}
                         jugadores={jugadores}
                         eliminarJugador={eliminarJugador}
+                        marcarComoPagado={marcarComoPagado}
+                        marcarComoPendiente={marcarComoPendiente}
                     />
                 )}
 

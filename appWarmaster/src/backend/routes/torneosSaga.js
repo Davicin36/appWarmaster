@@ -654,14 +654,13 @@ router.post('/torneosSaga/:torneoId/inscripcion', async (req, res) => {
         puntos_torneo,
         puntos_masacre,
         warlord_muerto
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)`,
       [
         torneoId,
         usuarioId,
         torneo.epoca_torneo,
         bandaTipo,
         composicionEjercito,
-        false,  // pagado por defecto false
         0,      // puntos_victoria por defecto 0
         0,      // puntos_torneo por defecto 0
         0,      // puntos_masacre por defecto 0
@@ -771,6 +770,46 @@ router.put('/torneosSaga/:torneoId/inscripcion', verificarToken, async (req, res
         res.status(500).json(errorResponse('Error al actualizar inscripción'));
     } finally {
         connection.release();
+    }
+});
+
+//======ACTUALIZAR EL PAGO INSCRIPCION (solo organizadores)=====
+
+router.patch('/torneosSaga/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req, res) => {
+    try {
+        const { torneoId, jugadorId } = req.params;
+        const { pagado } = req.body; // 'pagado' o 'pendiente'
+
+        // Validar valor
+        if (!['pendiente', 'pagado'].includes(pagado)) {
+            return res.status(400).json(errorResponse('Valor de pago inválido. Debe ser "pendiente" o "pagado"'));
+        }
+
+        // Verificar que el usuario es organizador del torneo (opcional)
+        const [torneo] = await pool.execute(
+             'SELECT created_by FROM torneo_saga WHERE id = ?',
+             [torneoId]
+         );
+         if (torneo[0].created_by !== req.userId) {
+             return res.status(403).json(errorResponse('No tienes permisos'));
+         }
+
+        // Actualizar estado de pago
+        const [result] = await pool.execute(`
+            UPDATE jugador_torneo_saga 
+            SET pagado = ?
+            WHERE torneo_id = ? AND jugador_id = ?
+        `, [pagado, torneoId, jugadorId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json(errorResponse('Inscripción no encontrada'));
+        }
+
+        res.json(successResponse(`Estado de pago actualizado a: ${pagado}`));
+
+    } catch (error) {
+        console.error('Error al actualizar pago:', error);
+        res.status(500).json(errorResponse('Error al actualizar estado de pago'));
     }
 });
 
@@ -1017,24 +1056,23 @@ router.get('/torneosSaga/:torneoId/jugadores', async (req, res) => {
                 jts.jugador_id,
                 u.nombre as jugador_nombre,
                 u.apellidos as jugador_apellidos,
+                u.nombre_alias,
                 u.club,
-                u.ciudad,
-                jts.nombre_banda,
+                u.localidad,
+                u.pais,
+                jts.epoca,
                 jts.faccion,
-                jts.warlord,
-                jts.composicion,
-                jts.puntos_banda,
-                jts.lista_nombre,
-                jts.lista_url,
-                jts.fecha_inscripcion,
-                jts.puntos_totales,
-                jts.partidas_ganadas,
-                jts.partidas_perdidas,
-                jts.partidas_empatadas
+                jts.composicion_ejercito,
+                jts.pagado,
+                jts.puntos_victoria,
+                jts.puntos_torneo,
+                jts.puntos_masacre,
+                jts.warlord_muerto,
+                jts.created_at as fecha_inscripcion
             FROM jugador_torneo_saga jts
             INNER JOIN usuarios u ON jts.jugador_id = u.id
             WHERE jts.torneo_id = ?
-            ORDER BY jts.puntos_totales DESC, jts.fecha_inscripcion ASC
+            ORDER BY jts.puntos_torneo DESC, jts.created_at ASC
         `, [torneoId]);
         
         res.json(successResponse('Jugadores obtenidos', jugadores));
@@ -1044,6 +1082,7 @@ router.get('/torneosSaga/:torneoId/jugadores', async (req, res) => {
         res.status(500).json(errorResponse('Error al obtener jugadores'));
     }
 });
+
 // ======OBTENER PARTIDAS DE UN TORNEO========
 
 router.get('/torneosSaga/:torneoId/partidasTorneoSaga', async (req, res) => {
@@ -1285,7 +1324,7 @@ router.put('/torneosSaga/:torneoId/estado', verificarToken, async (req, res) => 
 
 // ======OBTENER PARTIDA ESPECÍFICA=======
 
-router.get('/torneosSaga/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (req, res) => {
+router.get('/torneosSaga/:torneoId/partidasTorneoSaga/:partidaId/ronda', verificarToken, async (req, res) => {
   try {
     const { partidaId } = req.params;
     
@@ -1300,6 +1339,7 @@ router.get('/torneosSaga/:torneoId/partidasTorneoSaga/:partidaId', verificarToke
         u2.nombre_alias as jugador2_alias,
         p1.faccion as jugador1_faccion,
         p2.faccion as jugador2_faccion,
+        ps.ronda,
         ts.nombre_torneo
       FROM partidas_saga ps
       JOIN usuarios u1 ON ps.jugador1_id = u1.id
@@ -1465,6 +1505,7 @@ router.post('/torneosSaga/:torneoId/partidasTorneoSaga', verificarToken, async (
 
 router.post('/torneosSaga/:torneoId/emparejamientos', verificarToken, async (req, res) => {
   
+  let connection;
   try {
     const { torneo_id, emparejamientos, ronda } = req.body;
     

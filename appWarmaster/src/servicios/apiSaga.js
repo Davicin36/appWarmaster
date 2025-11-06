@@ -91,6 +91,13 @@ async actualizarInscripcion(torneoId, datosInscripcion) {
     });
 }
 
+async actualizarPago (torneoId, jugadorId, pagado){
+  return this.request(`/torneosSaga/${torneoId}/jugadores/${jugadorId}/pago`, {
+      method: 'PATCH',
+      body: pagado,
+  })
+}
+
   async eliminarTorneo(torneoId) {
     return this.request(`/torneosSaga/${torneoId}`, {
       method: 'DELETE',
@@ -143,9 +150,12 @@ async actualizarInscripcion(torneoId, datosInscripcion) {
     return this.request (`/torneosSaga/${torneoId}/partidas`)
   }
 
-  //obtener una partida concreta
-  async obtenerPartida(partidaId, torneoId) {
-    return this.request(`/torneosSaga/${torneoId}partidas/${partidaId}`);
+  //obtener una partida concreta del torneo
+  async obtenerPartida(partidaId, torneoId, ronda) {
+    return this.request(`/torneosSaga/${torneoId}partidas/${partidaId}/ronda`, {
+      method: 'GET',
+      body : ronda,
+    });
   }
 
   //crear una partida nueva

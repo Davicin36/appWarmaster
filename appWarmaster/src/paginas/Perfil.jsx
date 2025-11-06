@@ -529,7 +529,7 @@ function Perfil() {
                                         )}
                                     </div>
                                     <Link 
-                                        to={`/torneo/${torneo.id}`} 
+                                        to={`/torneosSaga/${torneo.id}/detalles`} 
                                         className="btn-primary"
                                     >
                                         👁️ Ver Torneo
