@@ -104,8 +104,8 @@ async actualizarPago (torneoId, jugadorId, pagado){
     });
   }
 
-  async eliminarParticipante(torneoId, jugadorId) {
-    return this.request(`/torneosSaga/${torneoId}/participantes/${jugadorId}`, {
+  async eliminarJugadorTorneo(torneoId, jugadorId) {
+    return this.request(`/torneosSaga/${torneoId}/jugadores/${jugadorId}`, {
       method: 'DELETE',
     });
   }
@@ -126,12 +126,7 @@ async actualizarPago (torneoId, jugadorId, pagado){
 
   //partidas de los torneos
   async obtenerPartidasTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/partidas`);
-  }
-
-  //clasificacion de los torneos
-  async obtenerClasificacionTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/clasificacion`);
+    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga`);
   }
 
   //para cambiar el estado de los torneos
@@ -147,22 +142,22 @@ async actualizarPago (torneoId, jugadorId, pagado){
 // ========================
 //obtener partidas de un torneo
   async obtenerPartidas(torneoId = null) {
-    return this.request (`/torneosSaga/${torneoId}/partidas`)
+    return this.request (`/torneosSaga/${torneoId}/partidasTorneoSaga`)
   }
 
   //obtener una partida concreta del torneo
   async obtenerPartida(partidaId, torneoId, ronda) {
-    return this.request(`/torneosSaga/${torneoId}partidas/${partidaId}/ronda`, {
+    return this.request(`/torneosSaga/${torneoId}partidasTorneoSaga/${partidaId}/ronda`, {
       method: 'GET',
       body : ronda,
     });
   }
 
   //crear una partida nueva
-  async registrarPartida(partida) {
-    return this.request('/partidas', {
-      method: 'POST',
-      body: partida,
+  async registrarPartida(torneoId, partidaId, partida) {
+    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+      method: 'PUT',
+      body : partida
     });
   }
 
@@ -178,14 +173,14 @@ async actualizarPago (torneoId, jugadorId, pagado){
 }
 
   async actualizarPartida(partidaId, torneoId, partida) {
-    return this.request(`/torneosSaga/${torneoId}/partidas/${partidaId}`, {
+    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'PUT',
       body: partida,
     });
   }
 
   async eliminarPartida(partidaId, torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/partidas/${partidaId}`, {
+    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'DELETE',
     });
   }
@@ -200,6 +195,10 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
   })
 }
 
+  //clasificacion de los torneos
+  async obtenerClasificacionTorneo(torneoId) {
+    return this.request(`/torneosSaga/${torneoId}/clasificacion`);
+  }
 
 //=======================================================================
 //=======================================================================

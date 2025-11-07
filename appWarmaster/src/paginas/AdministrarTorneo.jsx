@@ -24,9 +24,9 @@ function AdministrarTorneo() {
     const [datosEdicion, setDatosEdicion] = useState({
         nombre_torneo: '',
         epoca_torneo: '',
-        rondas_max: 3,
-        puntos_banda: 6,
-        participantes_max: 16,
+        rondas_max: torneo.rondas_max,
+        puntos_banda: torneo.puntos_banda,
+        participantes_max: torneo.participantes_max,
         fecha_inicio: '',
         fecha_fin: '',
         ubicacion: '',

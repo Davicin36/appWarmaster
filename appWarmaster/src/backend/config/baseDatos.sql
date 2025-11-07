@@ -60,6 +60,18 @@ CREATE TABLE jugador_torneo_saga (
   UNIQUE KEY unique_participante (torneo_id, jugador_id)
 );
 
+CREATE TABLE clasificacion_jugadores_saga (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  torneo_id INT NOT NULL,
+  jugador_id INT NOT NULL,
+  puntos_victoria_totales INT DEFAULT 0,
+  puntos_torneo_totales INT DEFAULT 0,
+  puntos_masacre_totales INT DEFAULT 0,
+  warlord_muerto_totales INT  DEFAULT 0,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
+  FOREIGN KEY (jugador_id) REFERENCES jugador_torneo_saga(jugador_id) ON DELETE CASCADE,
+)
+
 CREATE TABLE partidas_saga (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
