@@ -1,27 +1,284 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import torneosSagaApi from '../../servicios/apiSaga';
 
-function VistaGeneral({ 
-    torneo, 
-    jugadores,
-    modoEdicion,
-    setModoEdicion,
-    datosEdicion,
-    loadingEdicion,
-    errorEdicion,
-    archivoPDF,
-    eliminarPDF,
-    handleSetEliminarPDF,
-    handleGuardarCambios,
-    handleCancelarEdicion,
-    handleEdicionChange,
-    handleArchivoPDF,
-    descargarBases,
-    cambiarEstadoTorneo,
-    eliminarTorneo,
-    epocaTorneo,
-    tiposPartida,
-    estadosTorneo
-}) {
+function VistaGeneral({ torneoId: propTorneoId, onUpdate }) {
+    const { torneoId: paramTorneoId } = useParams();
+    const torneoId = propTorneoId || paramTorneoId;
+    const navigate = useNavigate();
+
+    const [torneo, setTorneo] = useState(null);
+    const [jugadores, setJugadores] = useState([]);
+    const [loading, setLoading] = useState(true);
+    
+    // Estados de edición
+    const [modoEdicion, setModoEdicion] = useState(false);
+    const [datosEdicion, setDatosEdicion] = useState({
+        nombre_torneo: '',
+        epoca_torneo: '',
+        rondas_max: 3,
+        puntos_banda: 6,
+        participantes_max: 16,
+        fecha_inicio: '',
+        fecha_fin: '',
+        ubicacion: '',
+        estado: 'pendiente',
+        partida_ronda_1: '',
+        partida_ronda_2: '',
+        partida_ronda_3: '',
+        partida_ronda_4: '',
+        partida_ronda_5: ''
+    });
+    const [loadingEdicion, setLoadingEdicion] = useState(false);
+    const [errorEdicion, setErrorEdicion] = useState('');
+    const [archivoPDF, setArchivoPDF] = useState(null);
+    const [eliminarPDF, setEliminarPDF] = useState(false);
+
+    // Listas de opciones
+    const epocaTorneo = [
+        "Alejandro", "Ánibal", "Vikingos", "Invasiones",
+        "Cruzadas", "Caballeria", "Edad de la Magia",
+        "Alejandro/Ánibal", "Vikingos/Invasiones", "Cruzadas/Caballeria",
+    ];
+
+    const tiposPartida = [
+        "Choque de Bandas", "Conquista", "Avance",
+        "Desacralización", "Captura"
+    ];
+
+    const estadosTorneo = [
+        { valor: 'pendiente', nombre: 'Pendiente' },
+        { valor: 'en_curso', nombre: 'En Curso' },
+        { valor: 'finalizado', nombre: 'Finalizado' }
+    ];
+
+    useEffect(() => {
+        if (torneoId) {
+            cargarDatos();
+        }
+    }, [torneoId]);
+
+    useEffect(() => {
+        if (torneo) {
+            setDatosEdicion({
+                nombre_torneo: torneo.nombre_torneo || '',
+                epoca_torneo: torneo.epoca_torneo || '',
+                rondas_max: torneo.rondas_max || 3,
+                puntos_banda: torneo.puntos_banda || 6,
+                participantes_max: torneo.participantes_max || 16,
+                fecha_inicio: torneo.fecha_inicio?.split('T')[0] || '',
+                fecha_fin: torneo.fecha_fin?.split('T')[0] || '',
+                ubicacion: torneo.ubicacion || '',
+                estado: torneo.estado || 'pendiente',
+                partida_ronda_1: torneo.partida_ronda_1 || '',
+                partida_ronda_2: torneo.partida_ronda_2 || '',
+                partida_ronda_3: torneo.partida_ronda_3 || '',
+                partida_ronda_4: torneo.partida_ronda_4 || '',
+                partida_ronda_5: torneo.partida_ronda_5 || ''
+            });
+        }
+    }, [torneo]);
+
+    const cargarDatos = async () => {
+        try {
+            setLoading(true);
+            
+            const response = await torneosSagaApi.obtenerTorneo(torneoId);
+            const dataTorneo = response.data?.torneo || response.torneo || response;
+            setTorneo(dataTorneo);
+            
+            try {
+                const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+                setJugadores(Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []);
+            } catch (err) {
+                console.log('No hay jugadores todavía', err);
+                setJugadores([]);
+            }
+            
+        } catch (error) {
+            console.error('Error al cargar datos:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEdicionChange = (e) => {
+        const { name, value } = e.target;
+        setDatosEdicion(prev => ({ ...prev, [name]: value }));
+        if (errorEdicion) setErrorEdicion('');
+    };
+
+    const handleGuardarCambios = async (e) => {
+        e.preventDefault();
+        
+        if (!datosEdicion.nombre_torneo.trim()) {
+            setErrorEdicion('El nombre del torneo es obligatorio');
+            return;
+        }
+
+        if (datosEdicion.participantes_max < jugadores.length) {
+            setErrorEdicion(`No puedes reducir el número de participantes a menos de ${jugadores.length}`);
+            return;
+        }
+
+        if (!window.confirm('¿Deseas guardar los cambios en el torneo?')) return;
+
+        try {
+            setLoadingEdicion(true);
+            setErrorEdicion('');
+
+            let dataToSend;
+            
+            if (archivoPDF || eliminarPDF) {
+                dataToSend = new FormData();
+                Object.keys(datosEdicion).forEach(key => {
+                    if (datosEdicion[key] !== null && datosEdicion[key] !== '') {
+                        dataToSend.append(key, datosEdicion[key]);
+                    }
+                });
+                if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
+                if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
+            } else {
+                dataToSend = datosEdicion;
+            }
+
+            await torneosSagaApi.actualizarTorneo(torneoId, dataToSend);
+            
+            alert('✅ Torneo actualizado correctamente');
+            setModoEdicion(false);
+            setArchivoPDF(null);
+            setEliminarPDF(false);
+            await cargarDatos();
+            if (onUpdate) onUpdate();
+            
+        } catch (error) {
+            console.error('Error:', error);
+            setErrorEdicion(error.message || 'Error al actualizar el torneo');
+        } finally {
+            setLoadingEdicion(false);
+        }
+    };
+
+    const handleCancelarEdicion = () => {
+        setModoEdicion(false);
+        setErrorEdicion('');
+        setArchivoPDF(null);
+        setEliminarPDF(false);
+        if (torneo) {
+            setDatosEdicion({
+                nombre_torneo: torneo.nombre_torneo || '',
+                epoca_torneo: torneo.epoca_torneo || '',
+                rondas_max: torneo.rondas_max || 3,
+                puntos_banda: torneo.puntos_banda || 6,
+                participantes_max: torneo.participantes_max || 16,
+                fecha_inicio: torneo.fecha_inicio?.split('T')[0] || '',
+                fecha_fin: torneo.fecha_fin?.split('T')[0] || '',
+                ubicacion: torneo.ubicacion || '',
+                estado: torneo.estado || 'pendiente',
+                partida_ronda_1: torneo.partida_ronda_1 || '',
+                partida_ronda_2: torneo.partida_ronda_2 || '',
+                partida_ronda_3: torneo.partida_ronda_3 || '',
+                partida_ronda_4: torneo.partida_ronda_4 || '',
+                partida_ronda_5: torneo.partida_ronda_5 || ''
+            });
+        }
+    };
+
+    const cambiarEstadoTorneo = async (nuevoEstado) => {
+        if (torneo.estado === 'finalizado') {
+            alert('⚠️ No se puede cambiar el estado de un torneo FINALIZADO.');
+            return;
+        }
+
+        const mensajes = {
+            'pendiente': '⏸️ ¿Marcar torneo como PENDIENTE?',
+            'en_curso': '▶️ ¿Iniciar el torneo?',
+            'finalizado': '🏁 ¿Finalizar el torneo?\n\n⚠️ Esta acción es DEFINITIVA.'
+        };
+
+        if (!window.confirm(mensajes[nuevoEstado])) return;
+
+        if (nuevoEstado === 'finalizado') {
+            if (!window.confirm('⚠️ ÚLTIMA CONFIRMACIÓN:\n¿Estás completamente seguro?')) return;
+        }
+
+        try {
+            await torneosSagaApi.cambiarEstadoTorneo(torneoId, nuevoEstado);
+            alert('✅ Estado actualizado correctamente');
+            await cargarDatos();
+            if (onUpdate) onUpdate();
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Error al cambiar el estado');
+        }
+    };
+
+    const eliminarTorneo = async () => {
+        if (jugadores.length > 0) {
+            alert(`⚠️ No se puede eliminar el torneo porque tiene ${jugadores.length} jugador(es) inscrito(s).`);
+            return;
+        }
+
+        if (!window.confirm(`⚠️ ¿ESTÁS SEGURO de eliminar "${torneo.nombre_torneo}"?`)) return;
+        if (!window.confirm('⚠️ ÚLTIMA CONFIRMACIÓN')) return;
+
+        try {
+            await torneosSagaApi.eliminarTorneo(torneoId);
+            alert('✅ Torneo eliminado correctamente');
+            navigate('/');
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Error al eliminar el torneo');
+        }
+    };
+
+    const handleArchivoPDF = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type === 'application/pdf') {
+            if (file.size > 5 * 1024 * 1024) {
+                alert('El archivo es demasiado grande. Máximo 5MB');
+                return;
+            }
+            setArchivoPDF(file);
+            setEliminarPDF(false);
+        } else {
+            alert('Solo se permiten archivos PDF');
+        }
+    };
+
+    const descargarBases = async () => {
+        try {
+            await torneosSagaApi.descargarBasesPDF(torneoId);
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al descargar las bases');
+        }
+    };
+
+    const handleSetEliminarPDF = (valor) => {
+        setEliminarPDF(valor);
+    };
+
+    if (loading) {
+        return (
+            <div className="vista-general">
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                    ⏳ Cargando información del torneo...
+                </div>
+            </div>
+        );
+    }
+
+    if (!torneo) {
+        return (
+            <div className="vista-general">
+                <div className="error-message">
+                    ⚠️ No se pudo cargar la información del torneo
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="vista-general">
             {/* Mensajes de error */}

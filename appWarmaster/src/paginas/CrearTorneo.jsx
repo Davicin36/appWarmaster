@@ -29,7 +29,7 @@ function CrearTorneo() {
 
     const epocaTorneo = [
         "Alejandro",
-        "Ánibal",
+        "Anibal",
         "Vikingos",
         "Invasiones",
         "Cruzadas",
@@ -37,7 +37,7 @@ function CrearTorneo() {
         "Edad de la Magia",
         "Alejandro/Ánibal",
         "Vikingos/Invasiones",
-        "Cruzadas/Caballería",
+        "Cruzadas/Caballeria",
     ];
 
     const tiposPartida = [

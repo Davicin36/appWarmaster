@@ -7,7 +7,6 @@ require('dotenv').config();
 const { testConnection } = require('./config/bd');
 
 // Importar rutas
-const authRoutes = require('./routes/authRutas');
 const torneosSagaRoutes = require('./routes/torneosSaga'); 
 const usuariosRutas = require('./routes/usuariosRutas');
 
@@ -54,9 +53,8 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Rutas principales
-app.use('/api', authRoutes);                    
-app.use('/api', torneosSagaRoutes); 
+// Rutas principales                 
+app.use('/api/torneosSaga', torneosSagaRoutes); 
 app.use('/api/usuarios', usuariosRutas);         
 
 // ==========================================
@@ -81,7 +79,6 @@ app.listen(PORT, async () => {
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test API: http://localhost:${PORT}/api/test`);
-  console.log(`🔐 Auth: http://localhost:${PORT}/api/authRutas`);
   console.log(`🏆 Torneos: http://localhost:${PORT}/api/torneosSaga`);
   console.log(`👤 Usuarios: http://localhost:${PORT}/api/usuarios`);
   console.log('='.repeat(50) + '\n');

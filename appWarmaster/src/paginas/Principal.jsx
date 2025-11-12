@@ -110,7 +110,7 @@ function Principal() {
             )}
 
             <section>
-                <h2>Torneos SAGA</h2>
+                <img src="public/logoSaga.webp" alt="logo de SAGA"  />
                 <p>Consulta los torneos de SAGA en la Península.</p>
 
                 {loading ? (
@@ -204,7 +204,7 @@ function Principal() {
             </section>
 
             <section>
-                <h2>Torneos WARMASTER</h2>
+                <img src="public/warmasterRevolution.webp" alt="logo de WARMASTER"  />
                 <p>Consulta los torneos de WARMASTER en la Península.</p>
 
                 {loading ? (
@@ -212,6 +212,19 @@ function Principal() {
                 ) : (
                     <p className="no-data-message">
                         No hay torneos de WARMASTER registrados todavía.
+                    </p>
+                )}
+            </section>
+
+             <section>
+                <img src="public/logoFow.webp" alt="logo de Flames of War"  />
+                <p>Consulta los torneos de Flames of War en la Península.</p>
+
+                {loading ? (
+                    <p className="loading-message">⏳ Cargando torneos...</p>
+                ) : (
+                    <p className="no-data-message">
+                        No hay torneos de Flames of war registrados todavía.
                     </p>
                 )}
             </section>

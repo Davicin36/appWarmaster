@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
 
-import apiUsuarios from "../servicios/apiUsuarios.js";
-import torneosSagaApi from "../servicios/apiSaga.js";
+import usuarioApi from "../servicios/apiUsuarios.js";
+
 
 function Perfil() {
     const { user, logout, cambiarPassword, convertirOrganizador, actualizarUsuario } = useAuth();
@@ -16,7 +16,9 @@ function Perfil() {
         apellidos: user?.apellidos || "",
         nombre_alias: user?.nombre_alias || "",
         club: user?.club || "",
-        email: user?.email || ""
+        email: user?.email || "",
+        localidad: user?.localidad || "",
+        pais: user?.pais || ""
     });
     const [loadingEdicion, setLoadingEdicion] = useState(false);
     const [errorEdicion, setErrorEdicion] = useState("");
@@ -51,7 +53,9 @@ function Perfil() {
                 apellidos: user.apellidos || "",
                 nombre_alias: user.nombre_alias || "",
                 club: user.club || "",
-                email: user.email || ""
+                email: user.email || "",
+                localidad: user.localidad || "",
+                pais: user.pais || ""
             });
         }
     }, [user]);
@@ -67,7 +71,7 @@ function Perfil() {
 
             console.log('📥 Cargando torneos del usuario:', user.id);
 
-            const response = await torneosSagaApi.obtenerTorneosUsuario(user.id);
+            const response = await usuarioApi.obtenerTorneosUsuario(user.id);
             
             console.log('✅ Respuesta de torneos:', response);
 
@@ -139,7 +143,7 @@ function Perfil() {
     setSuccessEdicion("");
 
     try {
-        const data = await apiUsuarios.actualizarPerfil(datosEdicion);
+        const data = await usuarioApi.actualizarPerfil(datosEdicion);
 
         if (data.success) {
             actualizarUsuario(data.data.usuario);
@@ -167,7 +171,9 @@ function Perfil() {
             apellidos: user?.apellidos || "",
             nombre_alias: user?.nombre_alias || "",
             club: user?.club || "",
-            email: user?.email || ""
+            email: user?.email || "",
+            localidad: user?.localidad || "",
+            pais: user?.pais || ""
         });
         setErrorEdicion("");
         setSuccessEdicion("");
@@ -388,6 +394,32 @@ function Perfil() {
                                     required
                                 />
                             </div>
+                             <div className="form-group">
+                                    <label htmlFor="nombre">Localidad*:</label>
+                                    <input
+                                        type="text"
+                                        id="localidad"
+                                        name="localidad"
+                                        value={datosEdicion.localidad}
+                                        onChange={handleEdicionChange}
+                                        placeholder="Tu Localidad"
+                                        disabled={loadingEdicion}
+                                        required
+                                    />
+                                </div>
+                                 <div className="form-group">
+                                    <label htmlFor="nombre">Pais*:</label>
+                                    <input
+                                        type="text"
+                                        id="pais"
+                                        name="pais"
+                                        value={datosEdicion.pais}
+                                        onChange={handleEdicionChange}
+                                        placeholder="Tu Pais"
+                                        disabled={loadingEdicion}
+                                        required
+                                    />
+                                </div>
 
                             <div className="button-group">
                                 <button 
@@ -436,6 +468,14 @@ function Perfil() {
                                 <p className={`rol-badge ${user.rol}`}>
                                     {user.rol === 'organizador' ? '⚔️ Organizador' : '🎮 Jugador'}
                                 </p>
+                            </div>
+                             <div className="info-item">
+                                <label>Localidad:</label>
+                                <p>{user.localidad || "No especificado"}</p>
+                            </div>
+                             <div className="info-item">
+                                <label>Pais:</label>
+                                <p>{user.pais  || "No especificado"}</p>
                             </div>
                         </div>
                     )}

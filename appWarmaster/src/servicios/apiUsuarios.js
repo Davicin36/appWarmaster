@@ -1,9 +1,8 @@
-// servicios/apiUsuarios.js
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-class ApiUsuarios {
+class apiUsuarios {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = `${API_BASE_URL}/usuarios`;
   }
 
   async request(endpoint, options = {}) {
@@ -16,6 +15,7 @@ class ApiUsuarios {
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
+      credentials: 'include',
       ...options,
     };
 
@@ -25,10 +25,10 @@ class ApiUsuarios {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
       }
       
       return data;
@@ -37,31 +37,89 @@ class ApiUsuarios {
       throw error;
     }
   }
-  
-  //Para actualizar usuarios
+
+  //======REGISTRO===========
+
+    async registro(userData) {
+    return this.request('/registro', {
+      method: 'POST',
+      body: userData,
+    });
+  }
+
+  //======LOGIN===========
+
+  async login(credentials) {
+    return this.request('/login', {
+      method: 'POST',
+      body: credentials,
+    });
+  }
+
+    //======VERIFICAR TOKEN===========
+
+  async verificarToken(token) {
+    return this.request('/verificar', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  }
+
+    //======ACTUALIZAR USUARIOS===========
+
   async actualizarPerfil(datosUsuario) {
-    return this.request('/usuariosRutas/actualizar-perfil', {
+    return this.request('/actualizarPerfil', {
       method: 'PUT',
       body: datosUsuario,
     });
   }
 
-  //para cambiar contraseña de los usuarios
-  async cambiarPassword(passwordActual, passwordNueva) {
-    return this.request('/usuariosRutas/cambiar-password', {
-      method: 'PUT',
-      body: { passwordActual, passwordNueva },
+  //======CAMBIAR PASSWORD USUARIO===========
+
+  async cambiarPassword(data) {
+    return this.request('/cambiarPassword', {
+      method: 'POST',
+      body: data
     });
   }
 
-  //para convertir usuario en organizador
+  //======CONVERTIR A ORGANIZADOR===========
+
   async convertirOrganizador() {
-    return this.request('/usuariosRutas/convertir-organizador', {
-      method: 'PUT',
+    return this.request('/convertirOrganizador', {
+      method: 'POST'
     });
+  }
+
+  //======OBTENER TORNEOS DE CADA USUARIO==========
+  async obtenerTorneosUsuario(userId) {
+    return this.request(`/${userId}`);
+  }
+
+//  =========================
+//GESTIONES CON LOS TOKENS
+//==========================
+
+  guardarToken(token) {
+    localStorage.setItem('token', token);
+  }
+
+  obtenerToken() {
+    return localStorage.getItem('token');
+  }
+
+  eliminarToken() {
+    localStorage.removeItem('token');
+  }
+
+  async healthCheck() {
+    const response = await fetch('http://localhost:5000/health');
+    return response.json();
   }
 }
 
-export const apiUsuarios = new ApiUsuarios();
+export const usuarioApi = new apiUsuarios();
 
-export default apiUsuarios;
+export default usuarioApi;

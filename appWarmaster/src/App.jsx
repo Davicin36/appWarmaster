@@ -14,7 +14,6 @@ import VerTorneos from './paginas/VerTorneos.jsx';
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
 import Inscripcion from './componente/Inscripcion.jsx';
-import GestionPartida from './componente/GestionPartida.jsx';
 
 function App() {
 
@@ -53,10 +52,6 @@ function App() {
         <Route 
             path='/Inscripcion/:torneoId' 
             element={<Inscripcion />} 
-        />
-        <Route 
-            path='/gestionPartidas/:torneoId' 
-            element={<GestionPartida />} 
         />
         <Route
             path='/torneosSaga/:torneoId/detalles'

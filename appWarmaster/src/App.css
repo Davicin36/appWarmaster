@@ -1,51 +1,73 @@
+/* app.css */
+
+/* Variables CSS para consistencia de colores */
+:root {
+  --color-verde-primario: #4caf50;
+  --color-verde-oscuro: #388e3c;
+  --color-verde-muy-oscuro: #2e7d32;
+  --color-marron-primario: #5d4037;
+  --color-marron-medio: #6d4c41;
+  --color-marron-claro: #8d6e63;
+  --color-marron-muy-claro: #a1887f;
+  --color-fondo: #f7f5f3;
+  --color-fondo-carta: #fafafa;
+}
+
+/* Contenedor principal */
 #root {
+  width: 100%;
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-  background-color: #f7f5f3;
+  background-color: var(--color-fondo);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-/* Estilos generales para toda la aplicación */
+/* Titulares */
 h1 {
-  color: #5d4037;
+  color: var(--color-marron-primario);
   font-size: 2.5rem;
   margin-bottom: 2rem;
   text-shadow: 2px 2px 4px rgba(93, 64, 55, 0.2);
   font-weight: 700;
+  text-align: center;
 }
 
 h2 {
-  color: #6d4c41;
+  color: var(--color-marron-medio);
   font-size: 1.8rem;
   margin-bottom: 1rem;
 }
 
-/* Estilos comunes para formularios */
+/* Formularios */
 label {
-  font-weight: 1000;
-  color: #5d4037;
+  font-weight: 700;
+  color: var(--color-marron-primario);
   margin-bottom: 0.25rem;
+  display: block;
 }
 
 input {
   padding: 0.5em;
   font-size: 1em;
-  border: 1px solid #a1887f;
+  border: 1px solid var(--color-marron-muy-claro);
   border-radius: 4px;
   width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.3s ease;
-  background-color: #fafafa;
-   color: #000000;
+  background-color: var(--color-fondo-carta);
+  color: #000;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 input:focus {
   outline: none;
-  border-color: #4caf50;
+  border-color: var(--color-verde-primario);
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-  color: #000000;
 }
 
 input:disabled {
@@ -53,7 +75,7 @@ input:disabled {
   cursor: not-allowed;
 }
 
-/* Mensajes de error y éxito */
+/* Mensajes */
 .error-message {
   color: #8d4e41;
   background-color: #fdf2f2;
@@ -69,12 +91,12 @@ input:disabled {
   background-color: #f1f8e9;
   padding: 0.75rem;
   border-radius: 4px;
-  border: 1px solid #4caf50;
+  border: 1px solid var(--color-verde-primario);
   margin-bottom: 1rem;
   font-weight: 500;
 }
 
-/* Estilos para botones */
+/* Botones */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -82,7 +104,7 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background: linear-gradient(135deg, #4caf50, #388e3c);
+  background: linear-gradient(135deg, var(--color-verde-primario), var(--color-verde-oscuro));
   color: white;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -91,8 +113,8 @@ button {
 }
 
 button:hover:not(:disabled) {
-  border-color: #5d4037;
-  background: linear-gradient(135deg, #388e3c, #2e7d32);
+  border-color: var(--color-marron-primario);
+  background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-muy-oscuro));
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4);
 }
@@ -103,35 +125,35 @@ button:focus-visible {
 }
 
 button:disabled {
-  background: linear-gradient(135deg, #bcaaa4, #a1887f);
+  background: linear-gradient(135deg, var(--color-marron-muy-claro), var(--color-marron-claro));
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
 button[type="button"] {
-  background: linear-gradient(135deg, #8d6e63, #6d4c41);
+  background: linear-gradient(135deg, var(--color-marron-claro), var(--color-marron-medio));
   margin-left: 0.5rem;
 }
 
 button[type="button"]:hover:not(:disabled) {
-  background: linear-gradient(135deg, #6d4c41, #5d4037);
-  border-color: #4caf50;
+  background: linear-gradient(135deg, var(--color-marron-medio), var(--color-marron-primario));
+  border-color: var(--color-verde-primario);
 }
 
-/* Estilos para enlaces */
+/* Enlaces */
 a {
   font-weight: 500;
-  color: #4caf50;
+  color: var(--color-verde-primario);
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #8d4e41;
+  color: var(--color-marron-claro);
   text-decoration: underline;
 }
 
-/* Estilos para logos */
+/* Logos */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -148,12 +170,8 @@ a:hover {
 }
 
 @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -162,15 +180,14 @@ a:hover {
   }
 }
 
-/* Variables CSS para consistencia de colores */
-:root {
-  --color-verde-primario: #4caf50;
-  --color-verde-oscuro: #388e3c;
-  --color-verde-muy-oscuro: #2e7d32;
-  --color-marron-primario: #5d4037;
-  --color-marron-medio: #6d4c41;
-  --color-marron-claro: #8d6e63;
-  --color-marron-muy-claro: #a1887f;
-  --color-fondo: #f7f5f3;
-  --color-fondo-carta: #fafafa;
+/* Responsividad */
+@media (max-width: 768px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+  #root { padding: 1rem; }
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; }
 }

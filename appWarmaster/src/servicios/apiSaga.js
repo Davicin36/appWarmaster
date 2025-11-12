@@ -2,13 +2,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 class TorneosSagaApi {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = `${API_BASE_URL}/torneosSaga`;
   }
 
   async request(endpoint, options = {}) {
   const url = `${this.baseURL}${endpoint}`;
   
   const token = localStorage.getItem('token');
+  
   const isFormData = options.body instanceof FormData;
   
   const config = {
@@ -29,15 +30,10 @@ class TorneosSagaApi {
     const response = await fetch(url, config);
     
     if (!response.ok) {
-      // 👇 AÑADE ESTOS LOGS
-      console.error("❌ Status:", response.status);
-      console.error("❌ URL:", url);
       
       const errorData = await response.json().catch(() => ({}));
       console.error("❌ Error del servidor:", errorData); // 👈 IMPORTANTE
-
-      
-      
+     
       throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
     }
     
@@ -48,121 +44,133 @@ class TorneosSagaApi {
   }
 }
   // ====================
-  // MÉTODOS DE TORNEOS ✅ TODOS OK
+  // MÉTODOS DE TORNEOS 
   // ====================
 
   async obtenerTorneos() {
-    return this.request('/torneosSaga');
+    return this.request('/obtenerTorneos');
   }
 
   async obtenerTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}`);
+    return this.request(`/torneo/${torneoId}`);
   }
 
   async crearTorneo(torneoData) {
-    return this.request('/torneosSaga', {
+    return this.request('/creandoTorneo', {
       method: 'POST',
       body: torneoData,
     });
   }
 
   async actualizarTorneo(torneoId, torneoData) {
-    return this.request(`/torneosSaga/${torneoId}`, {
+    return this.request(`/${torneoId}/actualizarTorneo`, {
       method: 'PUT',
       body: torneoData,
     });
   }
 
+    //para cambiar el estado de los torneos
+  async cambiarEstadoTorneo(torneoId, estado) {
+    return this.request(`/${torneoId}/estado/${estado}`, {
+      method: 'PUT',
+      body: { estado },
+    });
+  }
+   async eliminarTorneo(torneoId) {
+    return this.request(`/${torneoId}/eliminarTorneo`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================
+  // INSCRIPCIONES
+  // ==================
+
   async inscribirse(torneoId, inscripcionData) {
-    return this.request(`/torneosSaga/${torneoId}/inscripcion`, {
+    return this.request(`/${torneoId}/inscripcion`, {
       method: 'POST',
       body: inscripcionData,
     });
   }
 
   async obtenerMiInscripcion(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/mi-inscripcion`);
+    return this.request(`/${torneoId}/miInscripcion`);
 }
 
 async actualizarInscripcion(torneoId, datosInscripcion) {
-    return this.request(`/torneosSaga/${torneoId}/inscripcion`, {
+    return this.request(`/${torneoId}/actualizarInscripcion/`, {
         method: 'PUT',
         body: datosInscripcion
     });
 }
 
 async actualizarPago (torneoId, jugadorId, pagado){
-  return this.request(`/torneosSaga/${torneoId}/jugadores/${jugadorId}/pago`, {
+  return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
       method: 'PATCH',
       body: pagado,
   })
 }
 
-  async eliminarTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async eliminarJugadorTorneo(torneoId, jugadorId) {
-    return this.request(`/torneosSaga/${torneoId}/jugadores/${jugadorId}`, {
-      method: 'DELETE',
-    });
-  }
-
 //====================================================
 // //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
 //====================================================
 
-  //Torneos de cada usuario
-  async obtenerTorneosUsuario(userId) {
-    return this.request(`/torneosSaga/usuario/${userId}`);
+  async eliminarJugadorTorneo(torneoId, jugadorId) {
+    return this.request(`/${torneoId}/jugadores/${jugadorId}`, {
+      method: 'DELETE',
+    });
   }
 
   //jugadores que hay en cada torneo
   async obtenerJugadoresTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/jugadores`);
+    return this.request(`/${torneoId}/jugadores`);
   }
 
-  //partidas de los torneos
-  async obtenerPartidasTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga`);
-  }
-
-  //para cambiar el estado de los torneos
-  async cambiarEstadoTorneo(torneoId, estado) {
-    return this.request(`/torneosSaga/${torneoId}/estado/${estado}`, {
-      method: 'PUT',
-      body: { estado },
-    });
-  }
-
+  
 // ========================
 // // MÉTODOS DE PARTIDAS
 // ========================
-//obtener partidas de un torneo
-  async obtenerPartidas(torneoId = null) {
-    return this.request (`/torneosSaga/${torneoId}/partidasTorneoSaga`)
+// Obtener TODAS las partidas de un torneo (con filtro opcional de ronda)
+async obtenerPartidasTorneo(torneoId, ronda) {
+  const endpoint = ronda 
+    ? `/${torneoId}/partidasTorneoSaga?ronda=${ronda}`
+    : `/${torneoId}/partidasTorneoSaga`;
+  
+  const response = await this.request(endpoint);
+  
+  console.log('🔍 Response de API:', response);
+  
+  // ✅ EL BACKEND DEVUELVE UN ARRAY DIRECTO
+  if (Array.isArray(response)) {
+    return response;
   }
+  
+  // Si por alguna razón viene envuelto
+  return response.partidas || response.data?.partidas || [];
+}
 
-  //obtener una partida concreta del torneo
-  async obtenerPartida(partidaId, torneoId, ronda) {
-    return this.request(`/torneosSaga/${torneoId}partidasTorneoSaga/${partidaId}/ronda`, {
-      method: 'GET',
-      body : ronda,
-    });
+//obtener partidas de un torneo
+  async obtenerPartida(torneoId, partidaId) {
+      return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`);
   }
 
   //crear una partida nueva
   async registrarPartida(torneoId, partidaId, partida) {
-    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'PUT',
       body : partida
     });
   }
 
+  async confirmarResultado(torneoId, partidaId, confirmar = true) {
+  return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmar`, {
+    method: 'PATCH',
+    body: { confirmar }
+  });
+}
+
   async saveEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
-  return this.request(`/torneosSaga/${torneoId}/emparejamientos`, {
+  return this.request(`/${torneoId}/emparejamientos`, {
     method: 'POST',
     body: {
       torneo_id: torneoId,
@@ -173,31 +181,32 @@ async actualizarPago (torneoId, jugadorId, pagado){
 }
 
   async actualizarPartida(partidaId, torneoId, partida) {
-    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'PUT',
       body: partida,
     });
   }
 
-  async eliminarPartida(partidaId, torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
+  return this.request (`/${torneoId}/partidasTorneoSaga/${partidaId}/primer-jugador`, {
+    method: 'PUT ',
+    body: { jugador_id: jugadorId }
+  })
+}
+
+ async eliminarPartida(partidaId, torneoId) {
+    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'DELETE',
     });
   }
 
-  async obtenerHistorialPartidas(torneoId) {
-  return this.request(`/torneosSaga/${torneoId}/partidasTorneoSaga`);
-}
-
-async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
-  return this.request (`/torneosSaga/${torneoId}/partidasTorneoSaga/${partidaId}/primer-jugador/${jugadorId}`, {
-    method: 'PUT ',
-  })
-}
+// ==================
+  // CLASIFICACIÓN
+  // ==================
 
   //clasificacion de los torneos
   async obtenerClasificacionTorneo(torneoId) {
-    return this.request(`/torneosSaga/${torneoId}/clasificacion`);
+    return this.request(`/${torneoId}/clasificacionTorneo`);
   }
 
 //=======================================================================
@@ -206,7 +215,7 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
   //metodo para la descarga de bases en PDF
   async descargarBasesPDF(torneoId) {
     const token = localStorage.getItem('token');
-    const url = `${this.baseURL}/torneosSaga/${torneoId}/bases-pdf`;
+    const url = `${this.baseURL}/${torneoId}/bases-pdf`; 
     
     try {
       const response = await fetch(url, {

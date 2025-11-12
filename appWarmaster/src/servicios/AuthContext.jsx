@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AuthContext } from './UsoContexto';
 
-import { autentificacionApi } from './AutentificacionApi';
+import { usuarioApi } from './apiUsuarios';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const inicializarAuth = async () => {
-      const token = autentificacionApi.obtenerToken();
+      const token = usuarioApi.obtenerToken();
       
       if (!token) {
         const savedUser = localStorage.getItem('user');
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await autentificacionApi.verificarToken(token);
+        const response = await usuarioApi.verificarToken(token);
 
         if (response.success && response.data?.usuario) {
           const usuarioBackend = response.data.usuario;
@@ -45,13 +45,13 @@ export const AuthProvider = ({ children }) => {
           console.log('Usuario verificado desde backend:', usuarioBackend.email);
         } else {
           console.warn('Token invalido');
-          autentificacionApi.eliminarToken();
+          usuarioApi.eliminarToken();
           localStorage.removeItem('user');
           setUser(null);
         }
       } catch (error) {
         console.error('Error verificando token:', error);
-        autentificacionApi.eliminarToken();
+        usuarioApi.eliminarToken();
         localStorage.removeItem('user');
         setUser(null);
       } finally {
@@ -64,12 +64,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await autentificacionApi.login({ email, password });
+      const response = await usuarioApi.login({ email, password });
 
       if (response.success && response.data?.token && response.data?.usuario) {
         const { token, usuario } = response.data;
 
-        autentificacionApi.guardarToken(token);
+        usuarioApi.guardarToken(token);
         localStorage.setItem('user', JSON.stringify(usuario));
         setUser(usuario);
 
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }) => {
 
   const registro = async (userData) => {
     try {
-      const response = await autentificacionApi.registro(userData);
+      const response = await usuarioApi.registro(userData);
 
       if (response.success) {
         console.log('Usuario registrado:', response.data);
@@ -108,7 +108,7 @@ export const AuthProvider = ({ children }) => {
 
   const cambiarPassword = async (passwordActual, passwordNueva) => {
     try {
-      const token = autentificacionApi.obtenerToken();
+      const token = usuarioApi.obtenerToken();
       
       if (!token) {
         return { 
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-      const response = await autentificacionApi.cambiarPassword({
+      const response = await usuarioApi.cambiarPassword({
         passwordActual,
         passwordNueva
       });
@@ -145,7 +145,7 @@ export const AuthProvider = ({ children }) => {
 
   const convertirOrganizador = async () => {
     try {
-      const token = autentificacionApi.obtenerToken();
+      const token = usuarioApi.obtenerToken();
       
       if (!token) {
         return { 
@@ -154,7 +154,7 @@ export const AuthProvider = ({ children }) => {
         };
       }
       
-      const response = await autentificacionApi.convertirOrganizador();
+      const response = await usuarioApi.convertirOrganizador();
 
       if (response.success && response.data?.usuario) {
         const usuarioActualizado = response.data.usuario;
@@ -185,7 +185,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    autentificacionApi.eliminarToken();
+    usuarioApi.eliminarToken();
     localStorage.removeItem('user');
     console.log('Sesion cerrada');
   };

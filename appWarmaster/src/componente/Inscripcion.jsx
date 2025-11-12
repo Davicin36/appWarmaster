@@ -4,121 +4,9 @@ import { useAuth } from "../servicios/AuthContext";
 
 import torneosSagaApi from '../servicios/apiSaga.js';
 
-import '../estilos/inscripcion.css'; 
+import { obtenerBandasDisponibles } from '../funciones/bandasUtilesSaga.js';
 
-// ==========================================
-// DATOS DE BANDAS POR ÉPOCA
-// ==========================================
-const BANDAS_POR_EPOCA = {
-  "Vikingos": [
-    {nombre: "VIKINGOS" },
-    {nombre: "JOMSVIKINGS" },
-    {nombre: "GALESES" },
-    {nombre: "ANGLO-DANESES" },
-    {nombre: "ANGLO-SAJONES" },
-    {nombre: "NORSE-GAELS" },
-    {nombre: "CAROLINGIOS" },
-    {nombre: "NORMANDOS" },
-    {nombre: "IRLANDESES" },
-    {nombre: "PAGAN RUSS" },
-    {nombre: "ESCOTOS" },
-    {nombre: "ÚLTIMOS ROMANOS" },
-    {nombre: "PUEBLOS GERMÁNICOS" },
-    {nombre: "LOMBARDOS" },
-    {nombre: "PUEBLOS DE LAS ESTEPAS" },
-    {nombre: "OMEYAS" }
-  ],
-  "Invasiones": [
-   {nombre: "ROMANOS" },
-    {nombre: "GODOS" },
-    {nombre: "GALESES" },
-    {nombre: "FRANCOS" },
-    {nombre: "BRITANOS" },
-    {nombre: "SAJONES" },
-    {nombre: "PICTOS" },
-    {nombre: "HUNOS" },
-    {nombre: "SASÁNIDAS" },
-    {nombre: "ESCOTOS" },
-    {nombre: "ALT CLUT Y MANACO GODODDIN" },
-    {nombre: "CYMRY" },
-    {nombre: "VÁNDALOS" },
-  ],
-  "Edad de la Magia": [
-   {nombre: "GRANDES REINOS" },
-    {nombre: "SEÑORES DE LA NATURALEZA" },
-    {nombre: "LEGIONES DE LOS NO MUERTOS" },
-    {nombre: "LA HORDA" },
-    {nombre: "OTROS MUNDOS" },
-    {nombre: "PUEBLOS SUBTERRÁNEOS" }
-  ],
-  "Ánibal": [
-    {nombre: "IBEROS" },
-    {nombre: "CARTAGINESES" },
-    {nombre: "GALESES" },
-    {nombre: "REPÚBLICA DE ROMA" },
-    {nombre: "GALOS"},
-    {nombre: "NÚMIDAS" },
-    {nombre: "GRAECULI-SIRACUSSA" },
-    {nombre: "GRAECULI-EPIRO" },
-    {nombre: "GRAECULI-ITALIOTAS" }
-  ],
-  "Alejandro": [
-    {nombre: "PERSAS-MEDOS" },
-    {nombre: "PERSAS-AQUEMÉNIDAS" },
-    {nombre: "TRACIOS" },
-    {nombre: "MACEDONIOS" },
-    {nombre: "INDIOS" },
-    {nombre: "SUCESORES-GRECIA" },
-    {nombre: "SUCESORES-EGIPTO" },
-    {nombre: "SUCESORES-ASIA" },
-    {nombre: "CIUDADES GRIEGAS-ATENAS" },
-    {nombre: "CIUDADES GRIEGAS-LACEDEMONIOS" },
-    {nombre: "CIUDADES GRIEGAS-TESALIOS" },
-    {nombre: "CIUDADES GRIEGAS-TEBANOS" }
-  ],
-  "Cruzadas": [
-    {nombre: "BIZANTINOS" },
-    {nombre: "CRUZADAS" },
-    {nombre: "ORDENSTAAT" },
-    {nombre: "MOROS" },
-    {nombre: "MILITES CHRISTI" },
-    {nombre: "MUTTATAWI'A" },
-    {nombre: "PUEBLOS PAGANOS" },
-    {nombre: "POLACOS" },
-    {nombre: "SARRACERNOS" },
-    {nombre: "ESPAÑOLES" },
-    {nombre: "MONGOLES" },
-    {nombre: "CUMANOS" },
-    {nombre: "INCURSORES PAGANOS" },
-    {nombre: "ARMENIOS DE CILICIA" },
-    {nombre: "HÚNGAROS DE ÁRPÁD" },
-    {nombre: "CRUZADOS DE MONTFORT" },
-    {nombre: "CÁTAROS" }
-  ],
-  "Caballeria": [
-    {nombre: "INGLESES" },
-    {nombre: "FRANCESES" },
-    {nombre: "FRANCESES-COMPAÑIA DE ORDENANZA" },
-    {nombre: "COMPAÑIAS LIBRES" },
-    {nombre: "BORGOÑESES" },
-    {nombre: "BORGOÑESES-COMPAÑIA DE ORDENANZA" },
-    {nombre: "FLAMENCOS" },
-    {nombre: "ESCOCESES-SCHILTRONS" },
-    {nombre: "ESCOCESES-COMPAÑIAS PROFESIONALES" },
-    {nombre: "SUIZOS" },
-    {nombre: "BRETONES" },
-    {nombre: "CASTELLANOS" },
-    {nombre: "GERMANOS" },
-    {nombre: "HUSITAS" },
-    {nombre: "CONDOTIEROS-FLORENCIA" },
-    {nombre: "CONDOTIEROS-ESTADOS PONTIFICIOS" },
-    {nombre: "CONDOTIEROS-MILÁN" },
-    {nombre: "CONDOTIEROS-REINO DE NÁPOLES" },
-    {nombre: "CONDOTIEROS-VENECIA" },
-    {nombre: "YORK" },
-    {nombre: "LANCASTER" }
-  ],
-};
+import '../estilos/inscripcion.css'; 
 
 function Inscripcion() {
   const navigate = useNavigate();
@@ -162,32 +50,78 @@ function Inscripcion() {
           setTorneo(torneoData);
         }
 
-        // ✅ SI ES MODO EDICIÓN, CARGAR INSCRIPCIÓN EXISTENTE
-if (modoEdicion) {
-  try {
-    console.log("📝 Modo edición - Cargando inscripción existente...");
-    const dataInscripcion = await torneosSagaApi.obtenerMiInscripcion(torneoId);
-    
-    if (dataInscripcion.success && dataInscripcion.data) {
-      const inscripcion = dataInscripcion.data;
-      console.log("✅ Inscripción cargada:", inscripcion);
-      
-      // Pre-llenar el formulario con los datos existentes
-      setBandaSeleccionada(inscripcion.faccion || inscripcion.banda_tipo || "");
-      setPuntos({
-        guardias: parseFloat(inscripcion.puntos_guardias || 0),
-        guerreros: parseFloat(inscripcion.puntos_guerreros || 0),
-        levas: parseFloat(inscripcion.puntos_levas || 0),
-        mercenarios: parseFloat(inscripcion.puntos_mercenarios || 0),
-      });
-      setDetalleMercenarios(inscripcion.detalle_mercenarios || "");
-    }
-  } catch (err) {
-    console.error("❌ Error al cargar inscripción:", err);
-    setError("No se pudo cargar tu inscripción actual");
-  }
-}
+            // ✅ SI ES MODO EDICIÓN, CARGAR INSCRIPCIÓN EXISTENTE
+    if (modoEdicion) {
+      try {
+        console.log("📝 Modo edición - Cargando inscripción existente...");
+        const dataInscripcion = await torneosSagaApi.obtenerMiInscripcion(torneoId);
         
+        if (dataInscripcion.success && dataInscripcion.data) {
+          const inscripcion = dataInscripcion.data;
+          console.log("✅ Inscripción cargada:", inscripcion);
+          console.log("🔍 composicion_ejercito:", inscripcion.composicion_ejercito);
+          
+          // ✅ PARSEAR composicion_ejercito si es un string JSON
+          let composicion = {};
+          if (inscripcion.composicion_ejercito) {
+            if (typeof inscripcion.composicion_ejercito === 'string') {
+              try {
+                composicion = JSON.parse(inscripcion.composicion_ejercito);
+              } catch (e) {
+                console.error("Error al parsear composicion_ejercito:", e);
+              }
+            } else if (typeof inscripcion.composicion_ejercito === 'object') {
+              composicion = inscripcion.composicion_ejercito;
+            }
+          }
+          
+          console.log("🔍 composicion parseada:", composicion);
+          
+          // Pre-llenar el formulario con los datos existentes
+          setBandaSeleccionada(inscripcion.faccion || inscripcion.banda_tipo || "");
+          
+          // ✅ INTENTAR MÚLTIPLES FUENTES PARA LOS PUNTOS
+          setPuntos({
+            guardias: parseFloat(
+              composicion.guardias || 
+              inscripcion.puntos_guardias || 
+              0
+            ),
+            guerreros: parseFloat(
+              composicion.guerreros || 
+              inscripcion.puntos_guerreros || 
+              0
+            ),
+            levas: parseFloat(
+              composicion.levas || 
+              inscripcion.puntos_levas || 
+              0
+            ),
+            mercenarios: parseFloat(
+              composicion.mercenarios || 
+              inscripcion.puntos_mercenarios || 
+              0
+            ),
+          });
+          
+          setDetalleMercenarios(
+            composicion.detalleMercenarios || 
+            inscripcion.detalle_mercenarios || 
+            ""
+          );
+          
+          console.log("✅ Puntos cargados:", {
+            guardias: composicion.guardias || inscripcion.puntos_guardias,
+            guerreros: composicion.guerreros || inscripcion.puntos_guerreros,
+            levas: composicion.levas || inscripcion.puntos_levas,
+            mercenarios: composicion.mercenarios || inscripcion.puntos_mercenarios
+          });
+        }
+      } catch (err) {
+        console.error("❌ Error al cargar inscripción:", err);
+        setError("No se pudo cargar tu inscripción actual");
+      }
+    } 
       } catch (err) {
         console.error("❌ Error al cargar datos:", err);
         setError(err.message || "Error al cargar los datos");
@@ -321,7 +255,12 @@ if (modoEdicion) {
   }
 
   // Obtener bandas disponibles según la época del torneo
-  const bandasDisponibles = BANDAS_POR_EPOCA[torneo?.epoca_torneo] || [];
+  const bandasDisponibles = obtenerBandasDisponibles(torneo?.epoca_torneo);
+
+   console.log('🔍 DEBUG - epoca_torneo:', torneo?.epoca_torneo);
+  console.log('🔍 DEBUG - bandasDisponibles:', bandasDisponibles);
+  console.log('🔍 DEBUG - bandasDisponibles.length:', bandasDisponibles.length);
+
   const puntosMaximos = torneo?.puntos_banda || 24;
   const puntosActuales = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;
 

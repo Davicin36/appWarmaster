@@ -3,7 +3,7 @@ import {  useParams } from 'react-router-dom';
 
 import torneosSagaApi from '../../servicios/apiSaga';
 
-function VistaClasificacion({ torneoId: propTorneoId }) {
+function VerClasificacion({ torneoId: propTorneoId }) {
     // Obtener torneoId de props o de URL
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
@@ -131,4 +131,4 @@ function VistaClasificacion({ torneoId: propTorneoId }) {
     );
 }
 
-export default VistaClasificacion;
+export default VerClasificacion;
