@@ -136,69 +136,8 @@ const calcularPuntosTorneo = (puntosPartidaJ1, puntosPartidaJ2, jugador1Id, prim
 };
 
 
-//FUNCION PARA ORGANIZAR Y SUMAR LOS PUNTOS PARA LA CLASIFICACION DE LOS TORNEOS
-const organizarClasificacion = (jugadoresTorneo, partidasTorneo) => {
-  
-    const clasificacionMap = new Map()
-
-    jugadoresTorneo.forEach (jugador => {
-      clasificacionMap.set(jugador.jugador_id, {
-          jugador_id: jugador.jugador_id,
-          nombre: jugador.nombre,
-          apellido: jugador.apellido,
-          faccion: jugador.faccion,
-          puntos_victoria_totales:0,
-          puntos_torneo_totales:0,
-          puntos_masacre_totales:0,
-          partidas_jugadas: 0
-    })
-  })
-
-  //para sumar los puntos de todas las partidas para cada jugador
-  partidasTorneo.forEach(partida => {
-    //cada partida actualiza los puntos de los dos jugadores
-    const j1 = clasificacionMap.get(partida.jugador1_id)
-    j1.puntos_victoria_totales += partida.puntos_victoria_j1 || 0;
-    j1.puntos_torneo_totales += partida.puntos_torneo_j1 || 0;
-    j1.puntos_masacre_totales += partida.puntos_masacre_j1 || 0;
-    j1.warlord_muerto_veces += partida.warlord_muerto_j1 || 0;
-    j1.partidas_jugadas++;
-
-    if (partida.jugador2_id2){
-      const j2 = clasificacionMap.get(partida.jugador2_id)
-    j2.puntos_victoria_totales += partida.puntos_victoria_j2 || 0;
-    j2.puntos_torneo_totales += partida.puntos_torneo_j2 || 0;
-    j2.puntos_masacre_totales += partida.puntos_masacre_j2 || 0;
-    j2.warlord_matado_veces += partida.warlord_muerto_j2 || 0;
-    j2.partidas_jugadas++;
-    }
-  })
-
-  //ordenamos los jugadores por sus puntaciones
-  const clasificacionOrdenada = Array.from(clasificacionMap.values()).sort((a, b) =>{
-    if (b.puntos_victoria_totales !== a.puntos_victoria_totales){
-      return b.puntos_victoria_totales- a.puntos_victoria_totales
-    }
-    if (b.puntos_torneo_totales !== a.puntos_torneo_totales){
-      return b.puntos_torneo_totales - a.puntos_torneo_totales
-    }
-    if (b.puntos_masacre_totales !== a.puntos_masacre_totales){
-      return b.puntos_torneo_totales - a.puntos_torneo_totales
-    }
-    return b.warlord_matado_veces - a.warlord_matado_veces
-  })
-
-
-  return clasificacionOrdenada.map((jugador,index)=>({
-    ...jugador,
-    posicion: index +1
-  }) )
-}
-
-
 module.exports = {
   calcularPuntosTorneo,
-  organizarClasificacion,
   validarEmail,
   validarFecha,
   errorResponse,

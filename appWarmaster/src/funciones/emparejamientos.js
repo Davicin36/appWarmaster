@@ -1,4 +1,4 @@
-import torneosSagaApi from '../servicios/apiSaga' 
+import torneosSagaApi from '../servicios/apiSaga';
 
 // ==========================================
 // EMPAREJAMIENTOS ALEATORIOS
@@ -6,19 +6,17 @@ import torneosSagaApi from '../servicios/apiSaga'
 
 /**
  * Genera emparejamientos aleatorios para la primera ronda
- * @param {number} - ID del torneo
+ * @param {number} torneoId - ID del torneo
  * @returns {Promise<Array>} - Array de emparejamientos
  */
     
 const generarEmparejamientosIniciales = async (torneoId) => {
-    
-    try{
-
-        const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId)
-        const jugadores = Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []
+    try {
+        const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+        const jugadores = Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || [];
     
         if (jugadores.length < 2) {
-            throw new Error ('Se necesitan al menos 2 jugadores para poder generar los emparejamientos')
+            throw new Error('Se necesitan al menos 2 jugadores para poder generar los emparejamientos');
         }
 
         const jugadoresAleatorios = [...jugadores].sort(() => Math.random() - 0.5);
@@ -31,32 +29,32 @@ const generarEmparejamientosIniciales = async (torneoId) => {
                 jugador2: jugadoresAleatorios[i + 1]
             });
         }
-        //si el numero de jugadores es IMPAR entonces el ultimo tiene BYE.
-    if (jugadoresAleatorios.length % 2 !== 0) {
-        emparejamientosRonda1.push({
-            mesa: emparejamientosRonda1.length + 1,
-            jugador1: jugadoresAleatorios[jugadoresAleatorios.length - 1],
-            jugador2: null
-        });
-    }
+        
+        // Si el número de jugadores es IMPAR entonces el último tiene BYE
+        if (jugadoresAleatorios.length % 2 !== 0) {
+            emparejamientosRonda1.push({
+                mesa: emparejamientosRonda1.length + 1,
+                jugador1: jugadoresAleatorios[jugadoresAleatorios.length - 1],
+                jugador2: null
+            });
+        }
 
-    return emparejamientosRonda1;
+        return emparejamientosRonda1;
 
-    }catch (error) {
-        console.error('Error al generar los emparejamientos:' , error)
+    } catch (error) {
+        console.error('Error al generar los emparejamientos:', error);
         throw error;
-}
-}
+    }
+};
 
 //===================================
 //EMPAREJAMIENTOS POR SISTEMA SUIZO
 //===================================
-
 /**
- * emparejamientos para siguientes rondas
- * @param {*} torneoId - id del torneo
- * @param {*} rondas - numero de ronda actual
- * @returns {Promise<Array>} - array de emparejamientos
+ * Emparejamientos para siguientes rondas
+ * @param {number} torneoId - ID del torneo
+ * @param {number} ronda - Número de ronda actual
+ * @returns {Promise<Array>} - Array de emparejamientos
  */
 export const generarEmparejamientosSuizo = async (torneoId, ronda) => {
     try {
@@ -64,150 +62,253 @@ export const generarEmparejamientosSuizo = async (torneoId, ronda) => {
             throw new Error("Número de ronda no válido.");
         }
 
-        // Si es la primera ronda, delegar a la función de emparejamientos iniciales
         if (ronda === 1) {
             return await generarEmparejamientosIniciales(torneoId);
         }
 
         // Obtener clasificación actual
-        const clasificacion = await torneosSagaApi.obtenerClasificacionTorneo(torneoId);
-        if (!Array.isArray(clasificacion) || clasificacion.length < 2) {
+        const responseClasificacion = await torneosSagaApi.obtenerClasificacion(torneoId);
+        const clasificacionData = responseClasificacion?.data || responseClasificacion || [];
+
+        if (!Array.isArray(clasificacionData) || clasificacionData.length < 2) {
             throw new Error("Se necesitan al menos 2 jugadores para poder realizar los emparejamientos");
         }
 
-        // Validar estructura mínima (si falla, lanzar error descriptivo)
-        const camposRequeridos = [
-            "jugador_id", 
-            "nombre_completo", 
-            "club", "faccion",
-            "puntos_torneo", 
-            "puntos_victoria", 
-            "puntos_masacre", 
-            "primer_jugador", 
-            "ha_tenido_bye"
-        ];
-        const faltantes = camposRequeridos.filter(campo => !(campo in clasificacion[0]));
-        if (faltantes.length > 0) {
-            throw new Error(`Faltan campos en la clasificación: ${faltantes.join(", ")}`);
+        // ✅ NORMALIZAR CAMPOS
+        const clasificacion = clasificacionData.map(j => ({
+            ...j,
+            puntos_victoria: j.puntos_victoria || j.puntos_victoria_totales || 0,
+            puntos_torneo: j.puntos_torneo || j.puntos_torneo_totales || 0,
+            puntos_masacre: j.puntos_masacre || j.puntos_masacre_totales || 0
+        }));
+
+        console.log('📊 Clasificación obtenida:', clasificacion.length, 'jugadores');
+
+        // ✅ Obtener historial de enfrentamientos y BYE anteriores
+        let historialSet = new Set();
+        let jugadoresConBye = new Set();
+        let historialArray = [];
+
+        try {
+            const historial = await torneosSagaApi.obtenerPartidasTorneo(torneoId);
+            historialArray = Array.isArray(historial) ? historial : [];
+
+            // Construir set de enfrentamientos
+            historialSet = new Set(
+                historialArray.flatMap(e => [
+                    `${e.jugador1_id}-${e.jugador2_id}`,
+                    `${e.jugador2_id}-${e.jugador1_id}`
+                ])
+            );
+            
+            // Identificar jugadores que ya tuvieron BYE
+            historialArray.forEach(p => {
+                if (p.jugador2_id === null || p.es_bye === 1) {
+                    jugadoresConBye.add(p.jugador1_id);
+                }
+            });
+
+            console.log('📜 Historial de partidas:', historialArray.length);
+            console.log('⭐ Jugadores que ya tuvieron BYE:', Array.from(jugadoresConBye));
+        } catch (error) {
+            console.warn('⚠️ No se pudo obtener historial:', error.message);
         }
 
-        // Obtener historial de enfrentamientos anteriores
-        const historial = (await torneosSagaApi.obtenerHistorialPartidas(torneoId)) || [];
-        const historialSet = new Set(
-            historial.flatMap(e => [
-                `${e.jugador1_id}-${e.jugador2_id}`,
-                `${e.jugador2_id}-${e.jugador1_id}`
-            ])
-        );
-
-        // Ordenar por puntos de torneo y luego por puntos de victoria (descendente)
+        // Ordenar por puntos (de mayor a menor)
         const jugadoresOrdenados = [...clasificacion].sort((a, b) => {
-            // Vemos si los puntos de victoria son diferentes, si lo son ordenamos.
             if (b.puntos_victoria !== a.puntos_victoria) {
                 return b.puntos_victoria - a.puntos_victoria;
-            // aqui si son iguales los puntos de victoria, comparamos por puntos de torneo
-            }else if (b.puntos_torneo !== a.puntos_torneo){
+            }
+            if (b.puntos_torneo !== a.puntos_torneo) {
                 return b.puntos_torneo - a.puntos_torneo;
             }
-            //sino pues ya desempatamos por puntos de masacre
-            return b.puntos_masacre - a.puntos_masacre
+            return b.puntos_masacre - a.puntos_masacre;
         });
 
-        // Asignar bye al jugador con menos puntos que no haya tenido uno
-        let jugadorBye = null;
-        if (jugadoresOrdenados.length % 2 !== 0) {
-            const candidatos = jugadoresOrdenados
-                .filter(j => !j.ha_tenido_bye)
-                .sort((a, b) => a.puntos_torneo - b.puntos_torneo);
+        console.log('🔄 Iniciando emparejamientos...');
 
-            if (candidatos.length > 0) {
-                jugadorBye = candidatos[0];
-            } else {
-                jugadorBye = jugadoresOrdenados[jugadoresOrdenados.length - 1];
-            }
-
-            // Solo marcar en memoria, no se guarda en BD aquí
-            jugadorBye.ha_tenido_bye = true;
-        }
-
-        // Emparejar evitando rematches
         const emparejamientos = [];
         const emparejados = new Set();
 
+        // 🎯 PASO 1: Si hay número impar, asignar BYE PRIMERO
+        if (jugadoresOrdenados.length % 2 !== 0) {
+            console.log('📊 Número impar de jugadores, asignando BYE...');
+            
+            // Filtrar jugadores sin BYE previo
+            const jugadoresSinBye = jugadoresOrdenados.filter(j => 
+                !jugadoresConBye.has(j.jugador_id)
+            );
+
+            if (jugadoresSinBye.length > 0) {
+                // Ordenar por MENOS puntos (invertir orden)
+                const jugadoresPorMenosPuntos = [...jugadoresSinBye].sort((a, b) => {
+                    if (a.puntos_victoria !== b.puntos_victoria) {
+                        return a.puntos_victoria - b.puntos_victoria; // Menor primero
+                    }
+                    if (a.puntos_torneo !== b.puntos_torneo) {
+                        return a.puntos_torneo - b.puntos_torneo;
+                    }
+                    return a.puntos_masacre - b.puntos_masacre;
+                });
+
+                // Asignar BYE al jugador con menos puntos
+                const jugadorBye = jugadoresPorMenosPuntos[0];
+                
+                console.log(`🎯 BYE asignado a ${jugadorBye.jugador_nombre || jugadorBye.nombre} (ID: ${jugadorBye.jugador_id}) - Menor puntuación sin BYE previo`);
+                
+                emparejamientos.push({
+                    jugador1_id: jugadorBye.jugador_id,
+                    jugador2_id: null,
+                    es_bye: 1
+                });
+                
+                emparejados.add(jugadorBye.jugador_id);
+                jugadoresConBye.add(jugadorBye.jugador_id);
+            } else {
+                // 🚨 CASO EXTREMO: Todos ya tuvieron BYE
+                console.warn('⚠️ TODOS los jugadores ya tuvieron BYE. Asignando segundo BYE al de menor puntuación.');
+                
+                // Ordenar TODOS por menor puntuación
+                const todosOrdenadosPorMenos = [...jugadoresOrdenados].sort((a, b) => {
+                    if (a.puntos_victoria !== b.puntos_victoria) {
+                        return a.puntos_victoria - b.puntos_victoria;
+                    }
+                    if (a.puntos_torneo !== b.puntos_torneo) {
+                        return a.puntos_torneo - b.puntos_torneo;
+                    }
+                    return a.puntos_masacre - b.puntos_masacre;
+                });
+
+                const jugadorBye = todosOrdenadosPorMenos[0];
+                
+                console.warn(`⚠️ Segundo BYE asignado a ${jugadorBye.jugador_nombre || jugadorBye.nombre}`);
+                
+                emparejamientos.push({
+                    jugador1_id: jugadorBye.jugador_id,
+                    jugador2_id: null,
+                    es_bye: 1
+                });
+                
+                emparejados.add(jugadorBye.jugador_id);
+            }
+        }
+
+        // 🎯 PASO 2: Emparejar al resto de jugadores (ahora son número PAR)
+        const puedenEnfrentarse = (j1, j2) => {
+            const enf1 = `${j1.jugador_id}-${j2.jugador_id}`;
+            const enf2 = `${j2.jugador_id}-${j1.jugador_id}`;
+            return !historialSet.has(enf1) && !historialSet.has(enf2);
+        };
+
         for (let i = 0; i < jugadoresOrdenados.length; i++) {
             const jugador1 = jugadoresOrdenados[i];
-            if (emparejados.has(jugador1.jugador_id) || jugador1 === jugadorBye) continue;
+            
+            if (emparejados.has(jugador1.jugador_id)) {
+                continue;
+            }
 
+            console.log(`🔍 Buscando rival para ${jugador1.jugador_nombre || jugador1.nombre} (ID: ${jugador1.jugador_id})`);
+            
             let jugador2 = null;
+            let mejorCandidato = null;
 
+            // Buscar rival sin rematch
             for (let j = i + 1; j < jugadoresOrdenados.length; j++) {
                 const candidato = jugadoresOrdenados[j];
-                const enf1 = `${jugador1.jugador_id}-${candidato.jugador_id}`;
-                const enf2 = `${candidato.jugador_id}-${jugador1.jugador_id}`;
+                
+                if (emparejados.has(candidato.jugador_id)) {
+                    continue;
+                }
 
-                if (
-                    !emparejados.has(candidato.jugador_id) &&
-                    candidato !== jugadorBye &&
-                    !historialSet.has(enf1) &&
-                    !historialSet.has(enf2)
-                ) {
+                const puedenJugar = puedenEnfrentarse(jugador1, candidato);
+
+                if (puedenJugar) {
                     jugador2 = candidato;
+                    console.log(`  ✅ Rival encontrado: ${jugador2.jugador_nombre || jugador2.nombre}`);
                     break;
+                } else if (!mejorCandidato) {
+                    mejorCandidato = candidato;
                 }
             }
 
-            // Si no hay rival ideal, emparejar con el siguiente disponible
-            if (!jugador2) {
-                jugador2 = jugadoresOrdenados.find(
-                    j => !emparejados.has(j.jugador_id) && j !== jugador1 && j !== jugadorBye
+            // Si no hay rival sin rematch, aceptar rematch si hay más de 2 jugadores
+            if (!jugador2 && mejorCandidato) {
+                const jugadoresSinEmparejar = jugadoresOrdenados.filter(j => 
+                    !emparejados.has(j.jugador_id)
                 );
+                
+                if (jugadoresSinEmparejar.length > 2) {
+                    jugador2 = mejorCandidato;
+                    console.warn(`  ⚠️ REMATCH FORZADO con ${jugador2.jugador_nombre || jugador2.nombre}`);
+                }
             }
 
-            // Registrar emparejamiento
+            // Emparejar
             if (jugador2) {
+                console.log(`  ⚔️ Emparejamiento: ${jugador1.jugador_nombre || jugador1.nombre} vs ${jugador2.jugador_nombre || jugador2.nombre}`);
+                
                 emparejamientos.push({
-                    mesa: emparejamientos.length + 1,
-                    jugador1: {
-                        id: jugador1.jugador_id,
-                        nombre: jugador1.nombre_completo,
-                        club: jugador1.club,
-                        ejercito: jugador1.faccion,
-                        puntos_torneo: jugador1.puntos_torneo
-                    },
-                    jugador2: {
-                        id: jugador2.jugador_id,
-                        nombre: jugador2.nombre_completo,
-                        club: jugador2.club,
-                        ejercito: jugador2.faccion,
-                        puntos_torneo: jugador2.puntos_torneo
-                    },
-                    ronda,
-                    mesa_db: emparejamientos.length + 1
+                    jugador1_id: jugador1.jugador_id,
+                    jugador2_id: jugador2.jugador_id,
+                    es_bye: 0
                 });
-
+                
                 emparejados.add(jugador1.jugador_id);
                 emparejados.add(jugador2.jugador_id);
+            } else {
+                // 🚨 Esto NO debería pasar si la lógica de BYE funcionó correctamente
+                console.error(`  🚨 ERROR: ${jugador1.jugador_nombre || jugador1.nombre} quedó sin rival y sin BYE`);
             }
         }
 
-        // Añadir el bye si lo hay (solo visual, no persistente)
-        if (jugadorBye) {
-            emparejamientos.push({
-                mesa: emparejamientos.length + 1,
-                jugador1: {
-                    id: jugadorBye.jugador_id,
-                    nombre: jugadorBye.nombre_completo,
-                    club: jugadorBye.club,
-                    ejercito: jugadorBye.faccion,
-                    puntos_torneo: jugadorBye.puntos_torneo
-                },
-                jugador2: null,
-                ronda,
-                bye: true
-            });
-        }
+        console.log(`✅ Emparejamientos creados: ${emparejamientos.length}`);
+        console.log('📊 Jugadores con BYE (actualizado):', Array.from(jugadoresConBye));
 
-        return emparejamientos;
+        // 🎯 PASO 3: ENRIQUECER con datos completos para el frontend
+        const emparejamientosCompletos = emparejamientos.map((emp, index) => {
+            const jugador1Data = jugadoresOrdenados.find(j => j.jugador_id === emp.jugador1_id);
+            const jugador2Data = emp.jugador2_id 
+                ? jugadoresOrdenados.find(j => j.jugador_id === emp.jugador2_id)
+                : null;
+
+            return {
+                mesa: index + 1,
+                jugador1_id: emp.jugador1_id,
+                jugador2_id: emp.jugador2_id,
+                es_bye: emp.es_bye,
+                ronda: ronda,
+                jugador1: jugador1Data ? {
+                    id: jugador1Data.jugador_id,
+                    jugador_id: jugador1Data.jugador_id,
+                    nombre: jugador1Data.jugador_nombre || jugador1Data.nombre,
+                    jugador_nombre: jugador1Data.jugador_nombre || jugador1Data.nombre,
+                    apellidos: jugador1Data.jugador_apellidos || jugador1Data.apellidos || '',
+                    club: jugador1Data.club || '-',
+                    ejercito: jugador1Data.faccion || jugador1Data.ejercito || '-',
+                    puntos_victoria: jugador1Data.puntos_victoria || 0,
+                    puntos_torneo: jugador1Data.puntos_torneo || 0,
+                    puntos_masacre: jugador1Data.puntos_masacre || 0
+                } : null,
+                jugador2: jugador2Data ? {
+                    id: jugador2Data.jugador_id,
+                    jugador_id: jugador2Data.jugador_id,
+                    nombre: jugador2Data.jugador_nombre || jugador2Data.nombre,
+                    jugador_nombre: jugador2Data.jugador_nombre || jugador2Data.nombre,
+                    apellidos: jugador2Data.jugador_apellidos || jugador2Data.apellidos || '',
+                    club: jugador2Data.club || '-',
+                    ejercito: jugador2Data.faccion || jugador2Data.ejercito || '-',
+                    puntos_victoria: jugador2Data.puntos_victoria || 0,
+                    puntos_torneo: jugador2Data.puntos_torneo || 0,
+                    puntos_masacre: jugador2Data.puntos_masacre || 0
+                } : null
+            };
+        });
+
+        console.log('✅ Emparejamientos enriquecidos:', emparejamientosCompletos);
+        console.log(`✅ ${emparejamientosCompletos.length} emparejamientos generados para ronda ${ronda}`);
+        
+        return emparejamientosCompletos;
+        
     } catch (error) {
         console.error("❌ Error al generar emparejamientos suizos:", error.message || error);
         return [];

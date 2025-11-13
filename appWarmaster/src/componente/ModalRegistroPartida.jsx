@@ -55,7 +55,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
 
             console.log('📤 Enviando datos:', datosPartida);
 
-            const response = await torneosSagaApi.registrarResultadoPartida(
+            const response = await torneosSagaApi.registrarPartida(
                 partida.torneo_id,
                 partida.id,
                 datosPartida
@@ -136,16 +136,39 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
     };
 
     // ✅ SI ES BYE
-    if (esBye) {
+if (esBye) {
+    // ✅ SI YA ESTÁ CONFIRMADO
+    if (resultadoConfirmado) {
         return (
             <div className="modal-overlay" onClick={onClose}>
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <h3>⚠️ Partida BYE</h3>
-                        <button className="btn-close" onClick={onClose}>✕</button>
+                    <div className="modal-header" style={{
+                        background: '#4caf50',
+                        color: 'white',
+                        padding: '15px',
+                        borderRadius: '8px 8px 0 0'
+                    }}>
+                        <h3>✅ Partida BYE Confirmada - Mesa {partida.mesa}</h3>
+                        <button className="btn-close" onClick={onClose} style={{
+                            background: 'white',
+                            color: '#4caf50'
+                        }}>✕</button>
                     </div>
 
                     <div className="modal-body">
+                        <div style={{
+                            background: '#e8f5e9',
+                            border: '2px solid #4caf50',
+                            padding: '15px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            textAlign: 'center'
+                        }}>
+                            <p style={{ margin: 0, fontWeight: 'bold', color: '#2e7d32' }}>
+                                ✅ Esta victoria BYE ha sido confirmada por el organizador
+                            </p>
+                        </div>
+
                         <div className="bye-info" style={{
                             background: '#fff3cd',
                             padding: '20px',
@@ -157,16 +180,51 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                 <strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong>
                             </p>
                             <p style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#f59e0b' }}>
-                                15 Puntos de Torneo
+                                10 Puntos de Torneo
                             </p>
                             <p style={{ margin: '10px 0 0 0', fontSize: '0.9em', color: '#666' }}>
-                                Las partidas BYE no se pueden editar.
+                                Ronda: {partida.ronda}
                             </p>
                         </div>
                     </div>
 
-                    <div className="modal-footer">
-                        <button className="btn-primary" onClick={onClose}>
+                    <div className="modal-footer" style={{
+                        display: 'flex',
+                        gap: '10px',
+                        justifyContent: 'space-between',
+                        padding: '15px'
+                    }}>
+                        {/* ✅ SOLO EL ORGANIZADOR PUEDE DESCONFIRMAR */}
+                        {esOrganizador && (
+                            <button 
+                                onClick={() => handleConfirmar(false)}
+                                disabled={confirmando}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: '#ff9800',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '5px',
+                                    cursor: confirmando ? 'not-allowed' : 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                {confirmando ? '⏳ Procesando...' : '🔓 Desconfirmar Victoria'}
+                            </button>
+                        )}
+                        
+                        <button 
+                            className="btn-primary" 
+                            onClick={onClose}
+                            style={{
+                                padding: '10px 20px',
+                                background: '#2196f3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: 'pointer'
+                            }}
+                        >
                             Cerrar
                         </button>
                     </div>
@@ -174,6 +232,111 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
             </div>
         );
     }
+
+    // ✅ SI NO ESTÁ CONFIRMADO (PENDIENTE)
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>⚠️ Partida BYE - Mesa {partida.mesa}</h3>
+                    <button className="btn-close" onClick={onClose}>✕</button>
+                </div>
+
+                <div className="modal-body">
+                    {/* ✅ ALERTA DE RESULTADO NO CONFIRMADO */}
+                    <div style={{
+                        background: '#fff3e0',
+                        border: '2px solid #ff9800',
+                        padding: '15px',
+                        borderRadius: '8px',
+                        marginBottom: '20px',
+                        textAlign: 'center'
+                    }}>
+                        <p style={{ margin: 0, fontWeight: 'bold', color: '#f57c00' }}>
+                            ⚠️ Esta victoria BYE está pendiente de confirmación del organizador
+                        </p>
+                    </div>
+
+                    <div className="bye-info" style={{
+                        background: '#fff3cd',
+                        padding: '20px',
+                        borderRadius: '8px',
+                        textAlign: 'center'
+                    }}>
+                        <h3 style={{ margin: '0 0 10px 0' }}>⭐ Victoria Automática</h3>
+                        <p style={{ margin: '10px 0' }}>
+                            <strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong>
+                        </p>
+                        <p style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#f59e0b' }}>
+                            10 Puntos de Torneo
+                        </p>
+                        <p style={{ margin: '10px 0 0 0', fontSize: '0.9em', color: '#666' }}>
+                            Ronda: {partida.ronda}
+                        </p>
+                    </div>
+
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '15px',
+                        background: '#e3f2fd',
+                        borderRadius: '8px',
+                        textAlign: 'center'
+                    }}>
+                        <p style={{ margin: 0, fontSize: '0.95em', color: '#1976d2' }}>
+                            💡 Las partidas BYE otorgan automáticamente 10 puntos de torneo al jugador presente.
+                        </p>
+                        {esOrganizador && (
+                            <p style={{ margin: '10px 0 0 0', fontSize: '0.9em', color: '#666' }}>
+                                Como organizador, debes confirmar esta victoria para que sea definitiva.
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="modal-footer" style={{
+                    display: 'flex',
+                    gap: '10px',
+                    justifyContent: 'space-between',
+                    padding: '15px'
+                }}>
+                    <button 
+                        className="btn-secondary" 
+                        onClick={onClose}
+                        disabled={confirmando}
+                        style={{
+                            padding: '10px 20px',
+                            background: '#ccc',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: confirmando ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        Cerrar
+                    </button>
+                    
+                    {/* ✅ SOLO EL ORGANIZADOR PUEDE CONFIRMAR */}
+                    {esOrganizador && (
+                        <button 
+                            onClick={() => handleConfirmar(true)}
+                            disabled={confirmando}
+                            style={{
+                                padding: '10px 20px',
+                                background: confirmando ? '#ccc' : '#4caf50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: confirmando ? 'not-allowed' : 'pointer',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            {confirmando ? '⏳ Confirmando...' : '✅ Confirmar Victoria BYE'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
 
     // ✅ SI EL RESULTADO ESTÁ CONFIRMADO (SOLO LECTURA)
     if (resultadoConfirmado) {

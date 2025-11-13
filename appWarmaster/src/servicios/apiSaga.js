@@ -68,10 +68,9 @@ class TorneosSagaApi {
       body: torneoData,
     });
   }
-
-    //para cambiar el estado de los torneos
+  //metodo para que cambie el estado del torneo
   async cambiarEstadoTorneo(torneoId, estado) {
-    return this.request(`/${torneoId}/estado/${estado}`, {
+    return this.request(`/${torneoId}/estado`, { 
       method: 'PUT',
       body: { estado },
     });
@@ -130,6 +129,7 @@ async actualizarPago (torneoId, jugadorId, pagado){
 // ========================
 // // MÉTODOS DE PARTIDAS
 // ========================
+
 // Obtener TODAS las partidas de un torneo (con filtro opcional de ronda)
 async obtenerPartidasTorneo(torneoId, ronda) {
   const endpoint = ronda 
@@ -162,15 +162,26 @@ async obtenerPartidasTorneo(torneoId, ronda) {
     });
   }
 
-  async confirmarResultado(torneoId, partidaId, confirmar = true) {
+  async confirmarResultado(torneoId, partidaId, confirmar) {
   return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmar`, {
     method: 'PATCH',
     body: { confirmar }
   });
 }
 
-  async saveEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
-  return this.request(`/${torneoId}/emparejamientos`, {
+  async obtenerEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
+  return this.request(`/${torneoId}/obtenerEmparejamientos`, {
+    method: 'GET',
+    body: {
+      torneo_id: torneoId,
+      emparejamientos: emparejamientos,
+      ronda: ronda
+    }
+  });
+}
+
+ async guardarEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
+  return this.request(`/${torneoId}/guardarEmparejamientos`, {
     method: 'POST',
     body: {
       torneo_id: torneoId,
@@ -205,9 +216,11 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
   // ==================
 
   //clasificacion de los torneos
-  async obtenerClasificacionTorneo(torneoId) {
-    return this.request(`/${torneoId}/clasificacionTorneo`);
-  }
+  async obtenerClasificacion(torneoId) {
+  return this.request(`/${torneoId}/obtenerClasificacion`, {
+    method: 'GET'
+  });
+}
 
 //=======================================================================
 //=======================================================================

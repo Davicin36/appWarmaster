@@ -15,6 +15,8 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
     const [jugadores, setJugadores] = useState([]);
     const [emparejamientos, setEmparejamientos] = useState([]);
     const [partidasGuardadas, setPartidasGuardadas] = useState([]);
+    const [todasLasPartidas, setTodasLasPartidas] = useState([]); // ⬅️ NUEVO: todas las partidas del torneo
+    const [rondasExpandidas, setRondasExpandidas] = useState({}); // ⬅️ NUEVO: control de acordeones
     
     const [loading, setLoading] = useState(true);
     const [guardando, setGuardando] = useState(false);
@@ -76,7 +78,10 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
                 setJugadores([]);
             }
             
-            // Cargar partidas si el torneo tiene ronda actual
+            // Cargar TODAS las partidas del torneo (sin filtro de ronda)
+            await cargarTodasLasPartidas(dataTorneo.id);
+            
+            // Cargar partidas de la ronda actual
             if (dataTorneo.ronda_actual) {
                 await cargarPartidasRonda(dataTorneo.id, dataTorneo.ronda_actual);
             }
@@ -86,6 +91,17 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
             setError('No se pudieron cargar los datos del torneo');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ⬅️ NUEVA FUNCIÓN: Cargar todas las partidas del torneo
+    const cargarTodasLasPartidas = async (tId = torneoId) => {
+        try {
+            const partidas = await torneosSagaApi.obtenerPartidasTorneo(tId); // Sin parámetro de ronda
+            setTodasLasPartidas(partidas);
+            console.log('📊 Todas las partidas cargadas:', partidas);
+        } catch (err) {
+            console.error('Error al cargar todas las partidas:', err);
         }
     };
 
@@ -102,6 +118,26 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
         }
     };
 
+    // ⬅️ NUEVA FUNCIÓN: Agrupar partidas por ronda
+    const partidasPorRonda = () => {
+        const grupos = {};
+        todasLasPartidas.forEach(partida => {
+            if (!grupos[partida.ronda]) {
+                grupos[partida.ronda] = [];
+            }
+            grupos[partida.ronda].push(partida);
+        });
+        return grupos;
+    };
+
+    // ⬅️ NUEVA FUNCIÓN: Toggle acordeón de ronda
+    const toggleRonda = (ronda) => {
+        setRondasExpandidas(prev => ({
+            ...prev,
+            [ronda]: !prev[ronda]
+        }));
+    };
+
     const handleGenerarEmparejamientos = async () => {
         try {
             if (!torneoId) {
@@ -114,10 +150,30 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
                 return;
             }
 
+            // 🔥 CARGAR CLASIFICACIÓN ACTUALIZADA
+            console.log('📊 Cargando clasificación actualizada...');
+            const responseClasificacion = await torneosSagaApi.obtenerClasificacion(torneoId);
+            const clasificacion = responseClasificacion.data || responseClasificacion || [];
+            console.log('✅ Clasificación cargada:', clasificacion);
+            
+            // Combinar datos de jugadores con su clasificación
+            const jugadoresConPuntos = jugadores.map(j => {
+                const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
+                return {
+                    ...j,
+                    puntos_torneo: stats?.puntos_torneo || 0,
+                    puntos_victoria: stats?.puntos_victoria || 0,
+                    puntos_masacre: stats?.puntos_masacre || 0,
+                    partidas_jugadas: stats?.partidas_jugadas || 0
+                };
+            });
+            
+            console.log('📊 Jugadores con puntos:', jugadoresConPuntos);
+
             const nuevosEmparejamientos = await generarEmparejamientosSuizo(
                 torneoId, 
                 torneo.ronda_actual || 1,
-                jugadores
+                jugadoresConPuntos  // ⬅️ Pasar jugadores con puntos actualizados
             );
             
             console.log('🔍 DEBUG - Emparejamientos generados:', nuevosEmparejamientos);
@@ -156,18 +212,20 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
             
             if (!confirmar) return;
 
-            const emparejamientosFormateados = emparejamientos.map((emp, index) => {
-                const j1_id = emp.jugador1?.jugador_id || emp.jugador1?.id;
-                const j2_id = emp.jugador2 ? (emp.jugador2?.jugador_id || emp.jugador2?.id) : null;
-                
-                return {
-                    mesa: emp.mesa || index + 1,
-                    jugador1_id: j1_id,
-                    jugador2_id: j2_id,
-                    nombre_partida: nombreEscenario,
-                    ronda: torneo.ronda_actual
-                };
-            });
+                const emparejamientosFormateados = emparejamientos.map((emp, index) => {
+                    // ✅ Soportar ambos formatos: objeto completo o ID directo
+                    const j1_id = emp.jugador1_id || emp.jugador1?.jugador_id || emp.jugador1?.id;
+                    const j2_id = emp.jugador2_id || (emp.jugador2 ? (emp.jugador2?.jugador_id || emp.jugador2?.id) : null);
+
+                    return {
+                        mesa: emp.mesa || index + 1,
+                        jugador1_id: j1_id,
+                        jugador2_id: j2_id,
+                        es_bye: emp.es_bye || 0,  // ⬅️ IMPORTANTE: Incluir es_bye
+                        nombre_partida: nombreEscenario,
+                        ronda: torneo.ronda_actual,
+                    };
+                });
 
             const errores = [];
             emparejamientosFormateados.forEach((emp) => {
@@ -182,7 +240,7 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
                 return;
             }
 
-            await torneosSagaApi.saveEmparejamientosRondas(
+            await torneosSagaApi.guardarEmparejamientosRondas(
                 torneo.id,
                 emparejamientosFormateados,
                 torneo.ronda_actual
@@ -190,6 +248,7 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
 
             alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}\nEscenario: ${nombreEscenario}`);
             await cargarPartidasRonda();
+            await cargarTodasLasPartidas(); // ⬅️ Recargar todas las partidas
             
         } catch (err) {
             console.error('❌ Error completo al guardar:', err);
@@ -246,7 +305,7 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
     };
 
     const esBye = (partida) => {
-        return !partida.jugador2_nombre || !partida.jugador2_id || partida.resultado_ps === 'victoria_j1';
+        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye;
     };
 
     const abrirModalPartida = (partida) => {
@@ -255,15 +314,221 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
             return;
         }
 
-        if (esBye(partida)) {
-            alert('⚠️ Las partidas BYE no se pueden editar.\n\nLa victoria automática de 15 puntos ya está registrada.');
-            return;
-        }
-
+        // ✅ PERMITIR ABRIR MODAL PARA TODAS LAS PARTIDAS (incluido BYE)
+        // El modal decidirá qué mostrar según el tipo de partida
         setPartidaSeleccionada(partida);
         setModalAbierto(true);
     };
 
+    // ========== FUNCIONES DE CONFIRMACIÓN ==========
+
+    const confirmarPartida = async (partidaId, confirmar) => {
+        try {
+            await torneosSagaApi.confirmarResultado(torneo.id, partidaId, confirmar);
+            
+            alert(confirmar 
+                ? '✅ Resultado confirmado. Los puntos se han sumado a la clasificación.' 
+                : '⚠️ Resultado desconfirmado. Los puntos se han restado de la clasificación.'
+            );
+            
+            // Recargar partidas
+            await cargarPartidasRonda();
+            await cargarTodasLasPartidas(); // ⬅️ Recargar todas las partidas
+            
+        } catch (error) {
+            console.error('Error al confirmar resultado:', error);
+            alert(`❌ Error: ${error.message}`);
+        }
+    };
+
+    const confirmarTodasLasPartidas = async () => {
+        const partidasPendientes = partidasGuardadas.filter(
+            p => !p.resultado_confirmado && !esBye(p) && 
+                (p.puntos_victoria_j1 > 0 || p.puntos_victoria_j2 > 0)
+        );
+        
+        if (partidasPendientes.length === 0) {
+            alert('⚠️ No hay partidas pendientes de confirmar');
+            return;
+        }
+        
+        const confirmar = window.confirm(
+            `¿Confirmar ${partidasPendientes.length} partidas?\n\n` +
+            `Los puntos se sumarán a la clasificación definitivamente.`
+        );
+        
+        if (!confirmar) return;
+        
+        try {
+            let confirmadas = 0;
+            for (const partida of partidasPendientes) {
+                await torneosSagaApi.confirmarResultado(torneo.id, partida.id, true);
+                confirmadas++;
+            }
+            
+            alert(`✅ ${confirmadas} partidas confirmadas correctamente`);
+            await cargarPartidasRonda();
+            await cargarTodasLasPartidas(); // ⬅️ Recargar todas las partidas
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`❌ Error al confirmar partidas: ${error.message}`);
+        }
+    };
+
+    // ⬅️ NUEVO COMPONENTE: Renderizar partidas de una ronda
+    const renderPartidas = (partidas, esRondaActual = false) => {
+    return partidas.map((partida, index) => {
+        const partidaEsBye = esBye(partida);
+        const estaConfirmado = partida.resultado_confirmado;
+        const puedeEditar = esRondaActual && puedeEditarPartidas() && !partidaEsBye && !estaConfirmado;
+
+        return (
+            <div 
+                key={partida.id} 
+                className="emparejamiento-card" 
+                onClick={() => puedeEditar && abrirModalPartida(partida)}
+                style={{
+                    border: `2px solid ${estaConfirmado ? '#4caf50' : '#ff9800'}`,
+                    borderRadius: '10px',
+                    padding: '15px',
+                    background: estaConfirmado ? '#e8f5e9' : '#fff',
+                    cursor: puedeEditar ? 'pointer' : 'default',
+                    position: 'relative',
+                    transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                    if (puedeEditar) {
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (puedeEditar) {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                    }
+                }}
+            >
+                {puedeEditar && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: '#9c27b0',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75em',
+                        fontWeight: 'bold'
+                    }}>
+                        👆 Click para editar
+                    </div>
+                )}
+
+                {esOrganizador && esRondaActual && (
+                    <div 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(
+                                estaConfirmado 
+                                    ? '¿Desconfirmar este resultado?\n\nLos puntos se restarán de la clasificación.'
+                                    : (partidaEsBye 
+                                        ? '⭐ ¿Confirmar este BYE?\n\nSe sumarán 10 Puntos de Torneo a la clasificación.'
+                                        : '¿Confirmar este resultado?\n\nLos puntos se sumarán a la clasificación.')
+                            )) {
+                                confirmarPartida(partida.id, !estaConfirmado);
+                            }
+                        }}
+                        style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            background: estaConfirmado ? '#4caf50' : '#ff9800',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '5px',
+                            fontSize: '0.85em',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {estaConfirmado ? '✅ CONFIRMADO' : '⏳ PENDIENTE'}
+                    </div>
+                )}
+
+                <div className="mesa-numero" style={{
+                    background: estaConfirmado ? '#4caf50' : '#ff9800',
+                    color: 'white',
+                    padding: '5px 10px',
+                    borderRadius: '5px',
+                    fontWeight: 'bold',
+                    marginBottom: '10px',
+                    marginTop: esOrganizador && esRondaActual ? '35px' : '0',
+                    textAlign: 'center'
+                }}>
+                    Mesa {partida.mesa || index + 1}{partidaEsBye ? ' ⭐ BYE' : ''} - {estaConfirmado ? '✅ CONFIRMADA' : '⏳ PENDIENTE'}
+                </div>
+
+                <div className="enfrentamiento" style={{ marginBottom: '15px' }}>
+                    <div className="jugador" style={{ marginBottom: '10px' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
+                            {partida.jugador1_nombre}
+                        </div>
+                        <div style={{ color: '#666', fontSize: '0.9em' }}>
+                            PV: {partida.puntos_victoria_j1 || 0} | 
+                            PT: {partida.puntos_torneo_j1 || 0} | 
+                            PM: {partida.puntos_masacre_j1 || 0}
+                        </div>
+                    </div>
+
+                    <div className="vs" style={{ 
+                        fontSize: '1.2em', 
+                        fontWeight: 'bold', 
+                        margin: '10px 0',
+                        textAlign: 'center',
+                        color: '#666'
+                    }}>
+                        VS
+                    </div>
+
+                    {partida.jugador2_nombre ? (
+                        <div className="jugador">
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
+                                {partida.jugador2_nombre}
+                            </div>
+                            <div style={{ color: '#666', fontSize: '0.9em' }}>
+                                PV: {partida.puntos_victoria_j2 || 0} | 
+                                PT: {partida.puntos_torneo_j2 || 0} | 
+                                PM: {partida.puntos_masacre_j2 || 0}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="jugador bye" style={{ 
+                            background: '#fff3cd', 
+                            padding: '10px', 
+                            borderRadius: '5px',
+                            textAlign: 'center'
+                        }}>
+                            <div>⭐ BYE</div>
+                            <div style={{ fontSize: '0.9em' }}>Victoria automática - 10 PT</div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="escenario" style={{
+                    padding: '8px',
+                    background: '#f5f5f5',
+                    borderRadius: '5px',
+                    fontSize: '0.9em',
+                    textAlign: 'center'
+                }}>
+                    📋 {partida.nombre_partida || 'Escenario por definir'}
+                </div>
+            </div>
+        );
+    });
+};
     if (loading) {
         return (
             <div className="vista-emparejamientos">
@@ -287,7 +552,8 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
         );
     }
 
-    // ... (continúa desde la parte 1)
+    const grupos = partidasPorRonda();
+    const rondasAnteriores = Object.keys(grupos).filter(r => parseInt(r) < torneo.ronda_actual).sort((a, b) => b - a);
 
     return (
         <div className="vista-emparejamientos">
@@ -350,6 +616,30 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
                                 {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
                             </button>
                         )}
+
+                        {esOrganizador && partidasGuardadas.length > 0 && 
+                            partidasGuardadas.some(p => 
+                                !p.resultado_confirmado && 
+                                !esBye(p) && 
+                                (p.puntos_victoria_j1 > 0 || p.puntos_victoria_j2 > 0)
+                            ) && (
+                                <button 
+                                    onClick={confirmarTodasLasPartidas}
+                                    style={{
+                                        background: '#4caf50',
+                                        color: 'white',
+                                        padding: '10px 20px',
+                                        border: 'none',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                        fontSize: '1em',
+                                        fontWeight: 'bold'
+                                    }}
+                                >
+                                    ✅ Confirmar Todas
+                                </button>
+                            )
+                        }
 
                         {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
                             <button 
@@ -433,191 +723,141 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
                 <div className="empty-message">
                     <p>⚠️ Se necesitan al menos 2 jugadores para generar emparejamientos</p>
                 </div>
-            ) : partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
-                <div className="empty-message">
-                    <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
-                </div>
             ) : (
                 <>
-                    {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
-                        <div className="info-box" style={{
-                            background: '#e3f2fd',
-                            border: '1px solid #2196f3',
-                            padding: '10px',
-                            borderRadius: '5px',
-                            marginBottom: '15px'
-                        }}>
-                            <p>
-                                ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong> 
-                                {' '}Haz clic en "Guardar en BD" para crear las partidas en la base de datos.
-                            </p>
+                    {/* RONDA ACTUAL */}
+                    {partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
+                        <div className="empty-message">
+                            <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
                         </div>
-                    )}
+                    ) : (
+                        <>
+                            {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
+                                <div className="info-box" style={{
+                                    background: '#e3f2fd',
+                                    border: '1px solid #2196f3',
+                                    padding: '10px',
+                                    borderRadius: '5px',
+                                    marginBottom: '15px'
+                                }}>
+                                    <p>
+                                        ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong> 
+                                        {' '}Haz clic en "Guardar en BD" para crear las partidas en la base de datos.
+                                    </p>
+                                </div>
+                            )}
 
-                    <div className="emparejamientos-grid" style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                        gap: '20px'
-                    }}>
-                        {partidasGuardadas.length > 0 ? (
-                            partidasGuardadas.map((partida, index) => {
-                                const partidaEsBye = esBye(partida);
-                                const esPendiente = partida.resultado_ps === 'pendiente';
-                                const puedeEditar = puedeEditarPartidas() && !partidaEsBye;
-
-                                return (
-                                    <div 
-                                        key={partida.id} 
-                                        className="emparejamiento-card" 
-                                        onClick={() => puedeEditar && abrirModalPartida(partida)}
-                                        style={{
-                                            border: '2px solid #e0e0e0',
+                            <div className="emparejamientos-grid" style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                                gap: '20px',
+                                marginBottom: '30px'
+                            }}>
+                                {partidasGuardadas.length > 0 ? (
+                                    renderPartidas(partidasGuardadas, true)
+                                ) : (
+                                    emparejamientos.map((emp, index) => (
+                                        <div key={index} className="emparejamiento-card" style={{
+                                            border: '2px solid #2196f3',
                                             borderRadius: '10px',
                                             padding: '15px',
-                                            background: partidaEsBye 
-                                                ? '#fff3cd' 
-                                                : esPendiente 
-                                                    ? '#fff' 
-                                                    : '#f0f8f0',
-                                            cursor: puedeEditar ? 'pointer' : 'default',
-                                            position: 'relative',
-                                            transition: 'all 0.3s ease'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (puedeEditar) {
-                                                e.currentTarget.style.transform = 'translateY(-4px)';
-                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (puedeEditar) {
+                                            background: '#f5f5f5'
+                                        }}>
+                                            <div style={{
+                                                background: '#2196f3',
+                                                color: 'white',
+                                                padding: '5px 10px',
+                                                borderRadius: '5px',
+                                                fontWeight: 'bold',
+                                                marginBottom: '10px',
+                                                textAlign: 'center'
+                                            }}>
+                                                Mesa {emp.mesa || index + 1}
+                                            </div>
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <strong>{emp.jugador1?.nombre || emp.jugador1?.jugador_nombre}</strong>
+                                            </div>
+                                            <div style={{ textAlign: 'center', margin: '10px 0', fontWeight: 'bold' }}>VS</div>
+                                            <div>
+                                                <strong>{emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : '⭐ BYE'}</strong>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ⬅️ NUEVO: RONDAS ANTERIORES */}
+                    {rondasAnteriores.length > 0 && (
+                        <div style={{ marginTop: '40px' }}>
+                            <h3 style={{ 
+                                fontSize: '1.5em', 
+                                marginBottom: '20px',
+                                color: '#667eea'
+                            }}>
+                                📜 Rondas Anteriores
+                            </h3>
+                            
+                            {rondasAnteriores.map(ronda => {
+                                const partidasRonda = grupos[ronda] || [];
+                                const expandida = rondasExpandidas[ronda];
+                                
+                                return (
+                                    <div key={ronda} style={{ marginBottom: '15px' }}>
+                                        <div 
+                                            onClick={() => toggleRonda(ronda)}
+                                            style={{
+                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                color: 'white',
+                                                padding: '15px 20px',
+                                                borderRadius: '10px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                                            }}
+                                            onMouseLeave={(e) => {
                                                 e.currentTarget.style.transform = 'translateY(0)';
                                                 e.currentTarget.style.boxShadow = 'none';
-                                            }
-                                        }}
-                                    >
-                                        {puedeEditar && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '10px',
-                                                right: '10px',
-                                                background: '#9c27b0',
-                                                color: 'white',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                fontSize: '0.75em',
-                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            <div>
+                                                <strong style={{ fontSize: '1.2em' }}>
+                                                    Ronda {ronda}
+                                                </strong>
+                                                <span style={{ marginLeft: '15px', opacity: 0.9 }}>
+                                                    {partidasRonda.length} partidas
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '1.5em' }}>
+                                                {expandida ? '▼' : '▶'}
+                                            </div>
+                                        </div>
+                                        
+                                        {expandida && (
+                                            <div className="emparejamientos-grid" style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                                                gap: '20px',
+                                                marginTop: '15px',
+                                                padding: '15px',
+                                                background: '#f5f5f5',
+                                                borderRadius: '0 0 10px 10px'
                                             }}>
-                                                👆 Click para editar
+                                                {renderPartidas(partidasRonda, false)}
                                             </div>
                                         )}
-
-                                        <div className="mesa-numero" style={{
-                                            background: partidaEsBye 
-                                                ? '#ffc107' 
-                                                : esPendiente 
-                                                    ? '#ff9800' 
-                                                    : '#4caf50',
-                                            color: partidaEsBye ? '#000' : 'white',
-                                            padding: '5px 10px',
-                                            borderRadius: '5px',
-                                            fontWeight: 'bold',
-                                            marginBottom: '10px',
-                                            textAlign: 'center'
-                                        }}>
-                                            Mesa {partida.mesa || index + 1} - {
-                                                partidaEsBye 
-                                                    ? '⭐ BYE' 
-                                                    : esPendiente 
-                                                        ? '⏳ Pendiente' 
-                                                        : '✅ Completada'
-                                            }
-                                        </div>
-
-                                        <div className="enfrentamiento" style={{ marginBottom: '15px' }}>
-                                            <div className="jugador" style={{ marginBottom: '10px' }}>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
-                                                    {partida.jugador1_nombre}
-                                                </div>
-                                                <div style={{ color: '#666', fontSize: '0.9em' }}>
-                                                    PT: {partida.puntos_torneo_j1 || 0} | PM: {partida.puntos_masacre_j1 || 0}
-                                                </div>
-                                            </div>
-
-                                            <div className="vs" style={{ 
-                                                fontSize: '1.2em', 
-                                                fontWeight: 'bold', 
-                                                margin: '10px 0',
-                                                textAlign: 'center',
-                                                color: '#666'
-                                            }}>
-                                                VS
-                                            </div>
-
-                                            {partida.jugador2_nombre ? (
-                                                <div className="jugador">
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
-                                                        {partida.jugador2_nombre}
-                                                    </div>
-                                                    <div style={{ color: '#666', fontSize: '0.9em' }}>
-                                                        PT: {partida.puntos_torneo_j2 || 0} | PM: {partida.puntos_masacre_j2 || 0}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="jugador bye" style={{ 
-                                                    background: '#fff3cd', 
-                                                    padding: '10px', 
-                                                    borderRadius: '5px',
-                                                    textAlign: 'center'
-                                                }}>
-                                                    <div>⭐ BYE</div>
-                                                    <div style={{ fontSize: '0.9em' }}>Victoria automática - 15 PT</div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="escenario" style={{
-                                            padding: '8px',
-                                            background: '#f5f5f5',
-                                            borderRadius: '5px',
-                                            fontSize: '0.9em',
-                                            textAlign: 'center'
-                                        }}>
-                                            📋 {partida.nombre_partida || 'Escenario por definir'}
-                                        </div>
                                     </div>
                                 );
-                            })
-                        ) : (
-                            emparejamientos.map((emp, index) => (
-                                <div key={index} className="emparejamiento-card" style={{
-                                    border: '2px solid #2196f3',
-                                    borderRadius: '10px',
-                                    padding: '15px',
-                                    background: '#f5f5f5'
-                                }}>
-                                    <div style={{
-                                        background: '#2196f3',
-                                        color: 'white',
-                                        padding: '5px 10px',
-                                        borderRadius: '5px',
-                                        fontWeight: 'bold',
-                                        marginBottom: '10px',
-                                        textAlign: 'center'
-                                    }}>
-                                        Mesa {emp.mesa || index + 1}
-                                    </div>
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <strong>{emp.jugador1?.nombre || emp.jugador1?.jugador_nombre}</strong>
-                                    </div>
-                                    <div style={{ textAlign: 'center', margin: '10px 0', fontWeight: 'bold' }}>VS</div>
-                                    <div>
-                                        <strong>{emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : '⭐ BYE'}</strong>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                            })}
+                        </div>
+                    )}
                 </>
             )}
 
@@ -631,6 +871,7 @@ function VistaEmparejamientos({ torneoId: propTorneoId }) {
                     }}
                     onGuardar={() => {
                         cargarPartidasRonda();
+                        cargarTodasLasPartidas(); // ⬅️ Recargar todas las partidas
                         setModalAbierto(false);
                         setPartidaSeleccionada(null);
                     }}

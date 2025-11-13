@@ -79,7 +79,7 @@ app.listen(PORT, async () => {
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test API: http://localhost:${PORT}/api/test`);
-  console.log(`🏆 Torneos: http://localhost:${PORT}/api/torneosSaga`);
+  console.log(`🏆 Torneos: http://localhost:${PORT}/api/torneosSaga/obtenerTorneos`);
   console.log(`👤 Usuarios: http://localhost:${PORT}/api/usuarios`);
   console.log('='.repeat(50) + '\n');
   

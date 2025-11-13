@@ -11,8 +11,7 @@ const {
   errorResponse,
   successResponse,
   manejarErrorDB,
-  paginar,
-  organizarClasificacion
+  paginar
 } = require('../utils/helpers');
 
 const router = express.Router(); 
@@ -380,6 +379,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
   }
 });
 
+
 // ======ACTUALIZAR TORNEO=====
 
 router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_pdf'), async (req, res) => {
@@ -387,7 +387,8 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_p
     const { torneoId } = req.params;
     const { 
       nombre_torneo, 
-      rondas_max, 
+      rondas_max,
+      ronda_actual,  // ✅ AGREGADO
       epoca_torneo, 
       fecha_inicio, 
       fecha_fin, 
@@ -470,6 +471,11 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_p
     if (rondas_max !== undefined) {
       camposActualizar.push('rondas_max = ?');
       valores.push(rondas_max);
+    }
+    // ✅ AGREGADO - Soporte para ronda_actual
+    if (ronda_actual !== undefined) {
+      camposActualizar.push('ronda_actual = ?');
+      valores.push(ronda_actual);
     }
     if (epoca_torneo !== undefined) {
       camposActualizar.push('epoca_torneo = ?');
@@ -1044,15 +1050,13 @@ router.put('/:torneoId/estado', verificarToken, async (req, res) => {
     const { estado } = req.body;
     const userId = req.usuario.userId;
     
-    console.log(`📝 PUT /api/torneosSaga/${torneoId}/estado - Cambiar estado a: ${estado}`);
-    
     // Validar que se envió el estado
     if (!estado) {
       return res.status(400).json(errorResponse('El estado es requerido'));
     }
     
     // Validar estados permitidos
-    const estadosPermitidos = ['pendiente', 'en curso', 'finalizado'];
+    const estadosPermitidos = ['pendiente', 'en_curso', 'finalizado'];
     if (!estadosPermitidos.includes(estado)) {
       return res.status(400).json(
         errorResponse(`Estado no válido. Debe ser: ${estadosPermitidos.join(', ')}`)
@@ -1099,7 +1103,7 @@ router.put('/:torneoId/estado', verificarToken, async (req, res) => {
     
     // Actualizar el estado
     await connection.execute(
-      'UPDATE torneo_saga SET estado = ?, updated_at = NOW() WHERE id = ?',
+      'UPDATE torneo_saga SET estado = ?  WHERE id = ?',
       [estado, torneoId]
     );
     
@@ -1232,7 +1236,7 @@ router.get('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
 
 router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (req, res) => {
   try {
-    const { partidaId, torneoId } =req.params
+    const { partidaId, torneoId } = req.params;
     const { 
       puntos_partida_j1,
       puntos_partida_j2,
@@ -1257,7 +1261,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
     
-       // Verificar que la partida existe
+    // Verificar que la partida existe
     const [partida] = await pool.execute(`
       SELECT jugador1_id, jugador2_id, resultado_ps, torneo_id, ronda, resultado_confirmado
       FROM partidas_saga 
@@ -1270,7 +1274,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
     
-   // ✅ CORREGIDO: Extraer los IDs de jugadores
+    // ✅ Extraer los IDs de jugadores
     const jugador1_id = partida[0].jugador1_id;
     const jugador2_id = partida[0].jugador2_id;
     
@@ -1281,25 +1285,13 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
 
-    //verificar que el resultado no este confirmado
+    // Verificar que el resultado no esté confirmado
     if (partida[0].resultado_confirmado) {
       return res.status(400).json(
         errorResponse('No se puede actualizar una partida con resultado confirmado. El organizador debe desconfirmar el resultado primero.')
       );
     }
     
-    // Verificar que no existe ya una partida entre estos jugadores en esta ronda
-    const [partidaExistente] = await pool.execute(`
-      SELECT id FROM partidas_saga 
-      WHERE torneo_id = ? AND ronda = ? AND 
-      ((jugador1_id = ? AND jugador2_id = ?) OR (jugador1_id = ? AND jugador2_id = ?))
-    `, [torneo_id, ronda || 1, jugador1_id, jugador2_id, jugador2_id, jugador1_id]);
-    
-    if (partidaExistente.length > 0) {
-      return res.status(400).json(
-        errorResponse('Ya existe una partida entre estos jugadores en esta ronda')
-      );
-    }
     // Validar que primer_jugador sea uno de los dos jugadores
     if (primer_jugador && primer_jugador !== jugador1_id && primer_jugador !== jugador2_id) {
       return res.status(400).json(
@@ -1316,21 +1308,21 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     if (puntosPartidaJ1 > puntosPartidaJ2) {
       puntosVictoriaJ1 = 3;
       puntosVictoriaJ2 = 0;
-      resultado = 'victoria_j1'
+      resultado = 'victoria_j1';
     } else if (puntosPartidaJ2 > puntosPartidaJ1) {
       puntosVictoriaJ1 = 0;
       puntosVictoriaJ2 = 3;
-      resultado = 'victoria_j2'
+      resultado = 'victoria_j2';
     } else {
       puntosVictoriaJ1 = 1;
       puntosVictoriaJ2 = 1;
-      resultado = 'empate'
+      resultado = 'empate';
     }
 
     const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
     const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
     
-    // Determinar quién fue el primer jugador (por defecto jugador1 si primer_jugador es true)
+    // Determinar quién fue el primer jugador
     const primerJugadorId = primer_jugador || null;
     
     const puntosTorneo = calcularPuntosTorneo(
@@ -1340,9 +1332,9 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       primerJugadorId
     );
     
-    // Registrar la partida
-   await pool.execute(`
-     UPDATE partidas_saga SET
+    // ✅ Actualizar la partida con la sintaxis SQL correcta
+    await pool.execute(`
+      UPDATE partidas_saga SET
         puntos_victoria_j1 = ?, 
         puntos_victoria_j2 = ?,
         puntos_torneo_j1 = ?, 
@@ -1350,26 +1342,26 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         puntos_masacre_j1 = ?, 
         puntos_masacre_j2 = ?,
         warlord_muerto_j1 = ?, 
-        warlord_muerto_j2 =?,
+        warlord_muerto_j2 = ?,
         resultado_ps = ?, 
-        primer_jugador = ?
+        primer_jugador = ?,
         resultado_confirmado = FALSE
-      WHERE id=?
+      WHERE id = ?
     `, [
       puntosVictoriaJ1, 
       puntosVictoriaJ2,
-      puntosTorneo.j1, // ← Puntos calculados automáticamente
-      puntosTorneo.j2, // ← Puntos calculados automáticamente
+      puntosTorneo.j1,
+      puntosTorneo.j2,
       puntosMasacreJ1, 
       puntosMasacreJ2,
       warlord_muerto_j1 || false, 
       warlord_muerto_j2 || false,
       resultado, 
-      primer_jugador || false,
+      primerJugadorId,
       partidaId
     ]);
     
-    res.status(201).json(
+    res.status(200).json(
       successResponse('Partida registrada exitosamente (pendiente de confirmación)', {
         partidaId,
         resultado,
@@ -1377,11 +1369,11 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
           jugador1: puntosTorneo.j1,
           jugador2: puntosTorneo.j2
         },
-        puntosVictoria :{
+        puntosVictoria: {
           jugador1: puntosVictoriaJ1,
           jugador2: puntosVictoriaJ2
         },
-        puntosMasacre :{
+        puntosMasacre: {
           jugador1: puntosMasacreJ1,
           jugador2: puntosMasacreJ2
         }
@@ -1395,74 +1387,202 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
   }
 });
 
-// ====== CONFIRMAR RESULTADO POR ORGANIZADOR========
+// ====== CONFIRMAR RESULTADO POR ORGANIZADOR ========
 
 router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  
   try {
     const { torneoId, partidaId } = req.params;
     const { confirmar } = req.body; // true para confirmar, false para desconfirmar
     
+    await connection.beginTransaction();
+    
     // Verificar que el usuario es el organizador
-    const [torneo] = await pool.execute(
+    const [torneo] = await connection.execute(
       'SELECT created_by FROM torneo_saga WHERE id = ?',
       [torneoId]
     );
     
     if (torneo.length === 0) {
+      await connection.rollback();
       return res.status(404).json(errorResponse('Torneo no encontrado'));
     }
     
     if (torneo[0].created_by !== req.userId) {
+      await connection.rollback();
       return res.status(403).json(errorResponse('Solo el organizador puede confirmar resultados'));
     }
     
-    // Verificar que la partida existe
-    const [partida] = await pool.execute(
-      'SELECT id, jugador2_id FROM partidas_saga WHERE id = ? AND torneo_id = ?',
+    // Obtener datos completos de la partida
+    const [partida] = await connection.execute(
+      `SELECT 
+        id, 
+        jugador1_id, 
+        jugador2_id,
+        puntos_victoria_j1, 
+        puntos_victoria_j2,
+        puntos_torneo_j1, 
+        puntos_torneo_j2,
+        puntos_masacre_j1, 
+        puntos_masacre_j2,
+        warlord_muerto_j1, 
+        warlord_muerto_j2,
+        resultado_confirmado,
+        es_bye
+       FROM partidas_saga 
+       WHERE id = ? AND torneo_id = ?`,
       [partidaId, torneoId]
     );
     
     if (partida.length === 0) {
+      await connection.rollback();
       return res.status(404).json(errorResponse('Partida no encontrada'));
     }
     
-    // No permitir confirmar partidas BYE
-    if (!partida[0].jugador2_id) {
-      return res.status(400).json(errorResponse('Las partidas BYE no requieren confirmación'));
+    const partidaData = partida[0];
+    const esBye = !partidaData.jugador2_id || partidaData.es_bye;
+    
+    // Evitar doble confirmación/desconfirmación
+    if (confirmar && partidaData.resultado_confirmado) {
+      await connection.rollback();
+      return res.status(400).json(errorResponse('Esta partida ya está confirmada'));
     }
     
-    // Actualizar estado de confirmación
-    await pool.execute(
+    if (!confirmar && !partidaData.resultado_confirmado) {
+      await connection.rollback();
+      return res.status(400).json(errorResponse('Esta partida no está confirmada'));
+    }
+    
+    if (confirmar) {
+      // ✅ CONFIRMAR: Sumar puntos a la clasificación
+      
+      // Jugador 1 (siempre existe)
+      await connection.execute(`
+        INSERT INTO clasificacion_jugadores_saga 
+          (torneo_id, jugador_id, partidas_jugadas, puntos_victoria_totales, puntos_torneo_totales, 
+           puntos_masacre_totales, warlord_muerto_totales)
+        VALUES (?, ?, 1, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          partidas_jugadas = partidas_jugadas + 1,
+          puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
+          puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales),
+          puntos_masacre_totales = puntos_masacre_totales + VALUES(puntos_masacre_totales),
+          warlord_muerto_totales = warlord_muerto_totales + VALUES(warlord_muerto_totales)
+      `, [
+        torneoId,
+        partidaData.jugador1_id,
+        partidaData.puntos_victoria_j1 || 0,
+        partidaData.puntos_torneo_j1 || 0,
+        partidaData.puntos_masacre_j1 || 0,
+        partidaData.warlord_muerto_j1 ? 1 : 0
+      ]);
+      
+      // Jugador 2 (solo si no es BYE)
+      if (!esBye) {
+        await connection.execute(`
+          INSERT INTO clasificacion_jugadores_saga 
+            (torneo_id, jugador_id, partidas_jugadas, puntos_victoria_totales, puntos_torneo_totales, 
+             puntos_masacre_totales, warlord_muerto_totales)
+          VALUES (?, ?, 1, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            partidas_jugadas = partidas_jugadas + 1,
+            puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
+            puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales),
+            puntos_masacre_totales = puntos_masacre_totales + VALUES(puntos_masacre_totales),
+            warlord_muerto_totales = warlord_muerto_totales + VALUES(warlord_muerto_totales)
+        `, [
+          torneoId,
+          partidaData.jugador2_id,
+          partidaData.puntos_victoria_j2 || 0,
+          partidaData.puntos_torneo_j2 || 0,
+          partidaData.puntos_masacre_j2 || 0,
+          partidaData.warlord_muerto_j2 ? 1 : 0
+        ]);
+      }
+      
+      console.log(`✅ Puntos sumados a clasificación para partida ${partidaId}${esBye ? ' (BYE)' : ''}`);
+      
+    } else {
+      // ❌ DESCONFIRMAR: Restar puntos de la clasificación
+      
+      // Jugador 1 (siempre existe)
+      await connection.execute(`
+        UPDATE clasificacion_jugadores_saga 
+        SET 
+          partidas_jugadas = GREATEST(0, partidas_jugadas - 1),
+          puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
+          puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?),
+          puntos_masacre_totales = GREATEST(0, puntos_masacre_totales - ?),
+          warlord_muerto_totales = GREATEST(0, warlord_muerto_totales - ?)
+        WHERE torneo_id = ? AND jugador_id = ?
+      `, [
+        partidaData.puntos_victoria_j1 || 0,
+        partidaData.puntos_torneo_j1 || 0,
+        partidaData.puntos_masacre_j1 || 0,
+        partidaData.warlord_muerto_j1 ? 1 : 0,
+        torneoId,
+        partidaData.jugador1_id
+      ]);
+      
+      // Jugador 2 (solo si no es BYE)
+      if (!esBye) {
+        await connection.execute(`
+          UPDATE clasificacion_jugadores_saga 
+          SET 
+            partidas_jugadas = GREATEST(0, partidas_jugadas - 1),
+            puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
+            puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?),
+            puntos_masacre_totales = GREATEST(0, puntos_masacre_totales - ?),
+            warlord_muerto_totales = GREATEST(0, warlord_muerto_totales - ?)
+          WHERE torneo_id = ? AND jugador_id = ?
+        `, [
+          partidaData.puntos_victoria_j2 || 0,
+          partidaData.puntos_torneo_j2 || 0,
+          partidaData.puntos_masacre_j2 || 0,
+          partidaData.warlord_muerto_j2 ? 1 : 0,
+          torneoId,
+          partidaData.jugador2_id
+        ]);
+      }
+    }
+   
+    // Actualizar estado de confirmación de la partida
+    await connection.execute(
       'UPDATE partidas_saga SET resultado_confirmado = ? WHERE id = ?',
-      [confirmar ? true : false, partidaId]
+      [confirmar, partidaId]
     );
+    
+    await connection.commit();
     
     res.json(
       successResponse(
-        confirmar ? 'Resultado confirmado' : 'Resultado desconfirmado', 
+        confirmar 
+          ? `Resultado confirmado y clasificación actualizada${esBye ? ' (BYE)' : ''}`
+          : `Resultado desconfirmado y clasificación actualizada${esBye ? ' (BYE)' : ''}`, 
         { 
           partidaId, 
-          confirmado: confirmar 
+          confirmado: confirmar,
+          esBye 
         }
       )
     );
     
   } catch (error) {
+    await connection.rollback();
     console.error('Error al confirmar resultado:', error);
     res.status(500).json(errorResponse('Error al confirmar resultado'));
+  } finally {
+    connection.release();
   }
 });
 
-/// ======= GUARDAR EMPAREJAMIENTOS DE RONDA =======
+// ======= OBTENER EMPAREJAMIENTOS DE RONDA (GET) =======
 
-router.get('/:torneoId/partidasTorneoSaga', verificarToken, async (req, res) => {
+router.get('/:torneoId/obtenerEmparejamientos', verificarToken, async (req, res) => {
   try {
     const { torneoId } = req.params;
     const { ronda } = req.query;
-    
-    console.log('\n🔍 ==================== INICIO ====================');
-    console.log('📊 torneoId:', torneoId, 'tipo:', typeof torneoId);
-    console.log('📊 ronda:', ronda, 'tipo:', typeof ronda);
     
     let whereClause = 'WHERE ps.torneo_id = ?';
     let params = [torneoId];
@@ -1471,19 +1591,7 @@ router.get('/:torneoId/partidasTorneoSaga', verificarToken, async (req, res) => 
       whereClause += ' AND ps.ronda = ?';
       params.push(ronda);
     }
-    
-    // CONSULTA MÁS SIMPLE POSIBLE PRIMERO
-    console.log('\n📝 Ejecutando consulta SIN JOINs...');
-    const querySinJoins = `SELECT * FROM partidas_saga ${whereClause}`;
-    console.log('Query:', querySinJoins);
-    console.log('Params:', params);
-    
-    const [partidasSinJoins] = await pool.execute(querySinJoins, params);
-    console.log(`✅ Partidas SIN JOINs: ${partidasSinJoins.length}`);
-    console.log('IDs:', partidasSinJoins.map(p => p.id));
-    
-    // AHORA CON JOINS
-    console.log('\n📝 Ejecutando consulta CON JOINs...');
+
     const queryConJoins = `
       SELECT 
         ps.*,
@@ -1499,20 +1607,6 @@ router.get('/:torneoId/partidasTorneoSaga', verificarToken, async (req, res) => 
     `;
     
     const [partidasConJoins] = await pool.execute(queryConJoins, params);
-    console.log(`✅ Partidas CON JOINs: ${partidasConJoins.length}`);
-    console.log('IDs:', partidasConJoins.map(p => p.id));
-    
-    if (partidasSinJoins.length !== partidasConJoins.length) {
-      console.error('⚠️ DISCREPANCIA: Los JOINs están filtrando filas!');
-      console.error(`Sin JOINs: ${partidasSinJoins.length}, Con JOINs: ${partidasConJoins.length}`);
-    }
-    
-    console.log('\n📊 Detalle de cada partida:');
-    partidasConJoins.forEach(p => {
-      console.log(`  ID: ${p.id} | Mesa: ${p.mesa} | J1: ${p.jugador1_id} | J2: ${p.jugador2_id} | BYE: ${p.es_bye}`);
-    });
-    
-    console.log('🔍 ==================== FIN ====================\n');
     
     res.json(partidasConJoins);
     
@@ -1520,156 +1614,111 @@ router.get('/:torneoId/partidasTorneoSaga', verificarToken, async (req, res) => 
     console.error('❌ ERROR COMPLETO:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
-      stack: error.stack
+      message: error.message
     });
   }
 });
 
-// ======= ACTUALIZAR PARTIDA======
+// ======= GUARDAR EMPAREJAMIENTOS DE RONDA (POST) =======
 
-router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (req, res) => {
+router.post('/:torneoId/guardarEmparejamientos', verificarToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  
   try {
-    const { partidaId, torneoId } =req.params
-    const { 
-      puntos_partida_j1,
-      puntos_partida_j2,
-      puntos_masacre_j1,
-      puntos_masacre_j2,
-      warlord_muerto_j1,
-      warlord_muerto_j2,
-      primer_jugador
-    } = req.body;
+    const { torneoId } = req.params;
+    const { emparejamientos, ronda } = req.body;
     
-    // Validar campos requeridos
-    const camposFaltantes = validarCamposRequeridos(req.body, [
-      'puntos_partida_j1',
-      'puntos_partida_j2',
-      'puntos_masacre_j1',
-      'puntos_masacre_j2'
-    ]);
-    
-    if (camposFaltantes.length > 0) {
-      return res.status(400).json(
-        errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
-      );
+    if (!emparejamientos || !Array.isArray(emparejamientos)) {
+      throw new Error('emparejamientos debe ser un array');
     }
     
-       // Verificar que la partida existe
-    const [partida] = await pool.execute(`
-      SELECT jugador1_id, jugador2_id, resultado_ps 
-      FROM partidas_saga 
-      WHERE id = ? AND torneo_id = ?
-    `, [partidaId, torneoId]);
-    
-    if (partida.length === 0) {
-      return res.status(404).json(
-        errorResponse('Partida no encontrada')
-      );
+    if (!ronda) {
+      throw new Error('ronda es requerida');
     }
     
-    // ✅ CORREGIDO: Extraer los IDs de jugadores
-    const jugador1_id = partida[0].jugador1_id;
-    const jugador2_id = partida[0].jugador2_id;
+    await connection.beginTransaction();
     
-    // ✅ Verificar que no sea una partida BYE
-    if (!jugador2_id || partida[0].resultado_ps === 'victoria_j1') {
-      return res.status(400).json(
-        errorResponse('No se puede actualizar una partida BYE. La victoria automática ya está registrada.')
-      );
-    }
-    
-    // Validar que primer_jugador sea uno de los dos jugadores
-    if (primer_jugador && primer_jugador !== jugador1_id && primer_jugador !== jugador2_id) {
-      return res.status(400).json(
-        errorResponse('El primer jugador debe ser uno de los dos jugadores de la partida')
-      );
-    }
-
-    // Calcular resultado basado en puntos de victoria
-    const puntosPartidaJ1 = parseInt(puntos_partida_j1) || 0;
-    const puntosPartidaJ2 = parseInt(puntos_partida_j2) || 0;
-
-    let puntosVictoriaJ1, puntosVictoriaJ2, resultado;
-    
-    if (puntosPartidaJ1 > puntosPartidaJ2) {
-      puntosVictoriaJ1 = 3;
-      puntosVictoriaJ2 = 0;
-      resultado = 'victoria_j1'
-    } else if (puntosPartidaJ2 > puntosPartidaJ1) {
-      puntosVictoriaJ1 = 0;
-      puntosVictoriaJ2 = 3;
-      resultado = 'victoria_j2'
-    } else {
-      puntosVictoriaJ1 = 1;
-      puntosVictoriaJ2 = 1;
-      resultado = 'empate'
-    }
-
-    const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
-    const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
-    
-    // Determinar quién fue el primer jugador (por defecto jugador1 si primer_jugador es true)
-    const primerJugadorId = primer_jugador || null;
-    
-    const puntosTorneo = calcularPuntosTorneo(
-      puntosPartidaJ1, 
-      puntosPartidaJ2, 
-      jugador1_id, 
-      primerJugadorId
+    // 1. Eliminar emparejamientos existentes de esta ronda
+    await connection.execute(
+      'DELETE FROM partidas_saga WHERE torneo_id = ? AND ronda = ?',
+      [torneoId, ronda]
     );
+    console.log('✅ Emparejamientos anteriores eliminados');
     
-    // Registrar la partida
-   await pool.execute(`
-     UPDATE partidas_saga SET
-        puntos_victoria_j1 = ?, 
-        puntos_victoria_j2 = ?,
-        puntos_torneo_j1 = ?, 
-        puntos_torneo_j2 = ?,
-        puntos_masacre_j1 = ?, 
-        puntos_masacre_j2 = ?,
-        warlord_muerto_j1 = ?, 
-        warlord_muerto_j2 =?,
-        resultado_ps = ?, 
-        primer_jugador = ?
-      WHERE id=?
-    `, [
-      puntosVictoriaJ1, 
-      puntosVictoriaJ2,
-      puntosTorneo.j1, // ← Puntos calculados automáticamente
-      puntosTorneo.j2, // ← Puntos calculados automáticamente
-      puntosMasacreJ1, 
-      puntosMasacreJ2,
-      warlord_muerto_j1 || false, 
-      warlord_muerto_j2 || false,
-      resultado, 
-      primer_jugador || false,
-      partidaId
-    ]);
+    // 2. Insertar nuevos emparejamientos
+    for (const partida of emparejamientos) {
+      const jugador1_id = partida.jugador1_id;
+      const jugador2_id = partida.jugador2_id || null;
+      const es_bye = !jugador2_id;
+      
+      const insertQuery = `
+        INSERT INTO partidas_saga (
+          torneo_id, 
+          jugador1_id, 
+          jugador2_id, 
+          ronda, 
+          mesa, 
+          nombre_partida,
+          es_bye,
+          resultado_ps,
+          puntos_victoria_j1,
+          puntos_victoria_j2,
+          puntos_torneo_j1,
+          puntos_torneo_j2,
+          puntos_masacre_j1,
+          puntos_masacre_j2,
+          resultado_confirmado
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      // Si es BYE, el jugador1 obtiene victoria automática con 15 puntos de torneo
+      await connection.execute(insertQuery, [
+        torneoId,
+        jugador1_id,
+        jugador2_id,
+        ronda,
+        partida.mesa || null,
+        partida.nombre_partida || 'Partida sin nombre',
+        es_bye,
+        es_bye ? 'victoria_j1' : 'pendiente',
+        es_bye ? 3 : 0,  // puntos_victoria_j1
+        0,                 // puntos_victoria_j2
+        es_bye ? 10 : 0,  // puntos_torneo_j1 (BYE = 10 PT)
+        0,                 // puntos_torneo_j2
+        0,                 // puntos_masacre_j1
+        0,                 // puntos_masacre_j2
+       false 
+      ]);
+      
+      console.log(`✅ Partida insertada: Mesa ${partida.mesa}, J1: ${jugador1_id}, J2: ${jugador2_id || 'BYE'}`);
+    }
     
-    res.status(201).json(
-      successResponse('Partida registrada exitosamente', {
-        partidaId,
-        resultado,
-        puntosTorneo: {
-          jugador1: puntosTorneo.j1,
-          jugador2: puntosTorneo.j2
-        },
-        puntosVictoria :{
-          jugador1: puntosVictoriaJ1,
-          jugador2: puntosVictoriaJ2
-        },
-        puntosMasacre :{
-          jugador1: puntosMasacreJ1,
-          jugador2: puntosMasacreJ2
-        }
-      })
+    // 3. Actualizar ronda_actual del torneo
+    await connection.execute(
+      'UPDATE torneo_saga SET ronda_actual = ? WHERE id = ?',
+      [ronda, torneoId]
     );
+    console.log('✅ Ronda actual actualizada a:', ronda);
+    
+    await connection.commit();
+    console.log('💾 ==================== FIN GUARDADO ====================\n');
+    
+    res.json({
+      success: true,
+      message: 'Emparejamientos guardados correctamente',
+      ronda: ronda,
+      total: emparejamientos.length
+    });
     
   } catch (error) {
-    console.error('Error al registrar partida:', error);
-    const mensaje = manejarErrorDB(error);
-    res.status(500).json(errorResponse(mensaje));
+    await connection.rollback();
+    console.error('❌ ERROR al guardar emparejamientos:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  } finally {
+    connection.release();
   }
 });
 
@@ -1723,8 +1772,6 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId/primer-jugador/:jugadorId',
     const { partidaId, torneoId } = req.params; // id de la partida y del torneo
     const { jugadorId } = req.body; // id del jugador que clicó
 
-    console.log(`📝 PUT /api/partidasTorneoSaga/${torneoId}/partidasTorneoSaga/${partidaId}/primer-jugador - Jugador: ${jugadorId}`);
-
     // Validación de datos
     if (!jugadorId) {
       return res.status(400).json(
@@ -1758,8 +1805,6 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId/primer-jugador/:jugadorId',
       "UPDATE partidas_saga SET primer_jugador = ? WHERE id = ?",
       [jugadorId, partidaId]
     );
-
-    console.log(`✅ Primer jugador actualizado correctamente en partida ${partidaId}`);
     
     res.json(
       successResponse('Primer jugador registrado correctamente', {
@@ -1776,75 +1821,49 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId/primer-jugador/:jugadorId',
   }
 });
 
-//======OBTENER CLASIFICACION DEL TORNEO CON ACTUALIZACIONES======
 
-router.get('/:torneoId/clasificacionTorneo', async (req, res) => {
-  const { torneoId } =req.params;
-   console.log(`📥 GET /api/torneosSaga/${torneoId}/clasificacionTorneo`);
+//=======OBTENER CLASIFICACION=========
+
+router.get('/:torneoId/obtenerClasificacion', async (req, res) =>{
 
   try {
-  const [jugadores] = await pool.execute(`
-      SELECT 
-        jts.id,
-        jts.jugador_id,
-        u.nombre,
-        u.apellidos AS apellido,
-        u.club,
-        jts.faccion,
-        jts.puntos_victoria,
-        jts.puntos_torneo,
-        jts.puntos_masacre,
-        jts.warlord_muerto
-      FROM jugador_torneo_saga jts
-      INNER JOIN usuarios u ON jts.jugador_id = u.id
-      WHERE jts.torneo_id = ?
-    `, [torneoId]);
 
-    if (jugadores.length === 0) {
-      return res.json(
-        successResponse('No hay jugadores inscritos en este torneo', [])
-      );
-    }
+     const { torneoId } = req.params;
+        
+        const [clasificacion] = await pool.execute(`
+            SELECT 
+                cjs.id,
+                cjs.jugador_id,
+                u.nombre as jugador_nombre,
+                u.apellidos as jugador_apellidos,
+                u.club,
+                jts.faccion,
+                COALESCE(cjs.partidas_jugadas, 0) as partidas_jugadas,
+                COALESCE(cjs.puntos_victoria_totales, 0) as puntos_victoria_totales,
+                COALESCE(cjs.puntos_torneo_totales, 0) as puntos_torneo_totales,
+                COALESCE(cjs.puntos_masacre_totales, 0) as puntos_masacre_totales,
+                COALESCE(cjs.warlord_muerto_totales, 0) as warlord_muerto_totales
+            FROM clasificacion_jugadores_saga cjs
+            INNER JOIN usuarios u ON cjs.jugador_id = u.id
+            INNER JOIN jugador_torneo_saga jts 
+              ON jts.jugador_id = cjs.jugador_id 
+              AND jts.torneo_id = cjs.torneo_id 
+            WHERE cjs.torneo_id = ?
+        `, [torneoId]);
 
-    const [partidas] = await pool.execute(`
-      SELECT
-        jugador1_id,
-        jugador2_id,
-        puntos_victoria_j1,
-        puntos_victoria_j2,
-        puntos_torneo_j1,
-        puntos_torneo_j2,
-        puntos_masacre_j1,
-        puntos_masacre_j2,
-        warlord_muerto_j1,
-        warlord_muerto_j2
-      FROM partidas_saga
-      WHERE torneo_id = ?
-      `, [torneoId])
+        res.json(successResponse('La clasificación obtenida es: ',  clasificacion))
 
-      if(partidas.length === 0){
-        return res.json (
-          successResponse('No hay partidas anotadas en este torneo', [])
-        )
-      }
-
-      const clasificacionOrdenada = organizarClasificacion(jugadores, partidas)
-
-      res.json(
-          successResponse('Clasificación obtenida exitosamente', clasificacionOrdenada)
-      )
-      
-
-  }catch (error){
-    console.error('Error al obtener la clasificación', error)
-    const mensaje = manejarErrorDB (error)
-    res.status(500).json(errorResponse(mensaje))
+  }catch(error){
+        console.error('❌ Error COMPLETO al obtener la clasificación:', error);
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        res.status(500).json(errorResponse('Error al obtener la clasificación'));
   }
 })
 
 //===============================================================================
 //===============================================================================
-// 
+
 // =====DESCARGAR PDF DE BASES DEL TORNEO=====
 
 router.get('/:torneoId/bases-pdf', async (req, res) => {

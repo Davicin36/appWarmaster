@@ -173,20 +173,21 @@ function Principal() {
                                                     🔧 Administrar
                                                 </button>
                                             )}
-                                           <button 
-                                                className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
-                                                onClick={() => {
-                                                    if (torneo.usuario_inscrito) {
-                                                        // ✅ Si ya está inscrito, ir a editar inscripción
-                                                        navigate(`/torneosSaga/${torneo.id}/editar-inscripcion`);
-                                                    } else {
-                                                        // Si no está inscrito, proceso normal
-                                                        apuntarseATorneo(torneo.id);
-                                                    }
-                                                }}
-                                            >
-                                                {torneo.usuario_inscrito ? '✏️ Administrar Inscripción' : '✅ Inscribirse'}
-                                        </button>
+                                            {/* ✅ Mostrar botón SOLO en fase de inscripción */}
+                                            {torneo.estado === 'pendiente' && (
+                                                <button 
+                                                    className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
+                                                    onClick={() => {
+                                                        if (torneo.usuario_inscrito) {
+                                                            navigate(`/torneosSaga/${torneo.id}/editar-inscripcion`);
+                                                        } else {
+                                                            apuntarseATorneo(torneo.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    {torneo.usuario_inscrito ? '✏️ Administrar Inscripción' : '✅ Inscribirse'}
+                                                </button>
+                                            )}
 
                                         <button 
                                             className="btn-ver-detalles"
@@ -206,6 +207,7 @@ function Principal() {
             <section>
                 <img src="public/warmasterRevolution.webp" alt="logo de WARMASTER"  />
                 <p>Consulta los torneos de WARMASTER en la Península.</p>
+                <strong><p>PROXIMAMENTE</p></strong>
 
                 {loading ? (
                     <p className="loading-message">⏳ Cargando torneos...</p>
@@ -219,6 +221,7 @@ function Principal() {
              <section>
                 <img src="public/logoFow.webp" alt="logo de Flames of War"  />
                 <p>Consulta los torneos de Flames of War en la Península.</p>
+                <strong><p>PROXIMAMENTE</p></strong>
 
                 {loading ? (
                     <p className="loading-message">⏳ Cargando torneos...</p>

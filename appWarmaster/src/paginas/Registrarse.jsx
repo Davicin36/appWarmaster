@@ -10,8 +10,11 @@ function Registrarse() {
         nombre_alias: "",
         club: "",
         email: "",
+        localidad: "",
+        pais: "",
         password: "",
         confirmPassword: ""
+     
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -176,6 +179,36 @@ function Registrarse() {
                         required
                         disabled={loading}
                         autoComplete="email"
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="localidad">Localidad*:</label>
+                    <input 
+                        type="text" 
+                        id="localidad"
+                        name="localidad"
+                        value={formData.localidad}
+                        onChange={handleChange}
+                        placeholder="Madrid, Barcelona,..."
+                        required
+                        disabled={loading}
+                        autoComplete="localidad"
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="pais">Pais*:</label>
+                    <input 
+                        type="text" 
+                        id="pais"
+                        name="pais"
+                        value={formData.pais}
+                        onChange={handleChange}
+                        placeholder="España, Portugal,..."
+                        required
+                        disabled={loading}
+                        autoComplete="pais"
                     />
                 </div>
                 
