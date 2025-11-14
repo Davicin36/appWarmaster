@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 import { useAuth } from '../servicios/AuthContext';
 
 import torneosSagaApi from '../servicios/apiSaga';  
-
-import NavbarLogin from '../componente/NavbarLogin';
 
 import '../estilos/principal.css';
 
@@ -85,12 +83,14 @@ function Principal() {
     };
 
     return (
-        <div>
-            {isAuthenticated ? <NavbarLogin /> : null}
-            
-            <section>
-                <h2>Bienvenido a la página principal de gestión de torneos de WARGAMES</h2>
-                <p>Aquí podrás crear, gestionar y seguir tus torneos de WARGAMES de manera sencilla y eficiente.</p>
+        <div>      
+            <section className="imagenes-principales">
+                 <img src="src/assets/vikingo.png" alt="logo de Web"  />
+                 <div>
+                    <h2>Bienvenido a la página principal de gestión de torneos de WARGAMES</h2>
+                    <p>Aquí podrás crear, gestionar y seguir tus torneos de WARGAMES de manera sencilla y eficiente.</p>
+                </div>
+                <img src="src/assets/vikingo.png" alt="logo de Web"  />
             </section>
 
             {error && (
@@ -110,7 +110,7 @@ function Principal() {
             )}
 
             <section>
-                <img src="public/logoSaga.webp" alt="logo de SAGA"  />
+                <img src="src/assets/logoSaga.webp" alt="logo de SAGA"  />
                 <p>Consulta los torneos de SAGA en la Península.</p>
 
                 {loading ? (
@@ -205,7 +205,7 @@ function Principal() {
             </section>
 
             <section>
-                <img src="public/warmasterRevolution.webp" alt="logo de WARMASTER"  />
+                <img src="src/assets/logoWarmaster.webp" alt="logo de WARMASTER"  />
                 <p>Consulta los torneos de WARMASTER en la Península.</p>
                 <strong><p>PROXIMAMENTE</p></strong>
 
@@ -219,7 +219,7 @@ function Principal() {
             </section>
 
              <section>
-                <img src="public/logoFow.webp" alt="logo de Flames of War"  />
+                <img src="src/assets/logoFow.webp" alt="logo de Flames of War"  />
                 <p>Consulta los torneos de Flames of War en la Península.</p>
                 <strong><p>PROXIMAMENTE</p></strong>
 
@@ -231,6 +231,13 @@ function Principal() {
                     </p>
                 )}
             </section>
+            <footer>
+                <Link 
+                    to="/ayudaCrearTorneo"
+                >
+                    Como Crear Un Torneo y gestionarlo
+                </Link>
+            </footer>
         </div>
     );
 }

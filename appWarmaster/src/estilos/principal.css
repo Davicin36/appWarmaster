@@ -1,195 +1,75 @@
-/* Estilos específicos para el componente Principal */
+/* principal.css */
 
-/* Estilos para las secciones */
-section {
-  margin-bottom: 3rem;
-  padding: 2rem;
-  background: linear-gradient(145deg, #f5f5dc, #faf8f5);
-  border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(93, 64, 55, 0.15);
-  border: 1px solid #d7ccc8;
-  position: relative;
-  overflow: hidden;
-}
+/* 
+  Este archivo es minimalista porque app.css ya maneja la mayoría de estilos.
+  Solo incluimos ajustes específicos para el componente Principal.
+*/
 
-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #4caf50, #388e3c, #2e7d32);
-}
-
-section h2 {
-  color: #5d4037;
-  border-bottom: 3px solid #4caf50;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-  position: relative;
-}
-
-section h2::after {
-  content: '';
-  position: absolute;
-  bottom: -3px;
-  left: 0;
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, #8d6e63, #6d4c41);
-}
-
-section p {
-  color: #6d4c41;
-  font-size: 1.1rem;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
-}
-
-/* Estilos para la tabla de torneos */
-.tabla-torneos {
+/* Contenedor principal de Principal */
+.principal-container {
   width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.5rem;
-  background-color: #fafafa;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 20px rgba(93, 64, 55, 0.15);
+  min-height: 100vh;
 }
 
-.tabla-torneos thead {
-  background: linear-gradient(135deg, #4caf50, #388e3c);
-  color: white;
-  position: relative;
+.imagenes-principales {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
 }
 
-.tabla-torneos thead::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #8d6e63, #6d4c41, #5d4037);
-}
-
-.tabla-torneos thead th {
-  padding: 1.2rem;
-  text-align: left;
-  font-weight: 600;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-}
-
-.tabla-torneos tbody tr {
-  border-bottom: 1px solid #d7ccc8;
-  transition: all 0.3s ease;
-}
-
-.tabla-torneos tbody tr:nth-child(even) {
-  background-color: #f7f5f3;
-}
-
-.tabla-torneos tbody tr:hover {
-  background: linear-gradient(135deg, #e8f5e8, #f1f8e9);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(76, 175, 80, 0.2);
-  border-left: 4px solid #4caf50;
-}
-
-.tabla-torneos tbody td {
-  padding: 1.2rem;
-  color: #5d4037;
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
-.tabla-torneos tbody td:first-child {
-  font-weight: 700;
-  color: #4caf50;
-  font-size: 1.1rem;
+.imagenes-principales div {
+  flex: 1; /* hace que el texto ocupe el espacio central */
   text-align: center;
+  margin: 0 20px;
 }
 
-/* Estilos responsivos para la tabla */
+.imagenes-principales img {
+  width: 250px;
+  height: auto;
+}
+
+.imagenes-principales h2,
+.imagenes-principales p {
+  margin: 10px 0; /* solo margenes internos, sin flex */
+}
+
+/* Ajustes específicos para las tablas en Principal si es necesario */
+.tabla-container {
+  margin: 2rem 0;
+}
+
+/* Ajuste para los small dentro de td que tienen colores hardcodeados */
+.tabla-torneos td small {
+  color: var(--color-verde-oscuro) !important;
+}
+
+/* Responsividad adicional específica para Principal */
 @media (max-width: 768px) {
   .tabla-torneos {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
   
-  .tabla-torneos thead th,
-  .tabla-torneos tbody td {
-    padding: 0.7rem;
+  .tabla-torneos th,
+  .tabla-torneos td {
+    padding: 0.75rem;
   }
   
-  .tabla-torneos thead th {
-    font-size: 0.8rem;
+  .acciones-cell {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .acciones-cell button {
+    width: 100%;
   }
 }
 
-/* Estilos para cuando no hay torneos */
-.no-torneos {
-  text-align: center;
-  padding: 3rem;
-  color: #8d6e63;
-  font-style: italic;
-  background: linear-gradient(145deg, #f5f5dc, #faf8f5);
-  border-radius: 12px;
-  border: 2px dashed #a1887f;
-}
-
-/* Animación para la carga de la tabla */
-.tabla-torneos tbody tr {
-  animation: fadeInUp 0.6s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+@media (max-width: 480px) {
+  .tabla-torneos th,
+  .tabla-torneos td {
+    padding: 0.5rem;
+    font-size: 0.85rem;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Estilos para destacar el ganador */
-.tabla-torneos tbody td:last-child {
-  font-weight: 700;
-  color: #8d6e63;
-  position: relative;
-  background: linear-gradient(135deg, #fff8e1, #f9f7f4);
-  border-radius: 6px;
-}
-
-/* Estilos para la fecha */
-.tabla-torneos tbody td:nth-child(3) {
-  font-family: 'Courier New', monospace;
-  color: #6d4c41;
-  background-color: rgba(161, 136, 127, 0.1);
-  border-radius: 4px;
-}
-
-/* Estilos para el organizador */
-.tabla-torneos tbody td:nth-child(4) {
-  color: #8d6e63;
-  font-weight: 600;
-  font-style: italic;
-}
-
-/* Efecto especial para el nombre del torneo */
-.tabla-torneos tbody td:nth-child(2) {
-  color: #5d4037;
-  font-weight: 600;
-  position: relative;
-}
-
-.tabla-torneos tbody td:nth-child(2):hover {
-  color: #4caf50;
-  cursor: pointer;
 }

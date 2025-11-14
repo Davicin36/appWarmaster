@@ -1,0 +1,155 @@
+/* navBarLogin.css */
+
+/* ===== BARRA DE NAVEGACIÓN LOGIN ===== */
+.navbar-login {
+    background: transparent; /* ✅ Sin fondo propio */
+    padding: 0; /* ✅ Sin padding */
+    position: relative;
+}
+
+.navbar-login-container {
+    margin: 0;
+    display: flex;
+    justify-content: flex-end;
+    position: relative;
+}
+
+/* ===== BOTÓN HAMBURGUESA ===== */
+.menu-hamburguesa {
+    background: rgba(255, 255, 255, 0.1);
+    border: none; /* ✅ Sin borde */
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.menu-hamburguesa:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.menu-hamburguesa:active {
+    transform: scale(0.95);
+}
+
+.menu-hamburguesa svg {
+    width: 28px;
+    height: 28px;
+    stroke-width: 2.5;
+}
+
+/* ===== MENÚ DESPLEGABLE ===== */
+.navbar-menu {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+    border: 2px solid var(--color-beige-oscuro);
+}
+
+.navbar-menu.activo {
+    display: flex;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== ENLACES DEL MENÚ ===== */
+.navbar-link {
+    color: var(--color-verde-oscuro);
+    text-decoration: none;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--color-beige);
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    font-weight: 600;
+    background: white;
+}
+
+.navbar-link:last-child {
+    border-bottom: none;
+}
+
+.navbar-link:hover {
+    background: linear-gradient(135deg, var(--color-beige), var(--color-beige-oscuro));
+    padding-left: 2rem;
+    color: var(--color-verde-oscuro);
+}
+
+.navbar-link:active {
+    background: var(--color-naranja);
+    color: white;
+}
+
+/* ===== OVERLAY PARA CERRAR EL MENÚ ===== */
+.menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    background-color: transparent;
+}
+
+/* ===== RESPONSIVIDAD ===== */
+@media (max-width: 768px) {
+    .menu-hamburguesa svg {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .navbar-menu {
+        min-width: 180px;
+    }
+    
+    .navbar-link {
+        padding: 0.9rem 1.25rem;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .menu-hamburguesa {
+        padding: 0.4rem;
+    }
+    
+    .menu-hamburguesa svg {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .navbar-menu {
+        min-width: 160px;
+        right: -5px;
+    }
+    
+    .navbar-link {
+        padding: 0.85rem 1rem;
+        font-size: 0.9rem;
+    }
+}

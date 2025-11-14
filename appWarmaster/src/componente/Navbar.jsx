@@ -2,10 +2,11 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
 
+import NavbarLogin from "./NavbarLogin";
+
 import '../estilos/navbar.css';
 
-// ✅ MEMO: Solo se re-renderiza si cambian sus props o el contexto
-function Navbar () {
+function Navbar ({ onOpenLogin }) {  // ✅ Recibe onOpenLogin como prop
     const navigate = useNavigate();
     const { user, isAuthenticated, logout } = useAuth();
 
@@ -26,40 +27,49 @@ function Navbar () {
 
                 <div className="navbar-right">
                     {isAuthenticated ? (
-                        <div className="user-section">
-                            <div className="user-info">
-                                <span className="welcome-message">
-                                    Bienvenido, <strong>{user.nombre_alias || user.nombre}</strong>
-                                </span>
-                                <div className="user-details">
-                                    <span className="user-name">
-                                        {user.nombre} {user.apellidos}
+                        <>
+                            <div className="user-section">
+                                <div className="user-info">
+                                    <span className="welcome-message">
+                                        Bienvenido, <strong>{user.nombre_alias || user.nombre}</strong>
                                     </span>
-                                    {user.club && (
-                                        <span className="club-info">
-                                            Club: <strong>{user.club}</strong>
+                                    <div className="user-details">
+                                        <span className="user-name">
+                                            {user.nombre} {user.apellidos}
                                         </span>
-                                    )}
-                                    {user.rol && user.rol !== 'usuario' && (
-                                        <span className="role-info">
-                                            Rol: <strong>{user.rol}</strong>
-                                        </span>
-                                    )}
+                                        {user.club && (
+                                            <span className="club-info">
+                                                Club: <strong>{user.club}</strong>
+                                            </span>
+                                        )}
+                                        {user.rol && user.rol !== 'usuario' && (
+                                            <span className="role-info">
+                                                Rol: <strong>{user.rol}</strong>
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
+                                <button 
+                                    className="logout-btn" 
+                                    onClick={handleLogout}
+                                    title="Cerrar Sesión"
+                                >
+                                    Cerrar Sesión
+                                </button>
                             </div>
-                            <button 
-                                className="logout-btn" 
-                                onClick={handleLogout}
-                                title="Cerrar Sesión"
-                            >
-                                Cerrar Sesión
-                            </button>
-                        </div>
+                            
+                            <NavbarLogin />
+                        </>
                     ) : (
                         <div className="auth-links">
-                            <Link to="/login" className="nav-link login-link">
+                            {/* ✅ CAMBIADO: button en lugar de Link */}
+                            <button 
+                                onClick={onOpenLogin}
+                                className="nav-link login-link"
+                                type="button"
+                            >
                                 Iniciar Sesión
-                            </Link>
+                            </button>
                             <Link to="/registrarse" className="nav-link register-link">
                                 Registrarse
                             </Link>
@@ -69,6 +79,6 @@ function Navbar () {
             </div>
         </nav>
     );
-};
+}
 
 export default Navbar;

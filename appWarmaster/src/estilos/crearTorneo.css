@@ -3,7 +3,8 @@
    ============================================ */
 
 .crear-torneo-container {
-  max-width: 900px;
+  width: 100%;
+  max-width: 1600px; /* ❗Limita el ancho visualmente para que no quede estirado */
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
@@ -45,21 +46,24 @@
 }
 
 /* ============================================
-   FORMULARIO PRINCIPAL
+   FORMULARIO PRINCIPAL - GRID 4 COLUMNAS FORZADO
    ============================================ */
-
 .torneo-form {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 1.5rem;
-  max-width: 900px;
-  margin: 0 auto;
-  text-align: left;
+
+  justify-content: center;         /* 🔥 Centra visualmente los fieldsets */
+  align-items: flex-start;
+
+  width: 100%;
   padding: 2rem;
+  margin: 0 auto;
+
   background: linear-gradient(145deg, #f5f5dc, #faf8f5);
   border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(93, 64, 55, 0.15);
   border: 1px solid #d7ccc8;
+  box-shadow: 0 8px 25px rgba(93, 64, 55, 0.15);
 }
 
 /* ============================================
@@ -67,12 +71,24 @@
    ============================================ */
 
 .torneo-form fieldset {
+  flex: 1 1 calc(25% - 1.5rem);    /* 🔥 4 columnas */
+  min-width: 260px;                /* No se deforman */
+  max-width: 360px;                /* No crecen demasiado */
+
+  background: linear-gradient(145deg, #fafafa, #f9f9f9);
   border: 2px solid #d7ccc8;
   border-radius: 10px;
-  padding: 1.5rem;
-  margin-bottom: 0;
-  background: linear-gradient(145deg, #fafafa, #f9f9f9);
-  transition: all 0.3s ease;
+  padding: 1.25rem;
+}
+
+/* Fieldset de Bases del Torneo (3er fieldset) - columna 1 de la segunda fila */
+.torneo-form fieldset:nth-of-type(3) {
+  grid-column: 1;
+}
+
+/* Fieldset de Escenarios por Ronda (4to fieldset) - columna 2 de la segunda fila */
+.torneo-form fieldset:nth-of-type(4) {
+  grid-column: 2;
 }
 
 .torneo-form fieldset:hover {
@@ -83,9 +99,9 @@
 
 .torneo-form legend {
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1rem !important; /* Reducido */
   color: #5d4037;
-  padding: 0 15px;
+  padding: 0 10px !important;
   background: linear-gradient(135deg, #f5f5dc, #faf8f5);
   border-radius: 6px;
   border: 1px solid #d7ccc8;
@@ -97,11 +113,11 @@
 
 .torneo-form label {
   display: block;
-  font-weight: 1000;
+  font-weight: 600; /* Reducido de 1000 */
   color: #5d4037;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
+  margin-top: 0.75rem !important; /* Reducido */
+  margin-bottom: 0.4rem !important; /* Reducido */
+  font-size: 0.9rem !important; /* Reducido */
 }
 
 .torneo-form label:first-of-type {
@@ -179,13 +195,23 @@
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1887f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
+.torneo-form input + small,
+.torneo-form select + small {
+  display: block;
+  margin-top: 0.45rem !important;
+  font-size: 0.8rem;
+  color: #5d4037;
+}
+
 /* ============================================
-   FORM ACTIONS (BOTONES)
+   FORM ACTIONS (BOTONES) - CENTRADO DEBAJO
    ============================================ */
 
 .form-actions {
+  grid-column: 1 / -1; /* Ocupa todas las columnas */
   display: flex;
   gap: 0.75rem;
+  justify-content: center; /* Centrado horizontal */
   margin-top: 1rem;
   padding-top: 1.5rem;
   border-top: 2px solid #d7ccc8;
@@ -193,16 +219,16 @@
 
 .btn-primary,
 .btn-secondary {
-  flex: 1;
-  border-radius: 8px;
+  border-radius: 5px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+  padding: 0.35em 0.7em; /* Aún más pequeño */
+  font-size: 0.85em; /* Más pequeño */
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 3px 6px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+  min-width: 100px; /* Más compacto */
 }
 
 /* Botón primario - Verde (Crear Torneo) */
@@ -312,9 +338,20 @@
    RESPONSIVE - Adaptación móvil
    ============================================ */
 
+@media (max-width: 1100px) {
+  .torneo-form {
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 columnas en tablets */
+    gap: 1.5rem !important; /* Restaurar gap original */
+  }
+  
+  .torneo-form fieldset {
+    padding: 1.5rem !important; /* Restaurar padding original */
+  }
+}
+
 @media (max-width: 768px) {
   .crear-torneo-container {
-    padding: 1rem;
+    padding: 1rem !important;
   }
 
   .crear-torneo-container h1 {
@@ -322,15 +359,16 @@
   }
 
   .torneo-form {
-    padding: 1.5rem;
+    grid-template-columns: 1fr !important; /* 1 columna en móvil */
+    padding: 1.5rem !important;
   }
 
   .torneo-form fieldset {
-    padding: 1rem;
+    padding: 1rem !important;
   }
 
   .torneo-form legend {
-    font-size: 1rem;
+    font-size: 1rem !important;
   }
 
   .form-actions {
@@ -341,6 +379,7 @@
   .btn-primary,
   .btn-secondary {
     width: 100%;
+    min-width: auto;
   }
 }
 

@@ -4,6 +4,8 @@ import { useAuth } from "../servicios/AuthContext";
 
 import usuarioApi from "../servicios/apiUsuarios.js";
 
+import '../estilos/perfil.css'
+
 
 function Perfil() {
     const { user, logout, cambiarPassword, convertirOrganizador, actualizarUsuario } = useAuth();
@@ -39,7 +41,7 @@ function Perfil() {
     const [loadingOrganizador, setLoadingOrganizador] = useState(false);
     const [errorOrganizador, setErrorOrganizador] = useState("");
 
-    // 🆕 CAMBIO 1: Estados para torneos del usuario
+    // Estados para torneos del usuario
     const [torneosCreados, setTorneosCreados] = useState([]);
     const [torneosParticipando, setTorneosParticipando] = useState([]);
     const [loadingTorneos, setLoadingTorneos] = useState(true);
@@ -60,7 +62,7 @@ function Perfil() {
         }
     }, [user]);
 
-    // 🆕 CAMBIO 2: Cargar torneos del usuario
+    // Cargar torneos del usuario
     useEffect(() => {
     const cargarTorneosUsuario = async () => {
         if (!user?.id) return;
@@ -270,7 +272,7 @@ function Perfil() {
         }
     };
 
-    // 🆕 CAMBIO 3: Función para formatear fechas
+    // Función para formatear fechas
     const formatearFecha = (fecha) => {
         if (!fecha) return "Sin fecha";
         return new Date(fecha).toLocaleDateString('es-ES', {
@@ -280,7 +282,7 @@ function Perfil() {
         });
     };
 
-    // 🆕 CAMBIO 4: Función para obtener clase de estado
+    // Función para obtener clase de estado
     const getEstadoClase = (estado) => {
         const estados = {
             'pendiente': 'estado-pendiente',
@@ -299,20 +301,36 @@ function Perfil() {
             <h1>👤 Mi Perfil</h1>
             
             <div className="perfil-card">
-                {/* Seccion de informacion personal */}
-                <section className="info-section">
-                    <div className="section-header">
-                        <h2>📋 Información Personal</h2>
-                        {!modoEdicion && (
-                            <button 
-                                className="btn-secondary"
-                                onClick={() => setModoEdicion(true)}
-                            >
-                                ✏️ Editar Perfil
-                            </button>
-                        )}
+                {/* 🆕 SECCIÓN COMBINADA: Info Personal y Seguridad */}
+                <section className="info-security-combined">
+                    {/* Headers en la misma fila */}
+                    <div className="headers-combined-row">
+                        <div className="section-header">
+                            <h2>📋 Información Personal</h2>
+                            {!modoEdicion && (
+                                <button 
+                                    className="btn-secondary"
+                                    onClick={() => setModoEdicion(true)}
+                                >
+                                    ✏️ Editar Perfil
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="section-header">
+                            <h2>🔒 Seguridad</h2>
+                            {!mostrarCambioPassword && (
+                                <button 
+                                    className="btn-secondary"
+                                    onClick={() => setMostrarCambioPassword(true)}
+                                >
+                                    🔑 Cambiar Contraseña
+                                </button>
+                            )}
+                        </div>
                     </div>
 
+                    {/* Mensajes de éxito/error */}
                     {errorEdicion && (
                         <div className="error-message">{errorEdicion}</div>
                     )}
@@ -321,6 +339,7 @@ function Perfil() {
                         <div className="success-message">{successEdicion}</div>
                     )}
 
+                    {/* Contenido de información personal */}
                     {modoEdicion ? (
                         <form className="edit-form">
                             <div className="form-row">
@@ -395,7 +414,7 @@ function Perfil() {
                                 />
                             </div>
                              <div className="form-group">
-                                    <label htmlFor="nombre">Localidad*:</label>
+                                    <label htmlFor="localidad">Localidad*:</label>
                                     <input
                                         type="text"
                                         id="localidad"
@@ -408,7 +427,7 @@ function Perfil() {
                                     />
                                 </div>
                                  <div className="form-group">
-                                    <label htmlFor="nombre">Pais*:</label>
+                                    <label htmlFor="pais">Pais*:</label>
                                     <input
                                         type="text"
                                         id="pais"
@@ -479,121 +498,8 @@ function Perfil() {
                             </div>
                         </div>
                     )}
-                </section>
 
-                {/* 🆕 CAMBIO 5: Sección de Torneos Creados */}
-                {user.rol === 'organizador' && (
-                    <section className="torneos-section">
-                        <div className="section-header">
-                            <h2>🏆 Mis Torneos Creados ({torneosCreados.length})</h2>
-                            <Link to="/crear-torneo" className="btn-primary">
-                                ➕ Crear Torneo
-                            </Link>
-                        </div>
-
-                        {loadingTorneos ? (
-                            <div className="loading-message">⏳ Cargando torneos...</div>
-                        ) : errorTorneos ? (
-                            <div className="error-message">{errorTorneos}</div>
-                        ) : torneosCreados.length === 0 ? (
-                            <div className="empty-message">
-                                <p>📝 Aún no has creado ningún torneo</p>
-                            </div>
-                        ) : (
-                            <div className="torneos-grid">
-                                {torneosCreados.map(torneo => (
-                                    <div key={torneo.id} className="torneo-card">
-                                        <div className="torneo-header">
-                                            <h3>{torneo.nombre_torneo}</h3>
-                                            <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
-                                                {torneo.estado?.toUpperCase() || 'PENDIENTE'}
-                                            </span>
-                                        </div>
-                                        <div className="torneo-info">
-                                            <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
-                                            <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
-                                            <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
-                                            <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
-                                            {torneo.ubicacion && (
-                                                <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
-                                            )}
-                                        </div>
-                                        <Link 
-                                            to={`/administrarTorneo/${torneo.id}`} 
-                                            className="btn-primary"
-                                        >
-                                            ⚙️ Administrar Torneo
-                                        </Link>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                )}
-
-                {/* 🆕 CAMBIO 6: Sección de Torneos en los que Participa */}
-                <section className="torneos-section">
-                    <div className="section-header">
-                        <h2>🎮 Torneos en los que Participo ({torneosParticipando.length})</h2>
-                    </div>
-
-                    {loadingTorneos ? (
-                        <div className="loading-message">⏳ Cargando torneos...</div>
-                    ) : errorTorneos ? (
-                        <div className="error-message">{errorTorneos}</div>
-                    ) : torneosParticipando.length === 0 ? (
-                        <div className="empty-message">
-                            <p>🎯 Aún no estás inscrito en ningún torneo</p>
-                            <Link to="/" className="btn-secondary">
-                                Ver torneos disponibles
-                            </Link>
-                        </div>
-                    ) : (
-                        <div className="torneos-grid">
-                            {torneosParticipando.map(torneo => (
-                                <div key={torneo.id} className="torneo-card participando">
-                                    <div className="torneo-header">
-                                        <h3>{torneo.nombre_torneo}</h3>
-                                        <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
-                                            {torneo.estado?.toUpperCase() || 'PENDIENTE'}
-                                        </span>
-                                    </div>
-                                    <div className="torneo-info">
-                                        <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
-                                        <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
-                                        <p><strong>⚔️ Mi Facción:</strong> {torneo.faccion || 'No especificada'}</p>
-                                        <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
-                                        <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
-                                        {torneo.ubicacion && (
-                                            <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
-                                        )}
-                                    </div>
-                                    <Link 
-                                        to={`/torneosSaga/${torneo.id}/detalles`} 
-                                        className="btn-primary"
-                                    >
-                                        👁️ Ver Torneo
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
-
-                {/* Seccion de cambio de contraseña */}
-                <section className="password-section">
-                    <div className="section-header">
-                        <h2>🔒 Seguridad</h2>
-                        {!mostrarCambioPassword && (
-                            <button 
-                                className="btn-secondary"
-                                onClick={() => setMostrarCambioPassword(true)}
-                            >
-                                🔑 Cambiar Contraseña
-                            </button>
-                        )}
-                    </div>
-
+                    {/* Contenido de cambio de contraseña */}
                     {mostrarCambioPassword && (
                         <form onSubmit={handleCambiarPassword} className="password-form">
                             {errorPassword && (
@@ -671,6 +577,105 @@ function Perfil() {
                                 </button>
                             </div>
                         </form>
+                    )}
+                </section>
+
+                {/* Sección de Torneos Creados */}
+                {user.rol === 'organizador' && (
+                    <section className="torneos-section">
+                        <div className="section-header">
+                            <h2>🏆 Mis Torneos Creados ({torneosCreados.length})</h2>
+                            <Link to="/crearTorneo" className="btn-primary">
+                                ➕ Crear Torneo
+                            </Link>
+                        </div>
+
+                        {loadingTorneos ? (
+                            <div className="loading-message">⏳ Cargando torneos...</div>
+                        ) : errorTorneos ? (
+                            <div className="error-message">{errorTorneos}</div>
+                        ) : torneosCreados.length === 0 ? (
+                            <div className="empty-message">
+                                <p>📝 Aún no has creado ningún torneo</p>
+                            </div>
+                        ) : (
+                            <div className="torneos-grid">
+                                {torneosCreados.map(torneo => (
+                                    <div key={torneo.id} className="torneo-card">
+                                        <div className="torneo-header">
+                                            <h3>{torneo.nombre_torneo}</h3>
+                                            <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
+                                                {torneo.estado?.toUpperCase() || 'PENDIENTE'}
+                                            </span>
+                                        </div>
+                                        <div className="torneo-info">
+                                            <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
+                                            <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
+                                            <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                            <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
+                                            {torneo.ubicacion && (
+                                                <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
+                                            )}
+                                        </div>
+                                        <Link 
+                                            to={`/administrarTorneo/${torneo.id}`} 
+                                            className="btn-primary"
+                                        >
+                                            ⚙️ Administrar Torneo
+                                        </Link>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {/* Sección de Torneos en los que Participa */}
+                <section className="torneos-section">
+                    <div className="section-header">
+                        <h2>🎮 Torneos en los que Participo ({torneosParticipando.length})</h2>
+                    </div>
+
+                    {loadingTorneos ? (
+                        <div className="loading-message">⏳ Cargando torneos...</div>
+                    ) : errorTorneos ? (
+                        <div className="error-message">{errorTorneos}</div>
+                    ) : torneosParticipando.length === 0 ? (
+                        <div className="empty-message">
+                            <p>🎯 Aún no estás inscrito en ningún torneo</p>
+                            <Link to="/" className="btn-secondary">
+                                Ver torneos disponibles
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="torneos-grid">
+                            {torneosParticipando.map(torneo => (
+                                <div key={torneo.id} className="torneo-card participando">
+                                    <div className="torneo-header">
+                                        <h3>{torneo.nombre_torneo}</h3>
+                                        <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
+                                            {torneo.estado?.toUpperCase() || 'PENDIENTE'}
+                                        </span>
+                                    </div>
+                                    <div className="torneo-info">
+                                        <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
+                                        <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
+                                        <p><strong>⚔️ Mi Facción:</strong> {torneo.faccion || 'No especificada'}</p>
+                                        <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                        <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
+                                        {torneo.ubicacion && (
+                                            <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
+                                        )}
+                                    </div>
+                                    <Link 
+                                        to={`/torneosSaga/${torneo.id}/detalles`} 
+                                        className="btn-primary"
+                                    >
+                                        👁️ Ver Torneo
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </section>
 

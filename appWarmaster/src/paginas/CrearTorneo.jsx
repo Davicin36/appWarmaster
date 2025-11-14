@@ -461,17 +461,17 @@ if (archivoPDF) {
                         </>
                     )}
                 </fieldset>
-
-                <div className="form-actions">
-                    <button type="submit" disabled={loading} className="btn-primary">
-                        {loading ? "⏳ Creando..." : "✅ Crear Torneo"}
-                    </button>
-                    
-                    <button type="button" onClick={volverInicio} disabled={loading} className="btn-secondary">
-                        ← Cancelar
-                    </button>
-                </div>
             </form>
+            <div className="form-actions">
+                <button type="submit" disabled={loading} className="btn-primary">
+                    {loading ? "⏳ Creando..." : "✅ Crear Torneo"}
+                </button>
+                    
+                 <button type="button" onClick={volverInicio} disabled={loading} className="btn-secondary">
+                    ← Cancelar
+                </button>
+            </div>
+            
         </div>
     );
 }

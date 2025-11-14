@@ -1,5 +1,6 @@
 import './App.css'
 
+import { useState } from 'react';
 import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './servicios/AuthContext.jsx';
 
@@ -14,24 +15,33 @@ import VerTorneos from './paginas/VerTorneos.jsx';
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
 import Inscripcion from './componente/Inscripcion.jsx';
+import AyudaTorneos from './componente/AyudaTorneos.jsx';
 
 function App() {
 
+    const [isLoginOpen, setIsLoginOpen] = useState(false);
+
   return (
     <AuthProvider>
-      <Navbar />
+      <Navbar onOpenLogin={() => setIsLoginOpen(true)} />
+        
+        {/* Modal de Login */}
+        <Login 
+          isOpen={isLoginOpen} 
+          onClose={() => setIsLoginOpen(false)} 
+        />
       <Routes>
         <Route
             path='/' 
             element={<Principal />} 
         />
         <Route 
-            path='/login' 
-            element={<Login />} 
-        />
-        <Route 
             path='/registrarse' 
-            element={<Registrarse />} 
+            element={<Registrarse onOpenLogin={() => setIsLoginOpen(true)} />} 
+        />
+         <Route
+            path='/ayudaCrearTorneo'
+            element={<AyudaTorneos />}
         />
         <Route 
             path='/navbarlogin' 
