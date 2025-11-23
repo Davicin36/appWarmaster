@@ -15,10 +15,37 @@
 }
 
 /* ==========================================
+   LOADING Y ERROR CONTAINERS
+   ========================================== */
+
+.loading-container,
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.error-message-box {
+    max-width: 600px;
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.error-message-box h2 {
+    color: #d32f2f;
+    margin-bottom: 1rem;
+}
+
+/* ==========================================
    HEADER DEL TORNEO
    ========================================== */
 
-.torneo-header {
+.administrar-torneo-container .torneo-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 30px;
@@ -27,13 +54,14 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
-.torneo-header h1 {
+.administrar-torneo-container .torneo-header h1 {
     margin: 0 0 15px 0;
     font-size: 2em;
     text-align: center;
+    color: white;
 }
 
-.torneo-info {
+.administrar-torneo-container .torneo-info {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -42,14 +70,24 @@
     font-size: 1em;
 }
 
-.torneo-info span {
+.administrar-torneo-container .torneo-info span {
     display: flex;
     align-items: center;
     gap: 5px;
 }
 
+/* Items del header */
+.administrar-torneo-container .info-item {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    backdrop-filter: blur(10px);
+    color: white;
+}
+
 /* Badges de Estado */
-.estado-badge {
+.administrar-torneo-container .estado-badge {
     padding: 6px 16px;
     border-radius: 20px;
     font-weight: bold;
@@ -58,19 +96,55 @@
     letter-spacing: 0.5px;
 }
 
-.estado-badge.pendiente {
+.administrar-torneo-container .estado-badge.estado-pendiente {
     background: #ff9800;
     color: white;
 }
 
-.estado-badge.en_curso {
+.administrar-torneo-container .estado-badge.estado-en_curso {
     background: #4caf50;
     color: white;
 }
 
-.estado-badge.finalizado {
+.administrar-torneo-container .estado-badge.estado-finalizado {
     background: #757575;
     color: white;
+}
+
+/* ==========================================
+   PARTICIPANTES DESTACADOS EN HEADER
+   ========================================== */
+
+.administrar-torneo-container .torneo-participantes {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.administrar-torneo-container .info-item-destacado {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    backdrop-filter: blur(10px);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.administrar-torneo-container .info-item-secundario {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    backdrop-filter: blur(10px);
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
 }
 
 /* ==========================================
@@ -211,30 +285,99 @@
 /* Grid de Información */
 .info-torneo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
     margin-top: 15px;
 }
 
-.info-item {
-    padding: 15px;
+/* Items de la grid de información - MEJORADOS PARA MOSTRAR EN COLUMNA */
+.info-torneo-grid .info-item {
+    padding: 18px;
     background: #f9f9f9;
-    border-radius: 8px;
-    border-left: 4px solid #4a7c2e;
+    border-radius: 10px;
+    border-left: 5px solid #4a7c2e;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
 }
 
-.info-item label {
+.info-torneo-grid .info-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Labels mejorados */
+.info-torneo-grid .info-item label {
     display: block;
     font-weight: bold;
     color: #4a7c2e;
-    margin-bottom: 5px;
-    font-size: 0.9em;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.info-item p {
+/* Párrafos y textos dentro de info-item */
+.info-torneo-grid .info-item p,
+.info-torneo-grid .info-item span {
     margin: 0;
     font-size: 1.1em;
     color: #333;
+    font-weight: 600;
+}
+
+/* ESTILOS PARA ITEMS DESTACADOS DENTRO DE LA GRID */
+.info-torneo-grid .info-item .info-item-destacado {
+    display: block;
+    background: #e3f2fd;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 1em;
+    font-weight: 700;
+    color: #1565c0;
+    border: 2px solid #90caf9;
+}
+
+.info-torneo-grid .info-item .info-item-secundario {
+    display: block;
+    background: #fff3e0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    color: #e65100;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+/* Para cuando hay múltiples destacados en un mismo item */
+.info-torneo-grid .info-item > span:not(:last-child) {
+    margin-bottom: 8px;
+}
+
+/* ==========================================
+   ADVERTENCIA NO EDITABLE
+   ========================================== */
+
+.advertencia-no-editable {
+    background: #e3f2fd;
+    border: 2px solid #2196f3;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.advertencia-no-editable strong {
+    display: block;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+    color: #1976d2;
+}
+
+.advertencia-no-editable p {
+    margin: 0;
+    font-size: 0.95em;
+    color: #0d47a1;
 }
 
 /* ==========================================
@@ -259,6 +402,13 @@
     margin-top: 15px;
 }
 
+.rondas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
 .ronda-item {
     display: flex;
     justify-content: space-between;
@@ -269,6 +419,7 @@
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: transform 0.3s ease;
+    gap: 15px;
 }
 
 .ronda-item:hover {
@@ -278,10 +429,60 @@
 .ronda-numero {
     font-weight: bold;
     font-size: 1.1em;
+    color: white;
+    flex-shrink: 0;
+}
+
+.partidas-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
 }
 
 .ronda-escenario {
-    font-size: 1em;
+    font-size: 1.05em;
+    font-weight: 600;
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 15px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ronda-escenario-equipos {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ronda-escenario-equipos:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .ronda-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .ronda-numero {
+        min-width: auto;
+        margin-bottom: 10px;
+    }
+    
+    .partidas-container {
+        width: 100%;
+    }
 }
 
 /* ==========================================
@@ -452,6 +653,147 @@
 
 .nombre-jugador-completo {
     font-size: 1.05em;
+    font-weight: 600;
+}
+
+/* ==========================================
+   VISTA EQUIPOS EN ADMINISTRACIÓN
+   ========================================== */
+
+.grid-equipos-admin {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.card-equipo-admin {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.card-equipo-admin:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: #4a7c2e;
+}
+
+.equipo-header-admin {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.equipo-header-admin h3 {
+    margin: 0 0 0.5rem 0;
+    color: #4a7c2e;
+    font-size: 1.5rem;
+}
+
+.badge-capitan-admin {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff9800, #fb8c00);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.equipo-miembros-admin h4 {
+    color: #4a7c2e;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.lista-miembros-admin {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.miembro-item-admin {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.miembro-header-admin {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.miembro-nombre-admin {
+    font-weight: 600;
+    color: #4a7c2e;
+    font-size: 1rem;
+}
+
+.miembro-epoca-banda-admin {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.miembro-composicion-admin {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #4a7c2e;
+}
+
+.puntos-total-admin {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #4a7c2e;
+}
+
+.puntos-detalle-admin {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: #333;
+}
+
+.puntos-detalle-admin span {
+    background: #f9f9f9;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.detalle-mercenarios-mini-admin {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e0e0e0;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: #666;
+}
+
+.sin-miembros-admin {
+    text-align: center;
+    padding: 1rem;
+    color: #999;
+    font-style: italic;
+}
+
+.equipo-acciones-admin {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-end;
 }
 
 /* ==========================================
@@ -772,6 +1114,60 @@
 }
 
 /* ==========================================
+   BOTONES DE PAGO
+   ========================================== */
+
+.btn-pago {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-pago:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.btn-pago:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Estado PAGADO - Verde */
+.btn-pago.pagado {
+    background: #4caf50;
+    color: white;
+}
+
+.btn-pago.pagado:hover {
+    background: #45a049;
+}
+
+/* Estado PENDIENTE - Naranja/Amarillo */
+.btn-pago.pendiente {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-pago.pendiente:hover {
+    background: #fb8c00;
+}
+
+/* Loading state */
+.btn-pago:disabled {
+    background: #9e9e9e !important;
+}
+
+/* ==========================================
    FOOTER
    ========================================== */
 
@@ -782,8 +1178,177 @@
 }
 
 /* ==========================================
+   HEADER INLINE CON BOTONES
+   ========================================== */
+
+.section-header-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+    gap: 20px;
+}
+
+.section-header-inline h2 {
+    margin: 0;
+    color: #4a7c2e;
+    font-size: 1.5em;
+    flex-shrink: 0;
+}
+
+.botones-accion-grupo {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.botones-accion-grupo button {
+    white-space: nowrap;
+}
+
+.advertencia-finalizado {
+    background: #fff3cd;
+    border: 2px solid #ff9800;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.advertencia-finalizado strong {
+    display: block;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.advertencia-finalizado p {
+    margin: 0;
+    font-size: 0.95em;
+}
+
+/* Estilos para selector de épocas */
+.epocas-seleccionadas {
+    margin-top: 15px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #f9f9f9;
+}
+
+.epocas-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.epoca-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #e3f2fd;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.btn-remove-epoca {
+    background: none;
+    border: none;
+    color: #f44336;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0;
+    line-height: 1;
+}
+
+.info-text {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+.error-text {
+    color: #f44336;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+/* ==========================================
+   UTILIDADES
+   ========================================== */
+
+.text-center {
+    text-align: center;
+}
+
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.mb-10 {
+    margin-bottom: 10px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+
+/* ==========================================
+   RESPONSIVE PARTICIPANTES
+   ========================================== */
+
+@media (max-width: 768px) {
+    .administrar-torneo-container .torneo-participantes {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .administrar-torneo-container .info-item-destacado,
+    .administrar-torneo-container .info-item-secundario {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .administrar-torneo-container .torneo-info {
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .administrar-torneo-container .info-item-destacado {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .administrar-torneo-container .info-item-secundario {
+        font-size: 0.8rem;
+    }
+}
+
+/* ==========================================
    RESPONSIVE DESIGN
    ========================================== */
+
+@media (max-width: 1200px) {
+    .section-header-inline {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .botones-accion-grupo {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
 
 @media (max-width: 768px) {
     .administrar-torneo-container {
@@ -864,6 +1429,19 @@
     .tabla-clasificacion {
         overflow-x: auto;
     }
+
+    .botones-accion-grupo {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .botones-accion-grupo button {
+        width: 100%;
+    }
+
+    .grid-equipos-admin {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 480px) {
@@ -906,108 +1484,4 @@
 .vista-emparejamientos,
 .vista-clasificacion {
     animation: fadeIn 0.4s ease;
-}
-
-/* ==========================================
-   UTILIDADES
-   ========================================== */
-
-.text-center {
-    text-align: center;
-}
-
-.mt-10 {
-    margin-top: 10px;
-}
-
-.mt-20 {
-    margin-top: 20px;
-}
-
-.mb-10 {
-    margin-bottom: 10px;
-}
-
-.mb-20 {
-    margin-bottom: 20px;
-}
-
-/* ==========================================
-   HEADER INLINE CON BOTONES
-   ========================================== */
-
-.section-header-inline {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 25px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #e0e0e0;
-    gap: 20px;
-}
-
-.section-header-inline h2 {
-    margin: 0;
-    color: #4a7c2e;
-    font-size: 1.5em;
-    flex-shrink: 0;
-}
-
-.botones-accion-grupo {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    align-items: center;
-}
-
-.botones-accion-grupo button {
-    white-space: nowrap;
-}
-
-.advertencia-finalizado {
-    background: #fff3cd;
-    border: 2px solid #ff9800;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.advertencia-finalizado strong {
-    display: block;
-    font-size: 1.1em;
-    margin-bottom: 5px;
-}
-
-.advertencia-finalizado p {
-    margin: 0;
-    font-size: 0.95em;
-}
-
-/* ==========================================
-   RESPONSIVE PARA BOTONES INLINE
-   ========================================== */
-
-@media (max-width: 1200px) {
-    .section-header-inline {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .botones-accion-grupo {
-        width: 100%;
-        justify-content: flex-start;
-    }
-}
-
-@media (max-width: 768px) {
-    .botones-accion-grupo {
-        flex-direction: column;
-        width: 100%;
-    }
-
-    .botones-accion-grupo button {
-        width: 100%;
-    }
 }

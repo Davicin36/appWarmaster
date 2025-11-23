@@ -94,10 +94,19 @@ class apiUsuarios {
   }
 
   //======OBTENER TORNEOS DE CADA USUARIO==========
+
   async obtenerTorneosUsuario(userId) {
     return this.request(`/${userId}`);
   }
 
+  //====== OBTENER USUARIOS POR EMAIL=====
+
+  async verificarUsuario(email) {
+    return this.request(`/verificarUsuario/${email}`, {
+      method: 'GET'
+    });
+  }
+  
 //  =========================
 //GESTIONES CON LOS TOKENS
 //==========================

@@ -92,22 +92,53 @@ class TorneosSagaApi {
     });
   }
 
-  async obtenerMiInscripcion(torneoId) {
-    return this.request(`/${torneoId}/miInscripcion`);
+  async IncripcionEquipo (torneoId, inscripcionData){
+    return this.request(`/${torneoId}/inscripcionEquipo`, {
+      method: 'POST',
+      body: inscripcionData,
+    });
+  }
+
+  async obtenerIncripcion (torneoId){
+    return this.request(`/${torneoId}/obtenerInscripcion`);
+  }
+
+  async obteneiInscripcionEquipo(torneoId) {
+    return this.request(`/${torneoId}/obtenerInscripcionEquipo`);
 }
 
-async actualizarInscripcion(torneoId, datosInscripcion) {
-    return this.request(`/${torneoId}/actualizarInscripcion/`, {
+async actualizarInscripcionEquipo(torneoId, datosInscripcion) {
+    return this.request(`/${torneoId}/actualizarInscripcionEquipo`, {
         method: 'PUT',
         body: datosInscripcion
     });
 }
 
-async actualizarPago (torneoId, jugadorId, pagado){
+async actualizarInscripcionEquipos(torneoId, datosInscripcion) {
+    return this.request(`/${torneoId}/actualizarInscripcionEquipo`, {
+        method: 'PUT',
+        body: datosInscripcion
+    });
+}
+
+async actualizarPagoJugador (torneoId, jugadorId, pagado){
   return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
       method: 'PATCH',
-      body: pagado,
+      body: { pagado }
   })
+}
+
+async actualizarPagoEquipo (torneoId, equipoId, pagado){
+  return this.request (`/${torneoId}/equipos/${equipoId}/pago`, {
+    method : 'PATCH',
+    body : { pagado }
+  })
+}
+
+async verificarPagos (torneoId){
+  return this.request (`/${torneoId}/verificarPagos`, { 
+    method : 'GET'
+  });
 }
 
 //====================================================
@@ -120,9 +151,20 @@ async actualizarPago (torneoId, jugadorId, pagado){
     });
   }
 
+   async eliminarEquipoTorneo(torneoId, equipoId) {
+    return this.request(`/${torneoId}/equipos/${equipoId}`, {
+      method: 'DELETE',
+    });
+  }
+
   //jugadores que hay en cada torneo
   async obtenerJugadoresTorneo(torneoId) {
     return this.request(`/${torneoId}/jugadores`);
+  }
+
+    //equipos que hay en cada torneo
+  async obtenerEquiposTorneo(torneoId) {
+    return this.request(`/${torneoId}/equipos`);
   }
 
   

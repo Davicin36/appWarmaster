@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {  useParams } from 'react-router-dom';
 
-import torneosSagaApi from '../../servicios/apiSaga';
+import torneosSagaApi from '@/servicios/apiSaga';
 
 function VistaClasificacion({ torneoId: propTorneoId }) {
     // Obtener torneoId de props o de URL

@@ -33,7 +33,7 @@ function NavbarLogin() {
                         👤 Perfil
                     </Link>
                     <Link 
-                        to="/crearTorneo" 
+                        to="/seleccionarJuegos" 
                         className="navbar-link"
                         onClick={() => setMenuAbierto(false)}
                     >

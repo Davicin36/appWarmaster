@@ -604,6 +604,7 @@ function Perfil() {
                                     <div key={torneo.id} className="torneo-card">
                                         <div className="torneo-header">
                                             <h3>{torneo.nombre_torneo}</h3>
+                                             <h3>{torneo.sistema}</h3>
                                             <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
                                                 {torneo.estado?.toUpperCase() || 'PENDIENTE'}
                                             </span>

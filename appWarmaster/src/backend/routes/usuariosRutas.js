@@ -192,7 +192,9 @@ router.post('/login', async (req, res) => {
           nombre_alias: usuario.nombre_alias,
           club: usuario.club,
           email: usuario.email,
-          rol: usuario.rol
+          rol: usuario.rol,
+          localidad: usuario.localidad,
+          pais: usuario.pais
         }
       })
     );
@@ -238,7 +240,7 @@ router.get('/verificar', async (req, res) => {
     
     // Buscar usuario en la base de datos
     const [usuarios] = await pool.execute(
-      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol 
+      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol, localidad, pais
        FROM usuarios WHERE id = ?`,
       [decoded.userId]
     );
@@ -261,7 +263,9 @@ router.get('/verificar', async (req, res) => {
           nombre_alias: usuario.nombre_alias,
           club: usuario.club,
           email: usuario.email,
-          rol: usuario.rol
+          rol: usuario.rol,
+          localidad: usuario.localidad,
+          pais: usuario.pais
         }
       })
     );
@@ -275,6 +279,7 @@ router.get('/verificar', async (req, res) => {
 });
 
 // ======ACTUALIZAR PERFIL=======
+
 router.put('/actualizarPerfil', async (req, res) => {
 
   try {
@@ -531,7 +536,9 @@ router.post('/convertirOrganizador', async (req, res) => {
           nombre_alias: usuario.nombre_alias,
           club: usuario.club,
           email: usuario.email,
-          rol: usuario.rol
+          rol: usuario.rol,
+          localidad: usuario.localidad,
+          pais: usuario.pais
         }
       })
     );
@@ -547,28 +554,32 @@ router.post('/convertirOrganizador', async (req, res) => {
 // ===== OBTENER TORNEOS POR USUARIO======
 
 router.get('/:userId', verificarToken, async (req, res) => {
-
   try {
-    const {userId} = req.params;
+    const { userId } = req.params;
     
+    // ✅ Verifica que coincida con el usuario autenticado
     if (req.usuario.userId !== parseInt(userId)) {
       return res.status(403).json(
         errorResponse('No tienes permisos para ver torneos de otro usuario')
       );
     }
     
+    // ✅ CONSULTA 1: Torneos CREADOS por el usuario (SIN epoca_torneo)
     const [torneosCreados] = await pool.execute(`
       SELECT 
         ts.id,
+        ts.sistema,
         ts.nombre_torneo,
+        ts.tipo_torneo,
+        ts.num_jugadores_equipo,
         ts.rondas_max,
-        ts.ronda_actual,
-        ts.epoca_torneo,
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
         ts.puntos_banda,
         ts.participantes_max,
+        ts.equipos_max,
+        ts.ronda_actual,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -579,26 +590,32 @@ router.get('/:userId', verificarToken, async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
-        COUNT(jts.id) as total_participantes
+        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
+        COUNT(DISTINCT jts.id) as total_participantes
       FROM torneo_saga ts 
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
+      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       WHERE ts.created_by = ?
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
     `, [userId]);
     
+    // ✅ CONSULTA 2: Torneos en los que el usuario PARTICIPA (SIN epoca_torneo)
     const [torneosParticipando] = await pool.execute(`
       SELECT 
         ts.id,
+        ts.sistema,
         ts.nombre_torneo,
+        ts.tipo_torneo,
+        ts.num_jugadores_equipo,
         ts.rondas_max,
         ts.ronda_actual,
-        ts.epoca_torneo,
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
         ts.puntos_banda,
         ts.participantes_max,
+        ts.equipos_max,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -609,16 +626,18 @@ router.get('/:userId', verificarToken, async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
+        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         jts.faccion,
         jts.composicion_ejercito,
-        COUNT(jts2.id) as total_participantes
+        COUNT(DISTINCT jts2.id) as total_participantes
       FROM torneo_saga ts 
-      JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
+      INNER JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN jugador_torneo_saga jts2 ON ts.id = jts2.torneo_id
-      WHERE jts.jugador_id = ?
+      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      WHERE jts.jugador_id = ? AND ts.created_by != ?
       GROUP BY ts.id, jts.id
       ORDER BY ts.fecha_inicio ASC
-    `, [userId]);
+    `, [userId, userId]);
     
     res.json(
       successResponse('Torneos del usuario obtenidos exitosamente', {
@@ -628,8 +647,41 @@ router.get('/:userId', verificarToken, async (req, res) => {
     );
     
   } catch (error) {
-    console.error('Error al obtener torneos del usuario:', error);
+    console.error('❌ Error al obtener torneos del usuario:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
+  }
+});
+
+// ===== VERIFICAR SI USUARIO EXISTE (GET) =====
+
+router.get('/verificarUsuario/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    if (!email || !email.includes('@')) {
+      return res.status(400).json(errorResponse('Email inválido'));
+    }
+
+    const [usuarios] = await pool.execute(
+      `SELECT id, nombre, apellidos, email FROM usuarios WHERE email = ?`,
+      [email.toLowerCase().trim()]
+    );
+
+    if (usuarios.length > 0) {
+      console.log(`✅ Usuario encontrado: ${usuarios[0].nombre} ${usuarios[0].apellidos}`);
+    } else {
+      console.log(`⚠️ Usuario NO encontrado: ${email}`);
+    }
+
+    res.json({
+      success: true,
+      existe: usuarios.length > 0,
+      usuario: usuarios.length > 0 ? usuarios[0] : null
+    });
+
+  } catch (error) {
+    console.error('❌ Error al verificar usuario:', error);
+    res.status(500).json(errorResponse('Error al verificar usuario'));
   }
 });
 

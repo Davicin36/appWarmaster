@@ -1,3 +1,71 @@
+// funciones/constantesFuncionesSaga.js
+
+/**
+ * CONSTANTES SAGA
+ */
+
+export const EPOCAS_SAGA = [
+  "Alejandro", 
+  "Ánibal", 
+  "Vikingos", 
+  "Invasiones",
+  "Cruzadas", 
+  "Caballeria", 
+  "Edad de la Magia",
+  "Alejandro/Ánibal", 
+  "Vikingos/Invasiones", 
+  "Cruzadas/Caballeria",
+];
+
+ export const PARTICIPANTES_RANGO = {
+        min: 4,
+        max: 100,
+        default: 16
+    };
+
+    export const EQUIPOS_RANGO = {
+        min: 2,
+        max: 20,
+        default: 5
+    };
+
+export const PUNTOS_BANDA_RANGO = {
+  min: 4,
+  max: 8,
+  default: 6
+};
+
+export const JUGADORES_EQUIPO_RANGO = {
+  min: 2,
+  max: 6,
+  default: 3
+};
+
+export const TIPOS_PARTIDA_SAGA = [
+       "Choque de Bandas",
+        "Conquista",
+        "Avance",
+        "Desacralización",
+        "Captura",
+        "Bienes de valor",
+        "Cambio de planes",
+        "Reclamar el territorio",
+        "Festines y saqueos",
+        "El cruce"
+    ];
+
+    export const ESTADOS_TORNEO_SAGA = [
+        { valor: 'pendiente', nombre: 'Pendiente', emoji: '⏳' },
+        { valor: 'en_curso', nombre: 'En Curso', emoji: '▶️' },
+        { valor: 'finalizado', nombre: 'Finalizado', emoji: '🏁' }
+    ];
+
+    export const RONDAS_DISPONIBLES = [
+        { valor: 3, nombre: '3 Rondas' },
+        { valor: 4, nombre: '4 Rondas' },
+        { valor: 5, nombre: '5 Rondas' }
+    ];
+
 /**
  * Bandas disponibles organizadas por época
  */
@@ -43,10 +111,9 @@ export const BANDAS_POR_EPOCA = {
     { nombre: "OTROS MUNDOS" },
     { nombre: "PUEBLOS SUBTERRÁNEOS" }
   ],
-  "Anibal": [
+  "Ánibal": [
     { nombre: "IBEROS" },
     { nombre: "CARTAGINESES" },
-    { nombre: "GALESES" },
     { nombre: "REPÚBLICA DE ROMA" },
     { nombre: "GALOS" },
     { nombre: "NÚMIDAS" },
@@ -70,7 +137,7 @@ export const BANDAS_POR_EPOCA = {
   ],
   "Cruzadas": [
     { nombre: "BIZANTINOS" },
-    { nombre: "CRUZADAS" },
+    { nombre: "CRUZADOS" },
     { nombre: "ORDENSTAAT" },
     { nombre: "MOROS" },
     { nombre: "MILITES CHRISTI" },
@@ -115,18 +182,17 @@ export const BANDAS_POR_EPOCA = {
 /**
  * Obtiene las bandas disponibles según la época del torneo.
  * Si la época es combinada (ej: "Alejandro/Ánibal"), devuelve bandas de ambas épocas.
- * 
- * @param {string} epocaTorneo - Época del torneo (simple o combinada con "/")
- * @returns {Array} Array de objetos con formato {nombre: "NOMBRE_BANDA"}
  */
 export const obtenerBandasDisponibles = (epocaTorneo) => {
-  if (!epocaTorneo) return [];
-  
-  // Si la época contiene "/", es una época combinada
+   if (!epocaTorneo) {
+      console.warn('⚠️ obtenerBandasDisponibles: época vacía');
+      return [];
+  }
+
+  // Época combinada
   if (epocaTorneo.includes('/')) {
     const epocas = epocaTorneo.split('/').map(e => e.trim());
     
-    // Combinar bandas de ambas épocas
     const bandasCombinadas = [];
     
     epocas.forEach(epoca => {
@@ -134,39 +200,57 @@ export const obtenerBandasDisponibles = (epocaTorneo) => {
       bandasCombinadas.push(...bandas);
     });
     
-    // Eliminar duplicados (por si hay bandas repetidas entre épocas)
+    // Eliminar duplicados
     const bandasUnicas = bandasCombinadas.filter((banda, index, self) =>
       index === self.findIndex(b => b.nombre === banda.nombre)
     );
-    
+
     return bandasUnicas;
   }
-  
-  // Si es una época simple, devolver directamente
-  return BANDAS_POR_EPOCA[epocaTorneo] || [];
-};
 
-/**
- * Obtiene la lista de todas las épocas disponibles
- * @returns {Array<string>} Array con los nombres de las épocas
- */
-export const obtenerEpocasDisponibles = () => {
-  return Object.keys(BANDAS_POR_EPOCA); 
+ // ✅ Época simple
+  const bandas = BANDAS_POR_EPOCA[epocaTorneo] || [];
+  
+  if (bandas.length === 0) {
+    console.warn(`⚠️ No se encontraron bandas para la época: "${epocaTorneo}"`);
+  }
+  
+  return bandas;
 };
 
 /**
  * Verifica si una época es válida
- * @param {string} epoca - Nombre de la época a validar
- * @returns {boolean} true si la época existe
  */
 export const esEpocaValida = (epoca) => {
   if (!epoca) return false;
   
-  // Si es época combinada, verificar ambas
+  // Época combinada
   if (epoca.includes('/')) {
     const epocas = epoca.split('/').map(e => e.trim());
     return epocas.every(e => BANDAS_POR_EPOCA[e] !== undefined);
   }
   
   return BANDAS_POR_EPOCA[epoca] !== undefined;
+};
+
+/**
+ * Formatea el string de épocas para mostrar
+ */
+export const formatearEpocas = (epocasString) => {
+  if (!epocasString) return 'No especificadas';
+  return epocasString.split('|').map(e => e.trim()).filter(e => e).join(', ');
+};
+
+/**
+ * Valida que los puntos estén dentro del rango permitido
+ */
+export const validarPuntosBanda = (puntos) => {
+  return puntos >= PUNTOS_BANDA_RANGO.min && puntos <= PUNTOS_BANDA_RANGO.max;
+};
+
+/**
+ * Valida que el número de jugadores por equipo esté en el rango
+ */
+export const validarJugadoresEquipo = (jugadores) => {
+  return jugadores >= JUGADORES_EQUIPO_RANGO.min && jugadores <= JUGADORES_EQUIPO_RANGO.max;
 };

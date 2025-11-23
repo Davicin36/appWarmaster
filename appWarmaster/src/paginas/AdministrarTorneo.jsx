@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import torneosSagaApi from '../servicios/apiSaga.js';
+import torneosSagaApi from '@/servicios/apiSaga';
 
-import VistaJugadores from '../componente/vistas/VistaJugadores';
-import VistaClasificacion from '../componente/vistas/VistaClasificacion';
-import VistaEmparejamientos from '../componente/vistas/VistaEmparejamientos';
-import VistaGeneral from '../componente/vistas/VistaGeneral';
+import VistaJugadores from '@/componente/vistasAdministrarTorneos/VistaJugadores';
+import VistaClasificacion from '@/componente/vistasAdministrarTorneos/VistaClasificacion';
+import VistaEmparejamientos from '@/componente/vistasAdministrarTorneos/VistaEmparejamientos';
+import VistaGeneral from '@/componente/vistasAdministrarTorneos/VistaGeneral';
 
 import '../estilos/administrarTorneo.css';
 
@@ -15,6 +15,7 @@ function AdministrarTorneo() {
     
     const [torneo, setTorneo] = useState(null);
     const [jugadores, setJugadores] = useState([]);
+    const [equipos, setEquipos] = useState([]);
     const [vistaActual, setVistaActual] = useState('general');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -37,12 +38,12 @@ function AdministrarTorneo() {
             const dataTorneo = response.data?.torneo || response.torneo || response;
             setTorneo(dataTorneo);
             
-            try {
-                const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
-                setJugadores(Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []);
-            } catch (err) {
-                console.log('No hay jugadores todavía', err);
-                setJugadores([]);
+            // Cargar según tipo de torneo
+            if (dataTorneo.tipo_torneo === 'Individual') {
+                await cargarJugadores();
+            } else if (dataTorneo.tipo_torneo === 'Por equipos') {
+                await cargarEquipos();
+                await cargarJugadores();
             }
             
             setLoading(false);
@@ -53,56 +54,68 @@ function AdministrarTorneo() {
         }
     };
 
+    const cargarJugadores = async () => {
+        try {
+            const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+            setJugadores(Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []);
+        } catch (err) {
+            console.log('No hay jugadores todavía', err);
+            setJugadores([]);
+        }
+    };
+
+    const cargarEquipos = async () => {
+        try {
+            const dataEquipos = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
+            setEquipos(Array.isArray(dataEquipos) ? dataEquipos : dataEquipos.data || []);
+        } catch (err) {
+            console.log('No hay equipos todavía', err);
+            setEquipos([]);
+        }
+    };
+
     if (loading) {
         return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100vh',
-                fontSize: '1.5em',
-                color: '#4a7c2e'
-            }}>
-                ⏳ Cargando datos del torneo...
+            <div className="loading-container">
+                <div className="loading-message">
+                    ⏳ Cargando datos del torneo...
+                </div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div style={{ 
-                maxWidth: '600px', 
-                margin: '100px auto', 
-                padding: '40px', 
-                textAlign: 'center',
-                background: 'white',
-                borderRadius: '10px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-            }}>
-                <h2 style={{ color: '#d32f2f', marginBottom: '20px' }}>⚠️ Error</h2>
-                <p style={{ fontSize: '1.2em', marginBottom: '30px' }}>{error}</p>
-                <button onClick={() => navigate('/')} className="btn-secondary">
-                    ⬅️ Volver al Inicio
-                </button>
+            <div className="error-container">
+                <div className="error-message-box">
+                    <h2>⚠️ Error</h2>
+                    <p>{error}</p>
+                    <button onClick={() => navigate('/')} className="btn-secondary">
+                        ⬅️ Volver al Inicio
+                    </button>
+                </div>
             </div>
         );
     }
 
+    const esTorneoEquipos = torneo?.tipo_torneo === 'Por equipos';
+    const totalJugadores = jugadores.length;
+    const totalEquipos = equipos.length;
+
     return (
         <div className="administrar-torneo-container">
-            {/* HEADER */}
             <header className="torneo-header">
                 <h1>⚔️ {torneo?.nombre_torneo || 'Torneo'}</h1>
                 <div className="torneo-info">
-                    <span className={`estado-badge ${torneo?.estado || 'pendiente'}`}>
-                        {torneo?.estado?.toUpperCase() || 'PENDIENTE'}
+                    <span className={`estado-badge estado-${torneo?.estado || 'pendiente'}`}>
+                        {(torneo?.estado || 'pendiente').toUpperCase()}
                     </span>
-                    <span>📅 {torneo?.fecha_inicio ? new Date(torneo.fecha_inicio).toLocaleDateString('es-ES') : 'Sin fecha'}</span>
-                    <span>👥 {jugadores.length} / {torneo?.participantes_max || 0} jugadores</span>
+                    <span className="info-item">
+                        {esTorneoEquipos ? '👥 Por Equipos' : '🎯 Individual'}
+                    </span>
                 </div>
             </header>
 
-            {/* NAVEGACIÓN */}
             <nav className="vista-nav">
                 <button 
                     className={vistaActual === 'general' ? 'active' : ''} 
@@ -114,7 +127,8 @@ function AdministrarTorneo() {
                     className={vistaActual === 'jugadores' ? 'active' : ''} 
                     onClick={() => setVistaActual('jugadores')}
                 >
-                    👥 Jugadores ({jugadores.length})
+                    {esTorneoEquipos ? '👥 Equipos' : '👥 Jugadores'}{' '}
+                    ({esTorneoEquipos ? totalEquipos : totalJugadores})
                 </button>
                 <button 
                     className={vistaActual === 'emparejamientos' ? 'active' : ''} 
@@ -130,15 +144,37 @@ function AdministrarTorneo() {
                 </button>
             </nav>
 
-            {/* CONTENIDO - Cada vista se encarga de todo */}
             <div className="contenido-principal">
-                {vistaActual === 'general' && <VistaGeneral torneoId={torneoId} onUpdate={cargarDatosTorneo} />}
-                {vistaActual === 'jugadores' && <VistaJugadores torneoId={torneoId} />}
-                {vistaActual === 'emparejamientos' && <VistaEmparejamientos torneoId={torneoId} />}
-                {vistaActual === 'clasificacion' && <VistaClasificacion torneoId={torneoId} />}
+                {vistaActual === 'general' && (
+                    <VistaGeneral 
+                        torneoId={torneoId} 
+                        onUpdate={cargarDatosTorneo}
+                        estadoTorneo={torneo?.estado}
+                    />
+                )}
+                {vistaActual === 'jugadores' && (
+                    <VistaJugadores 
+                        torneoId={torneoId}
+                        tipoTorneo={torneo?.tipo_torneo}
+                        jugadores={jugadores}
+                        equipos={equipos}
+                        onUpdate={cargarDatosTorneo}
+                    />
+                )}
+                {vistaActual === 'emparejamientos' && (
+                    <VistaEmparejamientos 
+                        torneoId={torneoId}
+                        tipoTorneo={torneo?.tipo_torneo}
+                    />
+                )}
+                {vistaActual === 'clasificacion' && (
+                    <VistaClasificacion 
+                        torneoId={torneoId}
+                        tipoTorneo={torneo?.tipo_torneo}
+                    />
+                )}
             </div>
 
-            {/* FOOTER */}
             <footer className="footer-controles">
                 <button type="button" onClick={() => navigate('/')} className="btn-atras">
                     ⬅️ Volver al Inicio

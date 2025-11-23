@@ -1,0 +1,482 @@
+/* ================================================
+   ESTILOS PARA SELECCIÓN DE JUEGO Y MODALIDAD
+   ================================================ */
+
+.seleccion-juego-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 100vh;
+}
+
+/* Header */
+.seleccion-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.seleccion-header h1 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.seleccion-header .subtitle {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+/* Error Banner */
+.error-banner {
+  background-color: #fee;
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  padding: 15px 20px;
+  margin-bottom: 30px;
+  color: #c62828;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Sección de Selección */
+.seccion-paso {
+  margin-bottom: 40px;
+  animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.paso-header {
+  margin-bottom: 30px;
+}
+
+.paso-header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #333;
+  text-align: center;
+}
+
+/* Grid de Juegos */
+.juegos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.juego-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+.juego-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
+
+.juego-card.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f5f7ff 0%, #e8ebff 100%);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+}
+
+.juego-icon {
+  font-size: 3.5rem;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.juego-card h3 {
+  font-size: 1.3rem;
+  margin: 0 0 10px 0;
+  color: #333;
+  text-align: center;
+}
+
+.juego-card p {
+  font-size: 0.95rem;
+  color: #666;
+  text-align: center;
+  margin-bottom: 15px;
+  flex: 1;
+}
+
+.juego-modalidades {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge-individual {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.badge-equipos {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.check-selected {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 35px;
+  height: 35px;
+  background-color: #4caf50;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+  animation: checkAppear 0.3s ease;
+}
+
+@keyframes checkAppear {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ================================================
+   SECCIÓN DE MODALIDAD
+   ================================================ */
+
+.seccion-modalidad {
+  margin-top: 50px;
+}
+
+.modalidades-selector {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.modalidad-opcion {
+  background: white;
+  border: 3px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 300px;
+  max-width: 450px;
+  flex: 1;
+}
+
+.modalidad-opcion:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
+
+.modalidad-opcion.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f5f7ff 0%, #e8ebff 100%);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
+}
+
+.modalidad-icono {
+  font-size: 3rem;
+  flex-shrink: 0;
+}
+
+.modalidad-texto {
+  flex: 1;
+}
+
+.modalidad-texto h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.3rem;
+  color: #333;
+}
+
+.modalidad-texto p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.check-selected-modalidad {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 32px;
+  height: 32px;
+  background-color: #4caf50;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+  animation: checkAppear 0.3s ease;
+}
+
+/* ================================================
+   CONTENEDOR DE ACCIONES
+   ================================================ */
+
+.acciones-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 30px;
+  margin-top: 50px;
+  animation: fadeInUp 0.5s ease;
+}
+
+.juego-seleccionado-info {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  color: white;
+}
+
+.info-item .info-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.info-item .info-text {
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.info-item strong {
+  font-weight: 700;
+}
+
+.btn-crear-torneo {
+  width: 100%;
+  padding: 18px;
+  background-color: white;
+  color: #667eea;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-crear-torneo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  background-color: #f8f9ff;
+}
+
+.btn-crear-torneo:active {
+  transform: translateY(0);
+}
+
+/* Instrucciones */
+.instrucciones {
+  background-color: #f8f9fa;
+  border-left: 4px solid #667eea;
+  border-radius: 8px;
+  padding: 20px 25px;
+  margin-top: 40px;
+}
+
+.instrucciones p {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1rem;
+}
+
+.instrucciones ol {
+  margin: 0;
+  padding-left: 25px;
+  color: #555;
+}
+
+.instrucciones ol li {
+  padding: 8px 0;
+  font-size: 0.95rem;
+}
+
+/* ================================================
+   RESPONSIVE
+   ================================================ */
+
+@media (max-width: 768px) {
+  .seleccion-header h1 {
+    font-size: 2rem;
+  }
+
+  .seleccion-header .subtitle {
+    font-size: 1rem;
+  }
+
+  .juegos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .juego-card {
+    min-height: auto;
+  }
+
+  .modalidades-selector {
+    flex-direction: column;
+  }
+
+  .modalidad-opcion {
+    min-width: 100%;
+  }
+
+  .acciones-container {
+    padding: 20px;
+  }
+
+  .juego-seleccionado-info {
+    gap: 10px;
+  }
+
+  .info-item {
+    padding: 12px;
+  }
+
+  .btn-crear-torneo {
+    font-size: 1.1rem;
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .seleccion-juego-container {
+    padding: 20px 15px;
+  }
+
+  .seleccion-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .paso-header h2 {
+    font-size: 1.4rem;
+  }
+
+  .juego-card {
+    padding: 20px;
+  }
+
+  .juego-icon {
+    font-size: 3rem;
+  }
+
+  .juego-card h3 {
+    font-size: 1.2rem;
+  }
+
+  .modalidad-opcion {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .modalidad-icono {
+    font-size: 2.5rem;
+  }
+
+  .info-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+}
+
+/* Animación de hover mejorada */
+@media (hover: hover) {
+  .juego-card:hover:not(.selected) {
+    border-color: #bbb;
+  }
+  
+  .juego-card.selected:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+  }
+
+  .modalidad-opcion:hover:not(.selected) {
+    border-color: #bbb;
+  }
+
+  .modalidad-opcion.selected:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  }
+}
+
+/* Mejora de accesibilidad */
+.juego-card:focus-visible,
+.modalidad-opcion:focus-visible {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+.btn-crear-torneo:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 2px;
+}

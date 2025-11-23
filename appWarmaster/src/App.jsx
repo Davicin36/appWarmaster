@@ -11,11 +11,12 @@ import CrearTorneo from './paginas/CrearTorneo.jsx';
 import Perfil from './paginas/Perfil.jsx';
 import AdministrarTorneo from './paginas/AdministrarTorneo.jsx';
 import VerTorneos from './paginas/VerTorneos.jsx';
+import Inscripcion from './paginas/Inscripcion.jsx';
+import AyudaTorneos from './paginas/AyudaTorneos.jsx';
+import SeleccionJuego from './paginas/SeleccionJuego.jsx';
 
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
-import Inscripcion from './componente/Inscripcion.jsx';
-import AyudaTorneos from './componente/AyudaTorneos.jsx';
 
 function App() {
 
@@ -39,16 +40,25 @@ function App() {
             path='/registrarse' 
             element={<Registrarse onOpenLogin={() => setIsLoginOpen(true)} />} 
         />
+        <Route
+            path='/torneosSaga/:torneoId/detalles'
+            element={<VerTorneos />}
+        />
          <Route
-            path='/ayudaCrearTorneo'
+            path='/ayudaCrearTorneos'
             element={<AyudaTorneos />}
         />
+        {/*tendria que tener aqui un protected Routes porque estas rutas ya son privadas*/}
         <Route 
             path='/navbarlogin' 
             element={<NavbarLogin />} 
         />
         <Route 
-            path='/crearTorneo' 
+            path='/seleccionarJuegos' 
+            element={<SeleccionJuego />} 
+        />
+        <Route 
+            path='/crearTorneo/:juego' 
             element={<CrearTorneo />} 
         />
         <Route 
@@ -62,10 +72,6 @@ function App() {
         <Route 
             path='/Inscripcion/:torneoId' 
             element={<Inscripcion />} 
-        />
-        <Route
-            path='/torneosSaga/:torneoId/detalles'
-            element={<VerTorneos />}
         />
         <Route
             path='/torneosSaga/:torneoId/editar-inscripcion'

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-import torneosSagaApi from '../../servicios/apiSaga';
+import torneosSagaApi from '@/servicios/apiSaga';
 
-import { generarEmparejamientosSuizo } from '../../funciones/emparejamientos';
+import { generarEmparejamientosSuizo } from '@/funciones/emparejamientos';
 
 import ModalRegistroPartida from '../ModalRegistroPartida';
 

@@ -2,33 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 import { useAuth } from '../servicios/AuthContext';
+import torneosSagaApi from '../servicios/apiSaga';
 
-import torneosSagaApi from '../servicios/apiSaga';  
+// ✅ Importar la función para formatear épocas
+import { formatearEpocas } from '../funciones/constantesFuncionesSaga';
 
 import '../estilos/principal.css';
-
 
 function Principal() {
     const navigate = useNavigate();
     const { isAuthenticated, user} = useAuth();
 
-     // Obtener el ID del usuario actual
     const userId = user?.id || null;
     
     const [torneosSaga, setTorneosSaga] = useState([]);
-    //const [torneosWarmaster, setTorneosWarmaster] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     const obtenerTorneosSaga = async () => {
-
         try {
             setLoading(true);
             setError('');
 
             console.log('🔍 Intentando obtener torneos...');
 
-            // ✅ Enviar token si está autenticado
             const token = localStorage.getItem('token');
             const headers = {
                 'Content-Type': 'application/json'
@@ -38,7 +35,7 @@ function Principal() {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const data = await torneosSagaApi.obtenerTorneos()
+            const data = await torneosSagaApi.obtenerTorneos();
             
             console.log('✅ Datos recibidos:', data);
             
@@ -78,7 +75,6 @@ function Principal() {
             navigate('/login');
             return;
         }
-        // Redirigir a la página de inscripción con el ID del torneo
         navigate(`/inscripcion/${torneoId}`);
     };
 
@@ -98,11 +94,7 @@ function Principal() {
                     ⚠️ {error}
                     <button 
                         onClick={obtenerTorneosSaga} 
-                        style={{ 
-                            marginLeft: '10px', 
-                            padding: '5px 10px',
-                            fontSize: '0.9rem'
-                        }}
+                        className="btn-secondary"
                     >
                         🔄 Reintentar
                     </button>
@@ -126,11 +118,12 @@ function Principal() {
                                 <tr>
                                     <th>#</th>
                                     <th>Nombre del torneo</th>
-                                    <th>Época</th>
+                                    <th>Tipo torneo</th>
+                                    <th>Época(s)</th>
                                     <th>Fecha Inicio</th>
                                     <th>Ubicación</th>
                                     <th>Organizador</th>
-                                    <th>Participantes</th>
+                                    <th>Participantes/Equipos</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -140,11 +133,25 @@ function Principal() {
                                         <td>{index + 1}</td>
                                         <td>
                                             <strong>{torneo.nombre_torneo}</strong>
-                                            <small style={{ display: 'block', color: '#8d6e63' }}>
-                                                {torneo.rondas_max} rondas • {torneo.puntos_banda} pts
-                                            </small>
                                         </td>
-                                        <td>{torneo.epoca_torneo}</td>
+                                        <td>
+                                            <strong>{torneo.tipo_torneo}</strong>
+                                            {torneo.tipo_torneo === 'Por equipos' && (
+                                                <small className="torneo-info-extra">
+                                                    ({torneo.equipos_max} equipos / {torneo.num_jugadores_equipo} jugadores)  
+                                                </small>
+                                            )}
+                                            {torneo.tipo_torneo === 'Individual' && (
+                                                <small className="torneo-info-extra">
+                                                    ({torneo.participantes_max} participantes)  
+                                                </small>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className="epocas-cell">
+                                                {formatearEpocas(torneo.epocas_disponibles)}
+                                            </span>
+                                        </td>
                                         <td>{formatearFecha(torneo.fecha_inicio)}</td>
                                         <td>{torneo.ubicacion || 'Por determinar'}</td>
                                         <td>
@@ -153,18 +160,20 @@ function Principal() {
                                                 : 'N/A'
                                             }
                                             {torneo.creador_club && (
-                                                <small style={{ display: 'block', color: '#8d6e63' }}>
+                                                <small className="club-info">
                                                     📍 {torneo.creador_club}
                                                 </small>
                                             )}
                                         </td>
                                         <td>
                                             <span className="participantes-badge">
-                                                {torneo.total_participantes || 0}
+                                                {torneo.tipo_torneo === 'Por equipos' 
+                                                    ? (torneo.total_equipos_inscritos || 0)
+                                                    : (torneo.total_participantes || 0)
+                                                }
                                             </span>
                                         </td>
                                         <td className="acciones-cell">
-                                            {/* Mostrar botón Administrar SOLO si es el creador */}
                                             {torneo.created_by === userId && (
                                                 <button 
                                                     className="btn-administrar"
@@ -173,7 +182,7 @@ function Principal() {
                                                     🔧 Administrar
                                                 </button>
                                             )}
-                                            {/* ✅ Mostrar botón SOLO en fase de inscripción */}
+                                            
                                             {torneo.estado === 'pendiente' && (
                                                 <button 
                                                     className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
@@ -189,12 +198,12 @@ function Principal() {
                                                 </button>
                                             )}
 
-                                        <button 
-                                            className="btn-ver-detalles"
-                                            onClick={() => navigate(`/torneosSaga/${torneo.id}/detalles`)}
-                                        >   
-                                            👁️ Ver Detalles
-                                        </button>
+                                            <button 
+                                                className="btn-ver-detalles"
+                                                onClick={() => navigate(`/torneosSaga/${torneo.id}/detalles`)}
+                                            >   
+                                                👁️ Ver Detalles
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -231,10 +240,9 @@ function Principal() {
                     </p>
                 )}
             </section>
+            
             <footer>
-                <Link 
-                    to="/ayudaCrearTorneo"
-                >
+                <Link to="/ayudaCrearTorneo">
                     Como Crear Un Torneo y gestionarlo
                 </Link>
             </footer>

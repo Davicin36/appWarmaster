@@ -1,0 +1,177 @@
+/* ================================================
+   ESTILOS ADICIONALES PARA INSCRIPCIONES POR EQUIPOS
+   ================================================ */
+
+/* Mensaje informativo de equipos */
+.info-equipos {
+  background-color: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  margin-bottom: 20px;
+}
+
+/* Sección de miembros */
+.miembros-section {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.miembros-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.miembros-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.btn-agregar {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.btn-agregar:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.btn-agregar:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Lista de miembros */
+.miembros-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.miembro-item {
+  display: flex;
+  gap: 15px;
+  background-color: white;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  align-items: flex-start;
+}
+
+.miembro-numero {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  background-color: #2196f3;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.miembro-campos {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr;
+  gap: 10px;
+}
+
+.miembro-campos .form-group {
+  margin-bottom: 0;
+}
+
+.miembro-campos label {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.miembro-campos input,
+.miembro-campos select {
+  font-size: 14px;
+  padding: 8px;
+}
+
+.btn-eliminar {
+  flex-shrink: 0;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-eliminar:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.btn-eliminar:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Información de miembros */
+.miembros-info {
+  margin-top: 15px;
+  padding: 12px;
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+}
+
+.miembros-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #856404;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .miembros-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .miembro-item {
+    flex-direction: column;
+  }
+
+  .miembro-campos {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-eliminar {
+    align-self: flex-end;
+  }
+}
+
+/* Checkbox para capitán */
+.form-group label input[type="checkbox"] {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
