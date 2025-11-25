@@ -1,0 +1,608 @@
+/* ==========================================
+   VISTA GENERAL - ESTILOS
+   ========================================== */
+
+.vista-general {
+    width: 100%;
+}
+
+/* ==========================================
+   FORMULARIO DE EDICIÓN
+   ========================================== */
+
+.formulario-edicion {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.formulario-edicion fieldset {
+    border: 2px solid var(--color-beige-oscuro);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    background: linear-gradient(135deg, #FFFFFF, var(--color-fondo-principal));
+}
+
+.formulario-edicion legend {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--color-verde-oscuro);
+    padding: 0 10px;
+}
+
+.formulario-edicion label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--color-verde-oscuro);
+}
+
+.formulario-edicion input,
+.formulario-edicion select,
+.formulario-edicion textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid var(--color-beige-oscuro);
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.formulario-edicion input:focus,
+.formulario-edicion select:focus,
+.formulario-edicion textarea:focus {
+    outline: none;
+    border-color: var(--color-verde-claro);
+    box-shadow: 0 0 0 3px rgba(139, 174, 102, 0.2);
+}
+
+.formulario-edicion input:disabled,
+.formulario-edicion select:disabled {
+    background: linear-gradient(135deg, #ECF0F1, #BDC3C7);
+    cursor: not-allowed;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group small {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* ==========================================
+   SELECTOR DE ÉPOCAS
+   ========================================== */
+
+.epocas-seleccionadas {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px solid var(--color-beige-oscuro);
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--color-fondo-principal), #FFFFFF);
+}
+
+.epocas-seleccionadas strong {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--color-verde-oscuro);
+}
+
+.epocas-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.epoca-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, var(--color-verde-claro), var(--color-verde-oscuro));
+    color: white;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(98, 129, 65, 0.3);
+}
+
+.btn-remove-epoca {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0;
+    line-height: 1;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.btn-remove-epoca:hover {
+    background: var(--color-error);
+    transform: scale(1.1);
+}
+
+.info-text {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    font-style: italic;
+}
+
+.error-text {
+    color: var(--color-error);
+    font-size: 0.9rem;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+/* ==========================================
+   SECCIONES DE INFORMACIÓN
+   ========================================== */
+
+.seccion-info-torneo,
+.seccion-estado-control,
+.seccion-rondas,
+.seccion-bases {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.seccion-info-torneo h2,
+.seccion-estado-control h2,
+.seccion-rondas h2,
+.seccion-bases h2 {
+    margin: 0;
+    color: var(--color-verde-oscuro);
+    font-size: 1.5em;
+}
+
+/* ==========================================
+   HEADER CON BOTONES DE ACCIÓN
+   ========================================== */
+
+.section-header-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--color-beige);
+    gap: 20px;
+}
+
+.section-header-inline h2 {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.botones-accion-grupo {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.botones-accion-grupo button {
+    white-space: nowrap;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.botones-accion-grupo button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.botones-accion-grupo button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================
+   GRID DE INFORMACIÓN
+   ========================================== */
+
+.info-torneo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.info-torneo-grid .info-item {
+    padding: 18px;
+    background: linear-gradient(135deg, var(--color-fondo-principal), #FFFFFF);
+    border-radius: 10px;
+    border-left: 5px solid var(--color-verde-claro);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.info-torneo-grid .info-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.info-torneo-grid .info-item label {
+    display: block;
+    font-weight: bold;
+    color: var(--color-verde-oscuro);
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-torneo-grid .info-item p,
+.info-torneo-grid .info-item span {
+    margin: 0;
+    font-size: 1em;
+    color: var(--color-texto-principal);
+    font-weight: 600;
+}
+
+.info-torneo-grid .info-item .info-item-destacado {
+    display: block;
+    background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 1em;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(230, 126, 34, 0.3);
+}
+
+.info-torneo-grid .info-item .info-item-secundario {
+    display: block;
+    background: linear-gradient(135deg, var(--color-beige), var(--color-beige-oscuro));
+    color: var(--color-verde-oscuro);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+.info-torneo-grid .info-item > span:not(:last-child) {
+    margin-bottom: 8px;
+}
+
+/* ==========================================
+   RONDAS
+   ========================================== */
+
+.rondas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.ronda-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(98, 129, 65, 0.3);
+    transition: transform 0.3s ease;
+    gap: 15px;
+}
+
+.ronda-item:hover {
+    transform: translateX(5px);
+}
+
+.ronda-numero {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: white;
+    flex-shrink: 0;
+}
+
+.partidas-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+}
+
+.ronda-escenario {
+    font-size: 1em;
+    font-weight: 600;
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 15px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ronda-escenario-equipos {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.ronda-escenario-equipos:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+/* ==========================================
+   BASES DEL TORNEO
+   ========================================== */
+
+.bases-existentes {
+    background: linear-gradient(135deg, #D5F4E6, #ABEBC6);
+    padding: 20px;
+    border-radius: 8px;
+    border: 2px solid var(--color-exito);
+    border-left: 4px solid var(--color-exito);
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
+}
+
+.bases-existentes p {
+    margin: 0 0 15px 0;
+    font-size: 1.05em;
+    color: #186A3B;
+    font-weight: 600;
+}
+
+.pdf-actual {
+    border: 2px solid var(--color-exito);
+    background: linear-gradient(135deg, #D5F4E6, #ABEBC6);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.pdf-actual p {
+    margin: 0 0 10px 0;
+    color: #186A3B;
+    font-weight: 600;
+}
+
+.input-file-pdf {
+    padding: 10px;
+    border: 2px dashed var(--color-verde-claro);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    width: 100%;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--color-fondo-principal), #FFFFFF);
+    transition: all 0.3s ease;
+}
+
+.input-file-pdf:hover {
+    background: linear-gradient(135deg, var(--color-beige), var(--color-fondo-principal));
+    border-color: var(--color-verde-oscuro);
+}
+
+/* ==========================================
+   ADVERTENCIAS
+   ========================================== */
+
+.advertencia-no-editable {
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    border: 2px solid #2196F3;
+    border-left: 4px solid #2196F3;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.advertencia-no-editable strong {
+    display: block;
+    font-size: 1.05em;
+    margin-bottom: 8px;
+    color: #1976D2;
+}
+
+.advertencia-no-editable p {
+    margin: 0;
+    font-size: 0.95em;
+    color: #0D47A1;
+}
+
+.advertencia-finalizado {
+    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+    border: 2px solid var(--color-naranja);
+    border-left: 4px solid var(--color-naranja);
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2);
+}
+
+.advertencia-finalizado strong {
+    display: block;
+    font-size: 1.05em;
+    margin-bottom: 8px;
+    color: var(--color-naranja-hover);
+}
+
+.advertencia-finalizado p {
+    margin: 0;
+    font-size: 0.95em;
+    color: var(--color-naranja-hover);
+}
+
+/* ==========================================
+   BOTONES FORMULARIO
+   ========================================== */
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.button-group button {
+    padding: 12px 24px;
+    font-size: 1em;
+}
+
+/* Utilities */
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+
+.success-message {
+    background: linear-gradient(135deg, #D5F4E6, #ABEBC6);
+    color: #186A3B;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border-left: 4px solid var(--color-exito);
+    font-weight: 600;
+}
+
+/* ==========================================
+   EMPTY STATE
+   ========================================== */
+
+.vista-general .empty-message {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    color: #666;
+    border: 2px dashed var(--color-beige-oscuro);
+}
+
+.vista-general .error-message {
+    background: linear-gradient(135deg, #FADBD8, #F1948A);
+    color: var(--color-error);
+    padding: 15px 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--color-error);
+    margin-bottom: 20px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+@media (max-width: 1024px) {
+    .section-header-inline {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    .botones-accion-grupo {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .formulario-edicion {
+        padding: 20px;
+    }
+
+    .info-torneo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .button-group button {
+        width: 100%;
+    }
+
+    .botones-accion-grupo {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .botones-accion-grupo button {
+        width: 100%;
+    }
+
+    .ronda-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .partidas-container {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .section-header-inline h2 {
+        font-size: 1.3em;
+    }
+}
+
+@media (max-width: 480px) {
+    .seccion-info-torneo,
+    .seccion-rondas,
+    .seccion-bases {
+        padding: 15px;
+    }
+
+    .botones-accion-grupo button {
+        font-size: 0.85em;
+        padding: 7px 14px;
+    }
+}

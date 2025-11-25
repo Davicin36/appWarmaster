@@ -1,0 +1,266 @@
+/* ==========================================
+   VISTA CLASIFICACIÓN - ESTILOS
+   ========================================== */
+
+.vista-clasificacion {
+    width: 100%;
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
+
+.clasificacion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 20px;
+}
+
+.vista-clasificacion h2 {
+    margin: 0;
+    color: var(--color-verde-oscuro);
+    font-size: 1.8em;
+    flex: 1;
+}
+
+.btn-actualizar-clasificacion {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(98, 129, 65, 0.3);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-actualizar-clasificacion:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(98, 129, 65, 0.4);
+    background: linear-gradient(135deg, var(--color-verde-claro), var(--color-verde-oscuro));
+}
+
+.btn-actualizar-clasificacion:disabled {
+    background: linear-gradient(135deg, #BDC3C7, #95A5A6);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+/* ==========================================
+   TABLA CLASIFICACIÓN
+   ========================================== */
+
+.tabla-clasificacion-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.tabla-clasificacion {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tabla-clasificacion thead {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    color: white;
+}
+
+.tabla-clasificacion th {
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tabla-clasificacion th:first-child {
+    text-align: center;
+    width: 80px;
+}
+
+.tabla-clasificacion td {
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--color-beige);
+    color: var(--color-texto-principal);
+    font-size: 0.95em;
+}
+
+.tabla-clasificacion tbody tr {
+    transition: all 0.2s ease;
+}
+
+.tabla-clasificacion tbody tr:hover {
+    background: linear-gradient(135deg, var(--color-beige) 0%, var(--color-fondo-principal) 100%);
+    transform: translateX(4px);
+}
+
+.tabla-clasificacion tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Top 3 con medallas */
+.tabla-clasificacion .top-1 {
+    background: linear-gradient(135deg, #FFF9C4 0%, #FFF59D 100%);
+    font-weight: 600;
+}
+
+.tabla-clasificacion .top-2 {
+    background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%);
+    font-weight: 600;
+}
+
+.tabla-clasificacion .top-3 {
+    background: linear-gradient(135deg, #FFD7C4 0%, #FFAB91 100%);
+    font-weight: 600;
+}
+
+.tabla-clasificacion .posicion {
+    font-size: 1.4em;
+    font-weight: bold;
+    text-align: center;
+    color: var(--color-verde-oscuro);
+}
+
+.tabla-clasificacion .nombre-jugador {
+    font-weight: 600;
+    color: var(--color-verde-oscuro);
+    font-size: 1em;
+}
+
+.tabla-clasificacion .puntos-destacado {
+    font-weight: bold;
+    color: var(--color-naranja);
+    font-size: 1.05em;
+    text-align: center;
+}
+
+.tabla-clasificacion td:not(:first-child):not(:nth-child(2)) {
+    text-align: center;
+}
+
+/* ==========================================
+   EMPTY STATE
+   ========================================== */
+
+.vista-clasificacion .empty-message {
+    background: white;
+    padding: 60px 20px;
+    border-radius: 12px;
+    text-align: center;
+    color: #666;
+    font-size: 1.1em;
+    border: 2px dashed var(--color-beige-oscuro);
+}
+
+.vista-clasificacion .empty-message p {
+    margin: 0;
+}
+
+/* ==========================================
+   LOADING Y ERROR
+   ========================================== */
+
+.vista-clasificacion .loading-message {
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 12px;
+    border: 2px dashed var(--color-beige-oscuro);
+    color: var(--color-verde-oscuro);
+}
+
+.vista-clasificacion .error-message {
+    background: linear-gradient(135deg, #FADBD8, #F1948A);
+    color: var(--color-error);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--color-error);
+    margin: 20px 0;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+}
+
+.vista-clasificacion .btn-secondary {
+    background: linear-gradient(135deg, #95A5A6, #7F8C8D);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(127, 140, 141, 0.3);
+}
+
+.vista-clasificacion .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.4);
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+@media (max-width: 768px) {
+    .clasificacion-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .vista-clasificacion h2 {
+        font-size: 1.5em;
+    }
+
+    .btn-actualizar-clasificacion {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .tabla-clasificacion {
+        font-size: 0.9em;
+    }
+
+    .tabla-clasificacion th,
+    .tabla-clasificacion td {
+        padding: 10px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .vista-clasificacion h2 {
+        font-size: 1.3em;
+    }
+
+    .tabla-clasificacion {
+        font-size: 0.85em;
+        min-width: 500px;
+    }
+
+    .tabla-clasificacion .posicion {
+        font-size: 1.2em;
+    }
+
+    .btn-actualizar-clasificacion {
+        font-size: 0.85em;
+        padding: 7px 14px;
+    }
+}

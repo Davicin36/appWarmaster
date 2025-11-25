@@ -1,0 +1,334 @@
+/* Agregar al final de modalPartidas.css */
+
+/* ==========================================
+   ESTADOS ESPECÍFICOS DEL MODAL
+   ========================================== */
+
+.modal-header.confirmado {
+    background: linear-gradient(135deg, var(--color-exito), #1E8449);
+}
+
+.btn-close.confirmado {
+    background: white;
+    color: var(--color-exito);
+}
+
+.alerta-confirmado {
+    background: linear-gradient(135deg, #D5F4E6, #ABEBC6);
+    border: 2px solid var(--color-exito);
+    border-left: 4px solid var(--color-exito);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
+}
+
+.alerta-confirmado p {
+    margin: 0;
+    font-weight: bold;
+    color: #186A3B;
+}
+
+.nota-no-editable {
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #666;
+    font-weight: normal;
+}
+
+.alerta-pendiente {
+    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+    border: 2px solid var(--color-naranja);
+    border-left: 4px solid var(--color-naranja);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2);
+}
+
+.alerta-pendiente p {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--color-naranja-hover);
+    font-weight: 600;
+}
+
+.puntos-bye {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--color-naranja);
+}
+
+.ronda-info {
+    margin: 10px 0 0 0;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.info-bye-explicacion {
+    margin-top: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid #2196F3;
+}
+
+.info-bye-explicacion p {
+    margin: 0;
+    font-size: 0.95em;
+    color: #1976D2;
+}
+
+.nota-organizador {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* ==========================================
+   BOTONES ESPECÍFICOS
+   ========================================== */
+
+.btn-desconfirmar {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(230, 126, 34, 0.3);
+}
+
+.btn-desconfirmar:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4);
+}
+
+.btn-desconfirmar:disabled {
+    background: linear-gradient(135deg, #BDC3C7, #95A5A6);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-cerrar {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(33, 150, 243, 0.3);
+}
+
+.btn-cerrar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(33, 150, 243, 0.4);
+}
+
+.btn-confirmar-bye {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--color-exito), #1E8449);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+}
+
+.btn-confirmar-bye:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.4);
+}
+
+.btn-confirmar-bye:disabled {
+    background: linear-gradient(135deg, #BDC3C7, #95A5A6);
+    cursor: not-allowed;
+}
+
+/* ==========================================
+   GRID DE RESULTADOS (SOLO LECTURA)
+   ========================================== */
+
+.resultados-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.jugador-stats {
+    background: linear-gradient(135deg, var(--color-fondo-principal), #FFFFFF);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--color-verde-claro);
+}
+
+.jugador-stats h4 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: var(--color-verde-oscuro);
+}
+
+.jugador-stats p {
+    margin: 8px 0;
+    color: var(--color-texto-principal);
+}
+
+/* ==========================================
+   SECCIÓN PRIMER JUGADOR
+   ========================================== */
+
+.seccion-primer-jugador {
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #2196F3;
+}
+
+.seccion-primer-jugador h4 {
+    margin: 0 0 10px 0;
+    color: #1976D2;
+}
+
+.primer-jugador-seleccionado {
+    background: linear-gradient(135deg, var(--color-exito), #1E8449);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+}
+
+.primer-jugador-seleccionado p {
+    margin: 0;
+    color: white;
+}
+
+.instruccion {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: #0D47A1;
+}
+
+.botones-primer-jugador {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-seleccionar-jugador {
+    flex: 1;
+    padding: 10px;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+}
+
+.btn-seleccionar-jugador:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
+}
+
+/* ==========================================
+   FORMULARIO DE EDICIÓN
+   ========================================== */
+
+.modal-edicion {
+    max-width: 800px;
+}
+
+.formulario-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.botones-accion {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-confirmar-definitivo {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--color-exito), #1E8449);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+}
+
+.btn-confirmar-definitivo:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.4);
+}
+
+.btn-confirmar-definitivo:disabled {
+    background: linear-gradient(135deg, #BDC3C7, #95A5A6);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-guardar {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(33, 150, 243, 0.3);
+}
+
+.btn-guardar:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(33, 150, 243, 0.4);
+}
+
+.btn-guardar:disabled {
+    background: linear-gradient(135deg, #BDC3C7, #95A5A6);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================
+   RESPONSIVE ADICIONAL
+   ========================================== */
+
+@media (max-width: 768px) {
+    .resultados-grid,
+    .formulario-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vs-divider {
+        transform: rotate(90deg);
+    }
+
+    .botones-accion {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .botones-accion button {
+        width: 100%;
+    }
+}

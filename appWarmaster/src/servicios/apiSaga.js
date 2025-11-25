@@ -103,7 +103,7 @@ class TorneosSagaApi {
     return this.request(`/${torneoId}/obtenerInscripcion`);
   }
 
-  async obteneiInscripcionEquipo(torneoId) {
+  async obtenerInscripcionEquipo(torneoId) {
     return this.request(`/${torneoId}/obtenerInscripcionEquipo`);
 }
 
@@ -179,8 +179,6 @@ async obtenerPartidasTorneo(torneoId, ronda) {
     : `/${torneoId}/partidasTorneoSaga`;
   
   const response = await this.request(endpoint);
-  
-  console.log('🔍 Response de API:', response);
   
   // ✅ EL BACKEND DEVUELVE UN ARRAY DIRECTO
   if (Array.isArray(response)) {
@@ -260,6 +258,12 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
   //clasificacion de los torneos
   async obtenerClasificacion(torneoId) {
   return this.request(`/${torneoId}/obtenerClasificacion`, {
+    method: 'GET'
+  });
+}
+
+async obtenerClasificacionEquipos(torneoId) {
+  return this.request(`/${torneoId}/obtenerClasificacionEquipos`, {
     method: 'GET'
   });
 }

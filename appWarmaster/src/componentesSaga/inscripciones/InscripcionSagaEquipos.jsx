@@ -9,7 +9,7 @@ import {
   JUGADORES_EQUIPO_RANGO,
   PUNTOS_BANDA_RANGO,
   obtenerBandasDisponibles
-} from '@/funciones/constantesFuncionesSaga';
+} from '../funcionesSaga/constantesFuncionesSaga';
 
 import '../../estilos/inscripcionesEquipo.css';
 
@@ -80,7 +80,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
 
       try {
         setLoading(true);
-        const data = await torneosSagaApi.obteneiInscripcionEquipo(torneoId);
+        const data = await torneosSagaApi.obtenerInscripcionEquipo(torneoId);
         
         if (data.success && data.data) {
           const equipo = data.data;

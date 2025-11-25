@@ -1,11 +1,10 @@
-// paginas/VerTorneo.jsx
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import torneosSagaApi from "../servicios/apiSaga";
 
-import VistaClasificacion from "../componente/vistasAdministrarTorneos/VistaClasificacion";
-import VerEmparejamientos from "../componente/VerEmparejamientos";
+import VistaInformacionPublica from "@/componente/vistasVerTorneo/VistaInformacionPublica";
+import VistaEmparejamientosPublica from "@/componente/vistasVerTorneo/VistaEmparejamientosPublica";
+import VistaClasificacionPublica from "@/componente/vistasVerTorneo/VistaClasificacionPublica";
 
 import "../estilos/verTorneo.css";
 
@@ -117,12 +116,26 @@ function VerTorneo() {
     if (error) {
         return (
             <div className="error-container">
-                <div className="error-message">
+                <div className="error-message-box">
                     <h2>⚠️ Error</h2>
                     <p>{error}</p>
                     <button onClick={() => navigate(-1)} className="btn-secondary">
                         ⬅️ Volver
                     </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ⬅️ Determinar tipo de juego
+    const tipoJuego = torneo?.sistema;
+
+    if (!tipoJuego) {
+        return (
+            <div className="error-container">
+                <div className="error-message-box">
+                    <h2>⚠️ Error de Configuración</h2>
+                    <p>El torneo no tiene un sistema de juego definido</p>
                 </div>
             </div>
         );
@@ -145,16 +158,19 @@ function VerTorneo() {
                         {(torneo?.estado || 'pendiente').toUpperCase()}
                     </span>
                     <span className="info-item">
+                        🎮 {tipoJuego}
+                    </span>
+                    <span className="info-item">
                         📅 {formatearFecha(torneo?.fecha_inicio)}
                     </span>
-                     <span className="info-item">
-                        {torneo?.tipo_torneo || 'Tipo de juego no especificado'}
+                    <span className="info-item">
+                        {torneo?.tipo_torneo || 'Tipo no especificado'}
                     </span>
                     <span className="info-item">
-                        {torneo?.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos} {torneo?.tipo_torneo === 'Por equipos' ? 'equipos' : 'participantes'}
+                        {torneo?.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos}
                     </span>
                     <span className="info-item">
-                        ⚔️ Época: {torneo?.epocas_disponibles || 'No especificada'}
+                        🎭 {torneo?.epocas_disponibles || 'No especificada'}
                     </span>
                     {torneo?.ubicacion && (
                         <span className="info-item">
@@ -162,10 +178,10 @@ function VerTorneo() {
                         </span>
                     )}
                     <span className="info-item">
-                        ⚔️ Puntos: {torneo?.puntos_banda || 0} pts
+                        ⚔️ {torneo?.puntos_banda || 0} pts
                     </span>
                     <span className="info-item">
-                        🎲 Rondas: {torneo?.rondas_max || 0}
+                        🎲 {torneo?.rondas_max || 0} rondas
                     </span>
                 </div>
 
@@ -203,151 +219,32 @@ function VerTorneo() {
 
             <div className="contenido-principal">
                 {vistaActual === 'informacion' && (
-                    <div className="vista-inscritos">
-                        {torneo?.tipo_torneo === 'Individual' ? (
-                            <>
-                                <h2>👤 Jugadores Inscritos ({inscritos.length})</h2>
-                                {inscritos.length === 0 ? (
-                                    <div className="empty-message">
-                                        <p>📭 Aún no hay jugadores inscritos en este torneo.</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid-inscritos">
-                                        {inscritos.map((inscrito) => {
-                                            const comp = inscrito.composicion_ejercito || {};
-                                            const totalPuntos = 
-                                                (parseFloat(comp.guardias) || 0) +
-                                                (parseFloat(comp.guerreros) || 0) +
-                                                (parseFloat(comp.levas) || 0) +
-                                                (parseFloat(comp.mercenarios) || 0);
-
-                                            return (
-                                                <div key={inscrito.id} className="card-inscrito">
-                                                    <div className="jugador-info">
-                                                        <h3>
-                                                            👤 {inscrito.jugador_nombre || 'Sin nombre'} {inscrito.jugador_apellidos || ''}
-                                                        </h3>
-                                                        {inscrito.club && <p className="club">🏛️ {inscrito.club}</p>}
-                                                        {inscrito.ciudad && <p className="ubicacion">📍 {inscrito.ciudad}</p>}
-                                                    </div>
-
-                                                    <div className="banda-info">
-                                                        <p><strong>Facción:</strong> {inscrito.faccion || "Sin definir"}</p>
-                                                        <p><strong>Época:</strong> {inscrito.epoca || "Sin definir"}</p>
-                                                        <p><strong>Puntos:</strong> {totalPuntos.toFixed(1)} pts</p>
-                                                    </div>
-
-                                                    {Object.keys(comp).length > 0 && (
-                                                        <div className="composicion-banda">
-                                                            <h5>📜 Composición:</h5>
-                                                            <ul>
-                                                                <li>Guardias: {parseFloat(comp.guardias) || 0}</li>
-                                                                <li>Guerreros: {parseFloat(comp.guerreros) || 0}</li>
-                                                                <li>Levas: {parseFloat(comp.levas) || 0}</li>
-                                                                <li>Mercenarios: {parseFloat(comp.mercenarios) || 0}</li>
-                                                                {comp.detalleMercenarios && (
-                                                                    <li className="detalle-mercenarios">
-                                                                        🧾 {comp.detalleMercenarios}
-                                                                    </li>
-                                                                )}
-                                                            </ul>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <h2>👥 Equipos Inscritos ({equipos.length})</h2>
-                                {equipos.length === 0 ? (
-                                    <div className="empty-message">
-                                        <p>📭 Aún no hay equipos inscritos en este torneo.</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid-equipos">
-                                        {equipos.map((equipo) => (
-                                            <div key={equipo.id} className="card-equipo">
-                                                <div className="equipo-header">
-                                                    <h3>🏆 {equipo.nombre_equipo || 'Sin nombre'}</h3>
-                                                    <span className="badge-capitan">
-                                                        👑 Capitán: {equipo.capitan_nombre || 'Sin capitán'} {equipo.capitan_apellidos || ''}
-                                                    </span>
-                                                </div>
-
-                                                <div className="equipo-miembros">
-                                                    <h4>Miembros ({(equipo.miembros || []).length}):</h4>
-                                                    {(equipo.miembros || []).length > 0 ? (
-                                                        <ul className="lista-miembros">
-                                                            {equipo.miembros.map((miembro, idx) => {
-                                                                const comp = miembro.composicion || {};
-                                                                const totalPuntos = 
-                                                                    (parseFloat(comp.guardias) || 0) +
-                                                                    (parseFloat(comp.guerreros) || 0) +
-                                                                    (parseFloat(comp.levas) || 0) +
-                                                                    (parseFloat(comp.mercenarios) || 0);
-
-                                                                return (
-                                                                    <li key={idx} className="miembro-item">
-                                                                        <div className="miembro-header">
-                                                                            <span className="miembro-nombre">
-                                                                                {miembro.es_capitan && '👑 '}
-                                                                                {miembro.nombre || 'Sin nombre'}
-                                                                            </span>
-                                                                            <span className="miembro-epoca-banda">
-                                                                                {miembro.epoca || 'Sin época'} - {miembro.banda || 'Sin banda'}
-                                                                            </span>
-                                                                        </div>
-                                                                        
-                                                                        {Object.keys(comp).length > 0 && (
-                                                                            <div className="miembro-composicion">
-                                                                                <div className="puntos-total">
-                                                                                    <strong>Total: {totalPuntos.toFixed(1)} pts</strong>
-                                                                                </div>
-                                                                                <div className="puntos-detalle">
-                                                                                    <span>Guardias: {parseFloat(comp.guardias) || 0}</span>
-                                                                                    <span>Guerreros: {parseFloat(comp.guerreros) || 0}</span>
-                                                                                    <span>Levas: {parseFloat(comp.levas) || 0}</span>
-                                                                                    <span>Mercenarios: {parseFloat(comp.mercenarios) || 0}</span>
-                                                                                </div>
-                                                                                {comp.detalleMercenarios && (
-                                                                                    <div className="detalle-mercenarios-mini">
-                                                                                        🧾 {comp.detalleMercenarios}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </li>
-                                                                );
-                                                            })}
-                                                        </ul>
-                                                    ) : (
-                                                        <p className="sin-miembros">Sin miembros</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
+                    <VistaInformacionPublica
+                        tipoJuego={tipoJuego}
+                        inscritos={inscritos}
+                        equipos={equipos}
+                        tipoTorneo={torneo?.tipo_torneo}
+                    />
                 )}
 
                 {vistaActual === 'emparejamientos' && (
-                    <VerEmparejamientos torneoId={torneoId} />
+                    <VistaEmparejamientosPublica
+                        tipoJuego={tipoJuego}
+                        torneoId={torneoId}
+                    />
                 )}
 
                 {vistaActual === 'clasificacion' && (
-                    <VistaClasificacion torneoId={torneoId} />
+                    <VistaClasificacionPublica
+                        tipoJuego={tipoJuego}
+                        torneoId={torneoId}
+                    />
                 )}
             </div>
 
             <footer className="footer-controles">
                 <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
-                    ⬅️ Volver al Inicio
+                    ⬅️ Volver
                 </button>
             </footer>
         </div>

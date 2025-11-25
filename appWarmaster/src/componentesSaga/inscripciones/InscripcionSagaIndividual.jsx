@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import torneosSagaApi from '../../servicios/apiSaga.js';
-import { obtenerBandasDisponibles } from '@/funciones/constantesFuncionesSaga';
+import { obtenerBandasDisponibles } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
 import '../../estilos/inscripcion.css';
 

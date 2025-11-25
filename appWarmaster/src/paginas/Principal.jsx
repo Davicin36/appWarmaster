@@ -5,7 +5,7 @@ import { useAuth } from '../servicios/AuthContext';
 import torneosSagaApi from '../servicios/apiSaga';
 
 // ✅ Importar la función para formatear épocas
-import { formatearEpocas } from '../funciones/constantesFuncionesSaga';
+import { formatearEpocas } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
 import '../estilos/principal.css';
 
@@ -24,9 +24,7 @@ function Principal() {
             setLoading(true);
             setError('');
 
-            console.log('🔍 Intentando obtener torneos...');
-
-            const token = localStorage.getItem('token');
+           const token = localStorage.getItem('token');
             const headers = {
                 'Content-Type': 'application/json'
             };
@@ -37,11 +35,8 @@ function Principal() {
 
             const data = await torneosSagaApi.obtenerTorneos();
             
-            console.log('✅ Datos recibidos:', data);
-            
             if (data.data && data.data.torneosSaga) {
                 setTorneosSaga(data.data.torneosSaga);
-                console.log(`✅ ${data.data.torneosSaga.length} torneos cargados`);
             } else {
                 console.warn('⚠️ Estructura de respuesta inesperada:', data);
                 setTorneosSaga([]);

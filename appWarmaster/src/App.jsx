@@ -45,7 +45,7 @@ function App() {
             element={<VerTorneos />}
         />
          <Route
-            path='/ayudaCrearTorneos'
+            path='/ayudaTorneos'
             element={<AyudaTorneos />}
         />
         {/*tendria que tener aqui un protected Routes porque estas rutas ya son privadas*/}

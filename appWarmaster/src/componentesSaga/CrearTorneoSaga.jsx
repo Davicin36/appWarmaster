@@ -11,7 +11,7 @@ import {
     PARTICIPANTES_RANGO,
     EQUIPOS_RANGO,
     JUGADORES_EQUIPO_RANGO
-} from '@/funciones/constantesFuncionesSaga.js';
+} from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga.js';
 
 import '../estilos/crearTorneo.css';
 

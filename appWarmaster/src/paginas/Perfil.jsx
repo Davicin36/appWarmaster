@@ -611,7 +611,7 @@ function Perfil() {
                                         </div>
                                         <div className="torneo-info">
                                             <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
-                                            <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
+                                            <p><strong>🎭 Época:</strong> {torneo.epocas_disponibles}</p>
                                             <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
                                             <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
                                             {torneo.ubicacion && (
@@ -660,7 +660,7 @@ function Perfil() {
                                     </div>
                                     <div className="torneo-info">
                                         <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
-                                        <p><strong>🎭 Época:</strong> {torneo.epoca_torneo}</p>
+                                        <p><strong>🎭 Época:</strong> {torneo.epocas_disponibles}</p>
                                         <p><strong>⚔️ Mi Facción:</strong> {torneo.faccion || 'No especificada'}</p>
                                         <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
                                         <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>

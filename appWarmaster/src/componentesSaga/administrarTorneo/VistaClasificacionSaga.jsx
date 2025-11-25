@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {  useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import torneosSagaApi from '@/servicios/apiSaga';
 
-import torneosSagaApi from '../../servicios/apiSaga';
+import '@/estilos/vistasTorneos/vistaClasificacion.css';
 
-function VerClasificacion({ torneoId: propTorneoId }) {
-    // Obtener torneoId de props o de URL
+function VistaClasificacionSaga({ torneoId: propTorneoId }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
 
@@ -23,18 +23,29 @@ function VerClasificacion({ torneoId: propTorneoId }) {
             setLoading(true);
             setError('');
             
-            const response = await torneosSagaApi.obtenerClasificacionTorneo(torneoId);
+            const response = await torneosSagaApi.obtenerClasificacion(torneoId);
             
             let dataClasificacion = [];
             if (Array.isArray(response)) {
                 dataClasificacion = response;
             } else if (response.data && Array.isArray(response.data)) {
                 dataClasificacion = response.data;
-            } else if (response.clasificacion && Array.isArray(response.clasificacion)) {
-                dataClasificacion = response.clasificacion;
             }
             
-            setClasificacion(dataClasificacion);
+            const clasificacionOrdenada = dataClasificacion.sort((a, b) => {
+                if (b.puntos_victoria_totales !== a.puntos_victoria_totales) {
+                    return b.puntos_victoria_totales - a.puntos_victoria_totales;
+                }
+                if (b.puntos_torneo_totales !== a.puntos_torneo_totales) {
+                    return b.puntos_torneo_totales - a.puntos_torneo_totales;
+                }
+                if (b.puntos_masacre_totales !== a.puntos_masacre_totales) {
+                    return b.puntos_masacre_totales - a.puntos_masacre_totales;
+                }
+                return b.warlord_muerto_totales - a.warlord_muerto_totales;
+            });
+            
+            setClasificacion(clasificacionOrdenada);
             
         } catch (err) {
             console.error('Error al cargar clasificación:', err);
@@ -48,7 +59,7 @@ function VerClasificacion({ torneoId: propTorneoId }) {
     if (loading) {
         return (
             <div className="vista-clasificacion">
-                <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div className="loading-message">
                     ⏳ Cargando clasificación...
                 </div>
             </div>
@@ -58,13 +69,9 @@ function VerClasificacion({ torneoId: propTorneoId }) {
     if (error) {
         return (
             <div className="vista-clasificacion">
-                <div className="error-message" style={{ margin: '20px' }}>
+                <div className="error-message">
                     ⚠️ {error}
-                    <button 
-                        onClick={cargarClasificacion}
-                        className="btn-secondary"
-                        style={{ marginTop: '15px' }}
-                    >
+                    <button onClick={cargarClasificacion} className="btn-secondary">
                         🔄 Reintentar
                     </button>
                 </div>
@@ -74,19 +81,14 @@ function VerClasificacion({ torneoId: propTorneoId }) {
 
     return (
         <div className="vista-clasificacion">
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '20px'
-            }}>
+            <div className="clasificacion-header">
                 <h2>🏆 Clasificación del Torneo</h2>
                 <button 
                     onClick={cargarClasificacion}
-                    className="btn-primary"
+                    className="btn-actualizar-clasificacion"
                     disabled={loading}
                 >
-                    🔄 Actualizar
+                   {loading ? '⏳ Cargando...' : '🔄 Actualizar'}
                 </button>
             </div>
 
@@ -102,8 +104,10 @@ function VerClasificacion({ torneoId: propTorneoId }) {
                             <th>Jugador</th>
                             <th>Club</th>
                             <th>Facción</th>
-                            <th>Pts Masacre</th>
+                            <th>Partidas Jugadas</th>
                             <th>Pts Torneo</th>
+                            <th>Pts Masacre</th>
+                            <th>Warlords Asesinados</th>
                             <th>Pts Victoria</th>
                         </tr>
                     </thead>
@@ -116,12 +120,14 @@ function VerClasificacion({ torneoId: propTorneoId }) {
                                     {index === 2 && '🥉'}
                                     {index > 2 && index + 1}
                                 </td>
-                                <td className="nombre-jugador">{jugador.nombre_completo || jugador.nombre}</td>
+                                <td className="nombre-jugador">{jugador.jugador_nombre || jugador.nombre}</td>
                                 <td>{jugador.club || '-'}</td>
                                 <td>{jugador.faccion || '-'}</td>
-                                <td>{jugador.puntos_masacre || 0}</td>
-                                <td>{jugador.puntos_torneo || 0}</td>
-                                <td className="puntos-destacado">{jugador.puntos_victoria || 0}</td>
+                                <td>{jugador.partidas_jugadas || 0}</td>
+                                <td>{jugador.puntos_torneo_totales || 0}</td>
+                                <td>{jugador.puntos_masacre_totales || 0}</td>
+                                <td>{jugador.warlord_muerto_totales}</td>
+                                <td className="puntos-destacado">{jugador.puntos_victoria_totales || 0}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -131,4 +137,4 @@ function VerClasificacion({ torneoId: propTorneoId }) {
     );
 }
 
-export default VerClasificacion;
+export default VistaClasificacionSaga;

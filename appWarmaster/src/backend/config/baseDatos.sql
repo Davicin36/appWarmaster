@@ -60,12 +60,15 @@ CREATE TABLE torneo_saga_equipo(
   torneo_id INT NOT NULL,
   nombre_equipo VARCHAR(150),
   capitan_id INT NOT NULL,
+  puntos_victoria_equipo INT DEFAULT 0,
+  puntos_torneo_equipo INT DEFAULT 0,
+  puntos_masacre_equipo INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE
  FOREIGN KEY (capitan_id) REFERENCES usuarios(id) ON DELETE CASCADE,
 )
 
-CREATE TABLE IF NOT EXISTS equipo_miembros (
+CREATE TABLE  equipo_miembros (
   id INT PRIMARY KEY AUTO_INCREMENT,
   equipo_id INT NOT NULL,
   usuario_id INT NOT NULL,
@@ -121,6 +124,20 @@ CREATE TABLE clasificacion_jugadores_saga (
   FOREIGN KEY (jugador_id) REFERENCES jugador_torneo_saga(jugador_id) ON DELETE CASCADE,
   FOREGIN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE, 
   UNIQUE KEY unique_torneo_jugador (torneo_id, jugador_id);
+)
+
+CREATE TABLE clasificacion_equipos_saga (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  torneo_id INT NOT NULL,
+  equipo_id INT NOT NULL,
+  partidas_jugadas INT DEFAULT 0, 
+  puntos_victoria_eq_totales INT DEFAULT 0,
+  puntos_torneo_eq_totales INT DEFAULT 0,
+  puntos_masacre_eq_totales INT DEFAULT 0,
+  warlord_muerto INT DEFAULT 0,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
+  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_torneo_equipo (torneo_id, equipo_id);
 )
 
 CREATE TABLE partidas_saga (
