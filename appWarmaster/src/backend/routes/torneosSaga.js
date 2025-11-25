@@ -1876,6 +1876,7 @@ router.get('/:torneoId/jugadores', async (req, res) => {
             SELECT 
                 jts.id,
                 jts.jugador_id,
+                jts.equipo_id,
                 u.nombre as jugador_nombre,
                 u.apellidos as jugador_apellidos,
                 u.nombre_alias,
@@ -1893,6 +1894,7 @@ router.get('/:torneoId/jugadores', async (req, res) => {
                 jts.created_at as fecha_inscripcion
             FROM jugador_torneo_saga jts
             INNER JOIN usuarios u ON jts.jugador_id = u.id
+            LEFT JOIN torneo_saga_equipo e ON jts.equipo_id = e.id
             WHERE jts.torneo_id = ?
             ORDER BY jts.puntos_torneo DESC, jts.created_at ASC
         `, [torneoId]);
@@ -2391,8 +2393,25 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     
     if (confirmar) {
       // ✅ CONFIRMAR: Sumar puntos a la clasificación
+
+      //ACTUALIZAMOS TABLA JUGADOR_TORNEO_SAGA
+      await connection.execute(`
+        UPDATE jugador_torneo_saga 
+        SET puntos_victoria = puntos_victoria + ?,
+            puntos_torneo = puntos_torneo + ?,
+            puntos_masacre = puntos_masacre + ?,
+            warlord_muerto = warlord_muerto + ?
+        WHERE jugador_id = ? AND torneo_id = ?
+      `, [
+        partidaData.puntos_victoria_j1 || 0,
+        partidaData.puntos_torneo_j1 || 0,
+        partidaData.puntos_masacre_j1 || 0,
+        partidaData.warlord_muerto_j1 ? 1 : 0,
+        partidaData.jugador1_id,
+        torneoId
+      ]);
       
-      // Jugador 1 (siempre existe)
+      // ACTUALIZAR TABLA JUGADOR_TORNEO_SAGA PARA JUGADOR 2 
       await connection.execute(`
         INSERT INTO clasificacion_jugadores_saga 
           (torneo_id, jugador_id, partidas_jugadas, puntos_victoria_totales, puntos_torneo_totales, 
@@ -2414,7 +2433,25 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
       ]);
       
       // Jugador 2 (solo si no es BYE)
-      if (!esBye) {
+     if (!esBye) {
+        // ACTUALIZAR jugador_torneo_saga
+        await connection.execute(`
+          UPDATE jugador_torneo_saga 
+          SET puntos_victoria = puntos_victoria + ?,
+              puntos_torneo = puntos_torneo + ?,
+              puntos_masacre = puntos_masacre + ?,
+              warlord_muerto = warlord_muerto + ?
+          WHERE jugador_id = ? AND torneo_id = ?
+        `, [
+          partidaData.puntos_victoria_j2 || 0,
+          partidaData.puntos_torneo_j2 || 0,
+          partidaData.puntos_masacre_j2 || 0,
+          partidaData.warlord_muerto_j2 ? 1 : 0,
+          partidaData.jugador2_id,
+          torneoId
+        ]);
+
+        // ACTUALIZAR clasificacion_jugadores_saga
         await connection.execute(`
           INSERT INTO clasificacion_jugadores_saga 
             (torneo_id, jugador_id, partidas_jugadas, puntos_victoria_totales, puntos_torneo_totales, 
@@ -2441,7 +2478,24 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     } else {
       // ❌ DESCONFIRMAR: Restar puntos de la clasificación
       
-      // Jugador 1 (siempre existe)
+      // 1️⃣ RESTAR de jugador_torneo_saga (Jugador 1)
+      await connection.execute(`
+        UPDATE jugador_torneo_saga 
+        SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
+            puntos_torneo = GREATEST(0, puntos_torneo - ?),
+            puntos_masacre = GREATEST(0, puntos_masacre - ?),
+            warlord_muerto = GREATEST(0, warlord_muerto - ?)
+        WHERE jugador_id = ? AND torneo_id = ?
+      `, [
+        partidaData.puntos_victoria_j1 || 0,
+        partidaData.puntos_torneo_j1 || 0,
+        partidaData.puntos_masacre_j1 || 0,
+        partidaData.warlord_muerto_j1 ? 1 : 0,
+        partidaData.jugador1_id,
+        torneoId
+      ]);
+      
+      // 2️⃣ RESTAR de clasificacion_jugadores_saga (Jugador 1)
       await connection.execute(`
         UPDATE clasificacion_jugadores_saga 
         SET 
@@ -2460,8 +2514,26 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
         partidaData.jugador1_id
       ]);
       
-      // Jugador 2 (solo si no es BYE)
+      // 3️⃣ Jugador 2 (solo si no es BYE)
       if (!esBye) {
+        // RESTAR de jugador_torneo_saga
+        await connection.execute(`
+          UPDATE jugador_torneo_saga 
+          SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
+              puntos_torneo = GREATEST(0, puntos_torneo - ?),
+              puntos_masacre = GREATEST(0, puntos_masacre - ?),
+              warlord_muerto = GREATEST(0, warlord_muerto - ?)
+          WHERE jugador_id = ? AND torneo_id = ?
+        `, [
+          partidaData.puntos_victoria_j2 || 0,
+          partidaData.puntos_torneo_j2 || 0,
+          partidaData.puntos_masacre_j2 || 0,
+          partidaData.warlord_muerto_j2 ? 1 : 0,
+          partidaData.jugador2_id,
+          torneoId
+        ]);
+        
+        // RESTAR de clasificacion_jugadores_saga
         await connection.execute(`
           UPDATE clasificacion_jugadores_saga 
           SET 
@@ -2480,6 +2552,8 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
           partidaData.jugador2_id
         ]);
       }
+      
+      console.log(`⚠️ Puntos restados de jugador_torneo_saga y clasificacion_jugadores_saga para partida ${partidaId}${esBye ? ' (BYE)' : ''}`);
     }
    
     // Actualizar estado de confirmación de la partida
@@ -2493,8 +2567,8 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     res.json(
       successResponse(
         confirmar 
-          ? `Resultado confirmado y clasificación actualizada${esBye ? ' (BYE)' : ''}`
-          : `Resultado desconfirmado y clasificación actualizada${esBye ? ' (BYE)' : ''}`, 
+          ? `✅ Resultado confirmado. Totales actualizados en jugador_torneo_saga y clasificacion_jugadores_saga${esBye ? ' (BYE)' : ''}`
+          : `⚠️ Resultado desconfirmado. Totales revertidos en ambas tablas${esBye ? ' (BYE)' : ''}`, 
         { 
           partidaId, 
           confirmado: confirmar,
@@ -2505,7 +2579,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     
   } catch (error) {
     await connection.rollback();
-    console.error('Error al confirmar resultado:', error);
+    console.error('❌ Error al confirmar resultado:', error);
     res.status(500).json(errorResponse('Error al confirmar resultado'));
   } finally {
     connection.release();

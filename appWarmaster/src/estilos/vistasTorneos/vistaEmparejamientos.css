@@ -240,73 +240,357 @@
 }
 
 /* ==========================================
-   ENFRENTAMIENTO
+   ENFRENTAMIENTOS DE EQUIPOS
    ========================================== */
 
-.emparejamiento-card .enfrentamiento {
-    margin-bottom: 15px;
+.enfrentamiento-equipos {
+    background: white;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 2px solid var(--color-beige-oscuro);
 }
 
-.emparejamiento-card .jugador {
-    margin-bottom: 10px;
-    padding: 10px;
-    background: linear-gradient(135deg, var(--color-fondo-principal), #FFFFFF);
+/* Header del enfrentamiento de equipos */
+.header-equipos {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-equipos h4 {
+    margin: 0;
+    font-size: 1.4em;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.total-partidas {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+}
+
+/* Contenedor de épocas */
+.contenedor-epocas {
+    padding: 20px;
+    background: var(--color-fondo-principal);
+}
+
+/* ==========================================
+   GRUPOS POR ÉPOCA
+   ========================================== */
+
+.grupo-epoca {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid var(--color-beige);
+}
+
+.grupo-epoca:last-child {
+    margin-bottom: 0;
+}
+
+/* Header de época */
+.epoca-header {
+    background: linear-gradient(90deg, var(--color-verde-claro), var(--color-verde-oscuro));
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--color-verde-oscuro);
+}
+
+.epoca-badge-grande {
+    color: white;
+    font-weight: 700;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cantidad-partidas {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+/* Partidas dentro de la época */
+.partidas-epoca {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--color-fondo-principal);
+}
+
+/* ==========================================
+   PREVIEW DE EMPAREJAMIENTOS (antes de guardar)
+   ========================================== */
+
+.enfrentamiento-equipos-preview {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 2px solid var(--color-beige-oscuro);
+}
+
+.header-equipos-preview {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    padding: 20px;
+    text-align: center;
+}
+
+.header-equipos-preview h4 {
+    color: white;
+    margin: 0;
+    font-size: 1.4em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.resumen-equipos-preview {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 25px;
+    padding: 25px;
+    background: white;
+    align-items: flex-start;
+}
+
+.equipo-jugadores-preview {
+    background: var(--color-fondo-principal);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid var(--color-beige);
+}
+
+.equipo-jugadores-preview h5 {
+    margin: 0 0 15px 0;
+    color: var(--color-verde-oscuro);
+    font-size: 1.1em;
+    border-bottom: 3px solid var(--color-verde-claro);
+    padding-bottom: 10px;
+}
+
+.lista-jugadores-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.jugador-chip-preview {
+    background: white;
+    padding: 12px 15px;
     border-radius: 8px;
-    border: 1px solid var(--color-beige);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    border-left: 4px solid var(--color-verde-claro);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
 }
 
-.emparejamiento-card .jugador:hover {
-    background: linear-gradient(135deg, var(--color-beige), var(--color-fondo-principal));
-    border-color: var(--color-verde-claro);
+.jugador-chip-preview:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.emparejamiento-card .jugador .nombre {
-    font-weight: bold;
-    font-size: 1.1em;
+.jugador-chip-preview .jugador-nombre {
+    font-weight: 700;
     color: var(--color-verde-oscuro);
+    flex: 1;
 }
 
-.emparejamiento-card .jugador .stats {
+.jugador-chip-preview .jugador-faccion,
+.jugador-chip-preview .jugador-epoca {
+    font-size: 0.8em;
     color: #666;
-    font-size: 0.9em;
-    margin-top: 5px;
-}
-
-.emparejamiento-card .vs {
-    font-size: 1.2em;
-    font-weight: bold;
-    margin: 10px 0;
-    text-align: center;
-    color: var(--color-verde-claro);
-}
-
-.emparejamiento-card .jugador.bye {
-    background: linear-gradient(135deg, #FFF3CD, #FFE082);
-    border: 2px solid var(--color-naranja);
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.emparejamiento-card .jugador.bye > div:first-child {
-    font-weight: bold;
-    color: var(--color-naranja-hover);
-}
-
-.emparejamiento-card .jugador.bye > div:last-child {
-    font-size: 0.9em;
-    color: #666;
-}
-
-.emparejamiento-card .escenario {
-    padding: 10px;
-    background: linear-gradient(135deg, var(--color-beige), var(--color-beige-oscuro));
-    border-radius: 8px;
-    font-size: 0.9em;
-    text-align: center;
+    background: var(--color-beige);
+    padding: 4px 10px;
+    border-radius: 12px;
     font-weight: 600;
+}
+
+.sin-jugadores {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 10px;
+}
+
+.vs-grande {
+    font-size: 2.5em;
+    font-weight: 900;
+    color: var(--color-verde-claro);
+    display: flex;
+    align-items: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bye-info-preview {
+    background: linear-gradient(135deg, #FFF3CD, #FFE082);
+    padding: 25px;
+    border-radius: 12px;
+    text-align: center;
+    border: 3px dashed var(--color-naranja);
+}
+
+.bye-info-preview p {
+    margin: 0;
+    color: var(--color-naranja-hover);
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+/* ==========================================
+   PARTIDAS PREVIEW (antes de guardar)
+   ========================================== */
+
+.partidas-preview {
+    background: var(--color-fondo-principal);
+    padding: 20px;
+    border-top: 2px solid var(--color-beige);
+}
+
+.partidas-preview h6 {
+    margin: 0 0 15px 0;
     color: var(--color-verde-oscuro);
+    font-size: 1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.lista-partidas-epoca {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.partida-individual-preview {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--color-exito);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.partida-individual-preview:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.numero-partida {
+    background: var(--color-verde-claro);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.jugadores-partida {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95em;
+}
+
+.jugador-nombre-partida {
+    font-weight: 700;
+    color: var(--color-verde-oscuro);
+    flex: 1;
+    text-align: center;
+}
+
+.vs-partida {
+    color: var(--color-verde-claro);
+    font-weight: 900;
+    padding: 0 8px;
+}
+
+.facciones-partida {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8em;
+    color: #666;
+    padding-left: 15px;
+    border-left: 2px solid var(--color-beige);
+}
+
+.facciones-partida .separador {
+    color: #999;
+    font-size: 0.9em;
+}
+
+/* ==========================================
+   RESPONSIVE - ENFRENTAMIENTOS DE EQUIPOS
+   ========================================== */
+
+@media (max-width: 768px) {
+    .resumen-equipos-preview {
+        grid-template-columns: 1fr;
+    }
+    
+    .vs-grande {
+        transform: rotate(90deg);
+        margin: 15px 0;
+    }
+    
+    .jugadores-partida {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .partida-individual-preview {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .facciones-partida {
+        border-left: none;
+        border-top: 2px solid var(--color-beige);
+        padding-left: 0;
+        padding-top: 10px;
+        justify-content: center;
+    }
+    
+    .header-equipos {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .epoca-header {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
 }
 
 /* ==========================================
