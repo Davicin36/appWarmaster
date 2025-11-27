@@ -30,7 +30,6 @@ const obtenerJugadoresEquipo = async (torneoId, equipoId) => {
         const response = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
         const todosJugadores = Array.isArray(response) ? response : response.data || [];
         
-        // Filtrar solo los jugadores de este equipo
         const jugadoresEquipo = todosJugadores.filter(j => 
             j.equipo_id === equipoId || 
             (j.equipo && (j.equipo.id === equipoId || j.equipo.equipo_id === equipoId))
@@ -51,17 +50,12 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
     try {
         console.log(`🔨 Creando enfrentamiento: ${equipo1.nombre_equipo} vs ${equipo2?.nombre_equipo || 'BYE'}`);
         
-        // Obtener jugadores de ambos equipos
         const equipo1Id = equipo1.id || equipo1.equipo_id;
         const equipo2Id = equipo2 ? (equipo2.id || equipo2.equipo_id) : null;
         
         const jugadores1 = await obtenerJugadoresEquipo(torneoId, equipo1Id);
         const jugadores2 = equipo2 && !esBye ? await obtenerJugadoresEquipo(torneoId, equipo2Id) : [];
         
-        console.log(`   📋 Jugadores Equipo 1:`, jugadores1);
-        console.log(`   📋 Jugadores Equipo 2:`, jugadores2);
-        
-        // Agrupar jugadores por época
         const epocasEquipo1 = {};
         const epocasEquipo2 = {};
         
@@ -81,10 +75,6 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
             epocasEquipo2[epoca].push(j);
         });
         
-        console.log(`   📅 Épocas Equipo 1:`, Object.keys(epocasEquipo1));
-        console.log(`   📅 Épocas Equipo 2:`, Object.keys(epocasEquipo2));
-        
-        // Crear partidas individuales por época
         const todasLasEpocas = new Set([
             ...Object.keys(epocasEquipo1),
             ...Object.keys(epocasEquipo2)
@@ -97,8 +87,6 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
             const jug2Epoca = epocasEquipo2[epoca] || [];
             
             const maxPartidas = Math.max(jug1Epoca.length, jug2Epoca.length);
-            
-            console.log(`   🎯 Época "${epoca}": ${jug1Epoca.length} vs ${jug2Epoca.length} jugadores`);
             
             for (let i = 0; i < maxPartidas; i++) {
                 const j1 = jug1Epoca[i];
@@ -119,8 +107,6 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
             }
         });
         
-        console.log(`   ✅ ${partidasPorEpoca.length} partidas individuales generadas`);
-        
         return {
             equipo1_id: equipo1Id,
             equipo2_id: equipo2Id,
@@ -133,7 +119,7 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
             jugadores_equipo2: jugadores2,
             epocas_equipo1: epocasEquipo1,
             epocas_equipo2: epocasEquipo2,
-            partidas: partidasPorEpoca // Array de partidas individuales por época
+            partidas: partidasPorEpoca
         };
         
     } catch (error) {
@@ -148,55 +134,34 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
 
 const generarEmparejamientosAleatoriosEquipos = async (torneoId) => {
     try {
-        console.log('🎲 Generando emparejamientos aleatorios de equipos - Ronda 1...');
-
         const response = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
         const equipos = Array.isArray(response) ? response : response.data || [];
-
-        console.log('📦 Response completa:', response);
-        console.log('📋 Equipos extraídos:', equipos);
-        console.log('📊 Cantidad de equipos:', equipos.length);
 
         if (equipos.length < 2) {
             throw new Error('Se necesitan al menos 2 equipos para generar emparejamientos');
         }
 
-        // 🎲 Aleatorizar equipos
         const equiposAleatorios = [...equipos].sort(() => Math.random() - 0.5);
-        console.log('🔀 Equipos aleatorizados:', equiposAleatorios.map(e => e.nombre_equipo || e.equipo_id));
-        
         const emparejamientos = [];
         let equipoBye = null;
 
-        // 🎯 Detectar BYE si hay número impar
         if (equiposAleatorios.length % 2 !== 0) {
             equipoBye = equiposAleatorios.pop();
-            console.log(`⭐ BYE detectado para: ${equipoBye.nombre_equipo} (ID: ${equipoBye.id || equipoBye.equipo_id})`);
         }
 
-        console.log(`⚔️ Equipos a emparejar: ${equiposAleatorios.length}`);
-
-        // ⚔️ Emparejar equipos normales CON JUGADORES
         for (let i = 0; i < equiposAleatorios.length; i += 2) {
             const eq1 = equiposAleatorios[i];
             const eq2 = equiposAleatorios[i + 1];
-            
-            console.log(`   Emparejando: ${eq1?.nombre_equipo} vs ${eq2?.nombre_equipo}`);
             
             const enfrentamiento = await crearEnfrentamientoCompleto(torneoId, eq1, eq2, false);
             emparejamientos.push(enfrentamiento);
         }
 
-        // ✅ Añadir BYE al final CON JUGADORES
         if (equipoBye) {
             const enfrentamientoBye = await crearEnfrentamientoCompleto(torneoId, equipoBye, null, true);
             emparejamientos.push(enfrentamientoBye);
-            console.log(`✅ BYE asignado al final a: ${equipoBye.nombre_equipo}`);
         }
-
-        console.log('🏁 Emparejamientos finales con jugadores:', emparejamientos);
-        console.log(`✅ ${emparejamientos.length} emparejamientos aleatorios de equipos generados`);
-        
+ 
         return emparejamientos;
 
     } catch (error) {
@@ -213,7 +178,6 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
     try {
         console.log('🏆 Generando emparejamientos sistema suizo de equipos...');
 
-        // 1️⃣ Obtener clasificación de equipos
         const responseClasificacion = await torneosSagaApi.obtenerClasificacionEquipos(torneoId);
         const clasificacion = responseClasificacion?.data || responseClasificacion || [];
 
@@ -223,21 +187,19 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
 
         console.log(`📊 ${clasificacion.length} equipos en clasificación`);
 
-        // 2️⃣ Obtener historial de enfrentamientos y BYEs
         const { historialEnfrentamientos, equiposConBye } = await obtenerHistorialEquipos(torneoId);
         console.log(`📜 ${historialEnfrentamientos.size} enfrentamientos previos registrados`);
         console.log(`⭐ ${equiposConBye.size} equipos con BYE previo`);
 
-        // 3️⃣ Ordenar equipos por puntuación
         const equiposOrdenados = ordenarEquipos(clasificacion);
+        console.log('📋 Clasificación ordenada:', equiposOrdenados.map((e, i) => `${i+1}º ${e.nombre_equipo} (ID: ${e.equipo_id})`));
 
-        // 4️⃣ Generar emparejamientos
         const emparejamientos = [];
-        const emparejados = new Set();
+        let equiposDisponibles = [...equiposOrdenados];
 
         // 🎯 PASO 1: BYE PRIMERO si hay número impar
-        if (equiposOrdenados.length % 2 !== 0) {
-            const equipoBye = seleccionarEquipoParaBye(equiposOrdenados, equiposConBye);
+        if (equiposDisponibles.length % 2 !== 0) {
+            const equipoBye = seleccionarEquipoParaBye(equiposDisponibles, equiposConBye);
             
             const enfrentamientoBye = await crearEnfrentamientoCompleto(
                 torneoId,
@@ -247,44 +209,22 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
             );
             
             emparejamientos.push(enfrentamientoBye);
-            emparejados.add(equipoBye.equipo_id);
-            console.log(`✅ BYE asignado a: ${equipoBye.nombre_equipo}`);
-        }
-
-        // 🎯 PASO 2: Emparejar el resto de equipos CON JUGADORES
-        for (let i = 0; i < equiposOrdenados.length; i++) {
-            const equipo1 = equiposOrdenados[i];
+            equiposDisponibles = equiposDisponibles.filter(eq => eq.equipo_id !== equipoBye.equipo_id);
             
-            if (emparejados.has(equipo1.equipo_id)) continue;
-
-            const equipo2 = buscarRivalOptimoEquipo(
-                equipo1,
-                equiposOrdenados,
-                emparejados,
-                historialEnfrentamientos,
-                i
-            );
-
-            if (equipo2) {
-                const enfrentamiento = await crearEnfrentamientoCompleto(
-                    torneoId,
-                    equipo1,
-                    equipo2,
-                    false
-                );
-                
-                emparejamientos.push(enfrentamiento);
-                emparejados.add(equipo1.equipo_id);
-                emparejados.add(equipo2.equipo_id);
-                
-                console.log(`⚔️ Emparejado: ${equipo1.nombre_equipo} vs ${equipo2.nombre_equipo}`);
-            } else {
-                console.error(`🚨 ERROR: ${equipo1.nombre_equipo} quedó sin rival`);
-                throw new Error(`No se pudo encontrar rival para ${equipo1.nombre_equipo}`);
-            }
+            console.log(`✅ BYE asignado a: ${equipoBye.nombre_equipo}`);
+            console.log(`📋 Equipos restantes: ${equiposDisponibles.map(e => `${e.nombre_equipo} (ID: ${e.equipo_id})`).join(', ')}`);
         }
 
-        console.log(`✅ ${emparejamientos.length} emparejamientos suizos de equipos`);
+        // 🎯 PASO 2: Emparejar de arriba hacia abajo, resolviendo rematches
+        const emparejamientosFinales = await emparejarSuizoConReajuste(
+            torneoId,
+            equiposDisponibles,
+            historialEnfrentamientos
+        );
+
+        emparejamientos.push(...emparejamientosFinales);
+
+        console.log(`✅ ${emparejamientos.length} emparejamientos suizos de equipos generados`);
         return emparejamientos;
 
     } catch (error) {
@@ -294,7 +234,173 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
 };
 
 // ==========================================
-// FUNCIONES AUXILIARES (sin cambios)
+// EMPAREJAMIENTO SUIZO CON REAJUSTE DE REMATCHES
+// ==========================================
+
+const emparejarSuizoConReajuste = async (torneoId, equiposDisponibles, historialEnfrentamientos) => {
+    const n = equiposDisponibles.length;
+    
+    if (n % 2 !== 0) {
+        throw new Error('Error: número impar de equipos después de asignar BYE');
+    }
+
+    console.log('\n🔄 Iniciando emparejamiento suizo con reajuste...');
+    
+    const yaEnfrentados = (eq1, eq2) => {
+        const key = `${eq1.equipo_id}-${eq2.equipo_id}`;
+        return historialEnfrentamientos.has(key);
+    };
+
+    // Intentar emparejamiento directo (1º vs 2º, 3º vs 4º, etc.)
+    let hayRematches = false;
+    
+    for (let i = 0; i < n; i += 2) {
+        const eq1 = equiposDisponibles[i];
+        const eq2 = equiposDisponibles[i + 1];
+        
+        if (yaEnfrentados(eq1, eq2)) {
+            console.warn(`⚠️ REMATCH detectado en emparejamiento base: ${eq1.nombre_equipo} vs ${eq2.nombre_equipo}`);
+            hayRematches = true;
+            break;
+        }
+    }
+
+    // Si no hay rematches en emparejamiento directo, usar ese
+    if (!hayRematches) {
+        console.log('✅ No hay rematches, usando emparejamiento directo');
+        const emparejamientosBase = [];
+        
+        for (let i = 0; i < n; i += 2) {
+            emparejamientosBase.push({ 
+                eq1: equiposDisponibles[i], 
+                eq2: equiposDisponibles[i + 1] 
+            });
+        }
+        
+        return await crearEnfrentamientosDesdeArray(torneoId, emparejamientosBase);
+    }
+
+    // Si hay rematches, intentar reajustar
+    console.log('🔧 Reajustando emparejamientos para evitar rematches...');
+    
+    const emparejamientosReajustados = reajustarEmparejamientos(
+        equiposDisponibles,
+        historialEnfrentamientos
+    );
+
+    if (emparejamientosReajustados) {
+        console.log('✅ Reajuste exitoso, sin rematches');
+        return await crearEnfrentamientosDesdeArray(torneoId, emparejamientosReajustados);
+    } else {
+        // Si no se puede evitar, forzar rematches
+        console.warn('⚠️ IMPOSIBLE evitar rematches, generando con rematches forzados');
+        const emparejamientosBase = [];
+        
+        for (let i = 0; i < n; i += 2) {
+            emparejamientosBase.push({ 
+                eq1: equiposDisponibles[i], 
+                eq2: equiposDisponibles[i + 1] 
+            });
+        }
+        
+        return await crearEnfrentamientosDesdeArray(torneoId, emparejamientosBase);
+    }
+};
+
+// ==========================================
+// REAJUSTAR EMPAREJAMIENTOS PARA EVITAR REMATCHES
+// ==========================================
+
+const reajustarEmparejamientos = (equipos, historialEnfrentamientos) => {
+    const n = equipos.length;
+   
+    const yaEnfrentados = (eq1, eq2) => {
+        const key = `${eq1.equipo_id}-${eq2.equipo_id}`;
+        return historialEnfrentamientos.has(key);
+    };
+
+    // Función recursiva con backtracking
+    const intentarEmparejamiento = (indice, usado, emparejamientos) => {
+        // Caso base: todos emparejados
+        if (indice >= n) {
+            return emparejamientos.length === n / 2 ? emparejamientos : null;
+        }
+
+        // Si este índice ya fue usado, saltar
+        if (usado.has(indice)) {
+            return intentarEmparejamiento(indice + 1, usado, emparejamientos);
+        }
+
+        const eq1 = equipos[indice];
+        // Probar con cada posible rival
+        for (let j = indice + 1; j < n; j++) {
+            if (usado.has(j)) continue;
+
+            const eq2 = equipos[j];
+   
+            // Si pueden enfrentarse (no han jugado antes)
+            if (!yaEnfrentados(eq1, eq2)) {
+   
+                // Marcar como usados
+                const nuevoUsado = new Set(usado);
+                nuevoUsado.add(indice);
+                nuevoUsado.add(j);
+
+                // Añadir emparejamiento
+                const nuevosEmparejamientos = [...emparejamientos, { eq1, eq2 }];
+
+                // Intentar completar el resto recursivamente
+                const resultado = intentarEmparejamiento(indice + 1, nuevoUsado, nuevosEmparejamientos);
+
+                if (resultado !== null) {
+                 return resultado;
+                }
+
+            } else {
+                console.log(`      ⏭️ Ya jugaron antes, saltando`);
+            }
+        }
+        // Si llegamos aquí, no se encontró combinación válida desde este punto
+        return null;
+    };
+
+    // Iniciar backtracking
+    const resultado = intentarEmparejamiento(0, new Set(), []);
+
+    if (resultado) {
+        resultado.forEach((par, idx) => {
+            console.log(`   ${idx + 1}. ${par.eq1.nombre_equipo} vs ${par.eq2.nombre_equipo}`);
+        });
+        return resultado;
+    } else {
+        console.log('\n❌ NO SE ENCONTRÓ SOLUCIÓN SIN REMATCHES');
+        return null;
+    }
+};
+
+// ==========================================
+// CREAR ENFRENTAMIENTOS DESDE ARRAY DE PARES
+// ==========================================
+
+const crearEnfrentamientosDesdeArray = async (torneoId, emparejamientos) => {
+    const enfrentamientos = [];
+    
+    for (const par of emparejamientos) {
+        const enfrentamiento = await crearEnfrentamientoCompleto(
+            torneoId,
+            par.eq1,
+            par.eq2,
+            false
+        );
+        enfrentamientos.push(enfrentamiento);
+        console.log(`⚔️ Creado: ${par.eq1.nombre_equipo} vs ${par.eq2.nombre_equipo}`);
+    }
+    
+    return enfrentamientos;
+};
+
+// ==========================================
+// OBTENER HISTORIAL DE ENFRENTAMIENTOS Y BYES
 // ==========================================
 
 const obtenerHistorialEquipos = async (torneoId) => {
@@ -325,6 +431,10 @@ const obtenerHistorialEquipos = async (torneoId) => {
     return { historialEnfrentamientos, equiposConBye };
 };
 
+// ==========================================
+// ORDENAR EQUIPOS POR PUNTUACIÓN
+// ==========================================
+
 const ordenarEquipos = (clasificacion) => {
     return [...clasificacion].sort((a, b) => {
         const puntosVictoriaA = a.puntos_victoria_eq_totales || a.puntos_victoria_totales || 0;
@@ -348,88 +458,23 @@ const ordenarEquipos = (clasificacion) => {
     });
 };
 
+// ==========================================
+// SELECCIONAR EQUIPO PARA BYE
+// ==========================================
+
 const seleccionarEquipoParaBye = (equiposOrdenados, equiposConBye) => {
     const equiposSinBye = equiposOrdenados.filter(eq => 
         !equiposConBye.has(eq.equipo_id)
     );
 
     if (equiposSinBye.length > 0) {
-        const porMenosPuntos = [...equiposSinBye].sort((a, b) => {
-            const puntosA = (a.puntos_victoria_eq_totales || 0) + (a.puntos_torneo_eq_totales || 0);
-            const puntosB = (b.puntos_victoria_eq_totales || 0) + (b.puntos_torneo_eq_totales || 0);
-            return puntosA - puntosB;
-        });
-        return porMenosPuntos[0];
+        const equipoSeleccionado = equiposSinBye[equiposSinBye.length - 1];
+        console.log(`✅ BYE asignado al último sin BYE previo: ${equipoSeleccionado.nombre_equipo}`);
+        return equipoSeleccionado;
     } else {
-        console.warn('⚠️ TODOS los equipos ya tuvieron BYE. Asignando segundo BYE.');
-        const porMenosPuntos = [...equiposOrdenados].sort((a, b) => {
-            const puntosA = (a.puntos_victoria_eq_totales || 0) + (a.puntos_torneo_eq_totales || 0);
-            const puntosB = (b.puntos_victoria_eq_totales || 0) + (b.puntos_torneo_eq_totales || 0);
-            return puntosA - puntosB;
-        });
-        return porMenosPuntos[0];
+        console.warn('⚠️ TODOS los equipos ya tuvieron BYE. Asignando segundo BYE al último clasificado.');
+        const equipoSeleccionado = equiposOrdenados[equiposOrdenados.length - 1];
+        console.log(`✅ Segundo BYE asignado a: ${equipoSeleccionado.nombre_equipo}`);
+        return equipoSeleccionado;
     }
-};
-
-const buscarRivalOptimoEquipo = (equipo1, equiposOrdenados, emparejados, historialEnfrentamientos, indiceActual) => {
-    const puedenEnfrentarse = (eq1, eq2) => {
-        const key = `${eq1.equipo_id}-${eq2.equipo_id}`;
-        return !historialEnfrentamientos.has(key);
-    };
-
-    let mejorRival = null;
-    const equiposSinEmparejar = equiposOrdenados.filter(eq => 
-        !emparejados.has(eq.equipo_id)
-    );
-
-    if (equiposSinEmparejar.length <= 4 && equiposSinEmparejar.length >= 2) {
-        let distanciaMinima = Infinity;
-        
-        for (let j = indiceActual + 1; j < equiposOrdenados.length; j++) {
-            const candidato = equiposOrdenados[j];
-            
-            if (emparejados.has(candidato.equipo_id)) continue;
-            
-            if (puedenEnfrentarse(equipo1, candidato)) {
-                const puntosEq1 = (equipo1.puntos_victoria_eq_totales || 0) + (equipo1.puntos_torneo_eq_totales || 0);
-                const puntosCandidato = (candidato.puntos_victoria_eq_totales || 0) + (candidato.puntos_torneo_eq_totales || 0);
-                const distancia = Math.abs(puntosEq1 - puntosCandidato);
-                
-                if (distancia < distanciaMinima) {
-                    distanciaMinima = distancia;
-                    mejorRival = candidato;
-                }
-            }
-        }
-        
-        if (!mejorRival) {
-            for (let j = indiceActual + 1; j < equiposOrdenados.length; j++) {
-                const candidato = equiposOrdenados[j];
-                if (!emparejados.has(candidato.equipo_id)) {
-                    mejorRival = candidato;
-                    console.warn(`⚠️ REMATCH FORZADO: ${equipo1.nombre_equipo} vs ${candidato.nombre_equipo}`);
-                    break;
-                }
-            }
-        }
-    } else {
-        for (let j = indiceActual + 1; j < equiposOrdenados.length; j++) {
-            const candidato = equiposOrdenados[j];
-            
-            if (emparejados.has(candidato.equipo_id)) continue;
-
-            if (puedenEnfrentarse(equipo1, candidato)) {
-                mejorRival = candidato;
-                break;
-            } else if (!mejorRival) {
-                mejorRival = candidato;
-            }
-        }
-        
-        if (mejorRival && !puedenEnfrentarse(equipo1, mejorRival)) {
-            console.warn(`⚠️ REMATCH FORZADO: ${equipo1.nombre_equipo} vs ${mejorRival.nombre_equipo}`);
-        }
-    }
-
-    return mejorRival;
 };

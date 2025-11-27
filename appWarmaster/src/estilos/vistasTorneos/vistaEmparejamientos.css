@@ -138,28 +138,29 @@
 }
 
 /* ==========================================
-   GRID DE EMPAREJAMIENTOS
+   GRID DE EMPAREJAMIENTOS - TODO EL ANCHO
    ========================================== */
 
 .emparejamientos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
     margin-bottom: 30px;
+    width: 100%;
 }
 
 .emparejamiento-card {
     background: white;
-    border-radius: 12px;
-    padding: 15px;
+    border-radius: 14px;
+    padding: 24px;
     position: relative;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
 }
 
 .emparejamiento-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 .emparejamiento-card.editable {
@@ -173,25 +174,25 @@
 
 .emparejamiento-card .etiqueta-editar {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    right: 12px;
     background: linear-gradient(135deg, #9C27B0, #7B1FA2);
     color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.75em;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 0.8em;
     font-weight: bold;
-    box-shadow: 0 2px 4px rgba(156, 39, 176, 0.3);
+    box-shadow: 0 2px 5px rgba(156, 39, 176, 0.3);
 }
 
 .emparejamiento-card .boton-confirmar {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 12px;
+    left: 12px;
     color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.85em;
+    padding: 10px 18px;
+    border-radius: 7px;
+    font-size: 0.9em;
     font-weight: bold;
     cursor: pointer;
     border: none;
@@ -200,27 +201,28 @@
 
 .emparejamiento-card .boton-confirmar.confirmado {
     background: linear-gradient(135deg, var(--color-exito), #1E8449);
-    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
 }
 
 .emparejamiento-card .boton-confirmar.pendiente {
     background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
-    box-shadow: 0 2px 4px rgba(230, 126, 34, 0.3);
+    box-shadow: 0 2px 5px rgba(230, 126, 34, 0.3);
 }
 
 .emparejamiento-card .boton-confirmar:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: scale(1.08);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .emparejamiento-card .mesa-numero {
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 12px 18px;
+    border-radius: 10px;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     text-align: center;
     color: white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    font-size: 1.1em;
 }
 
 .emparejamiento-card .mesa-numero.confirmado {
@@ -236,7 +238,19 @@
 }
 
 .emparejamiento-card .mesa-numero.con-margen {
-    margin-top: 35px;
+    margin-top: 40px;
+}
+
+/* Texto más grande y legible */
+.emparejamiento-card p {
+    margin: 8px 0;
+    font-size: 1em;
+    line-height: 1.6;
+}
+
+.emparejamiento-card strong {
+    font-size: 1.05em;
+    font-weight: 600;
 }
 
 /* ==========================================
@@ -260,28 +274,38 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
 }
 
 .header-equipos h4 {
     margin: 0;
+    color: white;
     font-size: 1.4em;
     font-weight: 700;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    flex: 1;
+    min-width: 200px;
+    word-wrap: break-word;
 }
 
 .total-partidas {
     background: rgba(255, 255, 255, 0.2);
-    padding: 6px 16px;
+    padding: 8px 18px;
     border-radius: 20px;
     font-size: 0.9em;
     font-weight: 600;
     backdrop-filter: blur(10px);
+    white-space: nowrap;
 }
 
 /* Contenedor de épocas */
 .contenedor-epocas {
     padding: 20px;
     background: var(--color-fondo-principal);
+    clear: both;
 }
 
 /* ==========================================
@@ -295,6 +319,7 @@
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 2px solid var(--color-beige);
+    position: relative;
 }
 
 .grupo-epoca:last-child {
@@ -309,6 +334,10 @@
     align-items: center;
     justify-content: space-between;
     border-bottom: 3px solid var(--color-verde-oscuro);
+    flex-wrap: wrap;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
 }
 
 .epoca-badge-grande {
@@ -318,15 +347,18 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: 1;
+    min-width: 150px;
 }
 
 .cantidad-partidas {
     background: rgba(255, 255, 255, 0.25);
     color: white;
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 12px;
     font-size: 0.85em;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 /* Partidas dentro de la época */
@@ -336,6 +368,108 @@
     flex-direction: column;
     gap: 12px;
     background: var(--color-fondo-principal);
+    clear: both;
+}
+
+/* ==========================================
+   TARJETA DE PARTIDA INDIVIDUAL
+   ========================================== */
+
+.partida-individual {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    border-left: 4px solid var(--color-verde-claro);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.partida-individual:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.partida-individual-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.numero-partida {
+    background: var(--color-verde-claro);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.jugadores-partida {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    min-width: 250px;
+}
+
+.jugador-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.jugador-nombre-partida {
+    font-weight: 700;
+    color: var(--color-verde-oscuro);
+    font-size: 1em;
+    word-wrap: break-word;
+}
+
+.jugador-faccion-partida {
+    font-size: 0.85em;
+    color: #666;
+    font-style: italic;
+}
+
+.vs-partida {
+    color: var(--color-verde-claro);
+    font-weight: 900;
+    font-size: 1.2em;
+    padding: 0 10px;
+    flex-shrink: 0;
+}
+
+/* Estado de la partida */
+.estado-partida {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.estado-partida.completada {
+    background: linear-gradient(135deg, #D5F4E6, #ABEBC6);
+    color: var(--color-exito);
+    border: 1px solid var(--color-exito);
+}
+
+.estado-partida.pendiente {
+    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+    color: var(--color-naranja-hover);
+    border: 1px solid var(--color-naranja);
 }
 
 /* ==========================================
@@ -355,6 +489,8 @@
     background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
     padding: 20px;
     text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 .header-equipos-preview h4 {
@@ -362,6 +498,7 @@
     margin: 0;
     font-size: 1.4em;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    word-wrap: break-word;
 }
 
 .resumen-equipos-preview {
@@ -386,6 +523,7 @@
     font-size: 1.1em;
     border-bottom: 3px solid var(--color-verde-claro);
     padding-bottom: 10px;
+    word-wrap: break-word;
 }
 
 .lista-jugadores-preview {
@@ -416,6 +554,8 @@
     font-weight: 700;
     color: var(--color-verde-oscuro);
     flex: 1;
+    min-width: 120px;
+    word-wrap: break-word;
 }
 
 .jugador-chip-preview .jugador-faccion,
@@ -426,6 +566,7 @@
     padding: 4px 10px;
     border-radius: 12px;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .sin-jugadores {
@@ -441,7 +582,9 @@
     color: var(--color-verde-claro);
     display: flex;
     align-items: center;
+    justify-content: center;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0 15px;
 }
 
 .bye-info-preview {
@@ -467,6 +610,7 @@
     background: var(--color-fondo-principal);
     padding: 20px;
     border-top: 2px solid var(--color-beige);
+    clear: both;
 }
 
 .partidas-preview h6 {
@@ -494,6 +638,7 @@
     align-items: center;
     gap: 15px;
     transition: all 0.3s ease;
+    flex-wrap: wrap;
 }
 
 .partida-individual-preview:hover {
@@ -501,36 +646,21 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-.numero-partida {
-    background: var(--color-verde-claro);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 12px;
-    font-size: 0.75em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.partida-individual-preview .numero-partida {
+    flex-shrink: 0;
 }
 
-.jugadores-partida {
+.partida-individual-preview .jugadores-partida {
     flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 0.95em;
+    min-width: 250px;
 }
 
-.jugador-nombre-partida {
+.partida-individual-preview .jugador-nombre-partida {
     font-weight: 700;
     color: var(--color-verde-oscuro);
     flex: 1;
     text-align: center;
-}
-
-.vs-partida {
-    color: var(--color-verde-claro);
-    font-weight: 900;
-    padding: 0 8px;
+    word-wrap: break-word;
 }
 
 .facciones-partida {
@@ -541,56 +671,12 @@
     color: #666;
     padding-left: 15px;
     border-left: 2px solid var(--color-beige);
+    flex-wrap: wrap;
 }
 
 .facciones-partida .separador {
     color: #999;
     font-size: 0.9em;
-}
-
-/* ==========================================
-   RESPONSIVE - ENFRENTAMIENTOS DE EQUIPOS
-   ========================================== */
-
-@media (max-width: 768px) {
-    .resumen-equipos-preview {
-        grid-template-columns: 1fr;
-    }
-    
-    .vs-grande {
-        transform: rotate(90deg);
-        margin: 15px 0;
-    }
-    
-    .jugadores-partida {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .partida-individual-preview {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .facciones-partida {
-        border-left: none;
-        border-top: 2px solid var(--color-beige);
-        padding-left: 0;
-        padding-top: 10px;
-        justify-content: center;
-    }
-    
-    .header-equipos {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .epoca-header {
-        flex-direction: column;
-        gap: 8px;
-        text-align: center;
-    }
 }
 
 /* ==========================================
@@ -664,7 +750,35 @@
 }
 
 /* ==========================================
-   RESPONSIVE
+   RESPONSIVE - TABLETS
+   ========================================== */
+
+@media (max-width: 992px) {
+    .header-equipos {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .header-equipos h4 {
+        width: 100%;
+    }
+    
+    .total-partidas {
+        align-self: flex-start;
+    }
+    
+    .jugadores-partida {
+        min-width: 200px;
+    }
+    
+    .emparejamientos-grid {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+}
+
+/* ==========================================
+   RESPONSIVE - MÓVILES
    ========================================== */
 
 @media (max-width: 768px) {
@@ -683,5 +797,121 @@
 
     .vista-emparejamientos .section-header button {
         width: 100%;
+    }
+    
+    .resumen-equipos-preview {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .vs-grande {
+        transform: rotate(90deg);
+        margin: 15px 0;
+        font-size: 2em;
+    }
+    
+    .jugadores-partida {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+        min-width: auto;
+    }
+    
+    .jugador-info {
+        text-align: center;
+    }
+    
+    .vs-partida {
+        padding: 10px 0;
+        text-align: center;
+    }
+    
+    .partida-individual {
+        padding: 12px 15px;
+    }
+    
+    .partida-individual-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .partida-individual-preview {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .facciones-partida {
+        border-left: none;
+        border-top: 2px solid var(--color-beige);
+        padding-left: 0;
+        padding-top: 10px;
+        justify-content: center;
+    }
+    
+    .header-equipos {
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .header-equipos h4 {
+        text-align: center;
+        width: 100%;
+    }
+    
+    .epoca-header {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+    
+    .epoca-badge-grande {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+/* ==========================================
+   RESPONSIVE - MÓVILES PEQUEÑOS
+   ========================================== */
+
+@media (max-width: 480px) {
+    .header-equipos {
+        padding: 15px;
+    }
+    
+    .header-equipos h4 {
+        font-size: 1.1em;
+    }
+    
+    .contenedor-epocas {
+        padding: 15px;
+    }
+    
+    .epoca-badge-grande {
+        font-size: 1em;
+    }
+    
+    .jugador-nombre-partida {
+        font-size: 0.9em;
+    }
+    
+    .vs-partida {
+        font-size: 1em;
+    }
+    
+    .emparejamiento-card {
+        padding: 16px;
+    }
+    
+    .numero-partida {
+        font-size: 0.7em;
+        padding: 5px 10px;
+    }
+    
+    .estado-partida {
+        font-size: 0.75em;
+        padding: 5px 10px;
     }
 }

@@ -309,6 +309,39 @@
     transform: none;
 }
 
+.info-equipos {
+    background-color: #e3f2fd;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.info-jugador-equipo {
+    font-size: 0.95em;
+    color: #555;
+    margin: 5px 0;
+}
+
+.info-extra {
+    font-size: 0.9em;
+    color: #666;
+    margin: 3px 0;
+}
+
+.jugador-equipo {
+    font-size: 0.95em;
+    color: #555;
+    font-style: italic;
+}
+
+.nota-equipos {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 5px;
+    font-style: italic;
+}
+
 /* ==========================================
    RESPONSIVE ADICIONAL
    ========================================== */

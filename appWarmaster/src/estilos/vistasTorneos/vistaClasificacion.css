@@ -57,7 +57,50 @@
 }
 
 /* ==========================================
-   TABLA CLASIFICACIÓN
+   SELECTOR DE VISTA (Individual/Equipos)
+   ========================================== */
+
+.selector-vista-clasificacion {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+    background: white;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.btn-selector {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-texto-principal);
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-selector:hover {
+    background: var(--color-beige);
+    transform: translateY(-2px);
+}
+
+.btn-selector.activo {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    color: white;
+    border-color: var(--color-verde-oscuro);
+    box-shadow: 0 4px 12px rgba(98, 129, 65, 0.3);
+}
+
+/* ==========================================
+   TABLA CLASIFICACIÓN INDIVIDUAL
    ========================================== */
 
 .tabla-clasificacion-container {
@@ -155,6 +198,145 @@
 }
 
 /* ==========================================
+   CLASIFICACIÓN POR EQUIPOS
+   ========================================== */
+
+.clasificacion-equipos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.equipo-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.equipo-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: var(--color-verde-claro);
+}
+
+/* Top 3 Equipos */
+.equipo-card.top-1 {
+    background: linear-gradient(135deg, #FFF9C4 0%, #FFF59D 100%);
+    border-color: #FFD700;
+}
+
+.equipo-card.top-2 {
+    background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%);
+    border-color: #C0C0C0;
+}
+
+.equipo-card.top-3 {
+    background: linear-gradient(135deg, #FFD7C4 0%, #FFAB91 100%);
+    border-color: #CD7F32;
+}
+
+.equipo-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: white;
+}
+
+.equipo-card.top-1 .equipo-header,
+.equipo-card.top-2 .equipo-header,
+.equipo-card.top-3 .equipo-header {
+    background: transparent;
+}
+
+.equipo-posicion {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: var(--color-verde-oscuro);
+    min-width: 60px;
+    text-align: center;
+}
+
+.equipo-card.top-1 .equipo-posicion {
+    color: #FFD700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.equipo-card.top-2 .equipo-posicion {
+    color: #C0C0C0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.equipo-card.top-3 .equipo-posicion {
+    color: #CD7F32;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.equipo-info {
+    flex: 1;
+}
+
+.equipo-info h3 {
+    margin: 0 0 8px 0;
+    color: var(--color-verde-oscuro);
+    font-size: 1.5em;
+    font-weight: 700;
+}
+
+.capitan-info {
+    margin: 0;
+    color: #666;
+    font-size: 0.95em;
+    font-style: italic;
+}
+
+.equipo-stats-principales {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    min-width: 400px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.equipo-card.top-1 .stat-item,
+.equipo-card.top-2 .stat-item,
+.equipo-card.top-3 .stat-item {
+    background: white;
+}
+
+.stat-label {
+    font-size: 0.75em;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.stat-valor {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--color-verde-oscuro);
+}
+
+.stat-valor.destacado {
+    color: var(--color-naranja);
+    font-size: 1.8em;
+}
+
+/* ==========================================
    EMPTY STATE
    ========================================== */
 
@@ -183,17 +365,19 @@
     border-radius: 12px;
     border: 2px dashed var(--color-beige-oscuro);
     color: var(--color-verde-oscuro);
+    font-size: 1.1em;
 }
 
 .vista-clasificacion .error-message {
     background: linear-gradient(135deg, #FADBD8, #F1948A);
     color: var(--color-error);
-    padding: 15px;
-    border-radius: 8px;
+    padding: 20px;
+    border-radius: 12px;
     border-left: 4px solid var(--color-error);
     margin: 20px 0;
     font-weight: 600;
     box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+    text-align: center;
 }
 
 .vista-clasificacion .btn-secondary {
@@ -213,11 +397,19 @@
 .vista-clasificacion .btn-secondary:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(127, 140, 141, 0.4);
+    background: linear-gradient(135deg, #7F8C8D, #95A5A6);
 }
 
 /* ==========================================
    RESPONSIVE
    ========================================== */
+
+@media (max-width: 1024px) {
+    .equipo-stats-principales {
+        grid-template-columns: repeat(2, 1fr);
+        min-width: auto;
+    }
+}
 
 @media (max-width: 768px) {
     .clasificacion-header {
@@ -235,6 +427,15 @@
         justify-content: center;
     }
 
+    .selector-vista-clasificacion {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn-selector {
+        width: 100%;
+    }
+
     .tabla-clasificacion {
         font-size: 0.9em;
     }
@@ -242,6 +443,41 @@
     .tabla-clasificacion th,
     .tabla-clasificacion td {
         padding: 10px 8px;
+    }
+
+    /* Equipos en móvil */
+    .equipo-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .equipo-posicion {
+        font-size: 2em;
+        min-width: auto;
+        align-self: flex-start;
+    }
+
+    .equipo-info h3 {
+        font-size: 1.3em;
+    }
+
+    .equipo-stats-principales {
+        grid-template-columns: repeat(2, 1fr);
+        width: 100%;
+        gap: 10px;
+    }
+
+    .stat-item {
+        padding: 10px;
+    }
+
+    .stat-valor {
+        font-size: 1.3em;
+    }
+
+    .stat-valor.destacado {
+        font-size: 1.5em;
     }
 }
 
@@ -262,5 +498,39 @@
     .btn-actualizar-clasificacion {
         font-size: 0.85em;
         padding: 7px 14px;
+    }
+
+    .btn-selector {
+        font-size: 0.9em;
+        padding: 10px 15px;
+    }
+
+    .equipo-card {
+        margin: 0 -10px;
+        border-radius: 8px;
+    }
+
+    .equipo-header {
+        padding: 15px;
+    }
+
+    .equipo-info h3 {
+        font-size: 1.2em;
+    }
+
+    .capitan-info {
+        font-size: 0.85em;
+    }
+
+    .stat-label {
+        font-size: 0.7em;
+    }
+
+    .stat-valor {
+        font-size: 1.2em;
+    }
+
+    .stat-valor.destacado {
+        font-size: 1.4em;
     }
 }

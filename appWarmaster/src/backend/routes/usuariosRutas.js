@@ -557,6 +557,8 @@ router.get('/:userId', verificarToken, async (req, res) => {
   try {
     const { userId } = req.params;
     
+    console.log('🔍 Buscando torneos para usuario:', userId);
+    
     // ✅ Verifica que coincida con el usuario autenticado
     if (req.usuario.userId !== parseInt(userId)) {
       return res.status(403).json(
@@ -564,7 +566,7 @@ router.get('/:userId', verificarToken, async (req, res) => {
       );
     }
     
-    // ✅ CONSULTA 1: Torneos CREADOS por el usuario (SIN epoca_torneo)
+    // ✅ CONSULTA 1: Torneos CREADOS por el usuario (solo los que organizó)
     const [torneosCreados] = await pool.execute(`
       SELECT 
         ts.id,
@@ -600,7 +602,10 @@ router.get('/:userId', verificarToken, async (req, res) => {
       ORDER BY ts.created_at DESC
     `, [userId]);
     
-    // ✅ CONSULTA 2: Torneos en los que el usuario PARTICIPA (SIN epoca_torneo)
+    console.log(`✅ Torneos creados: ${torneosCreados.length}`);
+    
+    // ✅ CONSULTA 2: Torneos donde PARTICIPA (TODOS, incluyendo propios)
+    // 🔥 CAMBIO: Se ELIMINÓ el filtro "ts.created_by != ?"
     const [torneosParticipando] = await pool.execute(`
       SELECT 
         ts.id,
@@ -629,15 +634,16 @@ router.get('/:userId', verificarToken, async (req, res) => {
         GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         jts.faccion,
         jts.composicion_ejercito,
-        COUNT(DISTINCT jts2.id) as total_participantes
+        (SELECT COUNT(*) FROM jugador_torneo_saga WHERE torneo_id = ts.id) as total_participantes
       FROM torneo_saga ts 
       INNER JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN jugador_torneo_saga jts2 ON ts.id = jts2.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-      WHERE jts.jugador_id = ? AND ts.created_by != ?
-      GROUP BY ts.id, jts.id
+      WHERE jts.jugador_id = ?
+      GROUP BY ts.id, jts.id, jts.faccion, jts.composicion_ejercito
       ORDER BY ts.fecha_inicio ASC
-    `, [userId, userId]);
+    `, [userId]);
+    
+    console.log(`✅ Torneos participando: ${torneosParticipando.length}`);
     
     res.json(
       successResponse('Torneos del usuario obtenidos exitosamente', {

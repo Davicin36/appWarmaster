@@ -64,6 +64,7 @@ CREATE TABLE torneo_saga_equipo(
   puntos_torneo_equipo INT DEFAULT 0,
   puntos_masacre_equipo INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  pagado ENUM ('pendiente', 'pagado') DEFAULT 'pendiente',
  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE
  FOREIGN KEY (capitan_id) REFERENCES usuarios(id) ON DELETE CASCADE,
 )

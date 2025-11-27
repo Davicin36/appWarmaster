@@ -42,7 +42,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
 
       try {
         setLoading(true);
-        const dataInscripcion = await torneosSagaApi.obtenerMiInscripcion(torneoId);
+        const dataInscripcion = await torneosSagaApi.obtenerIncripcion(torneoId);
         
         if (dataInscripcion.success && dataInscripcion.data) {
           const inscripcion = dataInscripcion.data;
@@ -194,7 +194,9 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     : [];
   const esMultiEpoca = epocasArray.length > 1;
 
-  const bandasDisponibles = obtenerBandasDisponibles(epocaSeleccionada);
+  const bandasDisponibles = epocaSeleccionada && epocaSeleccionada.trim() !== ' '
+    ? obtenerBandasDisponibles(epocaSeleccionada)
+    : []
 
   const puntosMaximos = torneo?.puntos_banda || 24;
   const puntosActuales = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;

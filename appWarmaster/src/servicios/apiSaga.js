@@ -107,8 +107,8 @@ class TorneosSagaApi {
     return this.request(`/${torneoId}/obtenerInscripcionEquipo`);
 }
 
-async actualizarInscripcionEquipo(torneoId, datosInscripcion) {
-    return this.request(`/${torneoId}/actualizarInscripcionEquipo`, {
+async actualizarInscripcion(torneoId, datosInscripcion) {
+    return this.request(`/${torneoId}/actualizarInscripcion`, {
         method: 'PUT',
         body: datosInscripcion
     });
@@ -209,22 +209,49 @@ async obtenerPartidasTorneo(torneoId, ronda) {
   });
 }
 
-  async obtenerEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
-  return this.request(`/${torneoId}/obtenerEmparejamientos`, {
-    method: 'GET',
+async confirmarResultadoEquipo(torneoId, partidaId, confirmar) {
+  return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmarEquipo`, {
+    method: 'PATCH',
+    body: { confirmar }
+  });
+}
+
+async obtenerEmparejamientosIndividuales(torneoId, ronda = null) {
+  const params = new URLSearchParams();
+  if (ronda) params.append('ronda', ronda);
+  
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  
+  return this.request(`/${torneoId}/obtenerEmparejamientosIndividuales${queryString}`, {
+    method: 'GET'
+  });
+}
+
+async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
+  return this.request(`/${torneoId}/guardarEmparejamientosIndividuales`, {
+    method: 'POST',
     body: {
-      torneo_id: torneoId,
       emparejamientos: emparejamientos,
       ronda: ronda
     }
   });
 }
 
- async guardarEmparejamientosRondas(torneoId, emparejamientos, ronda ) {
-  return this.request(`/${torneoId}/guardarEmparejamientos`, {
+async obtenerEmparejamientosEquipos(torneoId, ronda = null) {
+  const params = new URLSearchParams();
+  if (ronda) params.append('ronda', ronda);
+  
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  
+  return this.request(`/${torneoId}/obtenerEmparejamientosEquipos${queryString}`, {
+    method: 'GET'
+  });
+}
+
+async guardarEmparejamientosEquipos(torneoId, emparejamientos, ronda) {
+  return this.request(`/${torneoId}/guardarEmparejamientosEquipos`, {
     method: 'POST',
     body: {
-      torneo_id: torneoId,
       emparejamientos: emparejamientos,
       ronda: ronda
     }
@@ -256,8 +283,8 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
   // ==================
 
   //clasificacion de los torneos
-  async obtenerClasificacion(torneoId) {
-  return this.request(`/${torneoId}/obtenerClasificacion`, {
+  async obtenerClasificacionIndividual(torneoId) {
+  return this.request(`/${torneoId}/obtenerClasificacionIndividual`, {
     method: 'GET'
   });
 }

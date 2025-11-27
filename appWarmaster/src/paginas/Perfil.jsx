@@ -82,7 +82,6 @@ function Perfil() {
                 const data = response.data || response;
                 setTorneosCreados(data.torneosCreados || []);
                 setTorneosParticipando(data.torneosParticipando || []);
-                console.log('✅ Torneos cargados correctamente');
             } else {
                 setErrorTorneos(response.error || "Error al cargar torneos");
             }

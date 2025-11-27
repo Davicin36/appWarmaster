@@ -5,6 +5,7 @@ import '@/estilos/modalPartidas.css';
 function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = false }) {
     const resultadoConfirmado = partida.resultado_confirmado || false;
     const esBye = !partida.jugador2_id || partida.resultado_ps === 'victoria_j1';
+    const esTorneoEquipos = !!partida.equipo1_id; // Detectar si es torneo por equipos
     
     const [resultado, setResultado] = useState({
         puntos_partida_j1: partida.puntos_partida_j1 || 0,
@@ -117,13 +118,31 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
         const ppJ1 = parseInt(resultado.puntos_partida_j1) || 0;
         const ppJ2 = parseInt(resultado.puntos_partida_j2) || 0;
         
+        const nombre1 = esTorneoEquipos 
+            ? partida.equipo1_nombre 
+            : (partida.jugador1_nombre || partida.jugador1?.nombre);
+        
+        const nombre2 = esTorneoEquipos 
+            ? partida.equipo2_nombre 
+            : (partida.jugador2_nombre || partida.jugador2?.nombre);
+        
         if (ppJ1 > ppJ2) {
-            return `🏆 Victoria de ${partida.jugador1_nombre || partida.jugador1?.nombre}`;
+            return `🏆 Victoria de ${nombre1}`;
         }
         if (ppJ2 > ppJ1) {
-            return `🏆 Victoria de ${partida.jugador2_nombre || partida.jugador2?.nombre}`;
+            return `🏆 Victoria de ${nombre2}`;
         }
         return '🤝 Empate';
+    };
+
+    // Función auxiliar para obtener el nombre del jugador
+    const getNombreJugador = (jugadorNum) => {
+        if (esTorneoEquipos) {
+            return jugadorNum === 1 ? partida.jugador1_nombre : partida.jugador2_nombre;
+        }
+        return jugadorNum === 1 
+            ? (partida.jugador1_nombre || partida.jugador1?.nombre)
+            : (partida.jugador2_nombre || partida.jugador2?.nombre);
     };
 
     // SI ES BYE CONFIRMADO
@@ -143,7 +162,14 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
 
                         <div className="bye-info">
                             <h3>⭐ Victoria Automática</h3>
-                            <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
+                            {esTorneoEquipos ? (
+                                <>
+                                    <p><strong>Equipo:</strong> {partida.equipo1_nombre}</p>
+                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre}</p>
+                                </>
+                            ) : (
+                                <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
+                            )}
                             <p className="puntos-bye">10 Puntos de Torneo</p>
                             <p className="ronda-info">Ronda: {partida.ronda}</p>
                         </div>
@@ -186,7 +212,14 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
 
                         <div className="bye-info">
                             <h3>⭐ Victoria Automática</h3>
-                            <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
+                            {esTorneoEquipos ? (
+                                <>
+                                    <p><strong>Equipo:</strong> {partida.equipo1_nombre}</p>
+                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre}</p>
+                                </>
+                            ) : (
+                                <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
+                            )}
                             <p className="puntos-bye">10 Puntos de Torneo</p>
                             <p className="ronda-info">Ronda: {partida.ronda}</p>
                         </div>
@@ -245,7 +278,22 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
 
                         <div className="resultados-grid">
                             <div className="jugador-stats">
-                                <h4>{partida.jugador1_nombre}</h4>
+                                {esTorneoEquipos ? (
+                                    <>
+                                        <h4>{partida.equipo1_nombre}</h4>
+                                        <p className="jugador-equipo">
+                                            <strong>Jugador:</strong> {partida.jugador1_nombre}
+                                        </p>
+                                        {partida.jugador1_faccion && (
+                                            <p><strong>Facción:</strong> {partida.jugador1_faccion}</p>
+                                        )}
+                                        {partida.jugador1_epoca && (
+                                            <p><strong>Época:</strong> {partida.jugador1_epoca}</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <h4>{partida.jugador1_nombre}</h4>
+                                )}
                                 <p><strong>Puntos Partida:</strong> {partida.puntos_partida_j1}</p>
                                 <p><strong>Puntos Masacre:</strong> {partida.puntos_masacre_j1}</p>
                                 <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j1}</p>
@@ -255,7 +303,22 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                             <div className="vs-divider">VS</div>
 
                             <div className="jugador-stats">
-                                <h4>{partida.jugador2_nombre}</h4>
+                                {esTorneoEquipos ? (
+                                    <>
+                                        <h4>{partida.equipo2_nombre}</h4>
+                                        <p className="jugador-equipo">
+                                            <strong>Jugador:</strong> {partida.jugador2_nombre}
+                                        </p>
+                                        {partida.jugador2_faccion && (
+                                            <p><strong>Facción:</strong> {partida.jugador2_faccion}</p>
+                                        )}
+                                        {partida.jugador2_epoca && (
+                                            <p><strong>Época:</strong> {partida.jugador2_epoca}</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <h4>{partida.jugador2_nombre}</h4>
+                                )}
                                 <p><strong>Puntos Partida:</strong> {partida.puntos_partida_j2}</p>
                                 <p><strong>Puntos Masacre:</strong> {partida.puntos_masacre_j2}</p>
                                 <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j2}</p>
@@ -307,6 +370,11 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                     <div className="partida-info">
                         <p><strong>Escenario:</strong> {partida.nombre_partida || partida.escenario || 'Por definir'}</p>
                         <p><strong>Ronda:</strong> {partida.ronda}</p>
+                        {esTorneoEquipos && (
+                            <p className="info-equipos">
+                                🛡️ <strong>Torneo por Equipos</strong> - Los puntos se suman a la clasificación del equipo
+                            </p>
+                        )}
                     </div>
 
                     <div className="seccion-primer-jugador">
@@ -314,11 +382,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                         {resultado.primer_jugador ? (
                             <div className="primer-jugador-seleccionado">
                                 <p>
-                                    ✅ <strong>
-                                        {resultado.primer_jugador === partida.jugador1_id 
-                                            ? (partida.jugador1_nombre || partida.jugador1?.nombre)
-                                            : (partida.jugador2_nombre || partida.jugador2?.nombre)}
-                                    </strong> fue el primer jugador
+                                    ✅ <strong>{getNombreJugador(resultado.primer_jugador === partida.jugador1_id ? 1 : 2)}</strong> fue el primer jugador
                                 </p>
                             </div>
                         ) : (
@@ -332,7 +396,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                         }))}
                                         className="btn-seleccionar-jugador"
                                     >
-                                        {partida.jugador1_nombre || partida.jugador1?.nombre}
+                                        {getNombreJugador(1)}
                                     </button>
                                     <button
                                         onClick={() => setResultado(prev => ({ 
@@ -341,7 +405,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                         }))}
                                         className="btn-seleccionar-jugador"
                                     >
-                                        {partida.jugador2_nombre || partida.jugador2?.nombre}
+                                        {getNombreJugador(2)}
                                     </button>
                                 </div>
                             </>
@@ -350,10 +414,27 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
 
                     <div className="formulario-grid">
                         <div className="jugador-resultado">
-                            <h4>{partida.jugador1_nombre || partida.jugador1?.nombre}</h4>
+                            {esTorneoEquipos ? (
+                                <>
+                                    <h4>{partida.equipo1_nombre}</h4>
+                                    <p className="info-jugador-equipo">
+                                        👤 <strong>{partida.jugador1_nombre}</strong>
+                                    </p>
+                                    {partida.jugador1_faccion && (
+                                        <p className="info-extra">⚔️ {partida.jugador1_faccion}</p>
+                                    )}
+                                    {partida.jugador1_epoca && (
+                                        <p className="info-extra">📅 {partida.jugador1_epoca}</p>
+                                    )}
+                                </>
+                            ) : (
+                                <h4>{partida.jugador1_nombre || partida.jugador1?.nombre}</h4>
+                            )}
                             
                             <div className="form-group">
-                                <label>Puntos de Partida:*</label>
+                                <label>
+                                    {esTorneoEquipos ? 'Puntos de Torneo:*' : 'Puntos de Partida:*'}
+                                </label>
                                 <input
                                     type="number"
                                     min="0"
@@ -361,6 +442,11 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     onChange={(e) => handleChange('puntos_partida_j1', e.target.value)}
                                     disabled={guardando}
                                 />
+                                {esTorneoEquipos && (
+                                    <small className="nota-equipos">
+                                        💡 Introduce directamente los puntos de torneo
+                                    </small>
+                                )}
                             </div>
 
                             <div className="form-group">
@@ -390,10 +476,27 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                         <div className="vs-divider">VS</div>
 
                         <div className="jugador-resultado">
-                            <h4>{partida.jugador2_nombre || partida.jugador2?.nombre}</h4>
+                            {esTorneoEquipos ? (
+                                <>
+                                    <h4>{partida.equipo2_nombre}</h4>
+                                    <p className="info-jugador-equipo">
+                                        👤 <strong>{partida.jugador2_nombre}</strong>
+                                    </p>
+                                    {partida.jugador2_faccion && (
+                                        <p className="info-extra">⚔️ {partida.jugador2_faccion}</p>
+                                    )}
+                                    {partida.jugador2_epoca && (
+                                        <p className="info-extra">📅 {partida.jugador2_epoca}</p>
+                                    )}
+                                </>
+                            ) : (
+                                <h4>{partida.jugador2_nombre || partida.jugador2?.nombre}</h4>
+                            )}
                             
                             <div className="form-group">
-                                <label>Puntos de Partida:*</label>
+                                <label>
+                                    {esTorneoEquipos ? 'Puntos de Torneo:*' : 'Puntos de Partida:*'}
+                                </label>
                                 <input
                                     type="number"
                                     min="0"
@@ -401,6 +504,11 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     onChange={(e) => handleChange('puntos_partida_j2', e.target.value)}
                                     disabled={guardando}
                                 />
+                                {esTorneoEquipos && (
+                                    <small className="nota-equipos">
+                                        💡 Introduce directamente los puntos de torneo
+                                    </small>
+                                )}
                             </div>
 
                             <div className="form-group">
@@ -434,7 +542,10 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                             {getResultadoPreview()}
                         </div>
                         <p className="nota-calculo">
-                            💡 Los puntos de victoria y torneo se calcularán automáticamente
+                            {esTorneoEquipos 
+                                ? '💡 Los puntos de masacre y victoria se calcularán automáticamente'
+                                : '💡 Los puntos de victoria y torneo se calcularán automáticamente'
+                            }
                         </p>
                     </div>
                 </div>
