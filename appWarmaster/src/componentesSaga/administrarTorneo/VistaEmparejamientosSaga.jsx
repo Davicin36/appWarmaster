@@ -516,9 +516,9 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                             <div className="faccion">⚔️ {partida.jugador1.faccion}</div>
                         )}
                         <div className="stats">
-                            PV: {partida.puntos_victoria_j1 || 0} | 
-                            PT: {partida.puntos_torneo_j1 || 0} | 
-                            PM: {partida.puntos_masacre_j1 || 0}
+                            PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} | 
+                            PT: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)} | 
+                            PM: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)}
                         </div>
                     </div>
 
@@ -534,9 +534,9 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                                 <div className="faccion">⚔️ {partida.jugador2.faccion}</div>
                             )}
                             <div className="stats">
-                                PV: {partida.puntos_victoria_j2 || 0} | 
-                                PT: {partida.puntos_torneo_j2 || 0} | 
-                                PM: {partida.puntos_masacre_j2 || 0}
+                                PV: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} | 
+                                PT: {parseFloat(partida.puntos_torneo_j2 || 0).toFixed(1)} | 
+                                PM: {parseFloat(partida.puntos_masacre_j2 || 0).toFixed(1)}
                             </div>
                         </div>
                     ) : (

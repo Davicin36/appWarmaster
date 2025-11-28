@@ -9,7 +9,7 @@ import { formatearEpocas } from '@/componentesSaga/funcionesSaga/constantesFunci
 
 import '../estilos/principal.css';
 
-function Principal() {
+function Principal({ onOpenLogin }) {
     const navigate = useNavigate();
     const { isAuthenticated, user} = useAuth();
 
@@ -18,7 +18,7 @@ function Principal() {
     const [torneosSaga, setTorneosSaga] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-
+ 
     const obtenerTorneosSaga = async () => {
         try {
             setLoading(true);
@@ -67,7 +67,7 @@ function Principal() {
     const apuntarseATorneo = (torneoId) => {
         if (!isAuthenticated) {
             alert('Debes iniciar sesión para apuntarte a un torneo');
-            navigate('/login');
+            onOpenLogin()
             return;
         }
         navigate(`/inscripcion/${torneoId}`);

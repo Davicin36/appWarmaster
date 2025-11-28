@@ -22,19 +22,71 @@ const generarEmparejamientosIniciales = async (torneoId) => {
         const jugadoresAleatorios = [...jugadores].sort(() => Math.random() - 0.5);
         const emparejamientosRonda1 = [];
 
+        console.log('jugadores', jugadoresAleatorios);
+
         for (let i = 0; i < jugadoresAleatorios.length - 1; i += 2) {
+            const jug1 = jugadoresAleatorios[i];
+            const jug2 = jugadoresAleatorios[i + 1];
+
             emparejamientosRonda1.push({
                 mesa: Math.floor(i / 2) + 1,
-                jugador1: jugadoresAleatorios[i],
-                jugador2: jugadoresAleatorios[i + 1]
+                // ✅ Campos para la base de datos
+                jugador1_id: jug1.jugador_id,
+                jugador2_id: jug2.jugador_id,
+                es_bye: 0,
+                ronda: 1,
+                // ✅ Objetos completos para el frontend
+                jugador1: {
+                    id: jug1.id,
+                    jugador_id: jug1.jugador_id,
+                    nombre: jug1.jugador_nombre,
+                    jugador_nombre: jug1.jugador_nombre,
+                    apellidos: jug1.jugador_apellidos || '',
+                    club: jug1.club || '-',
+                    ejercito: jug1.faccion || '-',
+                    puntos_victoria: 0,
+                    puntos_torneo: 0,
+                    puntos_masacre: 0
+                },
+                jugador2: {
+                    id: jug2.id,
+                    jugador_id: jug2.jugador_id,
+                    nombre: jug2.jugador_nombre,
+                    jugador_nombre: jug2.jugador_nombre,
+                    apellidos: jug2.jugador_apellidos || '',
+                    club: jug2.club || '-',
+                    ejercito: jug2.faccion || '-',
+                    puntos_victoria: 0,
+                    puntos_torneo: 0,
+                    puntos_masacre: 0
+                }
             });
         }
         
         // Si el número de jugadores es IMPAR entonces el último tiene BYE
         if (jugadoresAleatorios.length % 2 !== 0) {
+            const jugBye = jugadoresAleatorios[jugadoresAleatorios.length - 1];
+            
             emparejamientosRonda1.push({
                 mesa: emparejamientosRonda1.length + 1,
-                jugador1: jugadoresAleatorios[jugadoresAleatorios.length - 1],
+                // ✅ Campos para BYE
+                jugador1_id: jugBye.jugador_id,
+                jugador2_id: null,
+                es_bye: 1,
+                ronda: 1,
+                // ✅ Objeto completo
+                jugador1: {
+                    id: jugBye.id,
+                    jugador_id: jugBye.jugador_id,
+                    nombre: jugBye.jugador_nombre,
+                    jugador_nombre: jugBye.jugador_nombre,
+                    apellidos: jugBye.jugador_apellidos || '',
+                    club: jugBye.club || '-',
+                    ejercito: jugBye.faccion || '-',
+                    puntos_victoria: 0,
+                    puntos_torneo: 0,
+                    puntos_masacre: 0
+                },
                 jugador2: null
             });
         }
@@ -67,7 +119,7 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
         }
 
         // Obtener clasificación actual
-        const responseClasificacion = await torneosSagaApi.obtenerClasificacion(torneoId);
+        const responseClasificacion = await torneosSagaApi.obtenerClasificacionIndividual(torneoId);
         const clasificacionData = responseClasificacion?.data || responseClasificacion || [];
 
         if (!Array.isArray(clasificacionData) || clasificacionData.length < 2) {

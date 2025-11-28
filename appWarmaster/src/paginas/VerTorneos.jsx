@@ -47,6 +47,8 @@ function VerTorneo() {
             const dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
             setTorneo(dataTorneo);
 
+            console.log (dataTorneo)
+
             if (dataTorneo.tipo_torneo === 'Individual') {
                 await cargarJugadoresIndividuales();
             } else if (dataTorneo.tipo_torneo === 'Por equipos') {

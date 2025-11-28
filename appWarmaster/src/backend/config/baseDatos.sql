@@ -24,12 +24,13 @@ CREATE TABLE usuarios (
 
 /**
 ====================
-   TABLAS SAGA
+   TABLAS GENERAL PARA GESTIONAR TORNEOS
    ===================
    */
 
-CREATE TABLE torneo_saga (
+CREATE TABLE torneos_sistemas (
   id INT PRIMARY KEY AUTO_INCREMENT,
+  sistema VARCHAR (50) DEFAULT 'SAGA',
   nombre_torneo VARCHAR(200) NOT NULL,
   tipo_torneo ENUM ('Individual', 'Por equipos') DEFAULT 'Individual',
   num_jugadores_equipo INT DEFAULT 3 CHECK (num_jugadores_equipo BETWEEN 2 AND 6),
@@ -54,6 +55,12 @@ CREATE TABLE torneo_saga (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES usuarios(id)
 );
+
+/**
+==============================
+TABLAS PARA LOS TORNEOS SAGA
+==============================
+*/
 
 CREATE TABLE torneo_saga_equipo(
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -85,7 +92,7 @@ CREATE TABLE torneo_saga_epocas (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
   epoca VARCHAR(100) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_by TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
   UNIQUE KEY unique_epoca_torneo (torneo_id, epoca)
 ); 
@@ -117,8 +124,11 @@ CREATE TABLE clasificacion_jugadores_saga (
   jugador_id INT NOT NULL,
   equipo_id INT  DEFAULT NULL,
   partidas_jugadas INT DEFAULT 0, 
+  partidas_ganadas INT DEFAULT 0,
+  partidas_empatadas INT DEFAULT 0,
+  partidas_perdidas INT DEFAULT 0,
   puntos_victoria_totales INT DEFAULT 0,
-  puntos_torneo_totales INT DEFAULT 0,
+  puntos_torneo_totales DECIMAL (10,1) DEFAULT 0,
   puntos_masacre_totales INT DEFAULT 0,
   warlord_muerto_totales INT  DEFAULT 0,
   FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
@@ -132,6 +142,9 @@ CREATE TABLE clasificacion_equipos_saga (
   torneo_id INT NOT NULL,
   equipo_id INT NOT NULL,
   partidas_jugadas INT DEFAULT 0, 
+  partidas_ganadas INT DEFAULT 0,
+  partidas_empatadas INT DEFAULT 0,
+  partidas_perdidas INT DEFAULT 0,
   puntos_victoria_eq_totales INT DEFAULT 0,
   puntos_torneo_eq_totales INT DEFAULT 0,
   puntos_masacre_eq_totales INT DEFAULT 0,
@@ -147,13 +160,14 @@ CREATE TABLE partidas_saga (
   equipo1_id INT DEFAULT NULL, 
   equipo2_id INT DEFAULT NULL,
   nombre_partida VARCHAR(100) NOT NULL,
+  epoca VARCHAR (150),
   jugador1_id INT NOT NULL,
   jugador2_id INT NOT NULL,
   es_bye BOOLEAN DEFAULT FALSE,
   puntos_victoria_j1 INT DEFAULT 0,
   puntos_victoria_j2 INT DEFAULT 0,
-  puntos_torneo_j1 INT DEFAULT 0,
-  puntos_torneo_j2 INT DEFAULT 0,
+  puntos_torneo_j1 DECIMAL (10,1) DEFAULT 0,,
+  puntos_torneo_j2 DECIMAL (10,1) DEFAULT 0,,
   puntos_masacre_j1 INT DEFAULT 0,
   puntos_masacre_j2 INT DEFAULT 0,
   warlord_muerto_j1 BOOLEAN DEFAULT FALSE,
@@ -177,152 +191,134 @@ CREATE TABLE partidas_saga (
    TABLAS WARMASTER
    ===================
    */
-CREATE TABLE torneo_warmaster (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  nombre_torneo VARCHAR(200) NOT NULL,
-  rondas_max INT NOT NULL,
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE,
-  ubicacion VARCHAR(200),
-  puntos_ejercito INT NOT NULL,
-  participantes_max INT NOT NULL,
-  estado ENUM('pendiente', 'en_curso', 'finalizado') DEFAULT 'pendiente';
-  partida_ronda_1 VARCHAR(100) NOT NULL,
-  partida_ronda_2 VARCHAR(100) NOT NULL,
-  partida_ronda_3 VARCHAR(100) NOT NULL,
-  partida_ronda_4 VARCHAR(100),
-  partida_ronda_5 VARCHAR(100),
-  bases_torneo_warmaster LONGBLOB,
-  bases_nombre_warmaster VARCHAR(255), 
-  base_tamaño_warmaster INT,         
-  created_by INT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES usuarios(id)
-);
 
 CREATE TABLE jugador_torneo_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
   jugador_id INT NOT NULL,
-  ejercito VARCHAR(100) NOT NULL,
-  lista_torneo_warmaster LONGBLOB,
-  lista_nombre_warmaster VARCHAR(255), 
-  lista_tamaño_warmaster INT,    
+  /**
+  equipo_id INT DEFAULT NULL, 
+  */
+  faccion VARCHAR(100) NOT NULL,
+  lista_ejercito LONGBLOB,
+  lista_nombre VARCHAR(255), 
+  lista_tamaño INT,      
   pagado BOOLEAN DEFAULT FALSE,
   puntos_victoria INT DEFAULT 0,
   puntos_masacre INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_warmaster(id) ON DELETE CASCADE,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_participante (torneo_id, jugador_id)
+  /**
+  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id),
+  */
+  UNIQUE KEY unique_participante (torneo_id, jugador_id),
+  /**
+  UNIQUE KEY unique_epoca_equipo (equipo_id, epoca) 
+  */
 );
 
-CREATE TABLE partidas_warmaster (
+CREATE TABLE torneo_warmaster_faccion (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
-  nombre_partida VARCHAR(100) NOT NULL,
-  jugador1_id INT NOT NULL,
-  jugador2_id INT NOT NULL,
-  puntos_victoria_j1 INT DEFAULT 0,
-  puntos_victoria_j2 INT DEFAULT 0,
-  puntos_masacre_j1 INT NOT NULL,
-  puntos_masacre_j2 INT NOT NULL,
-  resultado_warmaster ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
-  ronda INT DEFAULT 1,
-  fecha_partida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_warmaster(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),
-  FOREIGN KEY (jugador2_id) REFERENCES usuarios(id)
-);
+  faccion VARCHAR(100) NOT NULL,
+  created_by TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,<
+  UNIQUE KEY unique_faccion_torneo (torneo_id, faccion)
+); 
 
 CREATE TABLE clasificacion_jugadores_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
   jugador_id INT NOT NULL,
+  /**
+  equipo_id INT  DEFAULT NULL,
+  */
+  partidas_jugadas INT DEFAULT 0, 
+  partidas_ganadas INT DEFAULT 0,
+  partidas_empatadas INT DEFAULT 0,
+  partidas_perdidas INT DEFAULT 0,
   puntos_victoria_totales INT DEFAULT 0,
-  puntos_torneo_totales INT DEFAULT 0,
   puntos_masacre_totales INT DEFAULT 0,
-  warlord_muerto_totales INT  DEFAULT 0,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_warmaster(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador_id) REFERENCES jugador_torneo_warmaster(jugador_id) ON DELETE CASCADE,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
+  FOREIGN KEY (jugador_id) REFERENCES jugador_torneo_saga(jugador_id) ON DELETE CASCADE,
+  /**
+  FOREGIN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE, 
+ */
+  UNIQUE KEY unique_torneo_jugador (torneo_id, jugador_id);
 )
 
-/**
-========================
-   TABLAS FLAMES OF WAR
-   =======================
-   */
-CREATE TABLE torneo_fow (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  nombre_torneo VARCHAR(200) NOT NULL,
-  rondas_max INT NOT NULL,
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE,
-  ubicacion VARCHAR(200),
-  puntos_ejercito INT NOT NULL,
-  participantes_max INT NOT NULL,
-  teatro_operaciones VARCHAR(100),
-  estado ENUM('pendiente', 'en_curso', 'finalizado') DEFAULT 'pendiente';
-  partida_ronda_1 VARCHAR(100) NOT NULL,
-  partida_ronda_2 VARCHAR(100) NOT NULL,
-  partida_ronda_3 VARCHAR(100) NOT NULL,
-  partida_ronda_4 VARCHAR(100),
-  partida_ronda_5 VARCHAR(100);
-  bases_torneo_fow LONGBLOB,
-  bases_nombre_fow VARCHAR(255), 
-  base_tamaño_fow INT,   
-  created_by INT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES usuarios(id)
-);
 
-CREATE TABLE jugador_torneo_fow (
+CREATE TABLE partidas_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
-  jugador_id INT NOT NULL,
-  ejercito VARCHAR(100) NOT NULL,
-  faccion_fow ENUM ('Eje', 'Aliados') default ' ',
-  libro VARCHAR(100),
-  pagado BOOLEAN DEFAULT FALSE,
-  puntos_victoria INT DEFAULT 0,
-  puntos_masacre INT DEFAULT 0,
-  lista_torneo_fow LONGBLOB,
-  lista_nombre_fow VARCHAR(255), 
-  lista_tamaño_fow INT,    
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_participante (torneo_id, jugador_id)
-);
-
-CREATE TABLE partidas_fow (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  torneo_id INT NOT NULL,
+  /**
+  equipo1_id INT DEFAULT NULL, 
+  equipo2_id INT DEFAULT NULL,
+  */
   nombre_partida VARCHAR(100) NOT NULL,
   jugador1_id INT NOT NULL,
   jugador2_id INT NOT NULL,
+  es_bye BOOLEAN DEFAULT FALSE,
   puntos_victoria_j1 INT DEFAULT 0,
   puntos_victoria_j2 INT DEFAULT 0,
-  puntos_masacre_j1 INT NOT NULL,
-  puntos_masacre_j2 INT NOT NULL,
-  resultado_fow ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
+  puntos_masacre_j1 INT DEFAULT 0,
+  puntos_masacre_j2 INT DEFAULT 0,
+  resultado_ps ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
+  resultado_confirmado BOOLEAN DEFAULT FALSE,
   ronda INT DEFAULT 1,
+  mesa INT,
   fecha_partida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  primer_jugador INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_fow(id) ON DELETE CASCADE,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
+  /**
+  FOREIGN KEY (equipo1_id) REFERENCES torneo_saga_equipo(id) ON DELETE SET NULL,   
+  FOREIGN KEY (equipo2_id) REFERENCES torneo_saga_equipo(id) ON DELETE SET NULL,
+  */
   FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),
   FOREIGN KEY (jugador2_id) REFERENCES usuarios(id)
 );
 
-CREATE TABLE clasificacion_jugadores_fow (
+/**
+CREATE TABLE torneo_warmaster_equipo(
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
-  jugador_id INT NOT NULL,
-  puntos_victoria_totales INT DEFAULT 0,
-  puntos_torneo_totales INT DEFAULT 0,
-  puntos_masacre_totales INT DEFAULT 0,
-  warlord_muerto_totales INT  DEFAULT 0,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_fow(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador_id) REFERENCES jugador_torneo_fow(jugador_id) ON DELETE CASCADE,
+  nombre_equipo VARCHAR(150),
+  capitan_id INT NOT NULL,
+  puntos_victoria_equipo INT DEFAULT 0,
+  puntos_masacre_equipo INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  pagado ENUM ('pendiente', 'pagado') DEFAULT 'pendiente',
+ FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE
+ FOREIGN KEY (capitan_id) REFERENCES usuarios(id) ON DELETE CASCADE,
 )
+
+CREATE TABLE  equipo_miembros (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  equipo_id INT NOT NULL,
+  usuario_id INT NOT NULL,
+  jugador_eq_id INT NOT NULL,
+  fecha_union TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  FOREIGN KEY (jugador_eq_id) REFERENCES jugador_torneo_saga(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_equipo_usuario_jugador (equipo_id, usuario_id, jugador_eq_id)
+);
+
+
+CREATE TABLE clasificacion_equipos_saga (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  torneo_id INT NOT NULL,
+  equipo_id INT NOT NULL,
+  partidas_jugadas INT DEFAULT 0, 
+  partidas_ganadas INT DEFAULT 0,
+  partidas_empatadas INT DEFAULT 0,
+  partidas_perdidas INT DEFAULT 0,
+  puntos_victoria_eq_totales INT DEFAULT 0,
+  puntos_masacre_eq_totales INT DEFAULT 0,
+  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
+  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_torneo_equipo (torneo_id, equipo_id);
+)
+*/

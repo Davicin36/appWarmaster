@@ -594,7 +594,7 @@ router.get('/:userId', verificarToken, async (req, res) => {
         ts.created_at,
         GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         COUNT(DISTINCT jts.id) as total_participantes
-      FROM torneo_saga ts 
+      FROM torneos_sistemas ts 
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       WHERE ts.created_by = ?
@@ -635,7 +635,7 @@ router.get('/:userId', verificarToken, async (req, res) => {
         jts.faccion,
         jts.composicion_ejercito,
         (SELECT COUNT(*) FROM jugador_torneo_saga WHERE torneo_id = ts.id) as total_participantes
-      FROM torneo_saga ts 
+      FROM torneos_sistemas ts 
       INNER JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       WHERE jts.jugador_id = ?

@@ -31,10 +31,11 @@ function App() {
           isOpen={isLoginOpen} 
           onClose={() => setIsLoginOpen(false)} 
         />
+        
       <Routes>
         <Route
             path='/' 
-            element={<Principal />} 
+            element={<Principal  onOpenLogin={() => setIsLoginOpen(true)}/>} 
         />
         <Route 
             path='/registrarse' 
