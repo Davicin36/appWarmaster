@@ -94,8 +94,41 @@ const paginar = (page = 1, limit = 10) => {
   return { limit: parseInt(limit), offset: parseInt(offset) };
 };
 
+const limpiarFecha = (fecha) => {
+  if (!fecha || fecha.trim() === '') return null;
+  return fecha;
+};
 
-const tablaPuntuacion = [
+const tablaPuntuacionFow = [
+  {rango : 1, vencedor : 6, perdedor : 1},
+  {rango : 2, vencedor : 5, perdedor : 2},
+  {rango : [3, Infinity], vencedor : 4, perdedor : 3}
+]
+
+const calcularPuntosTorneoFow = (pelotonesMuertosVencedor) => {
+  const pelotonesMuertos = pelotonesMuertosVencedor
+
+  const fila = tablaPuntuacionFow.find(
+    pelotones => {
+      if (Array.isArray(pelotones.rango)) {
+        const [min, max] = pelotones.rango;
+        return pelotonesMuertos >= min && pelotonesMuertos <= max; 
+      } else {
+        return pelotones.rango === pelotonesMuertos;
+      }
+    });
+
+  return fila ? {
+    puntosVencedor : fila.vencedor,
+    puntosPerdedor : fila.perdedor
+  } : {
+    puntosVencedor : 0,
+    puntosPerdedor : 0
+  }
+}
+
+
+const tablaPuntuacionSaga = [
     {rango : [0, 0], vencedor : 10.5 , perdedor : 10},
     {rango : [1, 3], vencedor : 11, perdedor : 9}, 
     {rango : [4, 6], vencedor : 12, perdedor : 8}, 
@@ -114,7 +147,7 @@ const calcularPuntosTorneo = (puntosPartidaJ1, puntosPartidaJ2, jugador1Id, prim
     const jugadorVencedor = puntosPartidaJ1 > puntosPartidaJ2
 
     //aqui consigo la puntuacion para cada jugador.
-    const fila = tablaPuntuacion.find(
+    const fila = tablaPuntuacionSaga.find(
         dif => diferencia >= dif.rango[0] && diferencia <= dif.rango[1]
     )
 
@@ -138,6 +171,7 @@ const calcularPuntosTorneo = (puntosPartidaJ1, puntosPartidaJ2, jugador1Id, prim
 
 module.exports = {
   calcularPuntosTorneo,
+  calcularPuntosTorneoFow,
   validarEmail,
   validarFecha,
   errorResponse,
@@ -146,5 +180,6 @@ module.exports = {
   limpiarObjeto,
   generarSlug,
   manejarErrorDB,
-  paginar
+  paginar,
+  limpiarFecha
 };

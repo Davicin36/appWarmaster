@@ -52,6 +52,12 @@ function Login({ isOpen, onClose }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!formData.email.trim() || !formData.password.trim()) {
+            setError(" Por favor, completa todos los campos")
+            return
+        }
+
         setLoading(true);
         setError("");
         
@@ -59,19 +65,26 @@ function Login({ isOpen, onClose }) {
             const usuario = await login(formData.email, formData.password);
             
             if (usuario) {
-                console.log('Login exitoso:', usuario.email);
                 onClose(); // ✅ Cerrar modal después de login exitoso
                 navigate('/', { replace: true });
                 // Limpiar formulario
                 setFormData({ email: "", password: "" });
                 setShowPassword(false);
             } else {
-                setError('Error al iniciar sesión. Intenta nuevamente.');
+                setError('Error al iniciar sesión, Email o contraseña incorrectos, Intenta de nuevo.')
+                setFormData (prev => ({ ...prev, password: ' '}))
             }
         } catch (err) {
             console.error("Error en login:", err);
-            const mensajeError = err.message || "Error de conexión. Intenta nuevamente.";
+
+            let mensajeError =  "";
+            if(err) {
+                 console.error("Error en login:", err);
+                 mensajeError = "Error de conexión. Intenta nuevamente."
+            }
+
             setError(mensajeError);
+            setFormData (prev => ({ ...prev, password: ' '}))
         } finally {
             setLoading(false);
         }

@@ -28,6 +28,7 @@ function Perfil() {
     
     // Estados para cambio de contraseña
     const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [passwordData, setPasswordData] = useState({
         passwordActual: "",
         passwordNueva: "",
@@ -134,6 +135,10 @@ function Perfil() {
         }
 
         return true;
+    };
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(prev => !prev);
     };
 
     const handleGuardarCambios = async () => {
@@ -512,7 +517,7 @@ function Perfil() {
                             <div className="form-group">
                                 <label>Contraseña Actual:</label>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     name="passwordActual"
                                     value={passwordData.passwordActual}
                                     onChange={handlePasswordChange}
@@ -525,7 +530,7 @@ function Perfil() {
                             <div className="form-group">
                                 <label>Contraseña Nueva:</label>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     name="passwordNueva"
                                     value={passwordData.passwordNueva}
                                     onChange={handlePasswordChange}
@@ -538,7 +543,7 @@ function Perfil() {
                             <div className="form-group">
                                 <label>Confirmar Contraseña:</label>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     name="confirmarPassword"
                                     value={passwordData.confirmarPassword}
                                     onChange={handlePasswordChange}
@@ -547,6 +552,17 @@ function Perfil() {
                                     required
                                 />
                             </div>
+
+                             <div className="checkbox-group">
+                        <input 
+                            type="checkbox" 
+                            id="showPassword"
+                            checked={showPassword}
+                            onChange={togglePasswordVisibility}
+                            disabled={loadingPassword}
+                        />
+                        <label htmlFor="showPassword">Mostrar contraseña</label>
+                    </div>
 
                             <div className="button-group">
                                 <button 
@@ -603,7 +619,7 @@ function Perfil() {
                                     <div key={torneo.id} className="torneo-card">
                                         <div className="torneo-header">
                                             <h3>{torneo.nombre_torneo}</h3>
-                                             <h3>{torneo.sistema}</h3>
+                                            <h3>{torneo.sistema}</h3>
                                             <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
                                                 {torneo.estado?.toUpperCase() || 'PENDIENTE'}
                                             </span>
@@ -653,6 +669,7 @@ function Perfil() {
                                 <div key={torneo.id} className="torneo-card participando">
                                     <div className="torneo-header">
                                         <h3>{torneo.nombre_torneo}</h3>
+                                        <h3>{torneo.sistema}</h3>
                                         <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
                                             {torneo.estado?.toUpperCase() || 'PENDIENTE'}
                                         </span>

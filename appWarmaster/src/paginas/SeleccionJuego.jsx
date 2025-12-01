@@ -42,7 +42,7 @@ function SeleccionJuego() {
                     soportaIndividual: true,
                     soportaEquipos: false,
                     ruta: '/crearTorneo/warmaster',
-                    activo: false
+                    activo: true
                 },
                 {
                     id: 2,
@@ -62,7 +62,7 @@ function SeleccionJuego() {
                     soportaIndividual: true,
                     soportaEquipos: false,
                     ruta: '/crearTorneo/fow',
-                    activo: false
+                    activo: true
                 }
             ];
             

@@ -8,6 +8,8 @@ const { testConnection } = require('./config/bd');
 
 // Importar rutas
 const torneosSagaRoutes = require('./routes/torneosSaga'); 
+const torneosWarmasterRoutes = require('./routes/torneosWarmaster')
+const torneosFowRoutes = require('./routes/torneosFow')
 const usuariosRutas = require('./routes/usuariosRutas');
 
 const app = express();

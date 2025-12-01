@@ -1,4 +1,3 @@
-// routes/torneosSaga.js
 const express = require('express');
 const jwt = require('jsonwebtoken'); 
 const multer = require('multer');
@@ -11,11 +10,11 @@ const {
   errorResponse,
   successResponse,
   manejarErrorDB,
-  paginar,
-  limpiarFecha
+  paginar
 } = require('../utils/helpers');
 
 const router = express.Router(); 
+
 
 // =====CONFIGURACIÓN DE MULTER PARA SUBIDA DE PDF=====
 
@@ -35,15 +34,15 @@ const upload = multer({
 });
 
 
-//================
-//RUTAS TORNEOS
-//================
+//========================
+//RUTAS TORNEOS WARMASTER
+//========================
 
 //=====OBTENER TORNEOS CON PAGINACIÓN=====
 
 router.get('/obtenerTorneos', async (req, res) => {
   try {
-    console.log('📥 GET /api/torneosSaga');
+    console.log('📥 GET /api/torneosWarmaster');
     
     const { page = 1, limit = 10, buscar = '' } = req.query;
     const { limit: limitNum, offset } = paginar(page, limit);
@@ -62,17 +61,15 @@ router.get('/obtenerTorneos', async (req, res) => {
     }
     
     let whereClause = '';
-    let queryParams = [userId];
+    let params = [];
     
     if (buscar.trim()) {
       whereClause = 'WHERE ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?';
       const searchTerm = `%${buscar}%`;
       params = [searchTerm, searchTerm];
     }
-
-    queryParams.push(parseInt(limitNum), parseInt(offset))
     
-    const [torneos] = await pool.query(`
+    const [torneos] = await pool.execute(`
       SELECT 
         ts.id,
         ts.nombre_torneo,
@@ -101,36 +98,27 @@ router.get('/obtenerTorneos', async (req, res) => {
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jts.id ELSE NULL END) as total_participantes,
-        COUNT(DISTINCT eq.id) as total_equipos_inscritos,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Por equipos' THEN jts.jugador_id ELSE NULL END) as total_jugadores_en_equipos,
-        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jtw.id ELSE NULL END) as total_participantes,
+        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN torneo_saga_equipo eq ON ts.id = eq.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
       ${whereClause}
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
       LIMIT ? OFFSET ?
-    `, queryParams);
-
-    // Query para contar total
-    let countParams = [];
-    if (buscar.trim()) {
-      const searchTerm = `%${buscar}%`;
-      countParams = [searchTerm, searchTerm];
-    }
+    `, [userId, ...params, limitNum, offset]);
+    
+    console.log(`✅ ${torneos.length} torneos obtenidos`);
     
     const [totalRows] = await pool.execute(`
       SELECT COUNT(DISTINCT ts.id) as total
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
+      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       ${whereClause}
-    `, countParams);
+    `, params);
     
     const total = totalRows[0].total;
     const totalPages = Math.ceil(total / limitNum);
@@ -180,7 +168,6 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.sistema,
         ts.nombre_torneo,
         ts.tipo_torneo,
-        ts.num_jugadores_equipo,
         ts.rondas_max,
         ts.ronda_actual,
         ts.fecha_inicio,
@@ -188,7 +175,6 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.ubicacion,
         ts.puntos_banda,
         ts.participantes_max,
-        ts.equipos_max,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -204,14 +190,11 @@ router.get('/torneo/:torneoId', async (req, res) => {
         u.apellidos as creador_apellidos,
         u.email as creador_email,
         u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jts.id ELSE NULL END) as total_participantes,
-        COUNT(DISTINCT eq.id) as total_equipos_inscritos,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Por equipos' THEN jts.jugador_id ELSE NULL END) as total_jugadores_en_equipos,
-        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jtw.id ELSE NULL END) as total_participantes,
+        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN torneo_saga_equipo eq ON ts.id = eq.torneo_id
+      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       WHERE ts.id = ?
       GROUP BY ts.id
@@ -245,7 +228,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
     const { 
       nombre_torneo, 
       tipo_torneo,
-      num_jugadores_equipo,
       rondas_max,
       epocas_disponibles: epocas_raw,
       fecha_inicio, 
@@ -253,7 +235,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       ubicacion,
       puntos_banda,
       participantes_max,
-      equipos_max,
       estado,
       partida_ronda_1,
       partida_ronda_2,
@@ -365,27 +346,19 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
     }
 
     const [usuarios] = await pool.execute(
-  'SELECT rol FROM usuarios WHERE id = ?',
-  [req.usuario.userId]
-);
+      'SELECT rol FROM usuarios WHERE id = ?',
+      [req.usuario.userId]
+    );
 
-let rolActualizado = usuarios[0].rol;
+    let rolActualizado = usuarios[0].rol;
 
-if (usuarios[0].rol !== 'organizador') {
-  console.log('🔄 Actualizando rol a organizador...');
-  
-  const [updateResult] = await pool.execute(
-    'UPDATE usuarios SET rol = ? WHERE id = ?',
-    ['organizador', req.usuario.userId]
-  );
-  
-  console.log('✅ Resultado UPDATE:', updateResult);
-  console.log('  Filas afectadas:', updateResult.affectedRows);
-  
-  rolActualizado = 'organizador';
-}
-
-console.log('📋 Rol final:', rolActualizado);
+    if (usuarios[0].rol !== 'organizador') {
+      await pool.execute(
+        'UPDATE usuarios SET rol = ? WHERE id = ?',
+        ['organizador', req.usuario.userId]
+      );
+      rolActualizado = 'organizador';
+    }
     
     let basesPdf = null;
     let basesNombre = null;
@@ -524,6 +497,7 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_p
       eliminar_pdf
     } = req.body;
 
+    // ✅ CORREGIDO: Parsear época si viene como string
     let epocas_disponibles;
     if (epoca_raw) {
       if (typeof epoca_raw === 'string') {
@@ -639,11 +613,11 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_p
     
     if (fecha_inicio !== undefined) {
       camposActualizar.push('fecha_inicio = ?');
-      valores.push(limpiarFecha(fecha_inicio));
+      valores.push(fecha_inicio);
     }
     if (fecha_fin !== undefined) {
       camposActualizar.push('fecha_fin = ?');
-      valores.push(limpiarFecha(fecha_fin));
+      valores.push(fecha_fin);
     }
     
     // ✅ IMPORTANTE: Guardar ubicacion
@@ -1197,7 +1171,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         nombre_equipo, 
         capitan_id,
         pagado
-      ) VALUES (?, ?, ?, ?)`,
+      ) VALUES (?, ?, ), ?)`,
       [torneoId, nombreEquipo, inscriptorId, 'pendiente'] 
     );
 
@@ -1298,7 +1272,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           partidas_perdidas,
           puntos_victoria_eq_totales,
           puntos_torneo_eq_totales,
-          puntos_masacre_eq_totales,
+          puntos_masacre_eq_totales
           warlord_muerto
       ) VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
           ON DUPLICATE KEY UPDATE equipo_id = equipo_id
@@ -1372,7 +1346,9 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, res) => {
   try {
     const { torneoId } = req.params;
-    const userId =req.usuario.userId
+    const userId = req.userId;
+    
+    console.log(`📖 GET /${torneoId}/miEquipo - User: ${userId}`);
     
     // Buscar equipo del usuario
     const [equipos] = await pool.execute(`
@@ -1878,48 +1854,19 @@ router.delete('/:torneoId/equipo/:equipoId', verificarToken, async (req, res) =>
   
   try {
     const { torneoId, equipoId } = req.params;
-    const userId = req.usuario.userId
     
     await connection.beginTransaction();
 
     // Verificar que el equipo existe
     const [equipos] = await connection.execute(
-      'SELECT id FROM torneo_saga_equipo WHERE id = ? AND torneo_id = ?',
-      [equipoId, torneoId]
+      'SELECT id FROM equipo_torneo_saga WHERE torneo_id = ?,'
+      [torneoId]
     );
 
     if (equipos.length === 0) {
       await connection.rollback();
       return res.status(404).json(errorResponse('No tienes un equipo inscrito en el torneo'));
     }
-
-    const equipo = equipos[0]
-
-    const [torneos] = await connection.execute(
-      'SELECT created_by FROM torneos_sistemas WHERE id = ?',
-      [torneoId]
-    )
-
-    const esOrganizador = torneos.length > 0 && torneos[0].created_by === userId
-    const esCapitan = equipo.capitan_id === userId
-
-    if(!esCapitan && !esOrganizador) {
-      await connection.rollback()
-      return res.status(403).json(errorResponse('Solo el capitan o el organizador puede eliminar la inscripción del equipo'))
-    }
-
-    const [miembros] = await connection.execute(
-      'SELECT jugador_eq_id FROM equipo_miembros WHERE equipo_id = ?',
-      [equipoId]
-    );
-
-     if (miembros.length > 0) {
-      for (const miembro of miembros) {
-        await connection.execute(
-          'DELETE FROM jugador_torneo_saga WHERE id = ?',
-          [miembro.jugador_eq_id]
-        );
-      }}
 
     // Eliminar miembros del equipo
     await connection.execute(
@@ -1929,11 +1876,13 @@ router.delete('/:torneoId/equipo/:equipoId', verificarToken, async (req, res) =>
 
     // Eliminar equipo
     await connection.execute(
-      'DELETE FROM torneo_saga_equipo WHERE id = ?',
+      'DELETE FROM equipo_torneo_saga WHERE id = ?',
       [equipoId]
     );
 
     await connection.commit();
+
+    console.log(`✅ Equipo ${equipoId} eliminado`);
     res.json(successResponse('Equipo eliminado exitosamente'));
 
   } catch (error) {
@@ -3537,7 +3486,7 @@ router.post('/:torneoId/guardarEmparejamientosEquipos', verificarToken, async (r
       await connection.execute(insertQuery, [
         torneoId,
         jugador1_id,
-        jugador2_id || null,
+        jugador2_id,
         partida.equipo1_id || null,
         partida.equipo2_id || null,
         partida.epoca || null,
@@ -3899,3 +3848,7 @@ router.get('/:torneoId/bases-pdf', async (req, res) => {
 
 
 module.exports = router;
+
+
+
+module.exports = router 

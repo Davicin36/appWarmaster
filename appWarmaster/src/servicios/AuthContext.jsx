@@ -197,6 +197,32 @@ export const AuthProvider = ({ children }) => {
     console.log('Usuario actualizado:', usuarioActualizado);
   };
 
+  const refrescarUsuario = async () => {
+  try {
+    const token = usuarioApi.obtenerToken();
+    
+    if (!token) {
+      console.warn('No hay token para refrescar usuario');
+      return { success: false, error: 'No hay sesión activa' };
+    }
+
+    const response = await usuarioApi.verificarToken(token);
+
+    if (response.success && response.data?.usuario) {
+      const usuarioBackend = response.data.usuario;
+      setUser(usuarioBackend);
+      localStorage.setItem('user', JSON.stringify(usuarioBackend));
+      console.log('✅ Usuario refrescado desde backend:', usuarioBackend);
+      return { success: true, usuario: usuarioBackend };
+    } else {
+      return { success: false, error: 'Error al refrescar usuario' };
+    }
+  } catch (error) {
+    console.error('❌ Error refrescando usuario:', error);
+    return { success: false, error: error.message };
+  }
+};
+
   const value = useMemo(
     () => ({
       user,
@@ -207,7 +233,8 @@ export const AuthProvider = ({ children }) => {
       registro,
       cambiarPassword,
       convertirOrganizador,
-      actualizarUsuario
+      actualizarUsuario,
+      refrescarUsuario
     }),
     [user, loading]
   );

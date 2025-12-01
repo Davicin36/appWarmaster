@@ -237,7 +237,7 @@ function Principal({ onOpenLogin }) {
             </section>
             
             <footer>
-                <Link to="/ayudaCrearTorneo">
+                <Link to="/ayudaTorneos">
                     Como Crear Un Torneo y gestionarlo
                 </Link>
             </footer>

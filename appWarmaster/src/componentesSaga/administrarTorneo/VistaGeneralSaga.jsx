@@ -189,8 +189,6 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 delete dataToSend.epocas_disponibles;
             }
 
-            console.log('📤 Enviando datos:', dataToSend);
-
             await torneosSagaApi.actualizarTorneo(torneoId, dataToSend);
             
             alert('✅ Torneo actualizado correctamente');

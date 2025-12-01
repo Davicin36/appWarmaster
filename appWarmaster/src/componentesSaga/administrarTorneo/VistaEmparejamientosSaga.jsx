@@ -105,10 +105,14 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
 
     const cargarTodasLasPartidas = async (tId = torneoId) => {
         try {
-            const partidas = await torneosSagaApi.obtenerPartidasTorneo(tId);
-            setTodasLasPartidas(partidas);
+            const response = await torneosSagaApi.obtenerPartidasTorneo(tId);
+            const partidas = response?.data || response || []
+            const partidasArray = Array.isArray(partidas) ? partidas : []
+
+            setTodasLasPartidas(partidasArray);
         } catch (err) {
             console.error('Error al cargar todas las partidas:', err);
+            setTodasLasPartidas([])
         }
     };
 
@@ -117,16 +121,21 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
         setCargandoPartidas(true);
         
         // 🎯 Usar el endpoint correcto según el tipo de torneo
-        let partidas;
+        let response;
         if (esTorneoEquipos()) {
-            partidas = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
+            response = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
         } else {
-            partidas = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
+            response = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
         }
-        
-        setPartidasGuardadas(partidas);
+
+        const partidas = response?.data || response || []
+        const partidasArray = Array.isArray (partidas) ? partidas : []
+
+        setPartidasGuardadas(partidasArray);
+         
     } catch (err) {
         console.error('Error al cargar partidas:', err);
+        setCargandoPartidas([])
     } finally {
         setCargandoPartidas(false);
     }

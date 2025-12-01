@@ -152,7 +152,7 @@ async verificarPagos (torneoId){
   }
 
    async eliminarEquipoTorneo(torneoId, equipoId) {
-    return this.request(`/${torneoId}/equipos/${equipoId}`, {
+    return this.request(`/${torneoId}/equipo/${equipoId}`, {
       method: 'DELETE',
     });
   }

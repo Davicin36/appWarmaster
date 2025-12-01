@@ -1,4 +1,3 @@
-// componentesSaga/inscripciones/InscripcionSagaEquipos.jsx
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -237,13 +236,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     const miembrosValidos = miembrosEquipo.filter(
       m => m.nombre.trim() && m.email.trim() && m.epoca && m.banda
     );
-    
-    // 🔍 LOGS DE DEBUG
-    console.log('📊 Estado actual del equipo:');
-    console.log('  - Total en formulario:', miembrosEquipo.length);
-    console.log('  - Miembros válidos:', miembrosValidos.length);
-    console.log('  - Jugadores por equipo (torneo):', jugadoresPorEquipo);
-    console.log('  - Yo incluido:', miembrosValidos.some(m => m.esYo));
+  
     
     // ✅ CORRECCIÓN: La sintaxis estaba mal
     if (miembrosValidos.length !== jugadoresPorEquipo) {

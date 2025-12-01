@@ -8,7 +8,7 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 20, // ⬆️ Aumentado de 10 a 20
+    connectionLimit: 20,
     queueLimit: 0,
     // ⭐ PARÁMETROS CRÍTICOS PARA EVITAR ECONNRESET
     enableKeepAlive: true,

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect} from "react";
+import { useAuth } from "../servicios/AuthContext.jsx";
 
 import torneosSagaApi from '../servicios/apiSaga.js';
 
@@ -17,6 +18,7 @@ import '../estilos/crearTorneo.css';
 
 function CrearTorneoSaga() {
     const navigate = useNavigate();
+    const {refrescarUusario} = useAuth()
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -79,13 +81,6 @@ function CrearTorneoSaga() {
             setArchivoPDF(null);
             return;
         }
-        
-        console.log('📄 Archivo seleccionado:', {
-            nombre: file.name,
-            tamaño: file.size,
-            tamañoMB: (file.size / 1024 / 1024).toFixed(2),
-            tipo: file.type
-        });
         
         // Validar que sea PDF
         if (file.type !== 'application/pdf') {
@@ -231,6 +226,8 @@ function CrearTorneoSaga() {
             if (result.success || result.data) {
                 alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}\n🎉 Ahora eres un organizador.`);
                 navigate("/");
+                await refrescarUusario()
+                navigate("/perfil")
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
             }
