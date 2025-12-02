@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../servicios/AuthContext";
 
-import '../estilos/Registrarse.css'
+import '../estilos/registrarse.css'
 
 function Registrarse({ onOpenLogin }) {
     const [formData, setFormData] = useState({
