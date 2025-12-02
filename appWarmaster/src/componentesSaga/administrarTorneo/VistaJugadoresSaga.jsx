@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 
 import torneosSagaApi from '@/servicios/apiSaga';
 
-import '@/estilos/vistasTorneos/VistaJugadores.css';
+import '@/estilos/vistasTorneos/vistaJugadores.css';
 
 function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: propJugadores, equipos: propEquipos, onUpdate }) {
     const { torneoId: paramTorneoId } = useParams();

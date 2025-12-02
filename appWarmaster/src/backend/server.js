@@ -31,6 +31,8 @@ app.use(cors({
     if(!origin) return callback (null, true)
 
       if (origenesWeb.indexOf(origin) !== -1){
+        callback(null, true)
+      }else {
         console.log('Origen bloqueado por CORS: ', origin)
         callback (new Error('no alojado o permitido por CORS'))
       }
