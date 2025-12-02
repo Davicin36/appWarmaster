@@ -8,23 +8,23 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 20,
+    connectionLimit: 10,
     queueLimit: 0,
     // ⭐ PARÁMETROS CRÍTICOS PARA EVITAR ECONNRESET
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
-    connectTimeout: 60000, // 60 segundos para establecer conexión
-    acquireTimeout: 60000, // 60 segundos para obtener una conexión del pool
-    timeout: 60000, // 60 segundos timeout general de query
-    idleTimeout: 60000, // 60 segundos antes de cerrar conexión inactiva
+    connectTimeout: 20000, // 60 segundos para establecer conexión
+    acquireTimeout: 20000, // 60 segundos para obtener una conexión del pool
+    timeout: 20000, // 60 segundos timeout general de query
+    idleTimeout: 20000, // 60 segundos antes de cerrar conexión inactiva
     // ⭐ PREVENIR PROBLEMAS DE CHARSET
     charset: 'utf8mb4',
     // ⭐ MANEJO DE ERRORES DE CONEXIÓN
-    maxIdle: 10, // Máximo de conexiones inactivas
-    idleTimeout: 60000,
-    queueLimit: 0
+    maxIdle: 5, // Máximo de conexiones inactivas
+    idleTimeout: 60000
 })
 
+/** SOLO PARA CUANDO NECESITEMOS DEBUG DE LA BASE DE DATOS
 // Manejo de errores del pool
 pool.on('connection', (connection) => {
   console.log('🔌 Nueva conexión establecida al pool');
@@ -41,19 +41,21 @@ pool.on('release', (connection) => {
 pool.on('enqueue', () => {
   console.log('⏳ Esperando por conexión disponible...');
 });
+*/
 
 // Función para probar la conexión
 const testConnection = async () => {
   try {
     const connection = await pool.getConnection();
-    console.log('✅ Conexión a MySQL establecida correctamente');
-    console.log(`📊 Base de datos: ${process.env.DB_NAME}`);
-    console.log(`👤 Usuario: ${process.env.DB_USER}`);
-    console.log(`🌐 Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
+    console.log('✅  Conexión a MySQL establecida correctamente');
+    console.log(`📊  Base de datos: ${process.env.DB_NAME}`);
+    console.log(`👤  Usuario: ${process.env.DB_USER}`);
+    console.log(`🌐  Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
+    console.log(`🛠️   Entorno: ${process.env.NODE_ENV || 'development'}`)
     
     // Test adicional: ejecutar una query simple
     const [rows] = await connection.execute('SELECT 1 as test');
-    console.log('✅ Query de prueba exitosa');
+    console.log('✅  Query de prueba exitosa');
     
     connection.release();
     return true;
@@ -113,9 +115,19 @@ const getPoolStatus = () => {
   };
 };
 
+const closePool =  async () => {
+  try {
+    await pool.end()
+    console.log(' Pool de conexiones cerrado correctamente')
+  }catch (error){
+    console.log('Error al cerrar el poll: ', error,message)
+  }
+}
+
 module.exports = {
   pool,
   testConnection,
   executeTransaction,
-  getPoolStatus
+  getPoolStatus,
+  closePool
 };
