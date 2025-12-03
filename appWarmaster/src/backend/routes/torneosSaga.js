@@ -880,13 +880,14 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         puntos_torneo,
         puntos_masacre,
         warlord_muerto
-      ) VALUES (?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         torneoId,
         usuarioId,
         epoca,
         faccion,
         composicionEjercito,
+        0,
         0,      // puntos_victoria por defecto 0
         0,      // puntos_torneo por defecto 0
         0,      // puntos_masacre por defecto 0
@@ -1651,12 +1652,14 @@ router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req,
              return res.status(403).json(errorResponse('No tienes permisos'));
          }
 
+         const pagadoNumerico = pagado === 'pagado' ? 1 : 0;
+
         // Actualizar estado de pago
         const [result] = await pool.execute(`
             UPDATE jugador_torneo_saga 
             SET pagado = ?
             WHERE torneo_id = ? AND id = ?
-        `, [pagado, torneoId, jugadorId]);
+        `, [pagadoNumerico, torneoId, jugadorId]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json(errorResponse('Inscripción no encontrada'));
@@ -1710,7 +1713,7 @@ router.get('/:torneoId/verificarPagos', verificarToken, async (req, res) => {
         } else {
             // Verificar jugadores individuales
             const [jugadores] = await pool.execute(
-                'SELECT COUNT(*) as total, SUM(CASE WHEN pagado = "pagado" THEN 1 ELSE 0 END) as pagados FROM jugador_torneo_saga WHERE torneo_id = ?',
+                'SELECT COUNT(*) as total, SUM(CASE WHEN pagado = 1 THEN 1 ELSE 0 END) as pagados FROM jugador_torneo_saga WHERE torneo_id = ?',
                 [torneoId]
             );
 

@@ -6,10 +6,6 @@ import imgAdminBasicoEq from '@/assets/imagenesAyuda/administrarBasicoEq.png';
 function SeccionGestion() {
     return (
         <div className="seccion-contenido">
-            
-            {/* ========================================= */}
-            {/* GESTIÓN DEL TORNEO */}
-            {/* ========================================= */}
             <section className="ayuda-seccion">
                 <header className="ayuda-header">
                     <h1>🎮 Gestión del Torneo</h1>

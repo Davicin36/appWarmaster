@@ -13,9 +13,8 @@ function SeccionInscripcion() {
     return (
         <div className="seccion-contenido">
             
-            {/* ========================================= */}
             {/* INTRODUCCIÓN GENERAL */}
-            {/* ========================================= */}
+
             <section className="ayuda-seccion">
                 <header className="ayuda-header">
                     <h1>📝 Cómo inscribirse en un torneo</h1>
@@ -38,9 +37,8 @@ function SeccionInscripcion() {
                 </div>
             </section>
 
-            {/* ========================================= */}
             {/* INSCRIPCIÓN INDIVIDUAL */}
-            {/* ========================================= */}
+
             <section className="ayuda-seccion">
                 <header className="ayuda-header">
                     <h2>👤 Torneos Individuales</h2>
@@ -108,9 +106,8 @@ function SeccionInscripcion() {
                 </div>
             </section>
 
-            {/* ========================================= */}
             {/* INSCRIPCIÓN POR EQUIPOS */}
-            {/* ========================================= */}
+
             <section className="ayuda-seccion">
                 <header className="ayuda-header">
                     <h2>👥 Torneos por Equipos</h2>
