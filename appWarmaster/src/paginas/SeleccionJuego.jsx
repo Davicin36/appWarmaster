@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 
 import '../estilos/seleccionJuegos.css';
 
+import logoSaga from '../assets/logoSaga.webp'
+import logoWarmaster from '../assets/logoWarmaster.webp'
+import logoFow from '../assets/logoFow.webp'
+
 /**
  * Componente para seleccionar tipo de juego y modalidad antes de crear un torneo
  * Navega a rutas específicas según el juego y modalidad seleccionados
  */
 function SeleccionJuego() {
     const navigate = useNavigate();
-
-    const logoSaga = <img src="src/assets/logoSaga.webp" alt="logo de SAGA"  />
-    const logoFow = <img src="src/assets/logoFow.webp" alt="logo de Flames of War"  />
-    const logoWarmaster = <img src="src/assets/logoWarmaster.webp" alt="logo de WARMASTER"  />
 
     // Estados
     const [tiposJuego, setTiposJuego] = useState([]);
@@ -142,7 +142,9 @@ function SeleccionJuego() {
                             className={`juego-card ${juegoSeleccionado?.id === juego.id ? 'selected' : ''}`}
                             onClick={() => handleSeleccionarJuego(juego)}
                         >
-                            <div className="juego-icon">{juego.imagen}</div>
+                            <div className="juego-icon">
+                                <img src={juego.imagen} alt={`logo de ${juego.nombre}`} />
+                            </div>
                             <h3>{juego.nombre}</h3>
                             <p>{juego.descripcion}</p>
 

@@ -73,6 +73,21 @@ app.use((req, res, next) => {
 // RUTAS
 // ==========================================
 
+//RUTA RAIZ PARA LOS CHECKS DE RENDER
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK',
+    message: 'API de Gestión de Torneos',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      test: '/api/test',
+      torneos: '/api/torneosSaga',
+      usuarios: '/api/usuarios'
+    }
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 

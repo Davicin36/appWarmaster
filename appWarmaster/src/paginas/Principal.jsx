@@ -4,6 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../servicios/AuthContext';
 import torneosSagaApi from '../servicios/apiSaga';
 
+import vikingo from '../assets/vikingo.png'
+import logoSaga from '../assets/logoSaga.webp'
+import logoWarmaster from '../assets/logoWarmaster.webp'
+import logoFow from '../assets/logoFow.webp'
+
 // ✅ Importar la función para formatear épocas
 import { formatearEpocas } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
@@ -76,12 +81,12 @@ function Principal({ onOpenLogin }) {
     return (
         <div>      
             <section className="imagenes-principales">
-                 <img src="src/assets/vikingo.png" alt="logo de Web"  />
+                 <img src={vikingo} alt="logo de Web"  />
                  <div>
                     <h2>Bienvenido a la página principal de gestión de torneos de WARGAMES</h2>
                     <p>Aquí podrás crear, gestionar y seguir tus torneos de WARGAMES de manera sencilla y eficiente.</p>
                 </div>
-                <img src="src/assets/vikingo.png" alt="logo de Web"  />
+                <img src={vikingo} alt="logo de Web"  />
             </section>
 
             {error && (
@@ -97,7 +102,7 @@ function Principal({ onOpenLogin }) {
             )}
 
             <section>
-                <img src="src/assets/logoSaga.webp" alt="logo de SAGA"  />
+                <img src={logoSaga} alt="logo de SAGA"  />
                 <p>Consulta los torneos de SAGA en la Península.</p>
 
                 {loading ? (
@@ -209,7 +214,7 @@ function Principal({ onOpenLogin }) {
             </section>
 
             <section>
-                <img src="src/assets/logoWarmaster.webp" alt="logo de WARMASTER"  />
+                <img src={logoWarmaster} alt="logo de WARMASTER"  />
                 <p>Consulta los torneos de WARMASTER en la Península.</p>
                 <strong><p>PROXIMAMENTE</p></strong>
 
@@ -223,7 +228,7 @@ function Principal({ onOpenLogin }) {
             </section>
 
              <section>
-                <img src="src/assets/logoFow.webp" alt="logo de Flames of War"  />
+                <img src={logoFow} alt="logo de Flames of War"  />
                 <p>Consulta los torneos de Flames of War en la Península.</p>
                 <strong><p>PROXIMAMENTE</p></strong>
 
