@@ -270,11 +270,13 @@
    ================================================ */
 
 .acciones-container {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #EBD5AB 0%, #F8F5F0 100%);
+  border: 2px solid #D4BC8F;
   border-radius: 12px;
   padding: 30px;
   margin-top: 50px;
   animation: fadeInUp 0.5s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .juego-seleccionado-info {
@@ -289,10 +291,10 @@
   align-items: center;
   gap: 12px;
   padding: 15px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
+  background: white;
   border-radius: 8px;
-  color: white;
+  border-left: 4px solid #628141;
+  color: #2C3E50;
 }
 
 .info-item .info-icon {
@@ -303,30 +305,32 @@
 .info-item .info-text {
   font-size: 1.1rem;
   flex: 1;
+  color: #2C3E50;
 }
 
 .info-item strong {
   font-weight: 700;
+  color: #628141;
 }
 
 .btn-crear-torneo {
   width: 100%;
   padding: 18px;
-  background-color: white;
-  color: #667eea;
+  background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
+  color: white;
   border: none;
   border-radius: 10px;
   font-size: 1.2rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
 }
 
 .btn-crear-torneo:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-  background-color: #f8f9ff;
+  box-shadow: 0 6px 16px rgba(230, 126, 34, 0.4);
+  background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);
 }
 
 .btn-crear-torneo:active {

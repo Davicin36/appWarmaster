@@ -518,20 +518,6 @@ footer a:hover {
   }
 }
 
-/* INDICADOR DE SCROLL HORIZONTAL EN TABLAS MÓVILES */
-@media (max-width: 480px) {
-  .tabla-container::after {
-    content: "← Desliza para ver más →";
-    display: block;
-    text-align: center;
-    padding: 0.5rem;
-    background: linear-gradient(135deg, var(--color-verde-claro), var(--color-verde-oscuro));
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 0 0 8px 8px;
-  }
-  
   /* Sombra para indicar que hay más contenido */
   .tabla-container {
     background: 
@@ -544,4 +530,3 @@ footer a:hover {
     background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
     background-attachment: local, local, scroll, scroll;
   }
-}
