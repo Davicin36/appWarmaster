@@ -1,0 +1,354 @@
+/* ================================================
+   ESTILOS PARA PÁGINA DE AYUDA DE TORNEOS
+   ================================================ */
+
+.ayuda-torneos-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    min-height: 100vh;
+    background-color: var(--color-fondo-principal, #F8F5F0);
+}
+
+/* ========================================= */
+/* HEADERS Y TÍTULOS */
+/* ========================================= */
+
+.ayuda-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid var(--color-naranja, #E67E22);
+}
+
+.ayuda-header h1 {
+    font-size: 2.5rem;
+    color: var(--color-verde-oscuro, #628141);
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.ayuda-seccion {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    margin-bottom: 50px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 2px solid var(--color-beige-oscuro, #D4BC8F);
+}
+
+.ayuda-contenido h2 {
+    font-size: 2rem;
+    color: var(--color-verde-oscuro, #628141);
+    margin-top: 40px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--color-beige, #EBD5AB);
+}
+
+.ayuda-contenido h3 {
+    font-size: 1.5rem;
+    color: var(--color-naranja, #E67E22);
+    margin-top: 30px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.subseccion {
+    margin-top: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #F8F5F0 0%, #FFFFFF 100%);
+    border-radius: 10px;
+    border-left: 5px solid var(--color-verde-claro, #8BAE66);
+}
+
+.subseccion h4 {
+    color: var(--color-verde-oscuro, #628141);
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+/* ========================================= */
+/* TEXTOS */
+/* ========================================= */
+
+.texto-intro {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--color-texto-principal, #2C3E50);
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #EBD5AB 0%, #F8F5F0 100%);
+    border-radius: 8px;
+    border-left: 4px solid var(--color-naranja, #E67E22);
+}
+
+.ayuda-contenido p {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--color-texto-principal, #2C3E50);
+    margin-bottom: 20px;
+}
+
+.ayuda-contenido strong {
+    color: var(--color-naranja, #E67E22);
+    font-weight: 600;
+}
+
+/* ========================================= */
+/* IMÁGENES */
+/* ========================================= */
+
+.imagen-container {
+    margin: 30px 0;
+    text-align: center;
+}
+
+.imagen-ayuda {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    border: 3px solid var(--color-beige-oscuro, #D4BC8F);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.imagen-ayuda:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.imagen-descripcion {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
+    padding: 8px 15px;
+    background: var(--color-beige, #EBD5AB);
+    display: inline-block;
+    border-radius: 6px;
+}
+
+/* Grupo de imágenes lado a lado */
+.imagenes-grupo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.imagenes-grupo .imagen-container {
+    margin: 0;
+}
+
+/* ========================================= */
+/* ALERTAS Y NOTAS */
+/* ========================================= */
+
+.alerta-importante {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    border-left: 5px solid #ff9800;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 25px 0;
+    color: #856404;
+    font-weight: 500;
+}
+
+.alerta-importante strong {
+    color: #ff6b6b;
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.nota-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    border: 2px solid #17a2b8;
+    border-left: 5px solid #117a8b;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 25px 0;
+    color: #0c5460;
+    font-weight: 500;
+}
+
+.nota-info strong {
+    color: #0c5460;
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+/* ========================================= */
+/* LISTA DE PASOS */
+/* ========================================= */
+
+.lista-pasos {
+    margin: 30px 0;
+}
+
+.paso {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    border: 2px solid var(--color-beige-oscuro, #D4BC8F);
+    transition: all 0.3s ease;
+}
+
+.paso:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-naranja, #E67E22);
+}
+
+.numero-paso {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--color-naranja, #E67E22) 0%, var(--color-naranja-hover, #D35400) 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    box-shadow: 0 3px 10px rgba(230, 126, 34, 0.4);
+}
+
+.contenido-paso {
+    flex: 1;
+}
+
+.contenido-paso h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: var(--color-verde-oscuro, #628141);
+    font-size: 1.2rem;
+}
+
+.contenido-paso p {
+    margin: 0;
+    color: var(--color-texto-principal, #2C3E50);
+    line-height: 1.6;
+}
+
+/* ========================================= */
+/* RESPONSIVE */
+/* ========================================= */
+
+@media (max-width: 768px) {
+    .ayuda-torneos-container {
+        padding: 20px 15px;
+    }
+
+    .ayuda-seccion {
+        padding: 25px 20px;
+    }
+
+    .ayuda-header h1 {
+        font-size: 2rem;
+    }
+
+    .ayuda-contenido h2 {
+        font-size: 1.6rem;
+    }
+
+    .ayuda-contenido h3 {
+        font-size: 1.3rem;
+    }
+
+    .subseccion {
+        padding: 20px 15px;
+    }
+
+    .imagenes-grupo {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .paso {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .numero-paso {
+        width: 35px;
+        height: 35px;
+        font-size: 1.1rem;
+    }
+
+    .texto-intro {
+        font-size: 1rem;
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ayuda-torneos-container {
+        padding: 15px 10px;
+    }
+
+    .ayuda-seccion {
+        padding: 20px 15px;
+        margin-bottom: 30px;
+    }
+
+    .ayuda-header h1 {
+        font-size: 1.6rem;
+    }
+
+    .ayuda-contenido h2 {
+        font-size: 1.4rem;
+    }
+
+    .ayuda-contenido h3 {
+        font-size: 1.2rem;
+    }
+
+    .subseccion {
+        padding: 15px 10px;
+    }
+
+    .imagen-ayuda {
+        border-width: 2px;
+    }
+
+    .alerta-importante,
+    .nota-info {
+        padding: 15px;
+        font-size: 0.95rem;
+    }
+}
+
+/* ========================================= */
+/* ANIMACIONES */
+/* ========================================= */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ayuda-seccion {
+    animation: fadeInUp 0.6s ease;
+}
+
+/* Smooth scroll para toda la página */
+html {
+    scroll-behavior: smooth;
+}

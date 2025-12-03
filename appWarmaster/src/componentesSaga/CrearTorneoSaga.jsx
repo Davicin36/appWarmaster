@@ -329,32 +329,36 @@ function CrearTorneoSaga() {
                         </label>
                     </div>
 
-                    {/* Jugadores por Equipo */}
-                    <label htmlFor="numJugadoresEquipo">Jugadores por Equipo:*</label>
-                    <select
-                        name="numJugadoresEquipo"
-                        id="numJugadoresEquipo"
-                        value={numJugadoresEquipo}
-                        onChange={(e) => {
-                            const nuevoValor = parseInt(e.target.value);
-                            setNumJugadoresEquipo(nuevoValor);
-                            setEpocasSeleccionadas([]); // reset épocas
-                        }}
-                        required
-                        disabled={loading}
-                    >
-                        {Array.from(
-                            { length: JUGADORES_EQUIPO_RANGO.max - JUGADORES_EQUIPO_RANGO.min + 1 },
-                            (_, i) => JUGADORES_EQUIPO_RANGO.min + i
-                        ).map((num) => (
-                            <option key={num} value={num}>
-                                {num} Jugadores
-                            </option>
-                        ))}
-                    </select>
-                    <small className="help-text">
-                        Cada jugador del equipo jugará una época diferente
-                    </small>
+                    {tipoTorneo === "Por equipos" && (
+                        <>
+                            <label htmlFor="numJugadoresEquipo">Jugadores por Equipo:*</label>
+                            <select
+                                name="numJugadoresEquipo"
+                                id="numJugadoresEquipo"
+                                value={numJugadoresEquipo}
+                                onChange={(e) => {
+                                    const nuevoValor = parseInt(e.target.value);
+                                    setNumJugadoresEquipo(nuevoValor);
+                                    setEpocasSeleccionadas([]); // reset épocas
+                                }}
+                                required
+                                disabled={loading}
+                            >
+                                {Array.from(
+                                    { length: JUGADORES_EQUIPO_RANGO.max - JUGADORES_EQUIPO_RANGO.min + 1 },
+                                    (_, i) => JUGADORES_EQUIPO_RANGO.min + i
+                                ).map((num) => (
+                                    <option key={num} value={num}>
+                                        {num} Jugadores
+                                    </option>
+                                ))}
+                            </select>
+                            <small className="help-text">
+                                Cada jugador del equipo jugará una época diferente
+                            </small>
+                        </>
+                    )}
+                    
                     
                     <label>
                         {tipoTorneo === "Individual" ? "Época del Torneo:*" : "Épocas Disponibles:*"}
