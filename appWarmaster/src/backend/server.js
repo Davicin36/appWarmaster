@@ -36,7 +36,7 @@ console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
 console.log('🔍 Is Production:', isProduction);
 console.log('🔒 Orígenes CORS permitidos:', origenesWeb);
 
-app.use(cors({
+const opcionesCors = {
   origin: function(origin, callback) {
     if(!origin) return callback(null, true);
     
@@ -49,8 +49,16 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 200
+}
+
+//APLICAR CORS
+app.use(cors(opcionesCors))
+
+//MANEJO EXPLICITO DE LAS PETICIONES OPTIONS
+app.options('*', cors(opcionesCors))
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
