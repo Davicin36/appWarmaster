@@ -21,7 +21,13 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
     }, [torneoId, tipoTorneo]);
 
     useEffect(() => {
-        if (propJugadores) setJugadores(propJugadores);
+       if (propJugadores) {
+            const jugadoresNormalizados = propJugadores.map(j => ({
+                ...j,
+                pagado: j.pagado === 1 || j.pagado === '1' ? 'pagado' : 'pendiente'
+            }));
+            setJugadores(jugadoresNormalizados);
+        }
         if (propEquipos) setEquipos(propEquipos);
     }, [propJugadores, propEquipos]);
 
@@ -31,7 +37,14 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
             
             if (tipoTorneo === 'Individual') {
                 const data = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
-                setJugadores(Array.isArray(data) ? data : data.data || []);
+                 const jugadoresArray = Array.isArray(data) ? data : data.data || [];
+
+                const jugadoresNormalizados = jugadoresArray.map(jugador => ({
+                    ...jugador,
+                    pagado: jugador.pagado === 1 || jugador.pagado === '1' ? 'pagado' : 'pendiente'
+                }));
+                
+                setJugadores(jugadoresNormalizados);
             } else if (tipoTorneo === 'Por equipos') {
                 const data = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
                 setEquipos(Array.isArray(data) ? data : data.data || []);
