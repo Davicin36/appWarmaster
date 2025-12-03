@@ -18,27 +18,39 @@ const app = express();
 // MIDDLEWARES GLOBALES
 // ==========================================
 
-const origenesWeb = process.env.NODE_ENV === 'produccion'
-? [
-       'https://www.gestionatustorneos.es',
-       'https://gestionatustorneos.es'
-    ] 
-    : ['http://localhost:5000', 'http://localhost:3001', 'http://localhost:5173'];
+const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'produccion';
 
+const origenesWeb = isProduction
+  ? [
+      'https://www.gestionatustorneos.es',
+      'https://gestionatustorneos.es'
+    ] 
+  : [
+      'http://localhost:5000', 
+      'http://localhost:3001', 
+      'http://localhost:5173'
+    ];
+
+// Log importante para debuggear
+console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔍 Is Production:', isProduction);
+console.log('🔒 Orígenes CORS permitidos:', origenesWeb);
 
 app.use(cors({
   origin: function(origin, callback) {
-    if(!origin) return callback (null, true)
-
-      if (origenesWeb.indexOf(origin) !== -1){
-        callback(null, true)
-      }else {
-        console.log('Origen bloqueado por CORS: ', origin)
-        callback (new Error('no alojado o permitido por CORS'))
-      }
+    if(!origin) return callback(null, true);
+    
+    if (origenesWeb.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ Origen bloqueado por CORS:', origin);
+      callback(new Error('No permitido por CORS'));
+    }
   },
-    credentials: true
-}))
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
