@@ -60,8 +60,8 @@ app.use(cors(opcionesCors))
 //MANEJO EXPLICITO DE LAS PETICIONES OPTIONS
 app.options('*', cors(opcionesCors))
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '16mb' }));
+app.use(express.urlencoded({ extended: true, limit: '16mb' }));
 
 // Middleware de logging
 app.use((req, res, next) => {

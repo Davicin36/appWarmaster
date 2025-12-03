@@ -92,7 +92,7 @@ function CrearTorneoSaga() {
         }
         
         // Validar tamaño (máximo 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB en bytes
+        const maxSize =16 * 1024 * 1024; // 5MB en bytes
         if (file.size > maxSize) {
             const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
             setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 5MB. Por favor, comprime el PDF o sube uno más pequeño.`);
@@ -524,7 +524,7 @@ function CrearTorneoSaga() {
                                 disabled={loading}
                             />
                             <small className="help-text-file">
-                                📎 Formato: PDF | Tamaño máximo: 5MB
+                                📎 Formato: PDF | Tamaño máximo: 16MB
                             </small>
                         </>
                     ) : (

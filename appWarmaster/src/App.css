@@ -1,4 +1,4 @@
-/* app.css */
+/* app.css - VERSIÓN FINAL CON !IMPORTANT */
 
 /* ===== MENSAJES Y ALERTAS ===== */
 .error-message {
@@ -95,6 +95,7 @@ section p {
   margin: 2rem 0;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  -webkit-overflow-scrolling: touch;
 }
 
 .tabla-torneos {
@@ -260,35 +261,287 @@ footer a:hover {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* ===== RESPONSIVIDAD ===== */
-@media (max-width: 768px) {
-  section {
-    padding: 2rem 3%;
-  }
-  
-  .tabla-container {
-    border-radius: 8px;
-  }
-  
-  .acciones-cell {
-    flex-direction: column;
-  }
-  
-  .acciones-cell button {
-    width: 100%;
-  }
-}
+/* ========================================
+   RESPONSIVE DESIGN - CON !IMPORTANT
+   ======================================== */
 
-@media (max-width: 480px) {
+/* Tablets (768px - 1024px) */
+@media (max-width: 1024px) {
   section {
-    padding: 1.5rem 2%;
+    padding: 2.5rem 4%;
+  }
+  
+  section img {
+    max-width: 180px;
   }
   
   section h2 {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
   }
   
   section p {
     font-size: 1rem;
+  }
+  
+  .tabla-container {
+    margin: 1.5rem 0;
+  }
+  
+  .tabla-torneos {
+    font-size: 0.9rem;
+  }
+}
+
+/* Móviles (hasta 768px) - CON !IMPORTANT */
+@media (max-width: 768px) {
+  /* Secciones más compactas */
+  section {
+    padding: 2rem 3% !important;
+  }
+  
+  section img {
+    max-width: 150px !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  section h2 {
+    font-size: 1.5rem !important;
+    margin-bottom: 0.8rem !important;
+  }
+  
+  section p {
+    font-size: 0.95rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+  
+  /* Tablas - CRÍTICO */
+  .tabla-container {
+    border-radius: 8px !important;
+    margin: 1.5rem 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .tabla-torneos {
+    font-size: 0.85rem !important;
+  }
+  
+  .tabla-torneos th,
+  .tabla-torneos td {
+    padding: 0.6rem 0.4rem !important;
+  }
+  
+  .tabla-torneos th {
+    font-size: 0.8rem !important;
+  }
+  
+  /* Botones en columna - MUY IMPORTANTE */
+  .acciones-cell {
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+  }
+  
+  .acciones-cell button {
+    width: 100% !important;
+    padding: 0.6rem 0.8rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  /* Badges */
+  .participantes-badge {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  /* Mensajes */
+  .error-message,
+  .success-message,
+  .loading-message {
+    padding: 0.8rem !important;
+    font-size: 0.9rem !important;
+  }
+  
+  .no-data-message {
+    padding: 1.5rem !important;
+    font-size: 0.95rem !important;
+    margin: 1.5rem 0 !important;
+  }
+  
+  /* Footer */
+  footer {
+    padding: 1.5rem 3% !important;
+  }
+  
+  footer a {
+    font-size: 1rem !important;
+  }
+}
+
+/* Móviles pequeños (hasta 480px) */
+@media (max-width: 480px) {
+  /* Secciones aún más compactas */
+  section {
+    padding: 1.5rem 2% !important;
+  }
+  
+  section img {
+    max-width: 120px !important;
+  }
+  
+  section h2 {
+    font-size: 1.3rem !important;
+  }
+  
+  section p {
+    font-size: 0.9rem !important;
+  }
+  
+  /* Tablas muy compactas */
+  .tabla-container {
+    margin: 1rem 0 !important;
+  }
+  
+  .tabla-torneos {
+    font-size: 0.8rem !important;
+    min-width: 100% !important;
+  }
+  
+  .tabla-torneos th,
+  .tabla-torneos td {
+    padding: 0.5rem 0.3rem !important;
+  }
+  
+  .tabla-torneos th {
+    font-size: 0.75rem !important;
+  }
+  
+  .tabla-torneos td strong {
+    font-size: 0.9rem !important;
+  }
+  
+  .tabla-torneos td small {
+    font-size: 0.75rem !important;
+  }
+  
+  /* Botones más pequeños */
+  .acciones-cell button {
+    padding: 0.5rem 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Badges más compactos */
+  .participantes-badge {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Mensajes */
+  .error-message,
+  .success-message,
+  .loading-message {
+    padding: 0.7rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .no-data-message {
+    padding: 1.2rem !important;
+    font-size: 0.9rem !important;
+  }
+  
+  /* Footer */
+  footer {
+    padding: 1.2rem 2% !important;
+  }
+  
+  footer a {
+    font-size: 0.95rem !important;
+  }
+}
+
+/* Móviles muy pequeños (hasta 360px) */
+@media (max-width: 360px) {
+  section {
+    padding: 1rem 1.5% !important;
+  }
+  
+  section img {
+    max-width: 100px !important;
+  }
+  
+  section h2 {
+    font-size: 1.2rem !important;
+  }
+  
+  section p {
+    font-size: 0.85rem !important;
+  }
+  
+  .tabla-torneos {
+    font-size: 0.75rem !important;
+  }
+  
+  .tabla-torneos th {
+    font-size: 0.7rem !important;
+  }
+  
+  .tabla-torneos th,
+  .tabla-torneos td {
+    padding: 0.4rem 0.2rem !important;
+  }
+  
+  .acciones-cell button {
+    padding: 0.45rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .participantes-badge {
+    padding: 0.2rem 0.4rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* ===== MEJORAS DE INTERACTIVIDAD MÓVIL ===== */
+@media (max-width: 768px) {
+  /* Eliminar hover effects en móviles */
+  .tabla-torneos tbody tr:hover {
+    transform: none !important;
+  }
+  
+  /* Botones con área de toque más grande */
+  button {
+    min-height: 44px !important;
+  }
+  
+  /* Mejorar legibilidad */
+  * {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* INDICADOR DE SCROLL HORIZONTAL EN TABLAS MÓVILES */
+@media (max-width: 480px) {
+  .tabla-container::after {
+    content: "← Desliza para ver más →";
+    display: block;
+    text-align: center;
+    padding: 0.5rem;
+    background: linear-gradient(135deg, var(--color-verde-claro), var(--color-verde-oscuro));
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0 0 8px 8px;
+  }
+  
+  /* Sombra para indicar que hay más contenido */
+  .tabla-container {
+    background: 
+      linear-gradient(90deg, white 30%, rgba(255,255,255,0)),
+      linear-gradient(90deg, rgba(255,255,255,0), white 70%) 0 100%,
+      radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), rgba(0,0,0,0)),
+      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)) 0 100%;
+    background-repeat: no-repeat;
+    background-color: white;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
   }
 }

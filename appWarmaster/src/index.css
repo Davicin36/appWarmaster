@@ -1,4 +1,25 @@
-/* index.css */
+/* index.css - CON SCROLL HORIZONTAL PERMITIDO */
+
+/* ===== PERMITIR SCROLL HORIZONTAL EN TODA LA PÁGINA ===== */
+html, body {
+  width: 100%;
+  overflow-x: auto !important; /* CAMBIO CRÍTICO: auto en lugar de hidden */
+  overflow-y: auto !important;
+  position: relative;
+}
+
+#root {
+  width: 100%;
+  min-width: 1200px !important; /* CRÍTICO: Fuerza scroll horizontal cuando ventana < 1200px */
+  overflow-x: visible !important;
+}
+
+/* NO limitar el ancho máximo */
+.navbar,
+section,
+.tabla-container {
+  box-sizing: border-box;
+}
 
 /* ===== VARIABLES DE COLOR ===== */
 :root {
@@ -42,12 +63,12 @@ html {
 }
 
 body {
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
   background: linear-gradient(135deg, var(--color-beige) 0%, var(--color-fondo-principal) 100%);
   color: var(--color-texto-principal);
   font-family: inherit;
-  overflow-x: hidden;
+  overflow-x: auto !important; /* PERMITIR scroll horizontal */
   margin: 0;
   padding: 0;
 }
@@ -182,23 +203,37 @@ label {
 /* ===== SCROLLBAR PERSONALIZADA ===== */
 ::-webkit-scrollbar {
   width: 12px;
-  height: 12px;
+  height: 12px; /* Altura para scroll horizontal */
 }
 
 ::-webkit-scrollbar-track {
   background: var(--color-beige);
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-verde-claro);
   border-radius: 6px;
+  border: 2px solid var(--color-beige);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-verde-oscuro);
 }
 
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-verde-claro) var(--color-beige);
+}
+
 /* ===== RESPONSIVIDAD ===== */
+@media (max-width: 1024px) {
+  h1 { font-size: 2.2rem; }
+  h2 { font-size: 1.8rem; }
+  h3 { font-size: 1.4rem; }
+}
+
 @media (max-width: 768px) {
   h1 { font-size: 2rem; }
   h2 { font-size: 1.75rem; }
@@ -207,6 +242,13 @@ label {
   button {
     padding: 0.65rem 1.25rem;
     font-size: 0.95rem;
+    width: 100%; /* Botones a ancho completo en móviles */
+  }
+  
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Evita zoom automático en iOS */
   }
 }
 
@@ -218,5 +260,24 @@ label {
   button {
     padding: 0.6rem 1rem;
     font-size: 0.9rem;
+  }
+  
+  /* Reducir padding general en móviles pequeños */
+  #root {
+    padding: 0;
+  }
+}
+
+/* ===== DESACTIVAR SCROLL HORIZONTAL EN MÓVILES ===== */
+@media (max-width: 1100px) {
+  html,
+  body {
+    overflow-x: hidden !important; /* Desactivar scroll en móviles */
+  }
+  
+  #root {
+    min-width: unset !important; /* Quitar ancho mínimo */
+    width: 100% !important;
+    overflow-x: hidden !important;
   }
 }

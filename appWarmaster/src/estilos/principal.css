@@ -1,16 +1,13 @@
-/* principal.css */
+/* principal.css - VERSIÓN FINAL CON SCROLL HORIZONTAL COMPATIBLE */
 
-/* 
-  Este archivo es minimalista porque app.css ya maneja la mayoría de estilos.
-  Solo incluimos ajustes específicos para el componente Principal.
-*/
-
-/* Contenedor principal de Principal */
+/* ===== CONTENEDOR PRINCIPAL ===== */
 .principal-container {
   width: 100%;
+  min-width: fit-content; /* Permite expandirse según contenido */
   min-height: 100vh;
 }
 
+/* ===== SECCIÓN DE IMÁGENES PRINCIPALES ===== */
 .imagenes-principales {
   display: flex;
   align-items: center;
@@ -20,7 +17,7 @@
 }
 
 .imagenes-principales div {
-  flex: 1; /* hace que el texto ocupe el espacio central */
+  flex: 1;
   text-align: center;
   margin: 0 20px;
 }
@@ -32,44 +29,335 @@
 
 .imagenes-principales h2,
 .imagenes-principales p {
-  margin: 10px 0; /* solo margenes internos, sin flex */
+  margin: 10px 0;
 }
 
-/* Ajustes específicos para las tablas en Principal si es necesario */
+/* ===== AJUSTES PARA TABLAS ===== */
 .tabla-container {
   margin: 2rem 0;
 }
 
-/* Ajuste para los small dentro de td que tienen colores hardcodeados */
 .tabla-torneos td small {
   color: var(--color-verde-oscuro) !important;
 }
 
-/* Responsividad adicional específica para Principal */
-@media (max-width: 768px) {
+/* ===== INFORMACIÓN ADICIONAL EN CELDAS ===== */
+.torneo-info-extra {
+  display: block;
+  color: #7F8C8D;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.epocas-cell {
+  font-size: 0.9rem;
+  color: var(--color-verde-oscuro);
+}
+
+.club-info {
+  display: block;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Tablets (768px - 1024px) */
+@media (max-width: 1024px) {
+  .imagenes-principales {
+    gap: 15px;
+    padding: 15px;
+  }
+  
+  .imagenes-principales img {
+    width: 200px;
+  }
+  
+  .imagenes-principales div {
+    margin: 0 15px;
+  }
+  
   .tabla-torneos {
     font-size: 0.9rem;
   }
-  
-  .tabla-torneos th,
-  .tabla-torneos td {
-    padding: 0.75rem;
+}
+
+/* Móviles medianos (hasta 768px) - FORMATO TARJETAS */
+@media (max-width: 768px) {
+  /* ===== IMÁGENES PRINCIPALES ===== */
+  .imagenes-principales {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+    padding: 1.5rem 1rem !important;
   }
   
+  .imagenes-principales img {
+    width: 150px !important;
+    max-width: 150px !important;
+  }
+  
+  .imagenes-principales div {
+    margin: 0 !important;
+  }
+  
+  .imagenes-principales h2 {
+    font-size: 1.3rem !important;
+    line-height: 1.4 !important;
+  }
+  
+  .imagenes-principales p {
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+  }
+  
+  /* Ocultar segunda imagen vikingo */
+  .imagenes-principales img:last-of-type {
+    display: none !important;
+  }
+  
+  /* ===== TABLAS EN FORMATO TARJETAS ===== */
+  
+  /* Contenedor sin scroll */
+  .tabla-container {
+    overflow: visible !important;
+    margin: 1rem 0 !important;
+  }
+  
+  /* Ocultar headers de tabla */
+  .tabla-torneos thead {
+    display: none !important;
+  }
+  
+  /* Tabla como contenedor de bloques */
+  .tabla-torneos,
+  .tabla-torneos tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  /* Cada fila es una tarjeta */
+  .tabla-torneos tr {
+    display: block !important;
+    margin-bottom: 1.5rem !important;
+    border: 2px solid var(--color-beige) !important;
+    border-radius: 12px !important;
+    padding: 1.2rem !important;
+    background: white !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .tabla-torneos tr:hover {
+    transform: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  /* Cada celda como fila dentro de la tarjeta */
+  .tabla-torneos td {
+    display: block !important;
+    text-align: left !important;
+    padding: 0.6rem 0 !important;
+    border: none !important;
+    position: relative !important;
+    padding-left: 50% !important;
+    min-height: 2rem !important;
+  }
+  
+  /* Etiquetas antes de cada dato */
+  .tabla-torneos td::before {
+    content: attr(data-label);
+    position: absolute !important;
+    left: 0 !important;
+    font-weight: 700 !important;
+    color: var(--color-verde-oscuro) !important;
+    width: 45% !important;
+    padding-right: 1rem !important;
+    text-align: left !important;
+  }
+  
+  /* Etiquetas específicas para cada columna */
+  .tabla-torneos td:nth-child(1)::before { content: "#"; }
+  .tabla-torneos td:nth-child(2)::before { content: "Torneo"; }
+  .tabla-torneos td:nth-child(3)::before { content: "Tipo"; }
+  .tabla-torneos td:nth-child(4)::before { content: "Época(s)"; }
+  .tabla-torneos td:nth-child(5)::before { content: "Fecha Inicio"; }
+  .tabla-torneos td:nth-child(6)::before { content: "Ubicación"; }
+  .tabla-torneos td:nth-child(7)::before { content: "Organizador"; }
+  .tabla-torneos td:nth-child(8)::before { content: "Participantes"; }
+  .tabla-torneos td:nth-child(9)::before { content: "Acciones"; }
+  
+  /* Nombre del torneo destacado */
+  .tabla-torneos td:nth-child(2) {
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    color: var(--color-verde-oscuro) !important;
+    margin-bottom: 0.5rem !important;
+    padding-top: 0 !important;
+  }
+  
+  /* Primera celda (número) más pequeña */
+  .tabla-torneos td:nth-child(1) {
+    font-size: 0.9rem !important;
+    color: #7F8C8D !important;
+  }
+  
+  /* Columna de acciones */
+  .tabla-torneos td:nth-child(9) {
+    padding-left: 0 !important;
+    margin-top: 1.5rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 2px solid var(--color-beige) !important;
+  }
+  
+  .tabla-torneos td:nth-child(9)::before {
+    display: none !important; /* Ocultar label de Acciones */
+  }
+  
+  /* Botones a ancho completo con buena separación */
   .acciones-cell {
-    flex-direction: column;
-    gap: 0.5rem;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+    width: 100% !important;
   }
   
   .acciones-cell button {
-    width: 100%;
+    width: 100% !important;
+    padding: 0.8rem !important;
+    font-size: 0.9rem !important;
+  }
+  
+  /* Badges y participantes */
+  .participantes-badge {
+    display: inline-block !important;
+    padding: 0.3rem 0.7rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  /* Información adicional compacta */
+  .torneo-info-extra,
+  .club-info {
+    font-size: 0.8rem !important;
+    margin-top: 0.3rem !important;
+  }
+}
+
+/* Móviles pequeños (hasta 480px) */
+@media (max-width: 480px) {
+  /* Imágenes más pequeñas */
+  .imagenes-principales {
+    padding: 1rem 0.5rem !important;
+    gap: 1rem !important;
+  }
+  
+  .imagenes-principales img {
+    width: 120px !important;
+    max-width: 120px !important;
+  }
+  
+  .imagenes-principales h2 {
+    font-size: 1.1rem !important;
+  }
+  
+  .imagenes-principales p {
+    font-size: 0.9rem !important;
+  }
+  
+  /* Tarjetas más compactas */
+  .tabla-torneos tr {
+    padding: 1rem !important;
+    margin-bottom: 1.2rem !important;
+  }
+  
+  .tabla-torneos td {
+    padding: 0.5rem 0 !important;
+    padding-left: 45% !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .tabla-torneos td::before {
+    width: 42% !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .tabla-torneos td:nth-child(2) {
+    font-size: 1rem !important;
+  }
+  
+  .acciones-cell {
+    gap: 0.8rem !important;
+  }
+  
+  .acciones-cell button {
+    padding: 0.7rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .participantes-badge {
+    padding: 0.25rem 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* Móviles muy pequeños (hasta 360px) */
+@media (max-width: 360px) {
+  .imagenes-principales img {
+    width: 100px !important;
+    max-width: 100px !important;
+  }
+  
+  .imagenes-principales h2 {
+    font-size: 1rem !important;
+  }
+  
+  .imagenes-principales p {
+    font-size: 0.85rem !important;
+  }
+  
+  .tabla-torneos tr {
+    padding: 0.8rem !important;
+  }
+  
+  .tabla-torneos td {
+    padding: 0.4rem 0 !important;
+    padding-left: 42% !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .tabla-torneos td::before {
+    font-size: 0.8rem !important;
+  }
+  
+  .tabla-torneos td:nth-child(2) {
+    font-size: 0.95rem !important;
+  }
+  
+  .acciones-cell button {
+    padding: 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* ===== MENSAJES PARA MÓVILES ===== */
+@media (max-width: 768px) {
+  .error-message,
+  .success-message,
+  .loading-message,
+  .no-data-message {
+    padding: 0.8rem !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 0.8rem !important;
   }
 }
 
 @media (max-width: 480px) {
-  .tabla-torneos th,
-  .tabla-torneos td {
-    padding: 0.5rem;
-    font-size: 0.85rem;
+  .error-message,
+  .success-message,
+  .loading-message,
+  .no-data-message {
+    padding: 0.7rem !important;
+    font-size: 0.85rem !important;
   }
 }
