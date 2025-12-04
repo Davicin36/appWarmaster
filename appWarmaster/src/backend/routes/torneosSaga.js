@@ -790,7 +790,6 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 
     const { 
       usuarioId,
-      epoca,
       faccion,
       puntosGuardias,
       puntosGuerreros,
@@ -799,22 +798,11 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       detalleMercenarios
     } = req.body;
 
-    if(!epoca){
-      return res.status(400).json(
-        errorResponse('Debe seleccionar una época')
-      )
-    }
-
     // Validar que el torneo existe y obtener su época
     const [torneos] = await pool.execute(
       'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
       [torneoId]
     );
-
-    const [epocaBD] =await pool.execute(
-      'SELECT epoca FROM torneo_saga_epocas WHERE torneo_id = ?',
-      [torneoId]  
-    )
 
     if (torneos.length === 0) {
       return res.status(404).json(
@@ -822,30 +810,32 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       );
     }
 
-     if (epocaBD.length === 0) {
-      return res.status(404).json(
-        errorResponse('No hya epocas en este torneo')
-      );
-    }
-
     const torneo = torneos[0];
 
-    const epocasValidas = epocaBD.map(e => e.epoca.trim());
+    const [epocaBD] =await pool.execute(
+      'SELECT epoca FROM torneo_saga_epocas WHERE torneo_id = ?',
+      [torneoId]  
+    )
 
-    // Validar época
-    if (!epocasValidas.includes(epoca)) {
-      return res.status(400).json(
-        errorResponse('La época seleccionada no es válida para este torneo')
+     if (epocaBD.length === 0) {
+      return res.status(404).json(
+        errorResponse('No hay epocas en este torneo')
       );
     }
 
-    // Validar puntos
-    const totalPuntos = puntosGuardias + puntosGuerreros + puntosLevas + puntosMercenarios;
+    const epocaTorneo = epocaBD[0].epoca.trim();
+     console.log('✅ Época del torneo:', epocaTorneo);
+
+    // Validar puntos 
+    if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios){
+      const totalPuntos = (puntosGuardias || 0) + (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
+      
       if (Math.abs(totalPuntos - torneo.puntos_banda) > 0.01) {
         return res.status(400).json(
           errorResponse(`Los puntos deben sumar ${torneo.puntos_banda}`)
         );
       }
+    }
 
     // Verificar si ya está inscrito
     const [inscripcionExistente] = await pool.execute(
@@ -859,13 +849,17 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       );
     }
 
-    const composicionEjercito = JSON.stringify({
-      guardias: puntosGuardias,
-      guerreros: puntosGuerreros,
-      levas: puntosLevas,
-      mercenarios: puntosMercenarios,
-      detalleMercenarios: detalleMercenarios || null
-    });
+    let composicionEjercito =  null
+
+    if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
+       composicionEjercito = JSON.stringify({
+          guardias: puntosGuardias || 0,
+          guerreros: puntosGuerreros || 0,
+          levas: puntosLevas || 0,
+          mercenarios: puntosMercenarios || 0,
+          detalleMercenarios: detalleMercenarios || null
+      });
+    }
     
     // Insertar inscripción
     const [resultado] = await pool.execute(
@@ -884,10 +878,10 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       [
         torneoId,
         usuarioId,
-        epoca,
-        faccion,
+        epocaTorneo,
+        faccion || 'sin definir',
         composicionEjercito,
-        0,
+        0,      // pagado por defecto 0 = pendiente
         0,      // puntos_victoria por defecto 0
         0,      // puntos_torneo por defecto 0
         0,      // puntos_masacre por defecto 0
@@ -902,9 +896,9 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         inscripcionId: resultado.insertId,
         torneoId,
         usuarioId,
-        epoca,
-        faccion,
-        composicionEjercito: JSON.parse(composicionEjercito)
+        epoca: epocaTorneo,
+        faccion: faccion || null,
+        composicionEjercito: composicionEjercito ?JSON.parse(composicionEjercito) :  null
       })
     );
 
@@ -954,10 +948,9 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
     
     try {
         const { torneoId } = req.params;
-        const jugadorId = req.usuario.userId
+        const jugadorId = req.usuario.userId;
 
         const {
-            epoca,
             faccion,
             puntosGuardias,
             puntosGuerreros,
@@ -966,18 +959,11 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
             detalleMercenarios
         } = req.body;
 
-        if (!epoca) {
-            await connection.rollback();
-            return res.status(400).json(
-                errorResponse('Debes seleccionar una época')
-            );
-        }
-
         await connection.beginTransaction();
 
         // Verificar que está inscrito
         const [inscripcion] = await connection.execute(
-            'SELECT id FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
+            'SELECT id, epoca FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
             [torneoId, jugadorId]
         );
 
@@ -986,65 +972,54 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
             return res.status(404).json(errorResponse('No estás inscrito en este torneo'));
         }
 
-        const [torneos] = await connection.execute(`
-          SELECT 
-              ts.id,
-              ts.nombre_torneo,
-              ts.estado,
-              ts.puntos_banda,
-              GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR ',') as epocas_disponibles
-          FROM torneos_sistemas ts
-          LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-          WHERE ts.id = ?
-          GROUP BY ts.id
-      `, [torneoId]);
+        // Validar puntos SOLO si se proporcionan
+        if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
+            const [torneos] = await connection.execute(
+                'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
+                [torneoId]
+            );
 
-          if (torneos.length === 0) {
-            await connection.rollback();
-            return res.status(404).json(errorResponse('Torneo no encontrado'));
-          }
-        
-        if (torneos.length > 0) {
-            const epocasValidas = torneos[0].epocas_disponibles.split(',').map(e => e.trim());
-            if (!epocasValidas.includes(epoca)) {
-                await connection.rollback();
-                return res.status(400).json(
-                    errorResponse('La época seleccionada no es válida para este torneo')
-                );
+            if (torneos.length > 0) {
+                const totalPuntos = (puntosGuardias || 0) + (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
+                
+                if (Math.abs(totalPuntos - torneos[0].puntos_banda) > 0.01) {
+                    await connection.rollback();
+                    return res.status(400).json(
+                        errorResponse(`Los puntos deben sumar ${torneos[0].puntos_banda}`)
+                    );
+                }
             }
         }
 
-        // Crear objeto JSON con la composición del ejército
-        const composicionEjercito = JSON.stringify({
-            guardias: puntosGuardias || 0,
-            guerreros: puntosGuerreros || 0,
-            levas: puntosLevas || 0,
-            mercenarios: puntosMercenarios || 0,
-            detalleMercenarios: detalleMercenarios || null
-        });
+        // Crear composición SOLO si hay puntos
+        let composicionEjercito = null;
+        
+        if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
+            composicionEjercito = JSON.stringify({
+                guardias: puntosGuardias || 0,
+                guerreros: puntosGuerreros || 0,
+                levas: puntosLevas || 0,
+                mercenarios: puntosMercenarios || 0,
+                detalleMercenarios: detalleMercenarios || null
+            });
+        }
 
         // Actualizar inscripción
-        const resultado = await connection.execute(`
+        await connection.execute(`
             UPDATE jugador_torneo_saga 
-            SET   epoca = ?,
-                      faccion = ?,
-                      composicion_ejercito = ?
+            SET faccion = ?,
+                composicion_ejercito = ?
             WHERE torneo_id = ? AND jugador_id = ?
         `, [
-          epoca,
-          faccion,
-          composicionEjercito,
-          torneoId,
-          jugadorId
+            faccion || null,           // CRÍTICO: || null en lugar de undefined
+            composicionEjercito,       // Ya es null si no hay puntos
+            torneoId,
+            jugadorId
         ]);
-
-        if (resultado.affectedRows === 0) {
-            await connection.rollback();
-            return res.status(404).json(errorResponse('Error al actualizar inscripción'));
-        }
 
         await connection.commit();
 
+        // Obtener inscripción actualizada
         const [inscripcionActualizada] = await connection.execute(`
             SELECT * FROM jugador_torneo_saga 
             WHERE torneo_id = ? AND jugador_id = ?
@@ -1054,14 +1029,17 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
             try {
                 inscripcionActualizada[0].composicion_ejercito = JSON.parse(inscripcionActualizada[0].composicion_ejercito);
             } catch {
-                inscripcionActualizada[0].composicion_ejercito = {};
+                inscripcionActualizada[0].composicion_ejercito = null;
             }
         }
-         res.json(successResponse(inscripcionActualizada[0], 'Inscripción actualizada correctamente'));
+
+        console.log(`✅ Inscripción actualizada para usuario ${jugadorId} en torneo ${torneoId}`);
+
+        res.json(successResponse(inscripcionActualizada[0], 'Inscripción actualizada correctamente'));
 
     } catch (error) {
         await connection.rollback();
-        console.error('Error:', error);
+        console.error('❌ Error al actualizar inscripción:', error);
         res.status(500).json(errorResponse('Error al actualizar inscripción'));
     } finally {
         connection.release();
@@ -1805,7 +1783,7 @@ router.delete('/:torneoId/eliminarTorneo', verificarToken, async (req, res) => {
 router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res) => {
   try {
     const { torneoId, jugadorId } = req.params;
-    
+
     const [torneoExistente] = await pool.execute(
       'SELECT created_by, nombre_torneo FROM torneos_sistemas WHERE id = ?',
       [torneoId]
@@ -1817,9 +1795,13 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
       );
     }
     
-    if (torneoExistente[0].created_by !== req.userId) {
+    // Permitir si es el creador del torneo O si es el propio jugador eliminándose a sí mismo
+    const esCreador = torneoExistente[0].created_by === req.userId;
+    const esPropio = parseInt(jugadorId) === parseInt(req.userId);
+    
+    if (!esCreador && !esPropio) {
       return res.status(403).json(
-        errorResponse('Solo el creador del torneo puede eliminar participantes')
+        errorResponse('No tienes permiso para eliminar esta inscripción')
       );
     }
     
@@ -1830,6 +1812,8 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
        WHERE jts.torneo_id = ? AND jts.jugador_id = ?`,
       [torneoId, jugadorId]
     );
+
+      console.log('🔍 Participante encontrado:', participante);
     
     if (participante.length === 0) {
       return res.status(404).json(
@@ -1848,7 +1832,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     
     if (partidas[0].total > 0) {
       return res.status(400).json(
-        errorResponse(`No se puede eliminar a ${nombreJugador} porque ya tiene ${partidas[0].total} partida(s) registrada(s) en este torneo`)
+        errorResponse(`No se puede eliminar ${esPropio ? 'tu inscripción' : `a ${nombreJugador}`} porque ya ${esPropio ? 'tienes' : 'tiene'} ${partidas[0].total} partida(s) registrada(s) en este torneo`)
       );
     }
     
@@ -1857,14 +1841,17 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
       [torneoId, jugadorId]
     );
     
-    console.log(`✅ Jugador ${nombreJugador} eliminado del torneo ${torneoExistente[0].nombre_torneo}`);
-    
     res.json(
-      successResponse(`${nombreJugador} ha sido eliminado del torneo "${torneoExistente[0].nombre_torneo}"`, {
-        torneoId,
-        jugadorId,
-        nombreJugador
-      })
+      successResponse(
+        esPropio 
+          ? `Tu inscripción ha sido eliminada del torneo "${torneoExistente[0].nombre_torneo}"` 
+          : `${nombreJugador} ha sido eliminado del torneo "${torneoExistente[0].nombre_torneo}"`,
+        {
+          torneoId,
+          jugadorId,
+          nombreJugador
+        }
+      )
     );
     
   } catch (error) {

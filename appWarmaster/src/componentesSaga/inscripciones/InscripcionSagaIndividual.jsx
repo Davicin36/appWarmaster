@@ -8,17 +8,12 @@ import { obtenerBandasDisponibles } from '@/componentesSaga/funcionesSaga/consta
 
 import '../../estilos/inscripcion.css';
 
-/**
- * 📝 INSCRIPCIÓN INDIVIDUAL PARA SAGA
- * Formulario específico para torneos SAGA individuales
- */
 function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   const navigate = useNavigate();
   const location = useLocation();
   
   // Detectar si es modo edición
-  const modoEdicion = location.pathname.includes('editar-inscripcion') || 
-                       location.pathname.includes('actualizarInscripcion');
+  const modoEdicion = location.pathname.includes('editar-inscripcion') || location.pathname.includes('actualizarInscripcion');
   
   // Estados
   const [epocaSeleccionada, setEpocaSeleccionada] = useState("");
@@ -36,6 +31,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   // ==========================================
   // CARGAR INSCRIPCIÓN EXISTENTE (MODO EDICIÓN)
   // ==========================================
+
   useEffect(() => {
     const cargarInscripcion = async () => {
       if (!modoEdicion) return;
@@ -86,11 +82,14 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   // ==========================================
   // AUTO-SELECCIONAR ÉPOCA ÚNICA
   // ==========================================
+
   useEffect(() => {
     if (torneo && !modoEdicion) {
       const epocas = torneo.epocas_disponibles;
-      if (epocas && !epocas.includes(',')) {
-        setEpocaSeleccionada(epocas.trim());
+      if (epocas) {
+        // Tomar la primera época disponible
+        const primeraEpoca = epocas.split(',')[0].trim();
+        setEpocaSeleccionada(primeraEpoca);
       }
     }
   }, [torneo, modoEdicion]);
@@ -98,6 +97,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   // ==========================================
   // HANDLERS
   // ==========================================
+
   const handlePuntosChange = (e) => {
     const { name, value } = e.target;
     const valorNumerico = parseFloat(value) || 0;
@@ -110,10 +110,30 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  const handleEpocaChange = (e) => {
-    setEpocaSeleccionada(e.target.value);
-    setBandaSeleccionada(""); // Reset banda al cambiar época
-  };
+  const eliminarInscripcion = async () => {
+  if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
+    return;
+  }
+
+  if (!user?.id) {
+    setError ("No se puedo obtener tu ID de usuario")
+  }
+  
+  try {
+    setLoading(true);
+    const resultado = await torneosSagaApi.eliminarJugadorTorneo(torneoId, user.id);
+
+    if (resultado.success) {
+      alert("✅ Inscripción eliminada correctamente");
+      navigate('/');
+    }
+  } catch (error) {
+    console.error("❌ Error al eliminar inscripción:", error);
+    setError(error.message || "Error al eliminar la inscripción");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,43 +146,57 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
     
     if (!epocaSeleccionada) {
-      setError("Debes seleccionar una época");
-      return;
-    }
-    
-    if (!bandaSeleccionada) {
-      setError("Debes seleccionar una banda");
+      setError("No se pudo cargar época del torneo");
       return;
     }
 
     const totalPuntos = parseFloat(
-      (puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios).toFixed(2)
-    );
-    const puntosMaximos = torneo?.puntos_banda || 24;
-    
-    if (Math.abs(totalPuntos - puntosMaximos) > 0.01) {
-      setError(`Los puntos deben sumar exactamente ${puntosMaximos}`);
-      return;
-    }
+    (puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios).toFixed(2)
+  );
 
-    if (puntos.mercenarios > 0 && !detalleMercenarios.trim()) {
-      setError("Debes especificar qué mercenarios usarás");
-      return;
+    if (totalPuntos > 0) {
+      const puntosMaximos = torneo?.puntos_banda || 24;
+      
+      if (Math.abs(totalPuntos - puntosMaximos) > 0.01) {
+        setError(`Si introduces puntos, deben sumar exactamente ${puntosMaximos}`);
+        return;
+      }
+
+      // Si hay puntos, debe haber banda también
+      if (!bandaSeleccionada) {
+        setError("Si introduces puntos, debes seleccionar una banda");
+        return;
+      }
+
+      // Si hay mercenarios, validar detalle
+      if (puntos.mercenarios > 0 && !detalleMercenarios.trim()) {
+        setError("Debes especificar qué mercenarios usarás");
+        return;
+      }
     }
 
     try {
       setLoading(true);
       
       const inscripcionData = {
-        usuarioId: user.id,
-        epoca: epocaSeleccionada,
-        faccion: bandaSeleccionada,
-        puntosGuardias: puntos.guardias,
-        puntosGuerreros: puntos.guerreros,
-        puntosLevas: puntos.levas,
-        puntosMercenarios: puntos.mercenarios,
-        detalleMercenarios: detalleMercenarios || null
-      };
+          usuarioId: user.id,
+          epoca: epocaSeleccionada,
+        }
+
+      if (bandaSeleccionada){
+        inscripcionData.faccion = bandaSeleccionada;
+      }
+
+      if (totalPuntos > 0) {
+          inscripcionData.puntosGuardias = puntos.guardias,
+          inscripcionData.puntosGuerreros = puntos.guerreros,
+          inscripcionData.puntosLevas = puntos.levas,
+          inscripcionData.puntosMercenarios = puntos.mercenarios
+        
+        if (detalleMercenarios){
+          inscripcionData.detalleMercenarios =  detalleMercenarios
+        };
+      }
 
       let resultado;
       
@@ -171,7 +205,12 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         alert("✅ ¡Inscripción actualizada con éxito!");
       } else {
         resultado = await torneosSagaApi.inscribirse(torneoId, inscripcionData);
-        alert("✅ ¡Inscripción realizada con éxito!");
+
+       if (bandaSeleccionada && totalPuntos > 0) {
+          alert("✅ ¡Inscripción realizada con éxito!");
+        } else {
+          alert("✅ ¡Inscripción realizada! Recuerda completar tu banda antes del torneo.");
+        }
       }
       
       if (resultado.success) {
@@ -186,14 +225,9 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  // ==========================================
-  // CÁLCULOS Y DATOS
-  // ==========================================
-  const epocasArray = torneo?.epocas_disponibles 
-    ? torneo.epocas_disponibles.split(',').map(e => e.trim())
-    : [];
-  const esMultiEpoca = epocasArray.length > 1;
 
+  // CÁLCULOS Y DATOS
+ 
   const bandasDisponibles = epocaSeleccionada && epocaSeleccionada.trim() !== ' '
     ? obtenerBandasDisponibles(epocaSeleccionada)
     : []
@@ -205,6 +239,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   // ==========================================
   // RENDER
   // ==========================================
+
   return (
     <div className="inscripcion-container">
       
@@ -254,9 +289,8 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         <h2>Detalles del Torneo</h2>
         <div className="datos-grid">
           <div className="dato-item">
-            <label>Época{esMultiEpoca ? 's' : ''}:</label>
             <span className="epoca-badge">
-              {torneo?.epocas_disponibles}
+              {torneo?.epocas_disponibles || epocaSeleccionada}
             </span>
           </div>
           
@@ -281,47 +315,25 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         
         {error && <div className="error-message">⚠️ {error}</div>}
 
-        {/* SELECTOR DE ÉPOCA */}
-        {esMultiEpoca && (
-          <div className="form-group">
-            <label htmlFor="epoca">Época:</label>
-            <select
-              id="epoca"
-              value={epocaSeleccionada}
-              onChange={handleEpocaChange}
-              required
-              disabled={loading}
-            >
-              <option value="">-- Selecciona época --</option>
-              {epocasArray.map((epoca, index) => (
-                <option key={index} value={epoca}>{epoca}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {/* SELECTOR DE BANDA */}
         {epocaSeleccionada && (
-          <div className="form-group">
-            <label htmlFor="banda">
-              Banda {esMultiEpoca && `(${epocaSeleccionada})`}:
-            </label>
-            <select
-              id="banda"
-              value={bandaSeleccionada}
-              onChange={(e) => setBandaSeleccionada(e.target.value)}
-              required
-              disabled={loading}
-            >
-              <option value="">-- Selecciona banda --</option>
-              {bandasDisponibles.map((banda, index) => (
-                <option key={index} value={banda.nombre}>
-                  {banda.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+            <div className="form-group">
+              <label htmlFor="banda">Banda:</label>
+              <select
+                id="banda"
+                value={bandaSeleccionada}
+                onChange={(e) => setBandaSeleccionada(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">-- Completar después --</option>
+                {bandasDisponibles.map((banda, index) => (
+                  <option key={index} value={banda.nombre}>
+                    {banda.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
         {/* DISTRIBUCIÓN DE PUNTOS */}
         {bandaSeleccionada && (
@@ -418,19 +430,33 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                 </div>
               )}
             </section>
-
-            {/* BOTONES */}
+          </>
+        )}
+      </form>
+       {/* BOTONES */}
             <div className="button-group">
               <button 
                 type="submit" 
+                onClick={handleSubmit}
                 className="btn-primary" 
-                disabled={loading}
+                disabled={loading || !epocaSeleccionada}
               >
                 {loading 
                   ? '⏳ Procesando...' 
                   : (modoEdicion ? '✅ Guardar Cambios' : '✅ Inscribirme')}
               </button>
-              
+
+              {modoEdicion && (
+                <button 
+                  type="button" 
+                  className="btn-danger" 
+                  onClick={eliminarInscripcion}
+                  disabled={loading}
+                >
+                  🗑️ Eliminar Inscripción
+                </button>
+              )}
+                  
               <button 
                 type="button" 
                 className="btn-secondary" 
@@ -440,9 +466,6 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                 Cancelar
               </button>
             </div>
-          </>
-        )}
-      </form>
     </div>
   );
 }

@@ -138,7 +138,9 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
         if (!window.confirm('¿Eliminar este jugador del torneo?')) return;
         
         try {
-            await torneosSagaApi.eliminarJugadorTorneo(torneoId, jugadorId);
+            const resultado = await torneosSagaApi.eliminarJugadorTorneo(torneoId, jugadorId);
+
+            console.log ('eliminar', resultado)
             alert('✅ Jugador eliminado');
             await cargarDatos();
             if (onUpdate) onUpdate();
@@ -238,7 +240,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                                             </td>
                                             <td>
                                                 <button
-                                                    onClick={() => eliminarJugador(jugador.id)}
+                                                    onClick={() => eliminarJugador(jugador.jugador_id)}
                                                     className="btn-danger-small"
                                                 >
                                                     🗑️ Eliminar
