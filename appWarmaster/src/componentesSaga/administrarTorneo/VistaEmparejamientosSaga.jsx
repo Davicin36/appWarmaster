@@ -507,10 +507,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                     </button>
                 )}
 
-                <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
+               <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
                     Mesa {partida.mesa || index + 1}
                     {partidaEsBye ? ' ⭐ BYE' : ''} 
-                    {partida.epoca && ` - 📅 ${partida.epoca}`}  {/* ✅ Usar partida.epoca */}
+                    {partida.epoca && ` - 📅 ${partida.epoca}`}
                     {' - '}
                     {estaConfirmado ? '✅ CONFIRMADA' : '⏳ PENDIENTE'}
                 </div>
@@ -586,18 +586,21 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     return Object.entries(grupos).map(([claveGrupo, grupo]) => (
         <div key={claveGrupo} className="enfrentamiento-equipos">
             {/* HEADER DEL ENFRENTAMIENTO */}
-            <div className="header-equipos">
-                <h4>
-                    ⚔️ {grupo.equipo1_nombre} 
-                    {grupo.equipo2_nombre ? ` vs ${grupo.equipo2_nombre}` : ' (BYE)'}
-                </h4>
-                <span className="total-partidas">
-                    {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? 'partida' : 'partidas'}
-                </span>
-                 <div className="escenario">
+                    <div className="header-equipos">
+            <h4>
+                ⚔️ {grupo.equipo1_nombre} 
+                {grupo.equipo2_nombre ? ` vs ${grupo.equipo2_nombre}` : ' (BYE)'}
+            </h4>
+            <span className="total-partidas">
+                {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? 'partida' : 'partidas'}
+            </span>
+            {/* 🎯 MOSTRAR ESCENARIO SOLO SI EL TORNEO ESTÁ EN CURSO */}
+            {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
+                <div className="escenario">
                     📋 {nombresPartidas['En cada ronda se jugarán'] || 'Escenario por definir'}
                 </div>
-            </div>
+            )}
+        </div>
 
             {/* PARTIDAS AGRUPADAS POR ÉPOCA */}
             <div className="contenedor-epocas">
@@ -659,31 +662,38 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                     <h2>🎲 Emparejamientos {esTorneoEquipos() ? '(Por Equipos)' : '(Individuales)'}</h2>
                     <p>Ronda {torneo.ronda_actual} de {torneo.rondas_max}</p>
                     
-                    {/* 🎯 MOSTRAR ESCENARIOS SEGÚN TIPO DE TORNEO */}
-                    {esTorneoEquipos() ? (
-                        // Para equipos: mostrar TODOS los escenarios
-                        (() => {
-                            const rondas = [
-                                torneo.partida_ronda_1,
-                                torneo.partida_ronda_2,
-                                torneo.partida_ronda_3,
-                                torneo.partida_ronda_4,
-                                torneo.partida_ronda_5
-                            ].filter(Boolean);
-                            
-                            return rondas.length > 0 ? (
-                                <p>📋 Escenarios: {rondas.join(' / ')}</p>
+                    {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') &&(
+                        <>
+                            {esTorneoEquipos() ? (
+                                // Para equipos: mostrar TODOS los escenarios
+                                (() => {
+                                    const rondas = [
+                                        torneo.partida_ronda_1,
+                                        torneo.partida_ronda_2,
+                                        torneo.partida_ronda_3,
+                                        torneo.partida_ronda_4,
+                                        torneo.partida_ronda_5
+                                    ].filter(Boolean);
+                                    
+                                    return rondas.length > 0 ? (
+                                        <p>📋 Escenarios: {rondas.join(' / ')}</p>
+                                    ) : (
+                                        <p>⚠️ No hay escenarios configurados</p>
+                                    );
+                                })()
                             ) : (
-                                <p>⚠️ No hay escenarios configurados</p>
-                            );
-                        })()
-                    ) : (
-                        // Para individuales: mostrar solo el escenario de la ronda actual
-                        torneo[`partida_ronda_${torneo.ronda_actual}`] && (
-                            <p>📋 {torneo[`partida_ronda_${torneo.ronda_actual}`]}</p>
-                        )
+                                // Para individuales: mostrar solo el escenario de la ronda actual
+                                torneo[`partida_ronda_${torneo.ronda_actual}`] && (
+                                    <p>📋 {torneo[`partida_ronda_${torneo.ronda_actual}`]}</p>
+                                )
+                            )}
+                        </>
                     )}
-                </div>
+                    {/* CUANDO TORNEO NO INICIADO */}
+                    {torneo.estado === 'pendiente' && (
+                        <p>⏳ Los escenarios se mostrarán cuando el torneo esté en curso</p>
+                    )}
+                        </div>
                     
                     {!esVistaPublica && (
                         <div className="botones-grupo">
