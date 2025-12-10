@@ -45,6 +45,10 @@ function App() {
             path='/torneosSaga/:torneoId/detalles'
             element={<VerTorneos />}
         />
+        <Route
+            path='/torneosWarmaster/:torneoId/detalles'
+            element={<VerTorneos />}
+        />
          <Route
             path='/ayudaTorneos'
             element={<AyudaTorneos />}
@@ -76,6 +80,10 @@ function App() {
         />
         <Route
             path='/torneosSaga/:torneoId/editar-inscripcion'
+            element={<Inscripcion />}
+        />
+        <Route
+            path='/torneosWarmaster/:torneoId/editar-inscripcion'
             element={<Inscripcion />}
         />
       </Routes>

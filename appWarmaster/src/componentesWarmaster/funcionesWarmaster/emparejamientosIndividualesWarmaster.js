@@ -1,4 +1,4 @@
-import torneosSagaApi from '@/servicios/apiSaga';
+import torneosWarmasterApi from '@/servicios/apiWarmaster';
 
 // ==========================================
 // EMPAREJAMIENTOS ALEATORIOS
@@ -12,7 +12,7 @@ import torneosSagaApi from '@/servicios/apiSaga';
     
 const generarEmparejamientosIniciales = async (torneoId) => {
     try {
-        const dataJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+        const dataJugadores = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
         const jugadores = Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || [];
     
         if (jugadores.length < 2) {
@@ -24,132 +24,68 @@ const generarEmparejamientosIniciales = async (torneoId) => {
 
         console.log('jugadores', jugadoresAleatorios);
 
-           const normalizarClub = (club) => {
-            if (!club || club === '-' || club.trim() === '') {
-                return null; // Sin club
-            }
-            return club.trim().toLowerCase().replace(/\s+/g, ' ');
-        };
-
-        const yaEmparejados = (jugadorId) => {
-            return emparejamientosRonda1.some(emp =>
-                emp.jugador1_id === jugadorId || emp.jugador2_id === jugadorId
-            )
-        }
-
-        const sonDelMismoClub = (jug1, jug2) => {
-            const club1 = normalizarClub(jug1.club);
-            const club2 = normalizarClub(jug2.club);
-            
-            // Si alguno no tiene club, NO son del mismo club
-            if (club1 === null || club2 === null) {
-                return false;
-            }
-            
-            // Comparar clubes normalizados
-            return club1 === club2;
-        };
-
-        for (let i = 0; i < jugadoresAleatorios.length; i ++) {
+        for (let i = 0; i < jugadoresAleatorios.length - 1; i += 2) {
             const jug1 = jugadoresAleatorios[i];
+            const jug2 = jugadoresAleatorios[i + 1];
 
-            if (yaEmparejados(jug1.jugador_id)){
-                continue;
-            }
-
-            let jug2 = null
-            let mejorCandidato = null
-
-            for (let j = i+1; j< jugadoresAleatorios.length; j++){
-                const candidato = jugadoresAleatorios[j]
-
-                if (yaEmparejados(candidato.jugador_id)){
-                    continue
+            emparejamientosRonda1.push({
+                mesa: Math.floor(i / 2) + 1,
+                // ✅ Campos para la base de datos
+                jugador1_id: jug1.jugador_id,
+                jugador2_id: jug2.jugador_id,
+                es_bye: 0,
+                ronda: 1,
+                // ✅ Objetos completos para el frontend
+                jugador1: {
+                    id: jug1.id,
+                    jugador_id: jug1.jugador_id,
+                    nombre: jug1.jugador_nombre,
+                    jugador_nombre: jug1.jugador_nombre,
+                    apellidos: jug1.jugador_apellidos || '',
+                    club: jug1.club || '-',
+                    ejercito: jug1.ejercito || '-',
+                    puntos_victoria: 0,
+                    puntos_masacre: 0
+                },
+                jugador2: {
+                    id: jug2.id,
+                    jugador_id: jug2.jugador_id,
+                    nombre: jug2.jugador_nombre,
+                    jugador_nombre: jug2.jugador_nombre,
+                    apellidos: jug2.jugador_apellidos || '',
+                    club: jug2.club || '-',
+                    ejercito: jug2.ejercito || '-',
+                    puntos_victoria: 0,
+                    puntos_masacre: 0
                 }
-
-                if (!sonDelMismoClub(jug1, candidato)) {
-                    jug2 = candidato;
-                    break;
-                } else if (!mejorCandidato) {
-                    // Guardar como opción de respaldo si son del mismo club
-                    mejorCandidato = candidato;
-                }
-            }
-
-            if (!jug2 && mejorCandidato) {
-                jug2 = mejorCandidato
-                console.warn (`MISMO CLUB en Ronda 1: ${jug1.jugador_nombre} vs ${jug2.jugador_nombre} (${jug1.club})`)
-            }
-
-            if (jug2){
-                emparejamientosRonda1.push({
-                    mesa: emparejamientosRonda1.length + 1,
-                    // ✅ Campos para la base de datos
-                    jugador1_id: jug1.jugador_id,
-                    jugador2_id: jug2.jugador_id,
-                    es_bye: 0,
-                    ronda: 1,
-                    // ✅ Objetos completos para el frontend
-                    jugador1: {
-                        id: jug1.id,
-                        jugador_id: jug1.jugador_id,
-                        nombre: jug1.jugador_nombre,
-                        jugador_nombre: jug1.jugador_nombre,
-                        nombre_alias: jug1.nombre_alias || null,
-                        apellidos: jug1.jugador_apellidos || '',
-                        club: jug1.club || '-',
-                        ejercito: jug1.faccion || '-',
-                        puntos_victoria: 0,
-                        puntos_torneo: 0,
-                        puntos_masacre: 0
-                    },
-                    jugador2: {
-                        id: jug2.id,
-                        jugador_id: jug2.jugador_id,
-                        nombre: jug2.jugador_nombre,
-                        jugador_nombre: jug2.jugador_nombre,
-                        nombre_alias: jug2.nombre_alias || null,
-                        apellidos: jug2.jugador_apellidos || '',
-                        club: jug2.club || '-',
-                        ejercito: jug2.faccion || '-',
-                        puntos_victoria: 0,
-                        puntos_torneo: 0,
-                        puntos_masacre: 0
-                    }
-                });
-            }
+            });
         }
         
         // Si el número de jugadores es IMPAR entonces el último tiene BYE
         if (jugadoresAleatorios.length % 2 !== 0) {
-            const jugBye = jugadoresAleatorios.find(j => !yaEmparejados(j.jugador_id));
-
-
-            if (jugBye) {
-                emparejamientosRonda1.push({
-                    mesa: emparejamientosRonda1.length + 1,
-                    // ✅ Campos para BYE
-                    jugador1_id: jugBye.jugador_id,
-                    jugador2_id: null,
-                    es_bye: 1,
-                    ronda: 1,
-                    // ✅ Objeto completo
-                    jugador1: {
-                        id: jugBye.id,
-                        jugador_id: jugBye.jugador_id,
-                        nombre: jugBye.jugador_nombre,
-                        jugador_nombre: jugBye.jugador_nombre,
-                        nombre_alias: jugBye.nombre_alias || null,
-                        apellidos: jugBye.jugador_apellidos || '',
-                        club: jugBye.club || '-',
-                        ejercito: jugBye.faccion || '-',
-                        puntos_victoria: 0,
-                        puntos_torneo: 0,
-                        puntos_masacre: 0
-                    },
-                    jugador2: null
-                });
-            }
+            const jugBye = jugadoresAleatorios[jugadoresAleatorios.length - 1];
+            
+            emparejamientosRonda1.push({
+                mesa: emparejamientosRonda1.length + 1,
+                // ✅ Campos para BYE
+                jugador1_id: jugBye.jugador_id,
+                jugador2_id: null,
+                es_bye: 1,
+                ronda: 1,
+                // ✅ Objeto completo
+                jugador1: {
+                    id: jugBye.id,
+                    jugador_id: jugBye.jugador_id,
+                    nombre: jugBye.jugador_nombre,
+                    jugador_nombre: jugBye.jugador_nombre,
+                    apellidos: jugBye.jugador_apellidos || '',
+                    club: jugBye.club || '-',
+                    ejercito: jugBye.ejercito || '-',
+                    puntos_victoria: 0,
+                    puntos_masacre: 0
+                },
+                jugador2: null
+            });
         }
 
         return emparejamientosRonda1;
@@ -180,7 +116,7 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
         }
 
         // Obtener clasificación actual
-        const responseClasificacion = await torneosSagaApi.obtenerClasificacionIndividual(torneoId);
+        const responseClasificacion = await torneosWarmasterApi.obtenerClasificacionIndividual(torneoId);
         const clasificacionData = responseClasificacion?.data || responseClasificacion || [];
 
         if (!Array.isArray(clasificacionData) || clasificacionData.length < 2) {
@@ -190,9 +126,8 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
         // ✅ NORMALIZAR CAMPOS
         const clasificacion = clasificacionData.map(j => ({
             ...j,
-            puntos_victoria: j.puntos_victoria || j.puntos_victoria_totales || 0,
-            puntos_torneo: j.puntos_torneo || j.puntos_torneo_totales || 0,
-            puntos_masacre: j.puntos_masacre || j.puntos_masacre_totales || 0
+            puntos_victoria: j.puntos_victoria_totales || j.puntos_victoria || 0,
+            puntos_masacre: j.puntos_masacre_totales || j.puntos_masacre || 0
         }));
 
         // ✅ Obtener historial de enfrentamientos y BYE anteriores
@@ -201,7 +136,7 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
         let historialArray = [];
 
         try {
-            const historial = await torneosSagaApi.obtenerPartidasTorneo(torneoId);
+            const historial = await torneosWarmasterApi.obtenerPartidasTorneo(torneoId);
             historialArray = Array.isArray(historial) ? historial : [];
 
             // Construir set de enfrentamientos
@@ -228,9 +163,6 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
             if (b.puntos_victoria !== a.puntos_victoria) {
                 return b.puntos_victoria - a.puntos_victoria;
             }
-            if (b.puntos_torneo !== a.puntos_torneo) {
-                return b.puntos_torneo - a.puntos_torneo;
-            }
             return b.puntos_masacre - a.puntos_masacre;
         });
 
@@ -250,9 +182,6 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
                 const jugadoresPorMenosPuntos = [...jugadoresSinBye].sort((a, b) => {
                     if (a.puntos_victoria !== b.puntos_victoria) {
                         return a.puntos_victoria - b.puntos_victoria; // Menor primero
-                    }
-                    if (a.puntos_torneo !== b.puntos_torneo) {
-                        return a.puntos_torneo - b.puntos_torneo;
                     }
                     return a.puntos_masacre - b.puntos_masacre;
                 });
@@ -276,9 +205,6 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
                 const todosOrdenadosPorMenos = [...jugadoresOrdenados].sort((a, b) => {
                     if (a.puntos_victoria !== b.puntos_victoria) {
                         return a.puntos_victoria - b.puntos_victoria;
-                    }
-                    if (a.puntos_torneo !== b.puntos_torneo) {
-                        return a.puntos_torneo - b.puntos_torneo;
                     }
                     return a.puntos_masacre - b.puntos_masacre;
                 });
@@ -335,8 +261,8 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
                     if (puedenEnfrentarse(jugador1, candidato)) {
                         // Calcular "distancia" en la clasificación
                         const distancia = Math.abs(
-                            (jugador1.puntos_victoria + jugador1.puntos_torneo) - 
-                            (candidato.puntos_victoria + candidato.puntos_torneo)
+                            (jugador1.puntos_victoria + jugador1.puntos_masacre) - 
+                            (candidato.puntos_victoria + candidato.puntos_masacre)
                         );
                         
                         if (distancia < distanciaMinima) {
@@ -421,9 +347,8 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
                     jugador_nombre: jugador1Data.jugador_nombre || jugador1Data.nombre,
                     apellidos: jugador1Data.jugador_apellidos || jugador1Data.apellidos || '',
                     club: jugador1Data.club || '-',
-                    ejercito: jugador1Data.faccion || jugador1Data.ejercito || '-',
+                    ejercito: jugador1Data.ejercito || '-',
                     puntos_victoria: jugador1Data.puntos_victoria || 0,
-                    puntos_torneo: jugador1Data.puntos_torneo || 0,
                     puntos_masacre: jugador1Data.puntos_masacre || 0
                 } : null,
                 jugador2: jugador2Data ? {
@@ -433,9 +358,8 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
                     jugador_nombre: jugador2Data.jugador_nombre || jugador2Data.nombre,
                     apellidos: jugador2Data.jugador_apellidos || jugador2Data.apellidos || '',
                     club: jugador2Data.club || '-',
-                    ejercito: jugador2Data.faccion || jugador2Data.ejercito || '-',
+                    ejercito: jugador2Data.ejercito || '-',
                     puntos_victoria: jugador2Data.puntos_victoria || 0,
-                    puntos_torneo: jugador2Data.puntos_torneo || 0,
                     puntos_masacre: jugador2Data.puntos_masacre || 0
                 } : null
             };

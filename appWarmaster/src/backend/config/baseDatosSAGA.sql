@@ -33,6 +33,7 @@ CREATE TABLE torneos_sistemas (
   fecha_fin DATE,
   ubicacion VARCHAR(200),
   puntos_banda INT NOT NULL,
+  puntos_ejercito INT NOT NULL, /*pendiente de introducir en base de datos produccion*/
   participantes_max INT NOT NULL,
   equipos_max INT NOT NULL,
   ronda_actual INT DEFAULT 1,

@@ -61,7 +61,7 @@ router.get('/obtenerTorneos', async (req, res) => {
       }
     }
     
-    let whereClause = '';
+    let whereClause = 'WHERE ts.sistema = "SAGA"'
     let queryParams = [userId];
     
     if (buscar.trim()) {

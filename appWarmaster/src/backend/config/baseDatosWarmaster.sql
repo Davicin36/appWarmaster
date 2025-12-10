@@ -16,15 +16,15 @@ CREATE TABLE jugador_torneo_warmaster (
   /**
   equipo_id INT DEFAULT NULL, 
   */
-  faccion VARCHAR(100) NOT NULL,
+  ejercito VARCHAR(100) NOT NULL,
   lista_ejercito LONGBLOB,
   lista_nombre VARCHAR(255), 
   lista_tamaño INT,      
-  pagado BOOLEAN DEFAULT FALSE,
+  pagado INT DEFAULT 0,
   puntos_victoria INT DEFAULT 0,
   puntos_masacre INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   /**
   FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id),
@@ -35,44 +35,25 @@ CREATE TABLE jugador_torneo_warmaster (
   */
 );
 
-CREATE TABLE torneo_warmaster_faccion (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  torneo_id INT NOT NULL,
-  faccion VARCHAR(100) NOT NULL,
-  created_by TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,<
-  UNIQUE KEY unique_faccion_torneo (torneo_id, faccion)
-); 
-
 CREATE TABLE clasificacion_jugadores_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
   jugador_id INT NOT NULL,
-  /**
-  equipo_id INT  DEFAULT NULL,
-  */
   partidas_jugadas INT DEFAULT 0, 
   partidas_ganadas INT DEFAULT 0,
   partidas_empatadas INT DEFAULT 0,
   partidas_perdidas INT DEFAULT 0,
   puntos_victoria_totales INT DEFAULT 0,
   puntos_masacre_totales INT DEFAULT 0,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador_id) REFERENCES jugador_torneo_saga(jugador_id) ON DELETE CASCADE,
-  /**
-  FOREGIN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE, 
- */
-  UNIQUE KEY unique_torneo_jugador (torneo_id, jugador_id);
-)
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
+  FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_torneo_jugador (torneo_id, jugador_id)
+);
 
 
 CREATE TABLE partidas_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
-  /**
-  equipo1_id INT DEFAULT NULL, 
-  equipo2_id INT DEFAULT NULL,
-  */
   nombre_partida VARCHAR(100) NOT NULL,
   jugador1_id INT NOT NULL,
   jugador2_id INT NOT NULL,
@@ -88,11 +69,7 @@ CREATE TABLE partidas_warmaster (
   fecha_partida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   primer_jugador INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
-  /**
-  FOREIGN KEY (equipo1_id) REFERENCES torneo_saga_equipo(id) ON DELETE SET NULL,   
-  FOREIGN KEY (equipo2_id) REFERENCES torneo_saga_equipo(id) ON DELETE SET NULL,
-  */
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),
   FOREIGN KEY (jugador2_id) REFERENCES usuarios(id)
 );

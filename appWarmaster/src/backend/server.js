@@ -110,6 +110,7 @@ app.get('/api/test', (req, res) => {
 
 // Rutas principales                 
 app.use('/api/torneosSaga', torneosSagaRoutes); 
+app.use('/api/torneosWarmaster', torneosWarmasterRoutes)
 app.use('/api/usuarios', usuariosRutas);         
 
 // ==========================================

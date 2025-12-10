@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext.jsx";
 
 import torneosSagaApi from '../servicios/apiSaga.js';
+import torneosWarmasterApi from '../servicios/apiWarmaster.js'
 
 // Componentes de inscripción
 import { REGISTRO_INSCRIPCIONES } from '../funciones/registroInscripciones.js';
@@ -28,22 +29,44 @@ function Inscripcion() {
       try {
         setLoading(true);
         setError("");
-        
-        const dataTorneo = await torneosSagaApi.obtenerTorneo(torneoId);
-        
-        if (dataTorneo.success && dataTorneo.data) {
-          const torneoData = dataTorneo.data.torneo || dataTorneo.data;
-          setTorneo(torneoData);
-        } else {
-          setError("No se pudo cargar el torneo");
+
+        let dataTorneo = null
+        let torneoData = null
+
+        try {
+
+          dataTorneo = await torneosSagaApi.obtenerTorneo(torneoId);
+          
+          if (dataTorneo.success && dataTorneo.data) {
+            torneoData = dataTorneo.data.torneo || dataTorneo.data
+          }
+        } catch (sagaError) {
+          console.log('No es un torneo SAGA, intentando WARMASTER...', sagaError);
         }
-        
+
+        if (!torneoData){
+          try {
+            dataTorneo = await torneosWarmasterApi.obtenerTorneo(torneoId)
+            if(dataTorneo.success && dataTorneo.data) {
+              torneoData = dataTorneo.data.torneo || dataTorneo.data
+            }
+          } catch (warmasterError) {
+            console.error('No es un torneo WARMASTER tampoco', warmasterError);
+          }
+        }
+
+        if (torneoData){
+          setTorneo(torneoData)
+        } else {
+          setError ("No se puedo cargar el torneo")
+        }
+
       } catch (err) {
-        console.error("❌ Error al cargar torneo:", err);
-        setError(err.message || "Error al cargar el torneo");
-      } finally {
-        setLoading(false);
-      }
+          console.error("❌ Error al cargar torneo:", err);
+          setError(err.message || "Error al cargar el torneo");
+        } finally {
+          setLoading(false);
+        }
     };
 
     if (torneoId) {

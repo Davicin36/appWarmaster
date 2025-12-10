@@ -1,9 +1,9 @@
 /* ==========================================
-   ADMINISTRAR TORNEO - ESTILOS PRINCIPALES
+   ADMINISTRAR TORNEO - ESTILOS CORREGIDOS
    ========================================== */
 
 .administrar-torneo-container {
-    max-width: 100%;  /* ← Cambiado de 1400px a 100% */
+    max-width: 1400px;  /* ← CORREGIDO: volver a limitar el ancho */
     margin: 0 auto;
     padding: 20px;
     min-height: 100vh;
@@ -54,15 +54,15 @@
 .administrar-torneo-container .torneo-header {
     background: linear-gradient(135deg, var(--color-verde-oscuro) 0%, var(--color-verde-claro) 100%);
     color: white;
-    padding: 30px;
+    padding: 2rem;
     border-radius: 15px;
-    margin-bottom: 30px;
+    margin-bottom: 2rem;
     box-shadow: 0 4px 20px rgba(98, 129, 65, 0.3);
 }
 
 .administrar-torneo-container .torneo-header h1 {
-    margin: 0 0 15px 0;
-    font-size: 2em;
+    margin: 0 0 1.5rem 0;
+    font-size: 2.5rem;
     text-align: center;
     color: white;
 }
@@ -71,15 +71,9 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 25px;
+    gap: 1rem;
     flex-wrap: wrap;
-    font-size: 1em;
-}
-
-.administrar-torneo-container .torneo-info span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+    font-size: 1rem;
 }
 
 .administrar-torneo-container .info-item {
@@ -96,10 +90,10 @@
    ========================================== */
 
 .administrar-torneo-container .estado-badge {
-    padding: 6px 16px;
+    padding: 0.5rem 1.2rem;
     border-radius: 20px;
-    font-weight: bold;
-    font-size: 0.9em;
+    font-weight: 700;
+    font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -126,10 +120,10 @@
 
 .vista-nav {
     display: flex;
-    gap: 10px;
-    margin-bottom: 30px;
+    gap: 1rem;
+    margin-bottom: 2rem;
     background: white;
-    padding: 15px;
+    padding: 1rem;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     flex-wrap: wrap;
@@ -138,12 +132,12 @@
 .vista-nav button {
     flex: 1;
     min-width: 150px;
-    padding: 12px 20px;
+    padding: 1rem 1.5rem;
     border: 2px solid var(--color-beige);
     background: white;
     color: var(--color-texto-principal);
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -173,7 +167,7 @@
 .contenido-principal {
     background: white;
     border-radius: 10px;
-    padding: 30px;  /* ← Este padding reduce el espacio */
+    padding: 2rem;  /* ← CORREGIDO: padding consistente */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     min-height: 500px;
 }
@@ -183,18 +177,18 @@
    ========================================== */
 
 .footer-controles {
-    margin-top: 30px;
-    padding: 20px;
+    margin-top: 2rem;
+    padding: 1.5rem;
     text-align: center;
 }
 
 .btn-atras {
     background: linear-gradient(135deg, #795548, #6D4C41);
     color: white;
-    padding: 12px 24px;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -213,10 +207,10 @@
 .btn-primary {
     background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
     color: white;
-    padding: 12px 24px;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -238,10 +232,10 @@
 .btn-secondary {
     background: linear-gradient(135deg, #95A5A6, #7F8C8D);
     color: white;
-    padding: 12px 24px;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -262,10 +256,10 @@
 .btn-success {
     background: linear-gradient(135deg, var(--color-exito), #1E8449);
     color: white;
-    padding: 12px 24px;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -280,10 +274,10 @@
 .btn-warning {
     background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
     color: white;
-    padding: 12px 24px;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -298,10 +292,10 @@
 .btn-danger {
     background: linear-gradient(135deg, var(--color-error), #C0392B);
     color: white;
-    padding: 12px 24px;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -319,21 +313,21 @@
 
 @media (max-width: 768px) {
     .administrar-torneo-container {
-        padding: 10px;
+        padding: 1rem;
     }
 
-    .torneo-header {
-        padding: 20px;
+    .administrar-torneo-container .torneo-header {
+        padding: 1.5rem;
     }
 
-    .torneo-header h1 {
-        font-size: 1.5em;
+    .administrar-torneo-container .torneo-header h1 {
+        font-size: 1.8rem;
     }
 
-    .torneo-info {
+    .administrar-torneo-container .torneo-info {
         flex-direction: column;
-        gap: 10px;
-        font-size: 0.9em;
+        gap: 0.75rem;
+        font-size: 0.9rem;
     }
 
     .vista-nav {
@@ -345,13 +339,13 @@
     }
 
     .contenido-principal {
-        padding: 20px;
+        padding: 1.5rem;
     }
 }
 
 @media (max-width: 480px) {
-    .torneo-header h1 {
-        font-size: 1.3em;
+    .administrar-torneo-container .torneo-header h1 {
+        font-size: 1.5rem;
     }
 
     .btn-primary,
@@ -360,7 +354,7 @@
     .btn-warning,
     .btn-danger,
     .btn-atras {
-        padding: 10px 20px;
-        font-size: 0.9em;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
     }
 }

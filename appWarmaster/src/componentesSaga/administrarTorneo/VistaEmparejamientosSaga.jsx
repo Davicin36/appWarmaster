@@ -517,7 +517,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
 
                 <div className="enfrentamiento">
                     <div className="jugador">
-                        <div className="nombre">{partida.jugador1_nombre}</div>
+                        <div className="nombre">
+                            {partida.jugador1_nombre}
+                            {partida.jugador1?.nombre_alias && ` "${partida.jugador1?.nombre_alias}"`}
+                        </div>
                         {partida.jugador1?.equipo_nombre && (
                             <div className="equipo">🏆 {partida.jugador1.equipo_nombre}</div>
                         )}
@@ -535,7 +538,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
 
                     {partida.jugador2_nombre ? (
                         <div className="jugador">
-                            <div className="nombre">{partida.jugador2_nombre}</div>
+                             <div className="nombre">
+                            {partida.jugador2_nombre}
+                            {partida.jugador2?.nombre_alias && ` "${partida.jugador2?.nombre_alias}"`}
+                        </div>
                             {partida.jugador2?.equipo_nombre && (
                                 <div className="equipo">🏆 {partida.jugador2.equipo_nombre}</div>
                             )}
@@ -787,7 +793,9 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                                     {partidasGuardadas.length > 0 ? (
                                         renderPartidas(partidasGuardadas, true)
                                     ) : (
+                                       
                                         emparejamientos.map((emp, index) => {
+                                            
                                             const esEquipos = esTorneoEquipos();
                                             
                                             // 🎯 PARA TORNEOS DE EQUIPOS
@@ -808,9 +816,11 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                                                                             <span className="epoca-badge">{partida.epoca || 'Sin época'}</span>
                                                                             <div>
                                                                                 <span className="jugadores-partida">
-                                                                                    {partida.jugador1_nombre} 
+                                                                                    {partida.jugador1_nombre}
+                                                                                    {jugador1Alias && ` "${jugador1Alias}"`}
                                                                                     <strong> vs </strong> 
                                                                                     {partida.jugador2_nombre || '⭐ BYE'}
+                                                                                    {jugador2Alias && ` "${jugador2Alias}"`}
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -824,22 +834,32 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                         
                                             // 🎯 PARA TORNEOS INDIVIDUALES (mantener código original)
                                             const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
+                                            const jugador1Alias = emp.jugador1?.nombre_alias
                                             const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
-                                            
+                                            const jugador2Alias = emp.jugador2?.nombre_alias
+
                                             return (
                                                 <div key={index} className="emparejamiento-card">
                                                     <div className="mesa-numero preview">
-                                                        Mesa {emp.mesa || index + 1}
-                                                        {emp.es_bye && ' ⭐ BYE'}
+                                                        Mesa {emp.mesa || index + 1} 
+                                                        {emp.es_bye === 1  && ' ⭐ BYE'}
                                                     </div>
                                                     <div className="enfrentamiento">
                                                         <div className="jugador">
-                                                            <div className="nombre">{jugador1Nombre}</div>
+                                                            <div className="nombre">
+                                                                {jugador1Nombre}
+                                                                {jugador1Alias && ` "${jugador1Alias}"`}
+                                                            </div>
                                                         </div>
                                                         <div className="vs">VS</div>
                                                         <div className="jugador">
                                                             <div className="nombre">
-                                                                {emp.es_bye ? '⭐ BYE' : jugador2Nombre}
+                                                                {emp.es_bye ? '⭐ BYE' : (
+                                                                    <>
+                                                                        {jugador2Nombre}
+                                                                        {jugador2Alias && ` "${jugador2Alias}"`}
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

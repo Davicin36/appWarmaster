@@ -72,11 +72,7 @@ function Perfil() {
             setLoadingTorneos(true);
             setErrorTorneos("");
 
-            console.log('📥 Cargando torneos del usuario:', user.id);
-
-            const response = await usuarioApi.obtenerTorneosUsuario(user.id);
-            
-            console.log('✅ Respuesta de torneos:', response);
+           const response = await usuarioApi.obtenerTorneosUsuario(user.id);
 
             // Verificar estructura de respuesta
             if (response.success || response.data) {

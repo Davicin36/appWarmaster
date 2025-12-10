@@ -67,6 +67,18 @@
     color: var(--color-verde-oscuro);
 }
 
+.alias {
+    font-style: italic;
+    color: #666;
+    font-size: 0.9em;
+    margin: 0.25rem 0;
+}
+
+.miembro-header .alias {
+    margin-left: 0.5rem;
+    font-size: 0.85em;
+}
+
 /* ==========================================
    BOTONES DE PAGO
    ========================================== */

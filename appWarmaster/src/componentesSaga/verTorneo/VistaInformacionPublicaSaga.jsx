@@ -1,5 +1,3 @@
-import React from 'react';
-
 function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
     if (tipoTorneo === 'Individual') {
         return (
@@ -24,6 +22,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                     <div className="jugador-info">
                                         <h3>
                                             👤 {inscrito.jugador_nombre || 'Sin nombre'} {inscrito.jugador_apellidos || ''}
+                                            {inscrito.nombre_alias && ` "${inscrito.nombre_alias}"`}
                                         </h3>
                                         {inscrito.club && <p className="club">🏛️ {inscrito.club}</p>}
                                         {inscrito.ciudad && <p className="ubicacion">📍 {inscrito.ciudad}</p>}
@@ -97,6 +96,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                                         <span className="miembro-nombre">
                                                             {miembro.es_capitan && '👑 '}
                                                             {miembro.nombre || 'Sin nombre'}
+                                                            {miembro.nombre_alias && ` "${miembro.nombre_alias}"`}
                                                         </span>
                                                         <span className="miembro-epoca-banda">
                                                             {miembro.epoca || 'Sin época'} - {miembro.banda || 'Sin banda'}
