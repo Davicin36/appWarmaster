@@ -29,9 +29,11 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const [partidaSeleccionada, setPartidaSeleccionada] = useState(null);
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [esOrganizador, setEsOrganizador] = useState(false);
+        const [esParticipante, setEsParticipante] = useState (false)
 
     const esTorneoEquipos = () => torneo?.tipo_torneo === 'Por equipos';
 
+    //VERIFICAMOS EL TOKEN DEL JUGADOR
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -47,17 +49,27 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
         }
     }, []);
 
+    //CARGAR SI ES EL ORGANIZADOR
     useEffect(() => {
         if (torneo?.created_by && usuarioActual?.id) {
             setEsOrganizador(torneo.created_by === usuarioActual.id);
         }
     }, [torneo, usuarioActual]);
 
+    //CARGAR LOS DATOS DEL TORNEO
     useEffect(() => {
         if (torneoId) {
             cargarDatos();
         }
     }, [torneoId]);
+
+    //VER SI ES PARTICIPANTE O NO DEL TORNEO
+    useEffect (() => {
+        if(usuarioActual && (jugadores.length > 0 || equipos.length >0)) {
+            setEsParticipante(verificarEsParticipante())
+        }
+    }, [usuarioActual, jugadores, equipos, torneo])
+
 
     const cargarDatos = async () => {
         try {
@@ -103,24 +115,71 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
         }
     };
 
+    const verificarEsParticipante = () => {
+        if (!usuarioActual?.id ) return false
+
+        if (esTorneoEquipos()) {
+            return equipos.some(equipo => 
+                equipo.jugadores?.some(j=> j.jugador_id === usuarioActual.id)
+            )
+        } else {
+            return jugadores.some (j => 
+                j.jugador_id === usuarioActual.id || j.id === usuarioActual.id
+            )
+        }
+    }
+
+     const puedeVerPartidas = () => {
+        // El organizador siempre puede ver
+        if (esOrganizador) return true;
+        
+        // Si el torneo está finalizado, todos pueden ver
+        if (torneo?.estado === 'finalizado') return true;
+        
+        // Si el torneo está en curso, solo los participantes pueden ver
+        if (torneo?.estado === 'en_curso') {
+            return esParticipante;
+        }
+        
+        // Si está pendiente, nadie puede ver excepto el organizador
+        return false;
+    };
+
     const cargarTodasLasPartidas = async (tId = torneoId) => {
         try {
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setTodasLasPartidas([]);
+                return;
+            }
+
             const response = await torneosSagaApi.obtenerPartidasTorneo(tId);
             const partidas = response?.data || response || []
             const partidasArray = Array.isArray(partidas) ? partidas : []
 
             setTodasLasPartidas(partidasArray);
         } catch (err) {
-            console.error('Error al cargar todas las partidas:', err);
-            setTodasLasPartidas([])
+        console.error('Error al cargar todas las partidas:', err);
+        if (err.message?.includes('Token no proporcionado') || 
+            err.message?.includes('Acceso denegado')) {
+            setTodasLasPartidas([]);
         }
-    };
+    }
+};
 
     const cargarPartidasRonda = async (tId = torneoId, ronda = torneo?.ronda_actual) => {
     try {
         setCargandoPartidas(true);
+
+        //PARA COMPROBAR SI EL VISITANTE TIENE TOKEN
+         const token = localStorage.getItem('token');
+        if (!token) {
+            setPartidasGuardadas([]);
+            return;
+        }
         
-        // 🎯 Usar el endpoint correcto según el tipo de torneo
+        // PARA CARGAR EL ENDPOINT DEPENDIENDO DEL TIPO DE TORNEO
         let response;
         if (esTorneoEquipos()) {
             response = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
@@ -133,9 +192,15 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
 
         setPartidasGuardadas(partidasArray);
          
-    } catch (err) {
+    }catch (err) {
         console.error('Error al cargar partidas:', err);
-        setCargandoPartidas([])
+        if (err.message?.includes('Token no proporcionado') || 
+            err.message?.includes('Acceso denegado')) {
+            setPartidasGuardadas([]);
+        } else {
+            // Otros errores sí se muestran
+            console.error('Error inesperado:', err);
+        }
     } finally {
         setCargandoPartidas(false);
     }
@@ -420,8 +485,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     }
 };
 
-    // Agrupar partidas por enfrentamiento de equipos (para torneos de equipos)
-    // Función para agrupar partidas por equipos y luego por época
+    /*
+    FUNCION PARA AGRUPAR LOS EMPAREJAMIENTOS DE LOS TORNEOS POR EQUIPOS EN FUNCIONES
+    DE LA EPOCA EN LA QUE ESTA CADA MIEMBRO DEL EQUIPO.
+    */
     const agruparPartidasPorEquipos = (partidas) => {
         if (!esTorneoEquipos()) return partidas;
 
@@ -774,137 +841,156 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                 </div>
             ) : (
                 <>
-                    {partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
-                        <div className="empty-message">
-                            <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
-                        </div>
-                    ) : (
-                        <>
-                            {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
-                                <div className="info-box">
-                                    <p>
-                                        ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong> 
-                                        {' '}Haz clic en "Guardar en BD" para crear las partidas en la base de datos.
-                                    </p>
+                {!puedeVerPartidas() ? (
+                    <div className="empty-message">
+                        <p>🔒 Solo los participantes del torneo pueden ver los emparejamientos</p>
+                        {!usuarioActual && (
+                            <p style={{marginTop: '10px', fontSize: '0.9em', color: '#666'}}>
+                                Inicia sesión si eres participante
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                            {partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
+                                <div className="empty-message">
+                                    <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
                                 </div>
-                            )}
+                            ) : (
+                                <>
+                                    {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
+                                        <div className="info-box">
+                                            <p>
+                                                ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong> 
+                                                {' '}Haz clic en "Guardar en BD" para crear las partidas en la base de datos.
+                                            </p>
+                                        </div>
+                                    )}
 
-                                <div className="emparejamientos-grid">
-                                    {partidasGuardadas.length > 0 ? (
-                                        renderPartidas(partidasGuardadas, true)
-                                    ) : (
-                                       
-                                        emparejamientos.map((emp, index) => {
-                                            
-                                            const esEquipos = esTorneoEquipos();
-                                            
-                                            // 🎯 PARA TORNEOS DE EQUIPOS
-                                            if (esEquipos && emp.jugadores_equipo1) {
-                                                return (
-                                                    <div key={index} className="enfrentamiento-equipos-preview">
-                                                        <div className="header-equipos-preview">
-                                                            <h4>⚔️ {emp.equipo1_nombre} {emp.equipo2_nombre ? `vs ${emp.equipo2_nombre}` : '(BYE)'}</h4>
+                                    <div className="emparejamientos-grid">
+                                        {partidasGuardadas.length > 0 ? (
+                                            renderPartidas(partidasGuardadas, true)
+                                        ) : (
+                                           
+                                            emparejamientos.map((emp, index) => {
+                                                
+                                                const esEquipos = esTorneoEquipos();
+                                                
+                                                // 🎯 PARA TORNEOS DE EQUIPOS
+                                                if (esEquipos && emp.jugadores_equipo1) {
+                                                    return (
+                                                        <div key={index} className="enfrentamiento-equipos-preview">
+                                                            <div className="header-equipos-preview">
+                                                                <h4>⚔️ {emp.equipo1_nombre} {emp.equipo2_nombre ? `vs ${emp.equipo2_nombre}` : '(BYE)'}</h4>
+                                                            </div>
+                                                            
+                                                            {/* PARTIDAS de los equipos */}
+                                                            {emp.partidas && emp.partidas.length > 0 && (
+                                                                <div className="partidas-preview">
+                                                                    <h6>Partidas de los Equipos ({emp.partidas.length}):</h6>
+                                                                    <div className="lista-partidas-preview">
+                                                                        {emp.partidas.map((partida, pIndex) => {
+                                                                            const jugador1Alias = partida.jugador1_alias;
+                                                                            const jugador2Alias = partida.jugador2_alias;
+                                                                            
+                                                                            return (
+                                                                                <div key={pIndex} className="partida-individual-preview">
+                                                                                    <span className="epoca-badge">{partida.epoca || 'Sin época'}</span>
+                                                                                    <div>
+                                                                                        <span className="jugadores-partida">
+                                                                                            {partida.jugador1_nombre}
+                                                                                            {jugador1Alias && ` "${jugador1Alias}"`}
+                                                                                            <strong> vs </strong> 
+                                                                                            {partida.jugador2_nombre || '⭐ BYE'}
+                                                                                            {jugador2Alias && ` "${jugador2Alias}"`}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        
-                                                        {/* PARTIDAS de los equipos */}
-                                                        {emp.partidas && emp.partidas.length > 0 && (
-                                                            <div className="partidas-preview">
-                                                                <h6>Partidas de los Equipos ({emp.partidas.length}):</h6>
-                                                                <div className="lista-partidas-preview">
-                                                                    {emp.partidas.map((partida, pIndex) => (
-                                                                        <div key={pIndex} className="partida-individual-preview">
-                                                                            <span className="epoca-badge">{partida.epoca || 'Sin época'}</span>
-                                                                            <div>
-                                                                                <span className="jugadores-partida">
-                                                                                    {partida.jugador1_nombre}
-                                                                                    {jugador1Alias && ` "${jugador1Alias}"`}
-                                                                                    <strong> vs </strong> 
-                                                                                    {partida.jugador2_nombre || '⭐ BYE'}
-                                                                                    {jugador2Alias && ` "${jugador2Alias}"`}
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
+                                                    );
+                                                }
+                            
+                                                // 🎯 PARA TORNEOS INDIVIDUALES (mantener código original)
+                                                const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
+                                                const jugador1Alias = emp.jugador1?.nombre_alias
+                                                const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
+                                                const jugador2Alias = emp.jugador2?.nombre_alias
+
+                                                return (
+                                                    <div key={index} className="emparejamiento-card">
+                                                        <div className="mesa-numero preview">
+                                                            Mesa {emp.mesa || index + 1} 
+                                                            {emp.es_bye === 1  && ' ⭐ BYE'}
+                                                        </div>
+                                                        <div className="enfrentamiento">
+                                                            <div className="jugador">
+                                                                <div className="nombre">
+                                                                    {jugador1Nombre}
+                                                                    {jugador1Alias && ` "${jugador1Alias}"`}
                                                                 </div>
                                                             </div>
-                                                        )}
+                                                            <div className="vs">VS</div>
+                                                            <div className="jugador">
+                                                                <div className="nombre">
+                                                                    {emp.es_bye ? '⭐ BYE' : (
+                                                                        <>
+                                                                            {jugador2Nombre}
+                                                                            {jugador2Alias && ` "${jugador2Alias}"`}
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 );
-                                            }
-                        
-                                            // 🎯 PARA TORNEOS INDIVIDUALES (mantener código original)
-                                            const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
-                                            const jugador1Alias = emp.jugador1?.nombre_alias
-                                            const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
-                                            const jugador2Alias = emp.jugador2?.nombre_alias
-
-                                            return (
-                                                <div key={index} className="emparejamiento-card">
-                                                    <div className="mesa-numero preview">
-                                                        Mesa {emp.mesa || index + 1} 
-                                                        {emp.es_bye === 1  && ' ⭐ BYE'}
-                                                    </div>
-                                                    <div className="enfrentamiento">
-                                                        <div className="jugador">
-                                                            <div className="nombre">
-                                                                {jugador1Nombre}
-                                                                {jugador1Alias && ` "${jugador1Alias}"`}
-                                                            </div>
-                                                        </div>
-                                                        <div className="vs">VS</div>
-                                                        <div className="jugador">
-                                                            <div className="nombre">
-                                                                {emp.es_bye ? '⭐ BYE' : (
-                                                                    <>
-                                                                        {jugador2Nombre}
-                                                                        {jugador2Alias && ` "${jugador2Alias}"`}
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                            </div>
-                        </>
-                    )}
-
-                    {rondasAnteriores.length > 0 && (
-                        <div className="rondas-anteriores">
-                            <h3>📜 Rondas Anteriores</h3>
-                            
-                            {rondasAnteriores.map(ronda => {
-                                const partidasRonda = grupos[ronda] || [];
-                                const expandida = rondasExpandidas[ronda];
-                                
-                                return (
-                                    <div key={ronda} className="acordeon-ronda">
-                                        <div 
-                                            className="acordeon-header"
-                                            onClick={() => toggleRonda(ronda)}
-                                        >
-                                            <div className="titulo">
-                                                <strong>Ronda {ronda}</strong>
-                                                <span>{partidasRonda.length} partidas</span>
-                                            </div>
-                                            <div className="icono">
-                                                {expandida ? '▼' : '▶'}
-                                            </div>
-                                        </div>
-                                        
-                                        {expandida && (
-                                            <div className="acordeon-body">
-                                                <div className="emparejamientos-grid">
-                                                    {renderPartidas(partidasRonda, false)}
-                                                </div>
-                                            </div>
+                                            })
                                         )}
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </>
+                            )}
+
+                            {/* ✅ MODIFICADO: Rondas anteriores también protegidas */}
+                            {rondasAnteriores.length > 0 && (
+                                <div className="rondas-anteriores">
+                                    <h3>📜 Rondas Anteriores</h3>
+                                    
+                                    {rondasAnteriores.map(ronda => {
+                                        const partidasRonda = grupos[ronda] || [];
+                                        const expandida = rondasExpandidas[ronda];
+                                        
+                                        return (
+                                            <div key={ronda} className="acordeon-ronda">
+                                                <div 
+                                                    className="acordeon-header"
+                                                    onClick={() => toggleRonda(ronda)}
+                                                >
+                                                    <div className="titulo">
+                                                        <strong>Ronda {ronda}</strong>
+                                                        <span>{partidasRonda.length} partidas</span>
+                                                    </div>
+                                                    <div className="icono">
+                                                        {expandida ? '▼' : '▶'}
+                                                    </div>
+                                                </div>
+                                                
+                                                {expandida && (
+                                                    <div className="acordeon-body">
+                                                        <div className="emparejamientos-grid">
+                                                            {renderPartidas(partidasRonda, false)}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
                     )}
                 </>
             )}

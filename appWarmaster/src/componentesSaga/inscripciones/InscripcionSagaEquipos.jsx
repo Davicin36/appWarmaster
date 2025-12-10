@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -154,9 +153,17 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     const nuevosMiembros = [...miembrosEquipo];
     nuevosMiembros[index][campo] = valor;
     
-    // Si cambia época, resetear banda
+    // ✅ MODIFICADO: Si cambia época, resetear banda Y puntos
     if (campo === 'epoca') {
       nuevosMiembros[index].banda = "";
+      nuevosMiembros[index].puntos = { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 };
+      nuevosMiembros[index].detalleMercenarios = "";
+    }
+    
+    // ✅ NUEVO: Si se borra la banda, resetear puntos
+    if (campo === 'banda' && !valor) {
+      nuevosMiembros[index].puntos = { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 };
+      nuevosMiembros[index].detalleMercenarios = "";
     }
     
     // Si cambia email, resetear validación
@@ -233,12 +240,12 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
+    // ✅ MODIFICADO: Solo validar nombre, email y época (banda y puntos son opcionales)
     const miembrosValidos = miembrosEquipo.filter(
-      m => m.nombre.trim() && m.email.trim() && m.epoca && m.banda
+      m => m.nombre.trim() && m.email.trim() && m.epoca
     );
   
     
-    // ✅ CORRECCIÓN: La sintaxis estaba mal
     if (miembrosValidos.length !== jugadoresPorEquipo) {
       setError(`El equipo debe tener exactamente ${jugadoresPorEquipo} jugadores (incluyéndote). Actualmente tienes ${miembrosValidos.length}.`);
       return;
@@ -251,16 +258,18 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
-    // Validar puntos de cada miembro
-    const miembrosSinPuntosCorrectos = miembrosValidos.filter(m => !validarPuntosMiembro(m));
+    // ✅ MODIFICADO: Solo validar puntos si el miembro tiene banda seleccionada
+    const miembrosConBanda = miembrosValidos.filter(m => m.banda && m.banda.trim());
+    const miembrosSinPuntosCorrectos = miembrosConBanda.filter(m => !validarPuntosMiembro(m));
+    
     if (miembrosSinPuntosCorrectos.length > 0) {
-      setError(`Todos los jugadores deben tener exactamente ${puntosMaximos} puntos distribuidos`);
+      setError(`Los jugadores con banda seleccionada deben tener exactamente ${puntosMaximos} puntos distribuidos`);
       return;
     }
 
-    // Validar mercenarios
+    // ✅ MODIFICADO: Solo validar mercenarios si hay banda
     for (const miembro of miembrosValidos) {
-      if (miembro.puntos.mercenarios > 0 && !miembro.detalleMercenarios.trim()) {
+      if (miembro.banda && miembro.puntos.mercenarios > 0 && !miembro.detalleMercenarios.trim()) {
         setError(`El jugador ${miembro.nombre} debe detallar sus mercenarios`);
         return;
       }
@@ -299,26 +308,26 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
               nombre: m.nombre.trim(),
               email: m.email.toLowerCase().trim(),
               epoca: m.epoca,
-              banda: m.banda,
-              puntos: m.puntos,
-              detalleMercenarios: m.detalleMercenarios || null,
+              banda: m.banda || null,
+              puntos: m.banda ? m.puntos : null, // ✅ Solo enviar puntos si hay banda
+              detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null,
               esCapitan: m.esCapitan
             }))
           : otrosMiembros.map(m => ({
               email: m.email.toLowerCase().trim(),
               epoca: m.epoca,
-              banda: m.banda,
-              puntos: m.puntos,
-              detalleMercenarios: m.detalleMercenarios || null
+              banda: m.banda || null,
+              puntos: m.banda ? m.puntos : null, // ✅ Solo enviar puntos si hay banda
+              detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null
             }))
       };
 
       // En modo creación, añadir mis propios datos
       if (!modoEdicion) {
         inscripcionData.miEpoca = misDatos.epoca;
-        inscripcionData.miBanda = misDatos.banda;
-        inscripcionData.misPuntos = misDatos.puntos;
-        inscripcionData.miDetalleMercenarios = misDatos.detalleMercenarios || null;
+        inscripcionData.miBanda = misDatos.banda || null;
+        inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null; // ✅ Solo enviar puntos si hay banda
+        inscripcionData.miDetalleMercenarios = (misDatos.banda && misDatos.detalleMercenarios) ? misDatos.detalleMercenarios : null;
       }
 
       // 🔍 LOG CRÍTICO
@@ -361,8 +370,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
         {modoEdicion ? '✏️ Editar Equipo' : '👥 Inscribir Equipo'}: {torneo?.nombre_torneo}
       </h1>
       
+      {/* ✅ MODIFICADO: Mensaje actualizado */}
       <div className="info-message info-equipos">
-        ℹ️ Serás el capitán inicial. Cada jugador debe configurar su banda con {puntosMaximos} puntos.
+        ℹ️ Cada jugador debe seleccionar su época. La banda y los puntos son opcionales, pero si se elige banda, los puntos deben sumar {puntosMaximos}.
       </div>
 
       <form onSubmit={handleSubmit} className="inscripcion-form">
@@ -487,11 +497,11 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       </select>
                     </div>
 
-                    {/* BANDA - Solo si hay época seleccionada */}
+                    {/* BANDA - OPCIONAL */}
                     {miembro.epoca && (
                       <div className="form-group">
                         <label htmlFor = {`banda-${index}`}>
-                          Banda * ({miembro.epoca})
+                          Banda (Opcional) ({miembro.epoca})
                           <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}>
                             ({bandasDisponibles.length} disponible{bandasDisponibles.length !== 1 ? 's' : ''})
                           </span>
@@ -500,10 +510,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                           id={`banda-${index}`}
                           value={miembro.banda}
                           onChange={(e) => actualizarMiembro(index, 'banda', e.target.value)}
-                          required
                           disabled={loading}
                         >
-                          <option value="">-- Selecciona banda --</option>
+                          <option value="">-- Selecciona banda (opcional) --</option>
                           {bandasDisponibles.length === 0 ? (
                             <option value="" disabled>⚠️ No hay bandas para esta época</option>
                           ) : (
@@ -517,7 +526,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       </div>
                     )}
 
-                    {/* DISTRIBUCIÓN DE PUNTOS - Solo si hay banda seleccionada */}
+                    {/* ✅ MODIFICADO: DISTRIBUCIÓN DE PUNTOS - Solo si hay BANDA */}
                     {miembro.banda && (
                       <div className="puntos-banda-section">
                         <h4>Distribución de Puntos</h4>
