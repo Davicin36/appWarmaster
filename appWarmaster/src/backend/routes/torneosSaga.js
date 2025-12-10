@@ -2225,12 +2225,14 @@ router.get('/:torneoId/partidasTorneoSaga', async (req, res) => {
     const partidasFormateadas = partidas.map(p => ({
       ...p,
       jugador1: {
+        nombre_alias: p.jugador1_alias || null, 
         equipo_nombre: p.jugador1_equipo_nombre || null,
         equipo_id: p.jugador1_equipo_id || null,
         faccion: p.jugador1_faccion || null,
         epoca: p.jugador1_epoca || null
       },
       jugador2: p.jugador2_id ? {
+        nombre_alias: p.jugador2_alias || null, 
         equipo_nombre: p.jugador2_equipo_nombre || null,
         equipo_id: p.jugador2_equipo_id || null,
         faccion: p.jugador2_faccion || null,
@@ -3253,8 +3255,10 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, asyn
         ps.*,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
+        u1.nombre_alias as jugador1_alias,
         u2.nombre as jugador2_nombre,
-        u2.apellidos as jugador2_apellidos
+        u2.apellidos as jugador2_apellidos,
+        u2.nombre_alias as jugador2_alias
       FROM partidas_saga ps
       LEFT JOIN usuarios u1 ON ps.jugador1_id = u1.id
       LEFT JOIN usuarios u2 ON ps.jugador2_id = u2.id AND ps.es_bye = FALSE
@@ -3264,7 +3268,18 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, asyn
     
     const [partidasConJoins] = await pool.execute(queryConJoins, params);
     
-    res.json(partidasConJoins);
+    // Formatear con objetos anidados para jugador1 y jugador2
+    const partidasFormateadas = partidasConJoins.map(p => ({
+      ...p,
+      jugador1: {
+        nombre_alias: p.jugador1_alias || null
+      },
+      jugador2: p.jugador2_id ? {
+        nombre_alias: p.jugador2_alias || null
+      } : null
+    }));
+    
+    res.json(partidasFormateadas);
     
   } catch (error) {
     console.error('❌ ERROR COMPLETO:', error);
@@ -3692,6 +3707,7 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
                 tse.nombre_equipo,
                 u.nombre as jugador_nombre,
                 u.apellidos as jugador_apellidos,
+                u.nombre_alias,
                 u.club,
                 jts.faccion,
                 jts.epoca,
@@ -3752,6 +3768,7 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
         
         u.nombre as capitan_nombre,
         u.apellidos as capitan_apellidos,
+        u.nombre_alias,
         u.club as capitan_club
         
       FROM clasificacion_equipos_saga ceqs
@@ -3771,6 +3788,7 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
         jts.faccion,
         u.nombre as jugador_nombre,
         u.apellidos as jugador_apellidos,
+        u.nombre_alias,
         u.club as jugador_club,
         
         cjs.partidas_jugadas as jugador_partidas_jugadas,
@@ -3802,6 +3820,7 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
         jugador_id: jugador.jugador_id,
         nombre: jugador.jugador_nombre,
         apellidos: jugador.jugador_apellidos,
+        alias: jugador.nombre_alias,
         club: jugador.jugador_club,
         epoca: jugador.epoca,
         faccion: jugador.faccion,
@@ -3838,6 +3857,7 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
         id: equipo.capitan_id,
         nombre: equipo.capitan_nombre,
         apellidos: equipo.capitan_apellidos,
+        alias: equipo.nombre_alias,
         club: equipo.capitan_club
       },
       

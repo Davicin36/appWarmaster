@@ -48,10 +48,13 @@ export const TIPOS_PARTIDA_SAGA = [
         "Desacralización",
         "Captura",
         "Bienes de valor",
-        "Cambio de planes",
         "Reclamar el territorio",
         "Festines y saqueos",
-        "El cruce"
+        "Emboscada",
+        "Mantener el botín",
+        "Cambio de planes",
+        "El cruce",
+        "Vieja Disputa"
     ];
 
     export const ESTADOS_TORNEO_SAGA = [

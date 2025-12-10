@@ -136,6 +136,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                     <th>Pos</th>
                     <th>Jugador</th>
                     {esTorneoEquipos() && <th>Equipo</th>}
+                    <th>Alias</th>
                     <th>Club</th>
                     <th>Facción</th>
                     <th>Epocas</th>
@@ -165,6 +166,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                         {esTorneoEquipos() && (
                             <td>{jugador.nombre_equipo || '-'}</td>
                         )}
+                        <td>{jugador.nombre_alias || '-'}</td>
                         <td>{jugador.club || '-'}</td>
                         <td>{jugador.faccion || '-'}</td>
                         <td>{jugador.epoca}</td>

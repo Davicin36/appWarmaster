@@ -190,6 +190,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                                 <tr>
                                     <th>#</th>
                                     <th>Jugador</th>
+                                    <th>Alias</th>
                                     <th>Club</th>
                                     <th>Época</th>
                                     <th>Facción</th>
@@ -224,6 +225,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                                             <td className="nombre-jugador-completo">
                                                 {jugador.jugador_nombre} {jugador.jugador_apellidos}
                                             </td>
+                                            <td>{jugador.nombre_alias || '-'}</td>
                                             <td>{jugador.club || '-'}</td>
                                             <td>{jugador.epoca || '-'}</td>
                                             <td>{jugador.faccion || '-'}</td>
