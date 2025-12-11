@@ -1512,11 +1512,11 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       const usuarioId = usuario[0].id;
 
       const composicion = JSON.stringify({
-        guardias: miembro.puntos.guardias,
-        guerreros: miembro.puntos.guerreros,
-        levas: miembro.puntos.levas,
-        mercenarios: miembro.puntos.mercenarios,
-        detalleMercenarios: miembro.detalleMercenarios
+        guardias: miembro.puntos?.guardias || null,
+        guerreros: miembro.puntos?.guerreros || null,
+        levas: miembro.puntos?.levas || null,
+        mercenarios: miembro.puntos?.mercenarios || null,
+        detalleMercenarios: miembro.detalleMercenarios || null
       });
 
       const [resultadoJugador] = await connection.execute(

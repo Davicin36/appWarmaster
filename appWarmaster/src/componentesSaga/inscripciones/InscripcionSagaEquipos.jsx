@@ -336,7 +336,6 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       console.log('  - Otros miembros:', inscripcionData.miembros.length);
       console.log('  - Mi época:', inscripcionData.miEpoca);
       console.log('  - Mi banda:', inscripcionData.miBanda);
-      console.log('  - Total jugadores:', inscripcionData.miembros.length + 1);
 
       let resultado;
       
