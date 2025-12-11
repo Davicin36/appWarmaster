@@ -101,7 +101,7 @@ function AdministrarTorneo() {
                     className={vistaActiva === 'jugadores' ? 'active' : ''} 
                     onClick={() => setVistaActiva('jugadores')}
                 >
-                    👥 Jugadores
+                    {torneo.tipo_torneo === 'Por equipos' ? '👥 Equipos' : '👤 Jugadores'}
                 </button>
                 <button 
                     className={vistaActiva === 'emparejamientos' ? 'active' : ''} 
@@ -125,7 +125,7 @@ function AdministrarTorneo() {
                         onUpdate={cargarTorneo} 
                     />
                 )}
-                
+        
                 {vistaActiva === 'jugadores' && (
                     <VistaJugadores 
                         tipoJuego={tipoJuego}

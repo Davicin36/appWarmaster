@@ -157,9 +157,25 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             }
         }
 
-        if (datosEdicion.participantes_max < jugadores.length) {
-            setErrorEdicion(`No puedes reducir el número de participantes a menos de ${jugadores.length}`);
-            return;
+        if (datosEdicion.tipo_torneo === 'Por equipos'){
+            if (!datosEdicion.num_jugadores_equipo || datosEdicion.num_jugadores_equipo < JUGADORES_EQUIPO_RANGO.min){
+                setErrorEdicion(`Los torneos por equipos deben de tener al menos ${JUGADORES_EQUIPO_RANGO.min} jugadores por equipo.`)
+                return
+            }
+            if (datosEdicion.epocas_disponibles.length < datosEdicion.num_jugadores_equipo){
+                setErrorEdicion(`Debes seleccionar al menos ${datosEdicion.num_jugadores_equipo} épocas para cada miembro del equipo.`)
+                return
+            }
+
+            if (datosEdicion.equipos_max < equipos.length){
+                setErrorEdicion(`No puedes reducir el número de equipos a menos de ${equipos.length}`)
+                return
+            }
+        }else {
+            if (datosEdicion.participantes_max < jugadores.length) {
+                setErrorEdicion(`No puedes reducir el número de participantes a menos de ${jugadores.length}`);
+                return;
+            }
         }
 
         if (!window.confirm('¿Deseas guardar los cambios en el torneo?')) return;
@@ -523,7 +539,6 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                                     ))}
                                 </select>
                             </div>
-
                             <div className="form-group">
                                 <label htmlFor="puntos_banda">Puntos Banda:*</label>
                                 <input
@@ -540,28 +555,54 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                                 <small>{PUNTOS_BANDA_RANGO.min}-{PUNTOS_BANDA_RANGO.max} pts</small>
                             </div>
 
-                            <div className="form-group">
-                                <label htmlFor="participantes_max">
-                                    {esTorneoEquipos ? 'Equipos Máx:*' : 'Participantes:*'}
-                                </label>
-                                <input
-                                    type="number"
-                                    id="participantes_max"
-                                    name="participantes_max"
-                                    value={datosEdicion.participantes_max}
-                                    onChange={handleEdicionChange}
-                                    min={Math.max(esTorneoEquipos ? totalEquipos : totalJugadores, esTorneoEquipos ? EQUIPOS_RANGO.min : PARTICIPANTES_RANGO.min)}
-                                    max={esTorneoEquipos ? EQUIPOS_RANGO.max : PARTICIPANTES_RANGO.max}
-                                    required
-                                    disabled={loadingEdicion}
-                                />
-                                <small>
-                                    {esTorneoEquipos 
-                                        ? `${EQUIPOS_RANGO.min}-${EQUIPOS_RANGO.max}`
-                                        : `${PARTICIPANTES_RANGO.min}-${PARTICIPANTES_RANGO.max}`
-                                    }
-                                </small>
-                            </div>
+                            {esTorneoEquipos ? ( 
+                                <>
+                                    <div className="form-group">
+                                        <label htmlFor="equipos_max">Equipos Máx:*</label>
+                                        <input
+                                            type="number"
+                                            id="equipos_max"
+                                            name="equipos_max"
+                                            value={datosEdicion.equipos_max}
+                                            onChange={handleEdicionChange}
+                                            min={Math.max( totalEquipos, EQUIPOS_RANGO.min)}
+                                            max={EQUIPOS_RANGO.max}
+                                            required
+                                            disabled={loadingEdicion}
+                                        />
+                                        <small>{EQUIPOS_RANGO.min}-{EQUIPOS_RANGO.max}</small>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label htmlFor="participantes_calculados">Participantes totales::</label>
+                                        <input
+                                            type="number"
+                                            id="participantes_calculados"
+                                            value={datosEdicion.equipos_max * datosEdicion.num_jugadores_equipo}
+                                            disabled
+                                            readOnly
+                                            className="input-calculado"
+                                        />
+                                        <small>Calculado automáticamente</small>
+                                    </div>
+                                </>
+                              ) : (
+                                <div className="form-group">
+                                        <label htmlFor="participantes_max">Participantes:*</label>
+                                        <input
+                                            type="number"
+                                            id="participantes_max"
+                                            name="participantes_max"
+                                            value={datosEdicion.participantes_max}
+                                            onChange={handleEdicionChange}
+                                            min={Math.max( totalJugadores, PARTICIPANTES_RANGO.min)}
+                                            max={PARTICIPANTES_RANGO.max}
+                                            required
+                                            disabled={loadingEdicion}
+                                        />
+                                        <small>{PARTICIPANTES_RANGO.min}-{PARTICIPANTES_RANGO.max}</small>
+                                    </div>
+                            )}
                         </div>
 
                         <label htmlFor="estado">Estado del Torneo:*</label>

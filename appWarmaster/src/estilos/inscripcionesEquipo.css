@@ -68,16 +68,17 @@
 
 .miembro-numero {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  background-color: #2196f3;
+  padding: 4px, 12px;
+  background-color: #0d7dd9;
   color: white;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
   font-size: 14px;
+  white-space: nowrap;
+  gap: 4px;
 }
 
 .miembro-campos {

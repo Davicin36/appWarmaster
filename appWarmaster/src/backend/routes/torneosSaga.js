@@ -800,7 +800,9 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 
     // Validar que el torneo existe y obtener su época
     const [torneos] = await pool.execute(
-      'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
+      `SELECT puntos_banda, particpantes_max, estado, tipo_torneo 
+          FROM torneos_sistemas 
+          WHERE id = ?`,
       [torneoId]
     );
 
@@ -811,6 +813,33 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
     }
 
     const torneo = torneos[0];
+
+    if (torneo.estado !== 'pendiente'){
+      return res.status(400).json (
+        errorResponse('Solo puedes inscribirte en torneos que estén en estado PENDIENTE')
+      )
+    }
+
+    if (torneo.tipo_torneo === 'Por equipos') {
+      return res.status(400).json(
+        errorResponse('Este es un torneo por equipos, Debes inscribirte con un equipo')
+      )
+    }
+
+    const [conteoJugadores] = await pool.execute(
+      `SELECT COUNT(*) as total
+      FROM jugador_torneo_saga
+      WHERE torneo_id = ?`,
+      [torneoId]
+    )
+
+    const jugadoresInscritos = conteoJugadores[0].total
+
+    if(jugadoresInscritos >= torneo.participantes_max){
+      return res.status(400).json(
+        errorResponse(`TORNEO COMPLETO: Ya están todas las plazas cubiertas del maximo de ${torneo.participantes_max}`)
+      )
+    }
 
     const [epocaBD] =await pool.execute(
       'SELECT epoca FROM torneo_saga_epocas WHERE torneo_id = ?',
@@ -824,7 +853,6 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
     }
 
     const epocaTorneo = epocaBD[0].epoca.trim();
-     console.log('✅ Época del torneo:', epocaTorneo);
 
     // Validar puntos 
     if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios){
@@ -888,8 +916,6 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         0       // warlord_muerto por defecto 0
       ]
     );
-
-    console.log(`✅ Usuario ${usuarioId} inscrito en torneo ${torneoId}`);
 
     res.json(
       successResponse('Inscripción realizada exitosamente', {
@@ -1072,7 +1098,9 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         tipo_torneo, 
         num_jugadores_equipo,
         participantes_max,
-        puntos_banda
+        equipos_max,
+        puntos_banda,
+        estado
       FROM torneos_sistemas 
       WHERE id = ?`,
       [torneoId]
@@ -1084,6 +1112,13 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
     }
 
     const torneo = torneos[0];
+
+    if (torneo.estado !== 'pendiente') {
+      await connection.rollback();
+      return res.status(400).json(
+        errorResponse('Solo puedes inscribirte en torneos que estén en estado PENDIENTE')
+      );
+    }
 
     if (torneo.tipo_torneo !== 'Por equipos') {
       await connection.rollback();
@@ -1097,6 +1132,31 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       await connection.rollback();
       return res.status(400).json(
         errorResponse('El torneo no tiene configurado el número de jugadores por equipo')
+      );
+    }
+
+    if (!torneo.equipos_max) {
+      await connection.rollback();
+      return res.status(400).json(
+        errorResponse('El torneo no tiene configurado el número máximo de equipos')
+      );
+    }
+
+    const [conteoEquipos] = await connection.execute(
+      `SELECT COUNT(*) as total 
+       FROM torneo_saga_equipo 
+       WHERE torneo_id = ?`,
+      [torneoId]
+    );
+
+    const equiposActuales = conteoEquipos[0].total;
+
+     if (equiposActuales >= torneo.equipos_max) {
+      await connection.rollback();
+      return res.status(400).json(
+        errorResponse(
+          `❌ TORNEO COMPLETO: Ya hay ${equiposActuales} equipos inscritos (máximo: ${torneo.equipos_max})`
+        )
       );
     }
 
@@ -1591,13 +1651,13 @@ router.patch('/:torneoId/equipos/:equipoId/pago', verificarToken, async (req, re
             return res.status(404).json(errorResponse('Equipo no encontrado'));
         }
 
+        const pagadoNumerico = (pagado === 'pagado') ? 1 : 0;
+
        const [resultJugadores] = await pool.execute(`
             UPDATE jugador_torneo_saga 
             SET pagado = ?
             WHERE torneo_id = ? AND equipo_id = ?
-        `, [pagado, torneoId, equipoId]);
-
-        console.log(`✅ Actualizados ${resultJugadores.affectedRows} jugadores del equipo`);
+        `, [pagadoNumerico, torneoId, equipoId]);
 
         res.json(successResponse(
             `Estado de pago actualizado a: ${pagado}. Equipo y ${resultJugadores.affectedRows} jugador(es) actualizados.`
