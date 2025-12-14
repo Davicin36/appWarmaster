@@ -145,6 +145,7 @@ export const BANDAS_POR_EPOCA = {
     { nombre: "MOROS" },
     { nombre: "MILITES CHRISTI" },
     { nombre: "MUTTATAWI'A" },
+    { nombre: "PRINCIPES DEL ESTE" },
     { nombre: "PUEBLOS PAGANOS" },
     { nombre: "POLACOS" },
     { nombre: "SARRACERNOS" },
