@@ -1,25 +1,6 @@
-/* index.css - CON SCROLL HORIZONTAL PERMITIDO */
-
-/* ===== PERMITIR SCROLL HORIZONTAL EN TODA LA PÁGINA ===== */
-html, body {
-  width: 100%;
-  overflow-x: auto !important; /* CAMBIO CRÍTICO: auto en lugar de hidden */
-  overflow-y: auto !important;
-  position: relative;
-}
-
-#root {
-  width: 100%;
-  min-width: 1200px !important; /* CRÍTICO: Fuerza scroll horizontal cuando ventana < 1200px */
-  overflow-x: visible !important;
-}
-
-/* NO limitar el ancho máximo */
-.navbar,
-section,
-.tabla-container {
-  box-sizing: border-box;
-}
+/* ========================================
+   INDEX.CSS - ESTILOS GLOBALES
+   ======================================== */
 
 /* ===== VARIABLES DE COLOR ===== */
 :root {
@@ -28,8 +9,8 @@ section,
   --color-naranja-hover: #D35400;
   --color-verde-oscuro: #628141;
   --color-verde-claro: #8BAE66;
-  --color-beige: #EBD5AB;
-  --color-beige-oscuro: #D4BC8F;
+  --color-beige: #F5E6D3;
+  --color-beige-oscuro: #E8D4B8;
   
   /* Colores funcionales */
   --color-texto-principal: #2C3E50;
@@ -60,6 +41,7 @@ section,
 html {
   height: 100%;
   width: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -67,8 +49,8 @@ body {
   min-height: 100vh;
   background: linear-gradient(135deg, var(--color-beige) 0%, var(--color-fondo-principal) 100%);
   color: var(--color-texto-principal);
-  font-family: inherit;
-  overflow-x: auto !important; /* PERMITIR scroll horizontal */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden;
   margin: 0;
   padding: 0;
 }
@@ -79,20 +61,17 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 0;
-  margin: 0;
 }
 
 /* ===== TIPOGRAFÍA BASE ===== */
 h1, h2, h3, h4, h5, h6 {
   color: var(--color-verde-oscuro);
   font-weight: 700;
-  margin-bottom: 1rem;
+  line-height: 1.2;
 }
 
 h1 {
   font-size: 2.5rem;
-  text-align: center;
 }
 
 h2 {
@@ -103,8 +82,19 @@ h3 {
   font-size: 1.5rem;
 }
 
+h4 {
+  font-size: 1.25rem;
+}
+
+h5 {
+  font-size: 1.1rem;
+}
+
+h6 {
+  font-size: 1rem;
+}
+
 p {
-  margin-bottom: 1rem;
   line-height: 1.6;
 }
 
@@ -113,97 +103,17 @@ a {
   color: var(--color-naranja);
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease;
 }
 
 a:hover {
   color: var(--color-naranja-hover);
-  text-decoration: underline;
-}
-
-/* ===== BOTONES GLOBALES ===== */
-button {
-  border-radius: 8px;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  font-family: inherit;
-  background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
-  color: var(--color-texto-claro);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(230, 126, 34, 0.3);
-}
-
-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(230, 126, 34, 0.4);
-  background: linear-gradient(135deg, var(--color-naranja-hover), var(--color-naranja));
-}
-
-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(230, 126, 34, 0.3);
-}
-
-button:disabled {
-  background: linear-gradient(135deg, #BDC3C7, #95A5A6);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  opacity: 0.6;
-}
-
-button:focus-visible {
-  outline: 3px solid var(--color-verde-claro);
-  outline-offset: 2px;
-}
-
-/* ===== INPUTS GLOBALES ===== */
-input,
-select,
-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
-  font-family: inherit;
-  border: 2px solid var(--color-beige-oscuro);
-  border-radius: 8px;
-  background-color: white;
-  color: var(--color-texto-principal);
-  transition: all 0.3s ease;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--color-naranja);
-  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.2);
-}
-
-input:disabled,
-select:disabled,
-textarea:disabled {
-  background-color: #ECF0F1;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* ===== LABELS ===== */
-label {
-  display: block;
-  font-weight: 600;
-  color: var(--color-verde-oscuro);
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
 }
 
 /* ===== SCROLLBAR PERSONALIZADA ===== */
 ::-webkit-scrollbar {
   width: 12px;
-  height: 12px; /* Altura para scroll horizontal */
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
@@ -215,6 +125,7 @@ label {
   background: var(--color-verde-claro);
   border-radius: 6px;
   border: 2px solid var(--color-beige);
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -227,57 +138,251 @@ label {
   scrollbar-color: var(--color-verde-claro) var(--color-beige);
 }
 
+/* ===== UTILIDADES ===== */
+
+/* Ocultar arrows de input number */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Focus visible para accesibilidad */
+*:focus-visible {
+  outline: 2px solid var(--color-naranja);
+  outline-offset: 2px;
+}
+
+/* Selección de texto */
+::selection {
+  background-color: var(--color-naranja);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--color-naranja);
+  color: white;
+}
+
+/* ===== CLASES DE UTILIDAD ===== */
+
+/* Contenedores */
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.container-fluid {
+  width: 100%;
+  padding: 0 2rem;
+}
+
+/* Espaciado */
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.pt-1 { padding-top: 0.5rem; }
+.pt-2 { padding-top: 1rem; }
+.pt-3 { padding-top: 1.5rem; }
+.pt-4 { padding-top: 2rem; }
+
+.pb-1 { padding-bottom: 0.5rem; }
+.pb-2 { padding-bottom: 1rem; }
+.pb-3 { padding-bottom: 1.5rem; }
+.pb-4 { padding-bottom: 2rem; }
+
+/* Texto */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-bold { font-weight: 700; }
+.text-semibold { font-weight: 600; }
+.text-normal { font-weight: 400; }
+
+/* Display */
+.d-none { display: none; }
+.d-block { display: block; }
+.d-flex { display: flex; }
+.d-grid { display: grid; }
+
+/* Flex */
+.flex-row { flex-direction: row; }
+.flex-column { flex-direction: column; }
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ===== ANIMACIONES GLOBALES ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.fade-in-down {
+  animation: fadeInDown 0.5s ease-out;
+}
+
 /* ===== RESPONSIVIDAD ===== */
 @media (max-width: 1024px) {
+  .container {
+    max-width: 960px;
+    padding: 0 1.5rem;
+  }
+  
   h1 { font-size: 2.2rem; }
   h2 { font-size: 1.8rem; }
   h3 { font-size: 1.4rem; }
 }
 
 @media (max-width: 768px) {
+  .container {
+    max-width: 720px;
+    padding: 0 1rem;
+  }
+  
   h1 { font-size: 2rem; }
   h2 { font-size: 1.75rem; }
-  h3 { font-size: 1.25rem; }
+  h3 { font-size: 1.3rem; }
   
-  button {
-    padding: 0.65rem 1.25rem;
-    font-size: 0.95rem;
-    width: 100%; /* Botones a ancho completo en móviles */
+  /* Ocultar en móvil */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 0.75rem;
   }
   
-  input,
-  select,
-  textarea {
-    font-size: 16px; /* Evita zoom automático en iOS */
-  }
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.2rem; }
 }
 
 @media (max-width: 480px) {
-  h1 { font-size: 1.75rem; }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.1rem; }
-  
-  button {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
+  .container {
+    padding: 0 0.5rem;
   }
   
-  /* Reducir padding general en móviles pequeños */
-  #root {
-    padding: 0;
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1.1rem; }
+}
+
+/* Ocultar en desktop */
+@media (min-width: 769px) {
+  .hide-desktop {
+    display: none !important;
   }
 }
 
-/* ===== DESACTIVAR SCROLL HORIZONTAL EN MÓVILES ===== */
-@media (max-width: 1100px) {
-  html,
+/* ===== ACCESIBILIDAD ===== */
+
+/* Skip to main content */
+.skip-to-main {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  background: var(--color-naranja);
+  color: white;
+  padding: 1rem;
+  text-decoration: none;
+  z-index: 9999;
+}
+
+.skip-to-main:focus {
+  top: 0;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ===== IMPRESIÓN ===== */
+@media print {
   body {
-    overflow-x: hidden !important; /* Desactivar scroll en móviles */
+    background: white;
   }
   
-  #root {
-    min-width: unset !important; /* Quitar ancho mínimo */
-    width: 100% !important;
-    overflow-x: hidden !important;
+  .no-print {
+    display: none !important;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
   }
 }

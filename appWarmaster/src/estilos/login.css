@@ -26,6 +26,10 @@
   }
 }
 
+.login-modal-overlay.hidden-temp {
+    visibility: hidden;
+}
+
 /* ===== CONTENIDO DEL MODAL ===== */
 .login-modal-content {
   background: white;

@@ -23,9 +23,10 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
     const [loading, setLoading] = useState(true);
     
     const [modoEdicion, setModoEdicion] = useState(false);
+    const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [datosEdicion, setDatosEdicion] = useState({
         nombre_torneo: '',
-        tipo_torneo: '',
+        tipo_torneo: 'Individual',
         rondas_max: RONDAS_DISPONIBLES[0].valor,
         puntos_ejercito: PUNTOS_EJERCITO_WARMASTER.default,
         participantes_max: PARTICIPANTES_RANGO.default,
@@ -52,15 +53,25 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
     useEffect(() => {
         if (torneo) {
+
+            const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+            
+            // 🆕 DETECTAR DURACIÓN AUTOMÁTICAMENTE
+            if (fechaFin && fechaFin !== fechaInicio) {
+                setDuracionTorneo("2"); // Varios días
+            } else {
+                setDuracionTorneo("1"); // Un día
+            }
            
             setDatosEdicion({
                 nombre_torneo: torneo.nombre_torneo || '',
-                tipo_torneo: torneo.tipoTorneo,
+                tipo_torneo: 'Individual',
                 rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
                 puntos_ejercito: torneo.puntos_ejercito || PUNTOS_EJERCITO_WARMASTER.default,
                 participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-                fecha_inicio: torneo.fecha_inicio?.split('T')[0] || '',
-                fecha_fin: torneo.fecha_fin?.split('T')[0] || '',
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
                 ubicacion: torneo.ubicacion || '',
                 estado: torneo.estado || 'pendiente',
                 partida_ronda_1: torneo.partida_ronda_1 || '',
@@ -121,19 +132,28 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             setLoadingEdicion(true);
             setErrorEdicion('');
 
+            const datosLimpios = {
+                ...datosEdicion,
+                fecha_fin: duracionTorneo === "1" ? null : (datosEdicion.fecha_fin || null),
+                ubicacion: datosEdicion.ubicacion || null,
+                partida_ronda_3: datosEdicion.partida_ronda_3 || null,
+                partida_ronda_4: datosEdicion.partida_ronda_4 || null,
+                partida_ronda_5: datosEdicion.partida_ronda_5 || null
+            };
+
             let dataToSend;
             
             if (archivoPDF || eliminarPDF) {
                 dataToSend = new FormData();
-                Object.keys(datosEdicion).forEach(key => {
-                   if (datosEdicion[key] !== null && datosEdicion[key] !== '') {
-                        dataToSend.append(key, datosEdicion[key]);
+                Object.keys(datosLimpios).forEach(key => {
+                   if (datosLimpios[key] !== null && datosLimpios[key] !== '') {
+                        dataToSend.append(key, datosLimpios[key]);
                     }
                 });
                 if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
                 if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
             } else {
-                dataToSend = {...datosEdicion};
+                dataToSend = {...datosLimpios};
             }
 
             await torneosWarmasterApi.actualizarTorneo(torneoId, dataToSend);
@@ -160,14 +180,25 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         setEliminarPDF(false);
         
         if (torneo) {
+
+            const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+            
+            // 🆕 RESTAURAR DURACIÓN ORIGINAL
+            if (fechaFin && fechaFin !== fechaInicio) {
+                setDuracionTorneo("2");
+            } else {
+                setDuracionTorneo("1");
+            }
+
             setDatosEdicion({
                 nombre_torneo: torneo.nombre_torneo || '',
-                tipo_torneo: torneo.tipoTorneo,
+                tipo_torneo: 'Individual',
                 rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
                 puntos_ejercito: torneo.puntos_ejercito || PUNTOS_EJERCITO_WARMASTER.default,
                 participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-                fecha_inicio: torneo.fecha_inicio?.split('T')[0] || '',
-                fecha_fin: torneo.fecha_fin?.split('T')[0] || '',
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
                 ubicacion: torneo.ubicacion || '',
                 estado: torneo.estado || 'pendiente',
                 partida_ronda_1: torneo.partida_ronda_1 || '',
@@ -185,9 +216,39 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             return;
         }
 
-        // ✅ VALIDAR PAGOS SI SE INTENTA INICIAR EL TORNEO
+        // ✅ VALIDACIONES PARA PODER INICIAR EL TORNEO
         if (nuevoEstado === 'en_curso') {
             try {
+                const jugadoresData = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
+                const jugadoresList = Array.isArray(jugadoresData) ? jugadoresData : jugadoresData.data || [];
+                
+                if (jugadoresList.length === 0) {
+                    alert('❌ NO SE PUEDE INICIAR EL TORNEO\n\nNo hay jugadores inscritos.');
+                    return;
+                }
+
+                const inscripcionesIncompletas = jugadoresList.filter(jugador => {
+                    const faltaNombreEjercito = !jugador.nombre_ejercito || jugador.nombre_ejercito.trim() === '';
+                    const faltaFaccion = !jugador.faccion_ejercito || jugador.faccion_ejercito.trim() === '';
+                    return faltaNombreEjercito || faltaFaccion;
+                });
+
+                if (inscripcionesIncompletas.length > 0) {
+                    const nombresIncompletos = inscripcionesIncompletas
+                        .map(j => `• ${j.nombre_usuario}`)
+                        .join('\n');
+                    
+                    alert(
+                        `❌ NO SE PUEDE INICIAR EL TORNEO\n\n` +
+                        `HAY ${inscripcionesIncompletas.length} INSCRIPCIÓN(ES) INCOMPLETA(S):\n\n` +
+                        `${nombresIncompletos}\n\n` +
+                        `Todos los jugadores deben completar:\n` +
+                        `✓ Nombre del ejército\n` +
+                        `✓ Facción del ejército`
+                    );
+                    return;
+                }
+                //VERIFICAR PAGOS DE LOS JUGADORES
                 const response = await torneosWarmasterApi.verificarPagos(torneoId);
 
                 const todosPagados = response.mensaje.todosPagados;
@@ -249,7 +310,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         }
     };
 
-        const eliminarTorneo = async () => {
+    const eliminarTorneo = async () => {
         if (jugadores.length > 0) {
             alert(`⚠️ No se puede eliminar el torneo porque tiene ${jugadores.length} jugador(es) inscrito(s).`);
             return;
@@ -337,14 +398,15 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             disabled={loadingEdicion}
                         />
 
-                        <label htmlFor="tipo_torneo">Tipo de torneo:*</label>
+                        <label htmlFor="tipo_torneo">Tipo de Torneo:</label>
                         <input 
+                            type="text"
                             id="tipo_torneo"
                             name="tipo_torneo"
-                            value={datosEdicion.tipo_torneo}
-                            onChange={handleEdicionChange}
-                            required
-                            disabled={loadingEdicion}
+                            value="👤 Individual"
+                            disabled
+                            readOnly
+                            className="campo-solo-lectura"
                         />
 
                         <div className="form-row">
@@ -419,33 +481,83 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                     <fieldset>
                         <legend>📅 Fechas y Ubicación</legend>
 
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label htmlFor="fecha_inicio">Fecha Inicio:*</label>
+                        <label>Duración del Torneo:*</label>
+                        <div className="duracion-torneo-container">
+                            <label className="duracion-option">
+                                <input
+                                    type="radio"
+                                    name="duracionTorneo"
+                                    value="1"
+                                    checked={duracionTorneo === "1"}
+                                    onChange={(e) => {
+                                        setDuracionTorneo(e.target.value);
+                                        setDatosEdicion(prev => ({ ...prev, fecha_fin: '' }));
+                                    }}
+                                    disabled={loadingEdicion}
+                                />
+                                📅 Un día
+                            </label>
+                            <label className="duracion-option">
+                                <input
+                                    type="radio"
+                                    name="duracionTorneo"
+                                    value="2"
+                                    checked={duracionTorneo === "2"}
+                                    onChange={(e) => setDuracionTorneo(e.target.value)}
+                                    disabled={loadingEdicion}
+                                />
+                                📅 Dos días o más
+                            </label>
+                        </div>
+
+                        {duracionTorneo === "1" ? (
+                            <>
+                                <label htmlFor="fecha_inicio">Fecha del Torneo:*</label>
                                 <input
                                     type="date"
                                     id="fecha_inicio"
                                     name="fecha_inicio"
                                     value={datosEdicion.fecha_inicio}
                                     onChange={handleEdicionChange}
+                                    min={new Date().toISOString().split('T')[0]}
                                     required
                                     disabled={loadingEdicion}
                                 />
-                            </div>
+                                <small className="help-text">
+                                    🗓️ El torneo se celebrará en un solo día
+                                </small>
+                            </>
+                        ) : (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label htmlFor="fecha_inicio">Fecha de Inicio:*</label>
+                                    <input
+                                        type="date"
+                                        id="fecha_inicio"
+                                        name="fecha_inicio"
+                                        value={datosEdicion.fecha_inicio}
+                                        onChange={handleEdicionChange}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        required
+                                        disabled={loadingEdicion}
+                                    />
+                                </div>
 
-                            <div className="form-group">
-                                <label htmlFor="fecha_fin">Fecha Fin:</label>
-                                <input
-                                    type="date"
-                                    id="fecha_fin"
-                                    name="fecha_fin"
-                                    value={datosEdicion.fecha_fin}
-                                    onChange={handleEdicionChange}
-                                    min={datosEdicion.fecha_inicio}
-                                    disabled={loadingEdicion}
-                                />
+                                <div className="form-group">
+                                    <label htmlFor="fecha_fin">Fecha de Fin:*</label>
+                                    <input
+                                        type="date"
+                                        id="fecha_fin"
+                                        name="fecha_fin"
+                                        value={datosEdicion.fecha_fin}
+                                        onChange={handleEdicionChange}
+                                        min={datosEdicion.fecha_inicio || new Date().toISOString().split('T')[0]}
+                                        required
+                                        disabled={loadingEdicion}
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <label htmlFor="ubicacion">Ubicación:</label>
                         <input
@@ -458,6 +570,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             disabled={loadingEdicion}
                         />
                     </fieldset>
+
 
                     <fieldset>
                         <legend>🎲 Escenarios por Ronda</legend>
@@ -633,6 +746,11 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                                     <p>{torneo.ubicacion}</p>
                                 </div>
                             )}
+
+                            <div className="info-item">
+                                <label>📅 Fecha Inicio:</label>
+                                <p>{new Date(torneo.fecha_inicio).toLocaleDateString('es-ES')}</p>
+                            </div>
 
                             {torneo.fecha_fin && (
                                 <div className="info-item">

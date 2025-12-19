@@ -42,7 +42,7 @@ const upload = multer({
 
 router.get('/obtenerTorneos', async (req, res) => {
   try {
-    console.log('📥 GET /api/torneosWarmaster');
+    console.log('📥 GET /api/torneosWarmaster/obtenerTorneos');
     
     const { page = 1, limit = 10, buscar = '' } = req.query;
     const { limit: limitNum, offset } = paginar(page, limit);
@@ -60,25 +60,23 @@ router.get('/obtenerTorneos', async (req, res) => {
       }
     }
     
-    let whereClause = 'WHERE ts.sistema = ?';
-    let params = ['WARMASTER'];
+    let whereClause = 'WHERE ts.sistema = "WARMASTER"';
+    let queryParams = [userId];
     
     if (buscar.trim()) {
       whereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
       const searchTerm = `%${buscar}%`;
-      params.push(searchTerm, searchTerm);
+      queryParams.push(searchTerm, searchTerm);
     }
-    
-    // DEBUG: Verificar los parámetros finales
-    const queryParams = [userId, ...params, limitNum, offset];
 
+    queryParams.push(parseInt(limitNum), parseInt(offset));
+    
     const [torneos] = await pool.query(`
       SELECT 
         ts.id,
         ts.nombre_torneo,
         ts.sistema,
         ts.tipo_torneo,
-        ts.num_jugadores_equipo,
         ts.rondas_max,
         ts.ronda_actual,
         ts.fecha_inicio,
@@ -86,7 +84,6 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.ubicacion,
         ts.puntos_ejercito,
         ts.participantes_max,
-        ts.equipos_max,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -100,7 +97,7 @@ router.get('/obtenerTorneos', async (req, res) => {
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jtw.id ELSE NULL END) as total_participantes,
+        COUNT(DISTINCT jtw.id) as total_participantes,
         MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
@@ -111,13 +108,23 @@ router.get('/obtenerTorneos', async (req, res) => {
       LIMIT ? OFFSET ?
     `, queryParams);
     
+    console.log(`✅ ${torneos.length} torneos Warmaster obtenidos`);
+    
+    // Query para contar total
+    let countParams = [];
+    let countWhereClause = 'WHERE ts.sistema = "WARMASTER"';
+    
+    if (buscar.trim()) {
+      countWhereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
+      const searchTerm = `%${buscar}%`;
+      countParams = [searchTerm, searchTerm];
+    }
+    
     const [totalRows] = await pool.execute(`
       SELECT COUNT(DISTINCT ts.id) as total
       FROM torneos_sistemas ts 
-      LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
-      ${whereClause}
-    `, params);
+      ${countWhereClause}
+    `, countParams);
     
     const total = totalRows[0].total;
     const totalPages = Math.ceil(total / limitNum);
@@ -135,7 +142,7 @@ router.get('/obtenerTorneos', async (req, res) => {
     );
     
   } catch (error) {
-    console.error('❌ Error al obtener torneos:', error);
+    console.error('❌ Error al obtener torneos Warmaster:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });

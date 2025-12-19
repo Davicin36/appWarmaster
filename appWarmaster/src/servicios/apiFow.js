@@ -2,9 +2,9 @@ import API_URL from "./apiUrl";
 
 const API_BASE_URL = API_URL
 
-class TorneosSagaApi {
+class TorneosFowApi {
   constructor() {
-    this.baseURL = `${API_BASE_URL}/torneosSaga`;
+    this.baseURL = `${API_BASE_URL}/torneosFow`;
   }
 
   async request(endpoint, options = {}) {
@@ -274,5 +274,5 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
   }
 }
 
-export const torneosSagaApi = new TorneosSagaApi();
-export default torneosSagaApi;
+export const torneosFowApi = new TorneosFowApi();
+export default torneosFowApi;

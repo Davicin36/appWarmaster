@@ -350,6 +350,49 @@
   height: 35px;
 }
 
+.duracion-torneo-container {
+    display: flex;
+    gap: 15px;
+    margin: 10px 0 20px 0;
+    flex-wrap: wrap;
+}
+
+.duracion-option {
+    flex: 1;
+    min-width: 150px;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+}
+
+.duracion-option:hover {
+    border-color: #4a90e2;
+    background-color: #f0f7ff;
+}
+
+.duracion-option input[type="radio"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.duracion-option input[type="radio"]:checked + * {
+    font-weight: bold;
+}
+
+.duracion-option:has(input:checked) {
+    border-color: #4a90e2;
+    background-color: #e3f2fd;
+    box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+}
+
 /* ============================================
    INPUT FILE - Estilo personalizado
    ============================================ */

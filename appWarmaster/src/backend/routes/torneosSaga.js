@@ -3,6 +3,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken'); 
 const multer = require('multer');
 const { pool } = require('../config/bd');
+const { enviarInvitacionEquipo } = require('../utils/nodemailer');
 const { verificarToken, verificarOrganizador } = require('../middleware/auth');
 const { 
   calcularPuntosTorneo,
@@ -1143,9 +1144,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
     }
 
     const [conteoEquipos] = await connection.execute(
-      `SELECT COUNT(*) as total 
-       FROM torneo_saga_equipo 
-       WHERE torneo_id = ?`,
+      `SELECT COUNT(*) as total FROM torneo_saga_equipo WHERE torneo_id = ?`,
       [torneoId]
     );
 
@@ -1190,46 +1189,109 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       );
     }
 
+    //PROCESAMIENTO DE JUGADORES DEL TORNEO
+
+    const miembrosConUsuarioId = []
+    const miembrosInvitar = []
+
     if (miembros.length > 0) {
       const emails = miembros.map(m => m.email.toLowerCase().trim());
+
+      if(new set(emails).size !== emails.length){
+        await connection.rollback()
+        return res.status(400).json(
+          errorResponse('No puede haber emails duplicados en el equipo')
+        )
+      }
+
+      const inscritoEmail = (await connection.execute(
+        'SELECT email FROM usuarios WHERE id = ?',
+        [inscriptorId]
+      ))[0][0].email.toLowerCase()
+
+      if (emails.includes(inscritoEmail)) {
+        await connection.rollback()
+        return res.status(400).json(
+          errorResponse('No puedes incluirte a ti mismo en la lista de miembros adicionales del equipo')
+        )
+      }
+
       const placeholders = emails.map(() => '?').join(',');
-      
+      const [yaEnOtroEquipo] = await connection.execute(
+        `SELECT u.email, e.nombre_equipo
+          FROM jugador_torneo_saga jts
+          INNER JOIN usuarios u ON jts.jugador_id = u.id
+          INNER JOIN torneo_saga_equipos e ON jts.equipo_id = e.id
+          WHERE jts.torneo_id = ? AND u.email IN (${placeholders})`,
+          [torneoId, ...emails]
+      )
+
+      if (yaEnOtroEquipo.length > 0) {
+        const detalles = yaEnOtroEquipo.map (u =>`${u.emial} (en "${u.nombre_equipo}")`).join(', ')
+        await connection.rollback()
+        return res.status(400).json(
+          errorResponse(`Usuarios ya inscritos en otros Equipos: ${detalles}`)
+        )
+      }
+
       const [usuariosExistentes] = await connection.execute(
-        `SELECT id, email FROM usuarios WHERE email IN (${placeholders})`,
+        `SELECT id, email, nombre, apellidos, estado_cuenta FROM usuarios WHERE email IN (${placeholders})`,
         emails
       );
 
-      if (usuariosExistentes.length !== emails.length) {
-        const emailsEncontrados = usuariosExistentes.map(u => u.email.toLowerCase());
-        const emailsNoEncontrados = emails.filter(e => !emailsEncontrados.includes(e));
-        
-        await connection.rollback();
-        return res.status(400).json(
-          errorResponse(`Usuarios no registrados: ${emailsNoEncontrados.join(', ')}`)
-        );
-      }
+      const usuariosMap = new Map (
+        usuariosExistentes.map (usu => [usu.email.toLowerCase(), usu])
+      )
 
-      // Verificar que ninguno esté en otro equipo del mismo torneo
-      const [yaEnOtroEquipo] = await connection.execute(
-        `SELECT 
-          u.email, 
-          e.nombre_equipo
-         FROM jugador_torneo_saga j
-         INNER JOIN usuarios u ON j.jugador_id = u.id
-         INNER JOIN torneo_saga_equipo e ON j.equipo_id = e.id
-         WHERE j.torneo_id = ? AND u.email IN (${placeholders})`,
-        [torneoId, ...emails]
-      );
+      for (const miembro of miembros) {
+        const emailLower = miembro.email.toLowerCase().trim()
+        const usuarioExistente = usuario.map.get(emailLower)
 
-      if (yaEnOtroEquipo.length > 0) {
-        const detalles = yaEnOtroEquipo.map(u => `${u.email} (en "${u.nombre_equipo}")`).join(', ');
-        await connection.rollback();
-        return res.status(400).json(
-          errorResponse(`Usuarios ya inscritos: ${detalles}`)
-        );
+        if (usuarioExistente){
+          miembrosConUsuarioId.push ({
+            ...miembro,
+            usuarioID: usuarioExistente.id,
+            nombre: miembro.nombre || `${usuarioExistente.nombre} ${usuarioExistente.id}`.trim(),
+            esNuevo: false
+          })
+        } else {
+          //CREAMOS CUENTA PENDIENTE
+          const [nuevoUsuario] = await connection.execute(
+            `INSERT INTO usuarios (
+              email,
+              nombre,
+              apellidos,
+              password,
+              estado_cuenta
+            ) VALUES (?, ?, ?, ?, ?)`,
+            [
+              emailLower,
+              miembro.nombre || emailLower.split('@')[0],
+              'Pendiente',
+              crypto.randomBytes(20).toString('hex'), // Password temporal
+              'pendiente_registro'
+            ]
+          );
+
+          const nuevoUserId = nuevoUsuario.insertId;
+          
+          miembrosConUsuarioId.push({
+            ...miembro,
+            usuarioId: nuevoUserId,
+            nombre: miembro.nombre || emailLower.split('@')[0],
+            esNuevo: true
+          });
+
+          // Marcar para enviar email
+          miembrosParaInvitar.push({
+            ...miembro,
+            usuarioId: nuevoUserId,
+            nombre: miembro.nombre || emailLower.split('@')[0]
+          });
+        }
       }
     }
-
+  
     const [resultadoEquipo] = await connection.execute(
       `INSERT INTO torneo_saga_equipo (
         torneo_id, 
@@ -1242,6 +1304,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 
     const equipoId = resultadoEquipo.insertId;
 
+  //INTRODUCIR CAPITAN
     const composicionInscriptor = JSON.stringify({
       guardias: misPuntos?.guardias || 0,
       guerreros: misPuntos?.guerreros || 0,
@@ -1280,21 +1343,16 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       [equipoId, inscriptorId, inscriptorJugadorId]
     );
 
-    for (const miembro of miembros) {
-      const [usuario] = await connection.execute(
-        'SELECT id FROM usuarios WHERE email = ?',
-        [miembro.email.toLowerCase().trim()]
-      );
-
       const usuarioId = usuario[0].id;
 
-      const composicionMiembro = JSON.stringify({
-        guardias: miembro.puntos?.guardias || 0,
-        guerreros: miembro.puntos?.guerreros || 0,
-        levas: miembro.puntos?.levas || 0,
-        mercenarios: miembro.puntos?.mercenarios || 0,
-        detalleMercenarios: miembro.detalleMercenarios || null
-      });
+    for (const miembro of miembrosConUsuarioId) {
+          const composicionMiembro = JSON.stringify({
+            guardias: miembro.puntos?.guardias || 0,
+            guerreros: miembro.puntos?.guerreros || 0,
+            levas: miembro.puntos?.levas || 0,
+            mercenarios: miembro.puntos?.mercenarios || 0,
+            detalleMercenarios: miembro.detalleMercenarios || null
+          });
 
       const [resultadoJugador] = await connection.execute(
         `INSERT INTO jugador_torneo_saga (
@@ -1310,7 +1368,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           usuarioId,
           equipoId,
           miembro.epoca,
-          miembro.banda,
+          miembro.banda || null,
           composicionMiembro
         ]
       );
@@ -1327,6 +1385,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       );
     }
 
+    //INICIALIZAR CLASIFICACIONES
     await connection.execute(`
       INSERT INTO clasificacion_equipos_saga (
           torneo_id,
@@ -1384,23 +1443,67 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
             `, [torneoId, usuario[0].id, equipoId]);
         }
 
-        console.log(`✅ Clasificación inicializada para equipo ${equipoId} y sus ${totalMiembros} jugadores`);
-
       await connection.commit();
+
+      if (miembrosParaInvitar.length > 0) {
+       
+      // Obtener info del capitán
+      const [inscriptorInfo] = await connection.execute(
+        'SELECT nombre, apellidos, email FROM usuarios WHERE id = ?',
+        [inscriptorId]
+      );
+
+      const capitan = {
+        nombre: `${inscriptorInfo[0].nombre} ${inscriptorInfo[0].apellidos}`.trim(),
+        email: inscriptorInfo[0].email
+      };
+
+      // Enviar correos en segundo plano (no bloquear la respuesta)
+      setImmediate(async () => {
+        for (const miembro of miembrosParaInvitar) {
+          try {
+            await enviarInvitacionEquipo(
+              {
+                nombre: miembro.nombre,
+                email: miembro.email,
+                epoca: miembro.epoca,
+                banda: miembro.banda
+              },
+              {
+                nombreEquipo,
+                capitan
+              },
+              {
+                nombre_torneo: torneo.nombre_torneo
+              },
+              null // Ya no usamos token
+            );
+          } catch (emailError) {
+            console.error(`  ❌ Error enviando email a ${miembro.email}:`, emailError.message);
+          }
+        }
+      });
+    }
     
         res.json(
       successResponse('Equipo inscrito exitosamente', {
         equipoId,
         torneoId,
         nombreEquipo,
-        totalMiembros
+        totalMiembros,
+        miembrosNuevos: miembrosParaInvitar.length,
+        correosProgramados: miembrosParaInvitar.map(m => m.email)
       })
     );
 
   } catch (error) {
     await connection.rollback();
-    console.error('❌ Error al inscribir equipo:', error);
-    res.status(500).json(errorResponse('Error interno: ' + error.message));
+    console.error('❌ ERROR EN INSCRIPCIÓN:', error);
+    console.error('Stack:', error.stack);
+
+     return res.status(500).json(
+      errorResponse('Error interno del servidor', error.message)
+    );
   } finally {
     connection.release();
   }

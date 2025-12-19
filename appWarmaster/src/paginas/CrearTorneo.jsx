@@ -4,10 +4,10 @@ import { useParams } from "react-router-dom";
 // Importa cada creador de torneos
 import CrearTorneoSaga from "../componentesSaga/CrearTorneoSaga.jsx";
 import CrearTorneoWarmaster from "../componentesWarmaster/CrearTorneoWarmaster.jsx";
-import CrearTorneoFlames from "../componentesFow/CrearTorneoFow.jsx";
+import CrearTorneoFow from "../componentesFow/CrearTorneoFow.jsx";
 
 function CrearTorneoGeneral() {
-    const { juego } = useParams(); // <-- obtiene "saga", "warmaster", etc.
+    const { juego } = useParams();
 
     switch (juego) {
         case "saga":
@@ -17,7 +17,11 @@ function CrearTorneoGeneral() {
             return <CrearTorneoWarmaster />;
 
         case "flames":
-            return <CrearTorneoFlames />;
+            return <CrearTorneoFow />;
+/*
+        case "bolt-action":
+            return <CrearTorneoBolt />;
+*/
 
         default:
             return (

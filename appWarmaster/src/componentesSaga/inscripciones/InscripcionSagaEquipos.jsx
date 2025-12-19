@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { torneosSagaApi } from '@/servicios/apiSaga';
 import { usuarioApi } from '@/servicios/apiUsuarios';
 import { 
-  JUGADORES_EQUIPO_RANGO,
   PUNTOS_BANDA_RANGO,
   obtenerBandasDisponibles
 } from '../funcionesSaga/constantesFuncionesSaga';

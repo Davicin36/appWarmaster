@@ -29,6 +29,7 @@ function CrearTorneoSaga() {
     const [rondasMax, setRondasMax] = useState(RONDAS_DISPONIBLES[0].valor);
     const [epocasSeleccionadas, setEpocasSeleccionadas] = useState([]); 
     const [fechaInicio, setFechaInicio] = useState("");
+    const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
     const [puntosBanda, setPuntosBanda] = useState(PUNTOS_BANDA_RANGO.default);
@@ -177,8 +178,8 @@ function CrearTorneoSaga() {
         try {
             let torneoData;
             
+            //AÑADIENDO BASES PDF AL FORMDATA
             if (archivoPDF) {
-                console.log('📤 Preparando FormData con PDF...');
                 torneoData = new FormData();
                 torneoData.append('nombre_torneo', nombreTorneo);
                 torneoData.append('tipo_torneo', tipoTorneo);
@@ -201,6 +202,7 @@ function CrearTorneoSaga() {
                 torneoData.append('bases_pdf', archivoPDF);
                 
             } else {
+                //CUANDO NO SE AÑADEN BASES PDF
                 torneoData = {
                     nombre_torneo: nombreTorneo,
                     tipo_torneo: tipoTorneo,
@@ -477,28 +479,82 @@ function CrearTorneoSaga() {
                 <fieldset>
                     <legend>📅 Fechas y Ubicación</legend>
                     
-                    <label htmlFor="fechaInicio">Fecha de Inicio:*</label>
-                    <input 
-                        name="fechaInicio" 
-                        id="fechaInicio" 
-                        type="date"
-                        value={fechaInicio}
-                        onChange={(e) => setFechaInicio(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        required
-                        disabled={loading}
-                    />
+                    <label>Duración del Torneo:*</label>
+                    <div className="duracion-torneo-container">
+                        <label className="duracion-option">
+                            <input
+                                type="radio"
+                                name="duracionTorneo"
+                                value="1"
+                                checked={duracionTorneo === "1"}
+                                onChange={(e) => {
+                                    setDuracionTorneo(e.target.value);
+                                    setFechaFin(""); // Limpiar fecha fin
+                                }}
+                                disabled={loading}
+                            />
+                            📅 Un día
+                        </label>
+                        <label className="duracion-option">
+                            <input
+                                type="radio"
+                                name="duracionTorneo"
+                                value="2"
+                                checked={duracionTorneo === "2"}
+                                onChange={(e) => setDuracionTorneo(e.target.value)}
+                                disabled={loading}
+                            />
+                            📅 Dos días o más días
+                        </label>
+                    </div>
 
-                    <label htmlFor="fechaFin">Fecha de Fin:</label>
-                    <input 
-                        name="fechaFin" 
-                        id="fechaFin" 
-                        type="date"
-                        value={fechaFin}
-                        onChange={(e) => setFechaFin(e.target.value)}
-                        min={fechaInicio || new Date().toISOString().split('T')[0]}
-                        disabled={loading}
-                    />
+                    {duracionTorneo === "1" ? (
+                        <>
+                            <label htmlFor="fechaInicio">Fecha del Torneo:*</label>
+                            <input 
+                                name="fechaInicio" 
+                                id="fechaInicio" 
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                required
+                                disabled={loading}
+                            />
+                            <small className="help-text">
+                                🗓️ El torneo se celebrará en un solo día
+                            </small>
+                        </>
+                    ) : (
+                        <>
+                            <label htmlFor="fechaInicio">Fecha de Inicio:*</label>
+                            <input 
+                                name="fechaInicio" 
+                                id="fechaInicio" 
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                required
+                                disabled={loading}
+                            />
+
+                            <label htmlFor="fechaFin">Fecha de Fin:*</label>
+                            <input 
+                                name="fechaFin" 
+                                id="fechaFin" 
+                                type="date"
+                                value={fechaFin}
+                                onChange={(e) => setFechaFin(e.target.value)}
+                                min={fechaInicio || new Date().toISOString().split('T')[0]}
+                                required
+                                disabled={loading}
+                            />
+                            <small className="help-text">
+                                🗓️ El torneo se celebrará durante 2 o más días.
+                            </small>
+                        </>
+                    )}
 
                     <label htmlFor="ubicacion">Ubicación:</label>
                     <input 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
 
+import RecuperarPassword from '@/paginas/loginRecuperacion/RecuperarPassword.jsx'
+
 import '../estilos/login.css';
 
 function Login({ isOpen, onClose }) {
@@ -12,6 +14,7 @@ function Login({ isOpen, onClose }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [showRecuperarModal, setShowRecuperarModal] = useState(false)
     
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -101,85 +104,115 @@ function Login({ isOpen, onClose }) {
         }
     };
 
+    const handleRecuperarClick = () => {
+        setShowRecuperarModal(true);
+        // Ocultar temporalmente el modal de login
+        document.querySelector('.login-modal-overlay')?.classList.add('hidden-temp');
+    }
+
+    const handleCloseRecuperar = () => {
+        setShowRecuperarModal(false);
+        // Mostrar de nuevo el modal de login
+        document.querySelector('.login-modal-overlay')?.classList.remove('hidden-temp');
+    }
+
     if (!isOpen) return null; // ✅ No renderizar si no está abierto
 
     return (
-        <div className="login-modal-overlay" onClick={handleOverlayClick}>
-            <div className="login-modal-content">
-                {/* Botón cerrar */}
-                <button 
-                    className="modal-close-btn"
-                    onClick={onClose}
-                    aria-label="Cerrar"
-                    type="button"
-                >
-                    ✕
-                </button>
-
-                <h2 className="modal-title">Iniciar Sesión</h2>
-                
-                <form className="login-form-modal" onSubmit={handleSubmit}>
-                    {error && (
-                        <div className="error-message">
-                            {error}
-                        </div>
-                    )}
-                    
-                    <div className="form-group">
-                        <label htmlFor="email">Email:</label>
-                        <input 
-                            type="email" 
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="Introduce tu email"
-                            required
-                            disabled={loading}
-                            autoComplete="email"
-                        />
-                    </div>
-                    
-                    <div className="form-group">
-                        <label htmlFor="password">Contraseña:</label>
-                        <input 
-                            type={showPassword ? "text" : "password"}
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Introduce tu contraseña" 
-                            required
-                            disabled={loading}
-                            autoComplete="current-password"
-                        />
-                    </div>
-
-                    <div className="checkbox-group">
-                        <input 
-                            type="checkbox" 
-                            id="showPassword"
-                            checked={showPassword}
-                            onChange={togglePasswordVisibility}
-                            disabled={loading}
-                        />
-                        <label htmlFor="showPassword">Mostrar contraseña</label>
-                    </div>
-                    
+        <>
+            <div className="login-modal-overlay" onClick={handleOverlayClick}>
+                <div className="login-modal-content">
+                    {/* Botón cerrar */}
                     <button 
-                        type="submit" 
-                        className="btn-primary"
-                        disabled={loading}
+                        className="modal-close-btn"
+                        onClick={onClose}
+                        aria-label="Cerrar"
+                        type="button"
                     >
-                        {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                        ✕
                     </button>
+
+                    <h2 className="modal-title">Iniciar Sesión</h2>
                     
-                    <p className="register-link">
-                        ¿No tienes cuenta? <Link to="/registrarse" onClick={onClose}>Regístrate aquí</Link>
-                    </p>
-                </form>
+                    <form className="login-form-modal" onSubmit={handleSubmit}>
+                        {error && (
+                            <div className="error-message">
+                                {error}
+                            </div>
+                        )}
+                        
+                        <div className="form-group">
+                            <label htmlFor="email">Email:</label>
+                            <input 
+                                type="email" 
+                                id="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="Introduce tu email"
+                                required
+                                disabled={loading}
+                                autoComplete="email"
+                            />
+                        </div>
+                        
+                        <div className="form-group">
+                            <label htmlFor="password">Contraseña:</label>
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Introduce tu contraseña" 
+                                required
+                                disabled={loading}
+                                autoComplete="current-password"
+                            />
+                        </div>
+
+                        <div className="checkbox-group">
+                            <input 
+                                type="checkbox" 
+                                id="showPassword"
+                                checked={showPassword}
+                                onChange={togglePasswordVisibility}
+                                disabled={loading}
+                            />
+                            <label htmlFor="showPassword">Mostrar contraseña</label>
+                        </div>
+
+                        <div className ="forgot-passaword-link">
+                            <button
+                                type="button"
+                                onClick={handleRecuperarClick}
+                                className="link-button"
+                                disabled={loading}
+                            >
+                                Olvidaste tu contraseña?
+                            </button>
+                        </div>
+                        
+                        <button 
+                            type="submit" 
+                            className="btn-primary"
+                            disabled={loading}
+                        >
+                            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                        </button>
+                        
+                        <p className="register-link">
+                            ¿No tienes cuenta? <Link to="/registrarse" onClick={onClose}>Regístrate aquí</Link>
+                        </p>
+                    </form>
+                </div>
             </div>
-        </div>
+            
+            <RecuperarPassword
+                isOpen={showRecuperarModal}
+                onClose={handleCloseRecuperar}
+            />
+        </>
     );
 }
 

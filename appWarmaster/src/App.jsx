@@ -14,6 +14,7 @@ import VerTorneos from './paginas/VerTorneos.jsx';
 import Inscripcion from './paginas/Inscripcion.jsx';
 import AyudaTorneos from './paginas/AyudaTorneos.jsx';
 import SeleccionJuego from './paginas/SeleccionJuego.jsx';
+import ResetPassword from './paginas/loginRecuperacion/ResetPassword.jsx'
 
 import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
@@ -40,6 +41,10 @@ function App() {
         <Route 
             path='/registrarse' 
             element={<Registrarse onOpenLogin={() => setIsLoginOpen(true)} />} 
+        />
+        <Route 
+            path="/reset-password" 
+            element={<ResetPassword />} 
         />
         <Route
             path='/torneosSaga/:torneoId/detalles'

@@ -28,6 +28,7 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
     const [loading, setLoading] = useState(true);
     
     const [modoEdicion, setModoEdicion] = useState(false);
+    const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [datosEdicion, setDatosEdicion] = useState({
         nombre_torneo: '',
         tipo_torneo: '',
@@ -69,6 +70,16 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 ? 'Por equipos' 
                 : 'Individual';
 
+                const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+
+            // DETECTAR DURACIÓN AUTOMÁTICAMENTE
+            if (fechaFin && fechaFin !== fechaInicio) {
+                setDuracionTorneo("2"); // Varios días
+            } else {
+                setDuracionTorneo("1"); // Un día
+            }
+
             setDatosEdicion({
                 nombre_torneo: torneo.nombre_torneo || '',
                 tipo_torneo: tipoTorneo,
@@ -78,8 +89,8 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
                 equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
                 participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-                fecha_inicio: torneo.fecha_inicio?.split('T')[0] || '',
-                fecha_fin: torneo.fecha_fin?.split('T')[0] || '',
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
                 ubicacion: torneo.ubicacion || '',
                 estado: torneo.estado || 'pendiente',
                 partida_ronda_1: torneo.partida_ronda_1 || '',
@@ -184,23 +195,32 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             setLoadingEdicion(true);
             setErrorEdicion('');
 
+            const datosLimpios = {
+                ...datosEdicion,
+                fecha_fin: duracionTorneo === "1" ? null : (datosEdicion.fecha_fin || null),
+                ubicacion: datosEdicion.ubicacion || null,
+                partida_ronda_3: datosEdicion.partida_ronda_3 || null,
+                partida_ronda_4: datosEdicion.partida_ronda_4 || null,
+                partida_ronda_5: datosEdicion.partida_ronda_5 || null
+            };
+
             let dataToSend;
             
             if (archivoPDF || eliminarPDF) {
                 dataToSend = new FormData();
-                Object.keys(datosEdicion).forEach(key => {
+                Object.keys(datosLimpios).forEach(key => {
                     if (key === 'epocas_disponibles') {
-                        dataToSend.append('epoca_torneo', datosEdicion.epocas_disponibles.join('|'));
-                    } else if (datosEdicion[key] !== null && datosEdicion[key] !== '') {
-                        dataToSend.append(key, datosEdicion[key]);
+                        dataToSend.append('epoca_torneo', datosLimpios.epocas_disponibles.join('|'));
+                    } else if (datosLimpios[key] !== null && datosLimpios[key] !== '') {
+                        dataToSend.append(key, datosLimpios[key]);
                     }
                 });
                 if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
                 if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
             } else {
                 dataToSend = {
-                    ...datosEdicion,
-                    epoca_torneo: datosEdicion.epocas_disponibles.join('|')
+                    ...datosLimpios,
+                    epoca_torneo: datosLimpios.epocas_disponibles.join('|')
                 };
                 delete dataToSend.epocas_disponibles;
             }
@@ -238,6 +258,16 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 ? 'Por equipos'
                 : 'Individual';
 
+            const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+
+            // 🆕 RESTAURAR DURACIÓN ORIGINAL
+            if (fechaFin && fechaFin !== fechaInicio) {
+                setDuracionTorneo("2");
+            } else {
+                setDuracionTorneo("1");
+            }
+
             setDatosEdicion({
                 nombre_torneo: torneo.nombre_torneo || '',
                 tipo_torneo: tipoTorneo,
@@ -247,8 +277,8 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
                 participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
                 equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
-                fecha_inicio: torneo.fecha_inicio?.split('T')[0] || '',
-                fecha_fin: torneo.fecha_fin?.split('T')[0] || '',
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
                 ubicacion: torneo.ubicacion || '',
                 estado: torneo.estado || 'pendiente',
                 partida_ronda_1: torneo.partida_ronda_1 || '',
@@ -269,6 +299,39 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         // ✅ VALIDAR PAGOS SI SE INTENTA INICIAR EL TORNEO
         if (nuevoEstado === 'en_curso') {
             try {
+
+                // 1️⃣ VERIFICAR INSCRIPCIONES
+                const jugadoresData = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+                const jugadoresList = Array.isArray(jugadoresData) ? jugadoresData : jugadoresData.data || [];
+                
+                if (jugadoresList.length === 0) {
+                    alert('❌ NO SE PUEDE INICIAR EL TORNEO\n\nNo hay jugadores inscritos.');
+                    return;
+                }
+
+                const inscripcionesIncompletas = jugadoresList.filter(jugador => {
+                    const faltaNombreBanda = !jugador.nombre_banda || jugador.nombre_banda.trim() === '';
+                    const faltaFaccion = !jugador.faccion_banda || jugador.faccion_banda.trim() === '';
+                    return faltaNombreBanda || faltaFaccion;
+                });
+
+                if (inscripcionesIncompletas.length > 0) {
+                    const nombresIncompletos = inscripcionesIncompletas
+                        .map(j => `• ${j.nombre_usuario}`)
+                        .join('\n');
+                    
+                    alert(
+                        `❌ NO SE PUEDE INICIAR EL TORNEO\n\n` +
+                        `HAY ${inscripcionesIncompletas.length} INSCRIPCIÓN(ES) INCOMPLETA(S):\n\n` +
+                        `${nombresIncompletos}\n\n` +
+                        `Todos los jugadores deben completar:\n` +
+                        `✓ Nombre de la banda\n` +
+                        `✓ Facción de la banda`
+                    );
+                    return;
+                }
+
+                //VERIFICAR LOS PAGOS DE LOS JUGADORES
                 const response = await torneosSagaApi.verificarPagos(torneoId);
 
                 const todosPagados = response.mensaje.todosPagados;
@@ -330,7 +393,7 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         }
     };
 
-        const eliminarTorneo = async () => {
+    const eliminarTorneo = async () => {
         if (jugadores.length > 0) {
             alert(`⚠️ No se puede eliminar el torneo porque tiene ${jugadores.length} jugador(es) inscrito(s).`);
             return;
@@ -352,8 +415,8 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
     const handleArchivoPDF = (e) => {
         const file = e.target.files[0];
         if (file && file.type === 'application/pdf') {
-            if (file.size > 5 * 1024 * 1024) {
-                alert('El archivo es demasiado grande. Máximo 5MB');
+            if (file.size > 16 * 1024 * 1024) {
+                alert('El archivo es demasiado grande. Máximo 16MB');
                 return;
             }
             setArchivoPDF(file);
@@ -625,33 +688,83 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                     <fieldset>
                         <legend>📅 Fechas y Ubicación</legend>
 
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label htmlFor="fecha_inicio">Fecha Inicio:*</label>
+                        <label>Duración del Torneo:*</label>
+                        <div className="duracion-torneo-container">
+                            <label className="duracion-option">
+                                <input
+                                    type="radio"
+                                    name="duracionTorneo"
+                                    value="1"
+                                    checked={duracionTorneo === "1"}
+                                    onChange={(e) => {
+                                        setDuracionTorneo(e.target.value);
+                                        setDatosEdicion(prev => ({ ...prev, fecha_fin: '' }));
+                                    }}
+                                    disabled={loadingEdicion}
+                                />
+                                📅 Un día
+                            </label>
+                            <label className="duracion-option">
+                                <input
+                                    type="radio"
+                                    name="duracionTorneo"
+                                    value="2"
+                                    checked={duracionTorneo === "2"}
+                                    onChange={(e) => setDuracionTorneo(e.target.value)}
+                                    disabled={loadingEdicion}
+                                />
+                                📅 Dos días o más
+                            </label>
+                        </div>
+
+                        {duracionTorneo === "1" ? (
+                            <>
+                                <label htmlFor="fecha_inicio">Fecha del Torneo:*</label>
                                 <input
                                     type="date"
                                     id="fecha_inicio"
                                     name="fecha_inicio"
                                     value={datosEdicion.fecha_inicio}
                                     onChange={handleEdicionChange}
+                                    min={new Date().toISOString().split('T')[0]}
                                     required
                                     disabled={loadingEdicion}
                                 />
-                            </div>
+                                <small className="help-text">
+                                    🗓️ El torneo se celebrará en un solo día
+                                </small>
+                            </>
+                        ) : (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label htmlFor="fecha_inicio">Fecha de Inicio:*</label>
+                                    <input
+                                        type="date"
+                                        id="fecha_inicio"
+                                        name="fecha_inicio"
+                                        value={datosEdicion.fecha_inicio}
+                                        onChange={handleEdicionChange}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        required
+                                        disabled={loadingEdicion}
+                                    />
+                                </div>
 
-                            <div className="form-group">
-                                <label htmlFor="fecha_fin">Fecha Fin:</label>
-                                <input
-                                    type="date"
-                                    id="fecha_fin"
-                                    name="fecha_fin"
-                                    value={datosEdicion.fecha_fin}
-                                    onChange={handleEdicionChange}
-                                    min={datosEdicion.fecha_inicio}
-                                    disabled={loadingEdicion}
-                                />
+                                <div className="form-group">
+                                    <label htmlFor="fecha_fin">Fecha de Fin:*</label>
+                                    <input
+                                        type="date"
+                                        id="fecha_fin"
+                                        name="fecha_fin"
+                                        value={datosEdicion.fecha_fin}
+                                        onChange={handleEdicionChange}
+                                        min={datosEdicion.fecha_inicio || new Date().toISOString().split('T')[0]}
+                                        required
+                                        disabled={loadingEdicion}
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <label htmlFor="ubicacion">Ubicación:</label>
                         <input
@@ -862,6 +975,11 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                                     <p>{torneo.ubicacion}</p>
                                 </div>
                             )}
+
+                            <div className="info-item">
+                                <label>📅 Fecha Inicio:</label>
+                                <p>{new Date(torneo.fecha_inicio).toLocaleDateString('es-ES')}</p>
+                            </div>
 
                             {torneo.fecha_fin && (
                                 <div className="info-item">

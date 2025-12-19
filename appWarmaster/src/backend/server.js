@@ -10,6 +10,9 @@ const { testConnection } = require('./config/bd');
 const torneosSagaRoutes = require('./routes/torneosSaga'); 
 const torneosWarmasterRoutes = require('./routes/torneosWarmaster')
 const torneosFowRoutes = require('./routes/torneosFow')
+/*
+const torneosBoltRoutes = require ('./routes/torneosBolt')
+*/
 const usuariosRutas = require('./routes/usuariosRutas');
 
 const app = express();
@@ -20,8 +23,8 @@ const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'produccion';
 
-const origenesWeb = isProduction
-  ? [
+const origenesWeb = isProduction                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+ ? [
       'https://www.gestionatustorneos.es',
       'https://gestionatustorneos.es'
     ] 
@@ -109,9 +112,13 @@ app.get('/api/test', (req, res) => {
 });
 
 // Rutas principales                 
-app.use('/api/torneosSaga', torneosSagaRoutes); 
+app.use('/api/torneosSaga', torneosSagaRoutes)
 app.use('/api/torneosWarmaster', torneosWarmasterRoutes)
-app.use('/api/usuarios', usuariosRutas);         
+app.use('/api/torneosFow', torneosFowRoutes)
+/*
+app.use('/api/torneosBolt', torneosBoltRoutes)
+*/
+app.use('/api/usuarios', usuariosRutas)      
 
 // ==========================================
 // MANEJADOR DE RUTAS NO ENCONTRADAS

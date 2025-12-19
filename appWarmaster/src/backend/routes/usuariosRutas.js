@@ -6,8 +6,11 @@ const { promisify } = require('util');
 // ✅ Al inicio del archivo, convierte jwt.verify a Promise
 const verifyToken = promisify(jwt.verify);
 const { verificarToken  } = require('../middleware/auth');
+const crypto = require('crypto');
 
 const { pool } = require('../config/bd');
+const { validarCodigoPostal } = require('../utils/validaciones');
+const emailRecuperar = require('../utils/emailRecuperar');
 const { 
   validarEmail, 
   validarCamposRequeridos, 
@@ -60,10 +63,13 @@ router.get('/', async (req, res) => {
 
 router.post('/registro', async (req, res) => {
   try {
-    const { nombre, apellidos, nombre_alias, club, email, password, localidad, pais } = req.body;
+    const { nombre, apellidos, nombre_alias, club, email, password, localidad, pais, codigo_postal} = req.body;
     
     // Validar campos requeridos
-    const camposFaltantes = validarCamposRequeridos(req.body, ['nombre', 'apellidos', 'email', 'password', 'localidad', 'pais']);
+    const camposFaltantes = validarCamposRequeridos(req.body, [
+      'nombre', 'apellidos', 'email', 'password', 'localidad', 'pais', 'codigo_postal'
+    ]);
+
     if (camposFaltantes.length > 0) {
       return res.status(400).json(
         errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
@@ -83,56 +89,158 @@ router.post('/registro', async (req, res) => {
         errorResponse('La contraseña debe tener al menos 6 caracteres')
       );
     }
-
-     if (!localidad) {
-        return res.status(400).json (
-          errorResponse('No has introducido localidad')
-        )
-      }
-
-       if (!pais) {
-        return res.status(400).json (
-          errorResponse('No has introducido pais')
-        )
-      }
-    
-    // Verificar si el email ya existe
-    const [existeUsuario] = await pool.execute(
-      'SELECT id FROM usuarios WHERE email = ?', 
-      [email]
-    );
-    
-    if (existeUsuario.length > 0) {
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{6,}$/;
+    if (!passwordRegex.test(password)) {
       return res.status(400).json(
-        errorResponse('El email ya está registrado')
+        errorResponse('La contraseña debe contener al menos una letra y un número')
+      );
+    }
+
+     const validacionCP = validarCodigoPostal(codigo_postal, pais); 
+    if (!validacionCP.valido) {
+      console.log('❌ Código postal inválido:', validacionCP.mensaje);
+      return res.status(400).json(
+        errorResponse(validacionCP.mensaje)
       );
     }
     
+    // Verificar si el email ya existe
+    const emailLower = email.toLowerCase().trim();
+    const [existeUsuario] = await pool.execute(
+      'SELECT id, email, estado_cuenta FROM usuarios WHERE email = ?', 
+      [emailLower]
+    );
+    
+    if (existeUsuario.length > 0) {
+      const usuarioExistente = existeUsuario[0];
+
+      //permitir completar registro si "pendiente_registro"
+      if (usuarioExistente.estado_cuenta === 'pendiente_registro') {
+      //encriptar nueva contraseña
+      const passwordEncriptada = await bcrypt.hash(password, 12);
+
+      await pool.execute(
+            `UPDATE usuarios 
+            SET nombre = ?,
+                apellidos = ?,
+                nombre_alias = ?,
+                club = ?,
+                password = ?,
+                localidad = ?,
+                pais = ?,
+                codigo_postal = ?,
+                estado_cuenta = 'activo'
+            WHERE id = ?`,
+            [
+              nombre, 
+              apellidos, 
+              nombre_alias || null, 
+              club || null, 
+              passwordEncriptada,
+              localidad,
+              pais,
+              codigo_postal,
+              usuarioExistente.id
+            ]
+        );
+
+        const token = jwt.sign(
+          { 
+            userId: usuarioExistente.id,
+            email: emailLower
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+    
+    return res.status(200).json(
+          successResponse('Registro completado exitosamente', {
+            token,
+            usuario: {
+              id: usuarioExistente.id,
+              nombre,
+              apellidos,
+              nombre_alias,
+              club,
+              email: emailLower,
+              localidad,
+              pais,
+              mensaje: '🎮 Tu inscripción al torneo ya está activa. Puedes gestionarla desde tu panel.'
+            }
+          })
+        );
+      }
+    
+  return res.status(400).json(
+        errorResponse('El email ya está registrado. Intenta iniciar sesión.')
+      );
+    }
+
+    //PARA REGISTRAR UN NUEVO USUARIOS
+
     // Encriptar contraseña
     const passwordEncriptada = await bcrypt.hash(password, 12);
     
     // Insertar usuario
     const [resultado] = await pool.execute(
-      `INSERT INTO usuarios (nombre, apellidos, nombre_alias, club, email, password, localidad, pais) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, apellidos, nombre_alias || null, club || null, email, passwordEncriptada, localidad, pais]
+      `INSERT INTO usuarios (
+        nombre, 
+        apellidos, 
+        nombre_alias, 
+        club, 
+        email, 
+        password, 
+        localidad, 
+        pais,
+        codigo_postal,
+        estado_cuenta
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo')`,
+      [
+        nombre, 
+        apellidos, 
+        nombre_alias || null, 
+        club || null, 
+        emailLower, 
+        passwordEncriptada, 
+        localidad, 
+        pais,
+        codigo_postal
+      ]
+    );
+
+    // Generar token
+    const token = jwt.sign(
+      { 
+        userId: resultado.insertId,
+        email: emailLower
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
     
-    // Respuesta exitosa (sin devolver datos sensibles)
-    res.status(201).json(
+    // Respuesta exitosa
+    return res.status(201).json(
       successResponse('Usuario registrado exitosamente', {
-        userId: resultado.insertId,
-        email: email,
-        nombre: nombre,
-        localidad: localidad,
-        pais: pais
+        token,
+        usuario: {
+          id: resultado.insertId,
+          nombre,
+          apellidos,
+          nombre_alias,
+          club,
+          email: emailLower,
+          localidad,
+          pais,
+          codigo_postal
+        }
       })
     );
     
   } catch (error) {
-    console.error('Error en registro:', error);
+    console.error('❌ Error en registro:', error);
+       
     const mensaje = manejarErrorDB(error);
-    res.status(500).json(errorResponse(mensaje));
+    return res.status(500).json(errorResponse(mensaje));
   }
 });
 
@@ -311,14 +419,27 @@ router.put('/actualizarPerfil', async (req, res) => {
       )
     }
 
-    const { nombre, apellidos, nombre_alias, club, email, localidad, pais } = req.body
+    let { nombre, apellidos, nombre_alias, club, email, localidad, pais, codigo_postal } = req.body
+
+    nombre = nombre?.trim();
+    apellidos = apellidos?.trim();
+    nombre_alias = nombre_alias?.trim() || null;
+    club = club?.trim() || null;
+    email = email?.trim().toLowerCase();
+    localidad = localidad?.trim();
+    pais = pais?.trim();
+    codigo_postal = codigo_postal?.trim()
     
     //validar campor requeridos
-    const camposFaltantes = validarCamposRequeridos (req.body, ['nombre', 'apellidos', 'email'])
+    const camposFaltantes = validarCamposRequeridos(
+      req.body, 
+      ['nombre', 'apellidos', 'email', 'pais', 'localidad', 'codigo_postal']
+    );
+    
     if (camposFaltantes.length > 0) {
-      return res.status(401).json(
-        errorResponse(`Campor requeridos faltantes: ${camposFaltantes.join(', ')}`)
-      )
+      return res.status(400).json(
+        errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
+      );
     }
 
     //validar email
@@ -328,17 +449,31 @@ router.put('/actualizarPerfil', async (req, res) => {
       )
     }
 
-    if (!localidad) {
-        return res.status(400).json (
-          errorResponse('No has introducido localidad')
-        )
-      }
+    if (!localidad || localidad.length < 2) {
+      return res.status(400).json(
+        errorResponse('La localidad debe tener al menos 2 caracteres')
+      );
+    }
 
-       if (!pais) {
-        return res.status(400).json (
-          errorResponse('No has introducido pais')
-        )
-      }
+    if (localidad.length > 100) {
+      return res.status(400).json(
+        errorResponse('La localidad no puede superar los 100 caracteres')
+      );
+    }
+
+    if (!pais || pais.length < 2) {
+      return res.status(400).json(
+        errorResponse('Debes seleccionar un país válido')
+      );
+    }
+
+    const validacionCP = validarCodigoPostal(codigo_postal, pais);
+    
+    if (!validacionCP.valido) {
+      return res.status(400).json(
+        errorResponse(validacionCP.mensaje || 'Código postal inválido')
+      );
+    }
 
     //verificar si el email ya existe y poder excluir al usuario actual
     const [existeEmail] = await pool.execute(
@@ -353,19 +488,44 @@ router.put('/actualizarPerfil', async (req, res) => {
     }
 
     //actualizar el usuario
-    await pool.execute(
+   const [resultado] = await pool.execute(
       `UPDATE usuarios
-      SET nombre = ?, apellidos = ?, nombre_alias = ?, club = ?, email = ?, localidad = ?, pais = ?
-      WHERE id = ? `,
-      [nombre, apellidos, nombre_alias || null, club || null, email, localidad, pais, decoded.userId ]
-    )
+       SET nombre = ?, 
+           apellidos = ?, 
+           nombre_alias = ?, 
+           club = ?, 
+           email = ?, 
+           pais = ?,
+           codigo_postal = ?,
+           localidad = ?
+       WHERE id = ?`,
+      [
+        nombre, 
+        apellidos, 
+        nombre_alias, 
+        club, 
+        email, 
+        pais,
+        codigo_postal,
+        localidad, 
+        decoded.userId
+      ]
+    );
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json(
+        errorResponse('Usuario no encontrado')
+      );
+    }
 
     //obtener los datos actualizados
     const [usuarios] = await pool.execute(
-      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol, localidad, pais
-      FROM usuarios WHERE id = ?`,
+      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol, 
+              pais, codigo_postal, localidad
+       FROM usuarios 
+       WHERE id = ?`,
       [decoded.userId]
-    )
+    );
 
     if (usuarios.length === 0) {
       return res.status(404).json(
@@ -374,8 +534,6 @@ router.put('/actualizarPerfil', async (req, res) => {
     }
     
     const usuario = usuarios[0];
-    
-    console.log('✅ Perfil actualizado exitosamente');
     
     return res.json(
       successResponse('Perfil actualizado exitosamente', {
@@ -388,7 +546,8 @@ router.put('/actualizarPerfil', async (req, res) => {
           email: usuario.email,
           rol: usuario.rol,
           localidad: usuario.localidad,
-          pais: usuario.pais
+          pais: usuario.pais,
+          codigo_postal: usuario.codigo_postal
         }
       })
     );
@@ -691,5 +850,135 @@ router.get('/verificarUsuario/:email', async (req, res) => {
   }
 });
 
+// ===== RECUPERACIÓN DE CONTRASEÑA =====
+
+router.post('/recuperar-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const [usuarios] = await pool.execute(
+      'SELECT id, nombre FROM usuarios WHERE email = ?',
+      [email.toLowerCase().trim()]
+    );
+
+    if (usuarios.length === 0) {
+      return res.status(200).json(
+        successResponse('Si el email existe, recibirás un enlace de recuperación')
+      );
+    }
+
+    const usuario = usuarios[0];
+    
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiracion = new Date(Date.now() + 3600000); // 1 hora
+
+    await pool.execute(
+      `INSERT INTO password_reset_tokens (usuario_id, token, expiracion) 
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE 
+       token = VALUES(token), 
+       expiracion = VALUES(expiracion)`,
+      [usuario.id, token, expiracion]
+    );
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    
+    await emailRecuperar.enviarRecuperacionPassword({
+      email: email,
+      nombre: usuario.nombre,
+      resetUrl: resetUrl
+    });
+
+    res.status(200).json(
+      successResponse('Si el email existe, recibirás un enlace de recuperación')
+    );
+
+  } catch (error) {
+    console.error('❌ Error en solicitud de recuperación:', error);
+    res.status(500).json(
+      errorResponse('Error al procesar la solicitud')
+    );
+  }
+});
+
+//======VERIFICAR TOKEM RECUPERAR PASSWORD=======
+
+router.get('/verificar-token/:token', async (req, res) => {
+  const { token } = req.params;
+
+  try {
+    const [tokens] = await pool.execute(
+      `SELECT * FROM password_reset_tokens 
+       WHERE token = ? AND expiracion > NOW() AND usado = FALSE`,
+      [token]
+    );
+
+    if (tokens.length === 0) {
+      return res.status(400).json(
+        errorResponse('El enlace de recuperación ha expirado o no es válido')
+      );
+    }
+
+    res.status(200).json(
+      successResponse('Token válido')
+    );
+
+  } catch (error) {
+    console.error('❌ Error al verificar token:', error);
+    res.status(500).json(
+      errorResponse('Error al verificar el token')
+    );
+  }
+});
+
+//======RESET PASSWORD=======
+
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+
+  try {
+    const [tokens] = await pool.execute(
+      `SELECT usuario_id FROM password_reset_tokens 
+       WHERE token = ? AND expiracion > NOW() AND usado = FALSE`,
+      [token]
+    );
+
+    if (tokens.length === 0) {
+      return res.status(400).json(
+        errorResponse('El enlace de recuperación ha expirado o no es válido')
+      );
+    }
+
+    const usuarioId = tokens[0].usuario_id;
+
+    if (password.length < 6) {
+      return res.status(400).json(
+        errorResponse('La contraseña debe tener al menos 6 caracteres')
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await pool.execute(
+      'UPDATE usuarios SET password = ? WHERE id = ?',
+      [hashedPassword, usuarioId]
+    );
+
+    await pool.execute(
+      'UPDATE password_reset_tokens SET usado = TRUE WHERE token = ?',
+      [token]
+    );
+
+    res.status(200).json(
+      successResponse('Contraseña restablecida exitosamente')
+    );
+
+  } catch (error) {
+    console.error('❌ Error al restablecer contraseña:', error);
+    res.status(500).json(
+      errorResponse('Error al restablecer la contraseña')
+    );
+  }
+});
 
 module.exports = router;

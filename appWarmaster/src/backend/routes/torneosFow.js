@@ -4,7 +4,6 @@ const multer = require('multer');
 const { pool } = require('../config/bd');
 const { verificarToken, verificarOrganizador } = require('../middleware/auth');
 const { 
-  calcularPuntosTorneo,
   validarFecha,
   validarCamposRequeridos,
   errorResponse,
@@ -22,7 +21,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize:  16 * 1024 * 1024
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
@@ -42,7 +41,7 @@ const upload = multer({
 
 router.get('/obtenerTorneos', async (req, res) => {
   try {
-    console.log('📥 GET /api/torneosWarmaster');
+    console.log('📥 GET /api/torneosFow/obtenerTorneos');
     
     const { page = 1, limit = 10, buscar = '' } = req.query;
     const { limit: limitNum, offset } = paginar(page, limit);
@@ -60,30 +59,30 @@ router.get('/obtenerTorneos', async (req, res) => {
       }
     }
     
-    let whereClause = '';
-    let params = [];
+    let whereClause = 'WHERE ts.sistema = "FOW"';
+    let queryParams = [userId];
     
     if (buscar.trim()) {
-      whereClause = 'WHERE ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?';
+      whereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
       const searchTerm = `%${buscar}%`;
-      params = [searchTerm, searchTerm];
+      queryParams.push(searchTerm, searchTerm);
     }
+
+    queryParams.push(parseInt(limitNum), parseInt(offset));
     
-    const [torneos] = await pool.execute(`
+    const [torneos] = await pool.query(`
       SELECT 
         ts.id,
         ts.nombre_torneo,
         ts.sistema,
         ts.tipo_torneo,
-        ts.num_jugadores_equipo,
         ts.rondas_max,
         ts.ronda_actual,
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
-        ts.puntos_banda,
+        ts.puntos_ejercito,
         ts.participantes_max,
-        ts.equipos_max,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -94,38 +93,46 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
-        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jtw.id ELSE NULL END) as total_participantes,
-        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        COUNT(DISTINCT jtf.id) as total_participantes,
+        SUM(CASE WHEN jtf.bandos_2gm = 'Eje' THEN 1 ELSE 0 END) as total_eje,
+        SUM(CASE WHEN jtf.bandos_2gm = 'Aliados' THEN 1 ELSE 0 END) as total_aliados,
+        MAX(CASE WHEN jtf.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
+      LEFT JOIN jugador_torneo_fow jtf ON ts.id = jtf.torneo_id
       ${whereClause}
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
       LIMIT ? OFFSET ?
-    `, [userId, ...params, limitNum, offset]);
+    `, queryParams);
     
-    console.log(`✅ ${torneos.length} torneos obtenidos`);
+    console.log(`✅ ${torneos.length} torneos FOW obtenidos`);
+    
+    // Query para contar total
+    let countParams = [];
+    let countWhereClause = 'WHERE ts.sistema = "FOW"';
+    
+    if (buscar.trim()) {
+      countWhereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
+      const searchTerm = `%${buscar}%`;
+      countParams = [searchTerm, searchTerm];
+    }
     
     const [totalRows] = await pool.execute(`
       SELECT COUNT(DISTINCT ts.id) as total
       FROM torneos_sistemas ts 
-      LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-      ${whereClause}
-    `, params);
+      ${countWhereClause}
+    `, countParams);
     
     const total = totalRows[0].total;
     const totalPages = Math.ceil(total / limitNum);
     
     res.json(
       successResponse('Torneos obtenidos exitosamente', {
-        torneosSaga: torneos,
+        torneosFow: torneos,
         paginacion: {
           paginaActual: parseInt(page),
           totalPaginas: totalPages,
@@ -136,18 +143,18 @@ router.get('/obtenerTorneos', async (req, res) => {
     );
     
   } catch (error) {
-    console.error('❌ Error al obtener torneos:', error);
+    console.error('❌ Error al obtener torneos FOW:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
 
+
 //=====OBTENER TORNEO ESPECIFICO=====
+
 
 router.get('/torneo/:torneoId', async (req, res) => {
   try {
     const { torneoId } = req.params;
-    
-    console.log(`📖 GET /torneo/${torneoId}`);
     
     let userId = null;
     const authHeader = req.headers['authorization'];
@@ -173,7 +180,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
-        ts.puntos_banda,
+        ts.puntos_ejercito,
         ts.participantes_max,
         ts.estado,
         ts.partida_ronda_1,
@@ -185,18 +192,16 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
-        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.email as creador_email,
         u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jtw.id ELSE NULL END) as total_participantes,
-        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        COUNT(DISTINCT jtf.id) as total_participantes,
+        MAX(CASE WHEN jtf.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-      WHERE ts.id = ?
+      LEFT JOIN jugador_torneo_fow jtf ON ts.id = jtf.torneo_id
+      WHERE ts.id = ? AND ts.sistema = "FOW"
       GROUP BY ts.id
     `, [userId, torneoId]);
     
@@ -215,7 +220,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
     );
     
   } catch (error) {
-    console.error('❌ Error al obtener torneo:', error);
+    console.error('❌ Error al obtener torneo FOW:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
@@ -1288,43 +1293,42 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
 
 // =======OBTENER JUGADORES DE UN TORNEO=======
 
-router.get('/:torneoId/jugadores', async (req, res) => {
-    try {
-        const { torneoId } = req.params;
-        
-        const [jugadores] = await pool.execute(`
-            SELECT 
-                jts.id,
-                jts.jugador_id,
-                jts.equipo_id,
-                u.nombre as jugador_nombre,
-                u.apellidos as jugador_apellidos,
-                u.nombre_alias,
-                u.club,
-                u.localidad,
-                u.pais,
-                jts.epoca,
-                jts.faccion,
-                jts.composicion_ejercito,
-                jts.pagado,
-                jts.puntos_victoria,
-                jts.puntos_torneo,
-                jts.puntos_masacre,
-                jts.warlord_muerto,
-                jts.created_at as fecha_inscripcion
-            FROM jugador_torneo_saga jts
-            INNER JOIN usuarios u ON jts.jugador_id = u.id
-            LEFT JOIN torneo_saga_equipo e ON jts.equipo_id = e.id
-            WHERE jts.torneo_id = ?
-            ORDER BY jts.puntos_torneo DESC, jts.created_at ASC
-        `, [torneoId]);
-        
-        res.json(successResponse('Jugadores obtenidos', jugadores));
-        
-    } catch (error) {
-        console.error('Error al obtener jugadores:', error);
-        res.status(500).json(errorResponse('Error al obtener jugadores'));
-    }
+router.get('/obtenerJugadoresTorneos', async (req, res) => {
+  try {
+    console.log('📥 GET /api/torneosFow/obtenerJugadoresTorneos');
+    
+    const [jugadores] = await pool.query(`
+      SELECT 
+        jtf.id,
+        jtf.torneo_id,
+        jtf.jugador_id,
+        jtf.ejercito,
+        jtf.bandos_2gm,
+        u.nombre as jugador_nombre,
+        u.apellidos as jugador_apellidos,
+        u.nombre_alias,
+        u.club,
+        u.localidad,
+        u.pais
+      FROM jugador_torneo_fow jtf
+      INNER JOIN usuarios u ON jtf.jugador_id = u.id
+      INNER JOIN torneos_sistemas ts ON jtf.torneo_id = ts.id
+      WHERE ts.sistema = "FOW"
+      ORDER BY jtf.torneo_id, jtf.created_at
+    `);
+    
+    console.log(`✅ ${jugadores.length} jugadores FOW obtenidos`);
+    
+    res.json(
+      successResponse('Jugadores obtenidos exitosamente', {
+        jugadoresFow: jugadores
+      })
+    );
+    
+  } catch (error) {
+    console.error('❌ Error al obtener jugadores FOW:', error);
+    res.status(500).json(errorResponse('Error interno del servidor'));
+  }
 });
 
 // =====CAMBIAR ESTADO DEL TORNEO=====
@@ -2375,7 +2379,3 @@ router.get('/:torneoId/bases-pdf', async (req, res) => {
 
 
 module.exports = router;
-
-
-
-module.exports = router 

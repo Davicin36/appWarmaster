@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }) => {
         if (savedUser) {
           try {
             setUser(JSON.parse(savedUser));
-            console.log('Usuario restaurado desde localStorage');
           } catch (error) {
             console.error('Error parseando usuario:', error);
             localStorage.removeItem('user');
@@ -42,8 +41,7 @@ export const AuthProvider = ({ children }) => {
           const usuarioBackend = response.data.usuario;
           setUser(usuarioBackend);
           localStorage.setItem('user', JSON.stringify(usuarioBackend));
-          console.log('Usuario verificado desde backend:', usuarioBackend.email);
-        } else {
+         } else {
           console.warn('Token invalido');
           usuarioApi.eliminarToken();
           localStorage.removeItem('user');
@@ -73,7 +71,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(usuario));
         setUser(usuario);
 
-        console.log('Login exitoso:', usuario.email);
         return usuario;
       } else {
         throw new Error(response.error || 'Credenciales invalidas');
@@ -162,8 +159,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(usuarioActualizado));
         setUser(usuarioActualizado);
         
-        console.log('Rol actualizado a organizador:', usuarioActualizado.rol);
-        
         return { 
           success: true, 
           usuario: usuarioActualizado 
@@ -187,14 +182,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     usuarioApi.eliminarToken();
     localStorage.removeItem('user');
-    console.log('Sesion cerrada');
   };
 
   const actualizarUsuario = (nuevosDatos) => {
     const usuarioActualizado = { ...user, ...nuevosDatos };
     setUser(usuarioActualizado);
     localStorage.setItem('user', JSON.stringify(usuarioActualizado));
-    console.log('Usuario actualizado:', usuarioActualizado);
   };
 
   const refrescarUsuario = async () => {
@@ -212,7 +205,6 @@ export const AuthProvider = ({ children }) => {
       const usuarioBackend = response.data.usuario;
       setUser(usuarioBackend);
       localStorage.setItem('user', JSON.stringify(usuarioBackend));
-      console.log('✅ Usuario refrescado desde backend:', usuarioBackend);
       return { success: true, usuario: usuarioBackend };
     } else {
       return { success: false, error: 'Error al refrescar usuario' };
