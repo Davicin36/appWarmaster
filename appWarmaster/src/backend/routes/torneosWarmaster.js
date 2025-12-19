@@ -612,11 +612,10 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_p
 
 // ======INSCRIBIRSE EN TORNEO=====
 
-router.post('/:torneoId/inscripcion', verificarToken, async (req, res) => {
+router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejercito'), async (req, res) => {
   try {
     const { torneoId } = req.params;
     const usuarioId = req.usuario.userId;
-
     const { ejercito } = req.body;
 
      if (!ejercito || !ejercito.trim()) {
@@ -703,7 +702,7 @@ router.post('/:torneoId/inscripcion', verificarToken, async (req, res) => {
      if (error instanceof multer.MulterError) {
       if (error.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json(
-          errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
+          errorResponse('El archivo PDF excede el tamaño máximo de 16MB')
         );
       }
       return res.status(400).json(errorResponse(error.message));
@@ -762,7 +761,7 @@ router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => 
 
 // =====ACTUALIZAR INSCRIPCIÓN=====
 
-router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) => {
+router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('lista_ejercito'), async (req, res) => {
     const connection = await pool.getConnection();
     
     try {
@@ -2017,28 +2016,51 @@ router.get('/:torneoId/bases-pdf', async (req, res) => {
 
 // =====DESCARGAR PDF DE LISTAS DE EJERCITO=====
 
-router.get('/:torneoId/listasEjercitos-pdf', async (req, res) => {
+router.get('/:torneoId/listasEjercitos-pdf/:jugadorId', verificarToken, async (req, res) => {
   try {
     const { torneoId, jugadorId } = req.params;
+    const usuarioActual = req.usuario.userId;
     
+    // Verificar permisos (solo el jugador o el organizador pueden descargar)
+    const [torneo] = await pool.execute(
+      'SELECT organizador_id FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
+    
+    if (torneo.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
+    
+    const esOrganizador = torneo[0].organizador_id === usuarioActual;
+    const esMiLista = parseInt(jugadorId) === usuarioActual;
+    
+    if (!esOrganizador && !esMiLista) {
+      return res.status(403).json(
+        errorResponse('No tienes permiso para descargar esta lista')
+      );
+    }
+    
+    // Obtener la lista del jugador (nota: AND en lugar de coma)
     const [result] = await pool.execute(
-      'SELECT lista_ejercito, lista_nombre FROM jugador_torneo_warmaster WHERE torneo_id = ?, jugador_id = ?',
+      'SELECT lista_ejercito, lista_nombre FROM jugador_torneo_warmaster WHERE torneo_id = ? AND jugador_id = ?',
       [torneoId, jugadorId]
     );
     
     if (result.length === 0) {
-      return res.status(404).json(errorResponse('Torneo no encontrado'));
+      return res.status(404).json(errorResponse('Inscripción no encontrada'));
     }
     
-    const torneo = result[0];
+    const inscripcion = result[0];
     
-    if (!torneo.listas_ejercito) {
-      return res.status(404).json(errorResponse('Este torneo no tiene las listas de ejercito en PDF'));
+    // Verificar que tenga PDF
+    if (!inscripcion.lista_ejercito) {
+      return res.status(404).json(errorResponse('Este jugador no ha subido lista de ejército'));
     }
     
+    // Enviar el PDF (buffer, no el nombre)
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${torneo.lista_nombre || 'lista_ejercito.pdf'}"`);
-    res.send(torneo.lista_nombre);
+    res.setHeader('Content-Disposition', `attachment; filename="${inscripcion.lista_nombre || 'lista_ejercito.pdf'}"`);
+    res.send(inscripcion.lista_ejercito); // ✅ Enviar el buffer del PDF
     
   } catch (error) {
     console.error('❌ Error al descargar PDF:', error);

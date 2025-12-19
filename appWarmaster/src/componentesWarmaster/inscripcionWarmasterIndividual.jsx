@@ -21,6 +21,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
   const [pdfActual, setPdfActual] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loadingPdf, setLoadingPdf] = useState(false); // ✅ Nuevo estado
 
   // ==========================================
   // CARGAR INSCRIPCIÓN EXISTENTE (MODO EDICIÓN)
@@ -79,11 +80,11 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
       return;
     }
     
-    // Validar tamaño (máximo 5MB)
+    // Validar tamaño (máximo 16MB, pero el mensaje dice 5MB)
     const maxSize = 16 * 1024 * 1024;
     if (file.size > maxSize) {
       const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
-      setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 5MB`);
+      setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 16MB`);
       e.target.value = '';
       setArchivoPDF(null);
       setTimeout(() => setError(''), 5000);
@@ -102,30 +103,71 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  const eliminarInscripcion = async () => {
-  if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
-    return;
-  }
-
-  if (!user?.id) {
-    setError ("No se puedo obtener tu ID de usuario")
-  }
-  
-  try {
-    setLoading(true);
-    const resultado = await torneosWarmasterApi.eliminarJugadorTorneo(torneoId, user.id);
-
-    if (resultado.success) {
-      alert("✅ Inscripción eliminada correctamente");
-      navigate('/');
+  // ✅ NUEVO: Handler para ver PDF
+  const handleVerPDF = async () => {
+    if (!user?.id) {
+      setError("No se pudo obtener tu ID de usuario");
+      return;
     }
-  } catch (error) {
-    console.error("❌ Error al eliminar inscripción:", error);
-    setError(error.message || "Error al eliminar la inscripción");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      setLoadingPdf(true);
+      setError("");
+      await torneosWarmasterApi.verListaEjercito(torneoId, user.id);
+    } catch (err) {
+      console.error("❌ Error al ver PDF:", err);
+      setError(err.message || "Error al abrir el PDF");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
+
+  // ✅ NUEVO: Handler para descargar PDF
+  const handleDescargarPDF = async () => {
+    if (!user?.id) {
+      setError("No se pudo obtener tu ID de usuario");
+      return;
+    }
+
+    try {
+      setLoadingPdf(true);
+      setError("");
+      await torneosWarmasterApi.descargarListaEjercito(torneoId, user.id);
+    } catch (err) {
+      console.error("❌ Error al descargar PDF:", err);
+      setError(err.message || "Error al descargar el PDF");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
+
+  const eliminarInscripcion = async () => {
+    if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
+      return;
+    }
+
+    if (!user?.id) {
+      setError("No se pudo obtener tu ID de usuario");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const resultado = await torneosWarmasterApi.eliminarJugadorTorneo(torneoId, user.id);
+
+      if (resultado.success) {
+        alert("✅ Inscripción eliminada correctamente");
+        navigate('/');
+      }
+    } catch (error) {
+      console.error("❌ Error al eliminar inscripción:", error);
+      setError(error.message || "Error al eliminar la inscripción");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -164,6 +206,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
         alert("✅ ¡Inscripción actualizada con éxito!");
       } else {
         resultado = await torneosWarmasterApi.inscribirse(torneoId, inscripcionData);
+        alert("✅ ¡Inscripción realizada con éxito!");
       }
       
       if (resultado.success) {
@@ -178,14 +221,13 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
     }
   };
 
-
   const puntosMaximos = torneo?.puntos_Ejercito || 2000;
 
   // ==========================================
   // RENDER
   // ==========================================
 
- return (
+  return (
     <div className="inscripcion-container">
       
       {/* TÍTULO */}
@@ -224,7 +266,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
             <div className="dato-item">
               <label>Localidad:</label>
               <span>{user.localidad}</span>
-              <label>Pais:</label>
+              <label>País:</label>
               <span>{user.pais}</span>
             </div>
           )}
@@ -283,17 +325,53 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
         <fieldset>
           <legend>📄 Lista de Ejército (Opcional)</legend>
           
+          {/* ✅ MOSTRAR PDF ACTUAL CON BOTONES */}
           {pdfActual && !archivoPDF && (
             <div className="pdf-actual">
-              <p>📎 Lista actual: <strong>{pdfActual.nombre}</strong></p>
-              <p className="pdf-size">Tamaño: {(pdfActual.tamaño / 1024).toFixed(2)} KB</p>
-              <small>Sube un nuevo archivo para reemplazarla</small>
+              <div className="pdf-info">
+                <p className="pdf-nombre">
+                  📎 Lista actual: <strong>{pdfActual.nombre}</strong>
+                </p>
+                <p className="pdf-size">
+                  Tamaño: {(pdfActual.tamaño / 1024).toFixed(2)} KB
+                </p>
+              </div>
+              
+              {/* BOTONES DE ACCIÓN PARA EL PDF */}
+              <div className="pdf-actions">
+                <button
+                  type="button"
+                  className="btn-view-pdf"
+                  onClick={handleVerPDF}
+                  disabled={loadingPdf || loading}
+                  title="Abrir PDF en nueva pestaña"
+                >
+                  {loadingPdf ? '⏳' : '👁️'} Ver PDF
+                </button>
+                
+                <button
+                  type="button"
+                  className="btn-download-pdf"
+                  onClick={handleDescargarPDF}
+                  disabled={loadingPdf || loading}
+                  title="Descargar PDF"
+                >
+                  {loadingPdf ? '⏳' : '📥'} Descargar
+                </button>
+              </div>
+              
+              <small className="help-text">
+                💡 Sube un nuevo archivo para reemplazar la lista actual
+              </small>
             </div>
           )}
 
+          {/* INPUT PARA SUBIR NUEVO PDF */}
           {!archivoPDF ? (
             <>
-              <label htmlFor="listaPDF">Subir Lista en PDF:</label>
+              <label htmlFor="listaPDF">
+                {pdfActual ? 'Subir Nueva Lista:' : 'Subir Lista en PDF:'}
+              </label>
               <input 
                 id="listaPDF" 
                 type="file"
@@ -302,14 +380,14 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
                 disabled={loading}
               />
               <small className="help-text-file">
-                📎 Formato: PDF | Tamaño máximo: 5MB
+                📎 Formato: PDF | Tamaño máximo: 16MB
               </small>
             </>
           ) : (
             <div className="archivo-seleccionado-container">
               <div className="archivo-info">
                 <p className="archivo-nombre">
-                  ✅ <strong>Nuevo archivo:</strong> {archivoPDF.name}
+                  ✅ <strong>Nuevo archivo seleccionado:</strong> {archivoPDF.name}
                 </p>
                 <p className="archivo-tamaño">
                   📦 Tamaño: {(archivoPDF.size / 1024).toFixed(2)} KB

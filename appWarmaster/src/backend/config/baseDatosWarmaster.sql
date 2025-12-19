@@ -13,9 +13,6 @@ CREATE TABLE jugador_torneo_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
   jugador_id INT NOT NULL,
-  /**
-  equipo_id INT DEFAULT NULL, 
-  */
   ejercito VARCHAR(100) NOT NULL,
   lista_ejercito LONGBLOB,
   lista_nombre VARCHAR(255), 
@@ -26,13 +23,7 @@ CREATE TABLE jugador_torneo_warmaster (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  /**
-  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id),
-  */
   UNIQUE KEY unique_participante (torneo_id, jugador_id),
-  /**
-  UNIQUE KEY unique_epoca_equipo (equipo_id, epoca) 
-  */
 );
 
 CREATE TABLE clasificacion_jugadores_warmaster (

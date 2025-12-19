@@ -265,6 +265,100 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
       throw error;
     }
   }
+
+  //PARA DESCARGAR LA LISTA DE EJERCITO EN PDF
+   async descargarListaEjercito(torneoId, jugadorId) {
+    const token = localStorage.getItem('token');
+    const url = `${this.baseURL}/${torneoId}/listasEjercitos-pdf/${jugadorId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Error al descargar la lista de ejército');
+      }
+
+      // Obtener el blob del PDF
+      const blob = await response.blob();
+      
+      // Extraer nombre del archivo desde el header Content-Disposition
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `lista_ejercito_jugador_${jugadorId}.pdf`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Crear URL temporal y descargar
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Limpiar URL temporal
+      window.URL.revokeObjectURL(downloadUrl);
+
+      return { success: true, filename };
+    } catch (error) {
+      console.error('❌ Error al descargar lista de ejército:', error);
+      throw error;
+    }
+  }
+
+  //PARA VER LAS LISTAS DE EJERCITO EN PDF
+  async verListaEjercito(torneoId, jugadorId) {
+    const token = localStorage.getItem('token');
+    const url = `${this.baseURL}/${torneoId}/ver-lista-pdf/${jugadorId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Error al abrir la lista de ejército');
+      }
+
+      // Obtener el blob del PDF
+      const blob = await response.blob();
+      
+      // Crear URL temporal
+      const pdfUrl = window.URL.createObjectURL(blob);
+      
+      // Abrir en nueva pestaña
+      const newWindow = window.open(pdfUrl, '_blank');
+      
+      if (!newWindow) {
+        throw new Error('Por favor, permite ventanas emergentes para ver el PDF');
+      }
+
+      // Limpiar URL después de 30 segundos
+      setTimeout(() => {
+        window.URL.revokeObjectURL(pdfUrl);
+      }, 30000);
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error al ver lista de ejército:', error);
+      throw error;
+    }
+  }
 }
 
 export const torneosWarmasterApi = new TorneosWarmasterApi();

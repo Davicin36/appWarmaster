@@ -38,23 +38,23 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const jugadoresPorEquipo = torneo?.num_jugadores_equipo
+  const jugadoresPorEquipo = torneo?.num_jugadores_equipo;
   const puntosMaximos = torneo?.puntos_banda || PUNTOS_BANDA_RANGO.default;
   
-
-  //PROCESAR LAS EPOCAS DISPONIBLES
-
+  // ==========================================
+  // PROCESAR LAS ÉPOCAS DISPONIBLES
+  // ==========================================
   const epocasArray = React.useMemo(() => {
     if (!torneo?.epocas_disponibles) {
-      console.warn ('⚠️ No hay épocas disponibles definidas en el torneo');  
+      console.warn('⚠️ No hay épocas disponibles definidas en el torneo');  
       return [];
     }
 
-    const epocasString = torneo.epocas_disponibles
+    const epocasString = torneo.epocas_disponibles;
     
-    let epocas = []
+    let epocas = [];
 
-    //DETECTAR TIPO DE SEPARADOR
+    // DETECTAR TIPO DE SEPARADOR
     if (epocasString.includes('|')) {
       epocas = epocasString.split('|');
     } else if (epocasString.includes(',')) {
@@ -64,9 +64,8 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     }
 
     const epocasLimpias = epocas.map(e => e.trim()).filter(e => e.length > 0);
-      return epocasLimpias;
+    return epocasLimpias;
   }, [torneo?.epocas_disponibles]);
-
 
   // ==========================================
   // CARGAR EQUIPO EXISTENTE
@@ -152,14 +151,14 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     const nuevosMiembros = [...miembrosEquipo];
     nuevosMiembros[index][campo] = valor;
     
-    // ✅ MODIFICADO: Si cambia época, resetear banda Y puntos
+    // Si cambia época, resetear banda Y puntos
     if (campo === 'epoca') {
       nuevosMiembros[index].banda = "";
       nuevosMiembros[index].puntos = { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 };
       nuevosMiembros[index].detalleMercenarios = "";
     }
     
-    // ✅ NUEVO: Si se borra la banda, resetear puntos
+    // Si se borra la banda, resetear puntos
     if (campo === 'banda' && !valor) {
       nuevosMiembros[index].puntos = { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 };
       nuevosMiembros[index].detalleMercenarios = "";
@@ -233,17 +232,16 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
-    // ✅ VALIDAR QUE EL TORNEO TIENE CONFIGURACIÓN
+    // Validar que el torneo tiene configuración
     if (!jugadoresPorEquipo) {
       setError("Error: El torneo no tiene configurado el número de jugadores por equipo");
       return;
     }
 
-    // ✅ MODIFICADO: Solo validar nombre, email y época (banda y puntos son opcionales)
+    // Solo validar nombre, email y época (banda y puntos son opcionales)
     const miembrosValidos = miembrosEquipo.filter(
       m => m.nombre.trim() && m.email.trim() && m.epoca
     );
-  
     
     if (miembrosValidos.length !== jugadoresPorEquipo) {
       setError(`El equipo debe tener exactamente ${jugadoresPorEquipo} jugadores (incluyéndote). Actualmente tienes ${miembrosValidos.length}.`);
@@ -257,7 +255,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
-    // ✅ MODIFICADO: Solo validar puntos si el miembro tiene banda seleccionada
+    // Solo validar puntos si el miembro tiene banda seleccionada
     const miembrosConBanda = miembrosValidos.filter(m => m.banda && m.banda.trim());
     const miembrosSinPuntosCorrectos = miembrosConBanda.filter(m => !validarPuntosMiembro(m));
     
@@ -266,7 +264,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
-    // ✅ MODIFICADO: Solo validar mercenarios si hay banda
+    // Solo validar mercenarios si hay banda
     for (const miembro of miembrosValidos) {
       if (miembro.banda && miembro.puntos.mercenarios > 0 && !miembro.detalleMercenarios.trim()) {
         setError(`El jugador ${miembro.nombre} debe detallar sus mercenarios`);
@@ -299,6 +297,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
 
       // Otros miembros (sin "yo")
       const otrosMiembros = miembrosValidos.filter(m => !m.esYo);
+      
+      // Contar usuarios no registrados ANTES de enviar
+      const usuariosNoRegistrados = otrosMiembros.filter(m => m.usuarioValido === false);
 
       const inscripcionData = {
         nombreEquipo: nombreEquipo.trim(),
@@ -308,15 +309,16 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
               email: m.email.toLowerCase().trim(),
               epoca: m.epoca,
               banda: m.banda || null,
-              puntos: m.banda ? m.puntos : null, // ✅ Solo enviar puntos si hay banda
+              puntos: m.banda ? m.puntos : null,
               detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null,
               esCapitan: m.esCapitan
             }))
           : otrosMiembros.map(m => ({
+              nombre: m.nombre.trim(),
               email: m.email.toLowerCase().trim(),
               epoca: m.epoca,
               banda: m.banda || null,
-              puntos: m.banda ? m.puntos : null, // ✅ Solo enviar puntos si hay banda
+              puntos: m.banda ? m.puntos : null,
               detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null
             }))
       };
@@ -325,11 +327,10 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       if (!modoEdicion) {
         inscripcionData.miEpoca = misDatos.epoca;
         inscripcionData.miBanda = misDatos.banda || null;
-        inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null; // ✅ Solo enviar puntos si hay banda
+        inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null;
         inscripcionData.miDetalleMercenarios = (misDatos.banda && misDatos.detalleMercenarios) ? misDatos.detalleMercenarios : null;
       }
 
-      // 🔍 LOG CRÍTICO
       console.log('📤 Datos a enviar:');
       console.log('  - Nombre equipo:', inscripcionData.nombreEquipo);
       console.log('  - Otros miembros:', inscripcionData.miembros.length);
@@ -340,10 +341,21 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       
       if (modoEdicion) {
         resultado = await torneosSagaApi.actualizarInscripcionEquipos(torneoId, inscripcionData);
-        alert("✅ Equipo actualizado");
+        alert("✅ Equipo actualizado correctamente");
       } else {
         resultado = await torneosSagaApi.IncripcionEquipo(torneoId, inscripcionData);
-        alert("✅ Equipo inscrito");
+        
+        // Mensaje mejorado con info de invitaciones
+        if (usuariosNoRegistrados.length > 0) {
+          alert(
+            `✅ Equipo inscrito correctamente\n\n` +
+            `📧 Se han enviado ${usuariosNoRegistrados.length} invitación(es) por email:\n` +
+            usuariosNoRegistrados.map(m => `• ${m.nombre} (${m.email})`).join('\n') +
+            `\n\nLos jugadores recibirán instrucciones para completar su registro.`
+          );
+        } else {
+          alert("✅ Equipo inscrito correctamente");
+        }
       }
       
       if (resultado.success) {
@@ -352,7 +364,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       
     } catch (err) {
       console.error("❌ Error:", err);
-      setError(err.message || "Error al procesar");
+      setError(err.message || "Error al procesar la inscripción");
     } finally {
       setLoading(false);
     }
@@ -368,9 +380,18 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
         {modoEdicion ? '✏️ Editar Equipo' : '👥 Inscribir Equipo'}: {torneo?.nombre_torneo}
       </h1>
       
-      {/* ✅ MODIFICADO: Mensaje actualizado */}
+      {/* Mensaje informativo principal */}
       <div className="info-message info-equipos">
         ℹ️ Cada jugador debe seleccionar su época. La banda y los puntos son opcionales, pero si se elige banda, los puntos deben sumar {puntosMaximos}.
+      </div>
+
+      {/* Aviso sobre invitaciones automáticas */}
+      <div className="info-message info-invitaciones" style={{ 
+        backgroundColor: '#e0f2fe', 
+        borderLeft: '4px solid #0284c7',
+        marginTop: '1rem'
+      }}>
+        📧 Los jugadores no registrados recibirán automáticamente un email de invitación para completar su registro en la plataforma.
       </div>
 
       <form onSubmit={handleSubmit} className="inscripcion-form">
@@ -434,49 +455,71 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                   <div className="miembro-campos">
                     {/* NOMBRE */}
                     <div className="form-group">
-                      <label>Nombre *</label>
+                      <label htmlFor={`nombre-${index}`}>Nombre *</label>
                       <input
                         type="text"
+                        id={`nombre-${index}`}
                         value={miembro.nombre}
                         onChange={(e) => actualizarMiembro(index, 'nombre', e.target.value)}
                         required
                         disabled={loading || miembro.esYo}
+                        placeholder="Nombre completo del jugador"
                       />
                     </div>
 
                     {/* EMAIL */}
                     <div className="form-group">
-                      <label>Email *</label>
+                      <label htmlFor={`email-${index}`}>Email *</label>
                       <div className="input-con-badge">
                         <input
                           type="email"
+                          id={`email-${index}`}
                           value={miembro.email}
                           onChange={(e) => actualizarMiembro(index, 'email', e.target.value)}
                           onBlur={() => !miembro.esYo && verificarUsuario(miembro.email, index)}
                           required
                           disabled={loading || miembro.esYo}
+                          placeholder="email@ejemplo.com"
                           className={
                             miembro.usuarioValido === false ? 'input-error' :
                             miembro.usuarioValido === true ? 'input-success' : ''
                           }
                         />
                         {!miembro.esYo && miembro.email && miembro.usuarioValido === true && (
-                          <span className="badge-registro registrado">✅</span>
+                          <span className="badge-registro registrado">✅ Registrado</span>
                         )}
                         {!miembro.esYo && miembro.email && miembro.usuarioValido === false && (
-                          <span className="badge-registro no-registrado">❌</span>
+                          <span 
+                            className="badge-registro no-registrado" 
+                            title="Recibirá invitación automática por email"
+                          >
+                            ⚠️ No registrado
+                          </span>
                         )}
                       </div>
+                      {!miembro.esYo && miembro.usuarioValido === false && miembro.email && (
+                        <small style={{ 
+                          color: '#0284c7', 
+                          fontSize: '0.85rem', 
+                          marginTop: '0.25rem', 
+                          display: 'block',
+                          fontWeight: '500'
+                        }}>
+                          📧 Se le enviará un email automáticamente para que complete su registro
+                        </small>
+                      )}
                     </div>
 
                     {/* ÉPOCA */}
                     <div className="form-group">
                       <label htmlFor={`epoca-${index}`}>
                         Época *
-                        <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}> ({epocasArray.length} disponible{epocasArray.length !== 1 ? 's' : ' '})</span>
+                        <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}>
+                          ({epocasArray.length} disponible{epocasArray.length !== 1 ? 's' : ''})
+                        </span>
                       </label>
                       <select
-                         id={`epoca-${index}`}
+                        id={`epoca-${index}`}
                         value={miembro.epoca}
                         onChange={(e) => actualizarMiembro(index, 'epoca', e.target.value)}
                         required
@@ -498,7 +541,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                     {/* BANDA - OPCIONAL */}
                     {miembro.epoca && (
                       <div className="form-group">
-                        <label htmlFor = {`banda-${index}`}>
+                        <label htmlFor={`banda-${index}`}>
                           Banda (Opcional) ({miembro.epoca})
                           <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}>
                             ({bandasDisponibles.length} disponible{bandasDisponibles.length !== 1 ? 's' : ''})
@@ -524,7 +567,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       </div>
                     )}
 
-                    {/* ✅ MODIFICADO: DISTRIBUCIÓN DE PUNTOS - Solo si hay BANDA */}
+                    {/* DISTRIBUCIÓN DE PUNTOS - Solo si hay BANDA */}
                     {miembro.banda && (
                       <div className="puntos-banda-section">
                         <h4>Distribución de Puntos</h4>
@@ -570,7 +613,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                             />
                           </div>
 
-                         <div className="punto-item-mini">
+                          <div className="punto-item-mini">
                             <label htmlFor={`levas-${index}`}>Levas</label>
                             <input
                               type="number"
@@ -599,14 +642,14 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                           </div>
                         </div>
 
-                       {miembro.puntos.mercenarios > 0 && (
+                        {miembro.puntos.mercenarios > 0 && (
                           <div className="form-group">
                             <label htmlFor={`detalle-merc-${index}`}>Detalle Mercenarios *</label>
                             <textarea
                               id={`detalle-merc-${index}`}
                               value={miembro.detalleMercenarios}
                               onChange={(e) => actualizarMiembro(index, 'detalleMercenarios', e.target.value)}
-                              placeholder="Ej: Arqueros Cretenses, Caballería..."
+                              placeholder="Ej: Arqueros Cretenses, Caballería Numida..."
                               rows="2"
                               required
                               disabled={loading}
@@ -623,8 +666,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       onClick={() => eliminarMiembro(index)}
                       className="btn-eliminar"
                       disabled={loading}
+                      title="Eliminar jugador"
                     >
-                      🗑️
+                      🗑️ Eliminar
                     </button>
                   )}
                 </div>
@@ -635,10 +679,15 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
 
         <div className="button-group">
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? '⏳ Procesando...' : (modoEdicion ? '✅ Guardar' : '✅ Inscribir')}
+            {loading ? '⏳ Procesando...' : (modoEdicion ? '✅ Guardar Cambios' : '✅ Inscribir Equipo')}
           </button>
           
-          <button type="button" className="btn-secondary" onClick={() => navigate(-1)} disabled={loading}>
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => navigate(-1)} 
+            disabled={loading}
+          >
             Cancelar
           </button>
         </div>

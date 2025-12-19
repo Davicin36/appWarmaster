@@ -2,6 +2,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken'); 
 const multer = require('multer');
+const crypto = require('crypto');
 const { pool } = require('../config/bd');
 const { enviarInvitacionEquipo } = require('../utils/nodemailer');
 const { verificarToken, verificarOrganizador } = require('../middleware/auth');
@@ -1101,7 +1102,8 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         participantes_max,
         equipos_max,
         puntos_banda,
-        estado
+        estado,
+        nombre_torneo
       FROM torneos_sistemas 
       WHERE id = ?`,
       [torneoId]
@@ -1197,32 +1199,34 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
     if (miembros.length > 0) {
       const emails = miembros.map(m => m.email.toLowerCase().trim());
 
-      if(new set(emails).size !== emails.length){
+      if(new Set(emails).size !== emails.length){
         await connection.rollback()
         return res.status(400).json(
           errorResponse('No puede haber emails duplicados en el equipo')
         )
       }
 
-      const inscritoEmail = (await connection.execute(
+      const [inscriptorEmailResult] = await connection.execute(
         'SELECT email FROM usuarios WHERE id = ?',
         [inscriptorId]
-      ))[0][0].email.toLowerCase()
+      );
 
-      if (emails.includes(inscritoEmail)) {
-        await connection.rollback()
+      const inscriptorEmail = inscriptorEmailResult[0].email.toLowerCase();
+
+      if (emails.includes(inscriptorEmail)) {
+        await connection.rollback();
         return res.status(400).json(
-          errorResponse('No puedes incluirte a ti mismo en la lista de miembros adicionales del equipo')
-        )
+          errorResponse('No puedes incluirte a ti mismo en la lista de miembros adicionales')
+        );
       }
 
       const placeholders = emails.map(() => '?').join(',');
       const [yaEnOtroEquipo] = await connection.execute(
         `SELECT u.email, e.nombre_equipo
-          FROM jugador_torneo_saga jts
-          INNER JOIN usuarios u ON jts.jugador_id = u.id
-          INNER JOIN torneo_saga_equipos e ON jts.equipo_id = e.id
-          WHERE jts.torneo_id = ? AND u.email IN (${placeholders})`,
+            FROM jugador_torneo_saga jts
+            INNER JOIN usuarios u ON jts.jugador_id = u.id
+            INNER JOIN torneo_saga_equipos e ON jts.equipo_id = e.id
+            WHERE jts.torneo_id = ? AND u.email IN (${placeholders})`,
           [torneoId, ...emails]
       )
 
@@ -1235,7 +1239,9 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       }
 
       const [usuariosExistentes] = await connection.execute(
-        `SELECT id, email, nombre, apellidos, estado_cuenta FROM usuarios WHERE email IN (${placeholders})`,
+        `SELECT id, email, nombre, apellidos, estado_cuenta 
+            FROM usuarios 
+            WHERE email IN (${placeholders})`,
         emails
       );
 
@@ -1245,7 +1251,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 
       for (const miembro of miembros) {
         const emailLower = miembro.email.toLowerCase().trim()
-        const usuarioExistente = usuario.map.get(emailLower)
+        const usuarioExistente = usuariosMap.get(emailLower)
 
         if (usuarioExistente){
           miembrosConUsuarioId.push ({
@@ -1283,7 +1289,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           });
 
           // Marcar para enviar email
-          miembrosParaInvitar.push({
+          miembrosInvitar.push({
             ...miembro,
             usuarioId: nuevoUserId,
             nombre: miembro.nombre || emailLower.split('@')[0]
