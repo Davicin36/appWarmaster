@@ -1225,7 +1225,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         `SELECT u.email, e.nombre_equipo
             FROM jugador_torneo_saga jts
             INNER JOIN usuarios u ON jts.jugador_id = u.id
-            INNER JOIN torneo_saga_equipos e ON jts.equipo_id = e.id
+            INNER JOIN torneo_saga_equipo e ON jts.equipo_id = e.id
             WHERE jts.torneo_id = ? AND u.email IN (${placeholders})`,
           [torneoId, ...emails]
       )
@@ -1371,7 +1371,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         ) VALUES (?, ?, ?, ?, ?, ?)`,
         [
           torneoId,
-          usuarioId,
+          miembro.usuarioId,
           equipoId,
           miembro.epoca,
           miembro.banda || null,
@@ -1387,7 +1387,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           usuario_id,
           jugador_eq_id
         ) VALUES (?, ?, ?)`,
-        [equipoId, usuarioId, jugadorId]
+        [equipoId, miembro.usuarioId, jugadorId]
       );
     }
 
@@ -1446,7 +1446,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
                 warlord_muerto_totales
               ) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
               ON DUPLICATE KEY UPDATE jugador_id = jugador_id
-            `, [torneoId, usuario[0].id, equipoId]);
+            `, [torneoId, miembro.usuarioId, equipoId]);
         }
 
       await connection.commit();
