@@ -248,13 +248,6 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
-    // Validar usuarios registrados
-    const usuariosNoValidos = miembrosValidos.filter(m => m.usuarioValido !== true);
-    if (usuariosNoValidos.length > 0) {
-      setError("Todos los jugadores deben estar registrados");
-      return;
-    }
-
     // Solo validar puntos si el miembro tiene banda seleccionada
     const miembrosConBanda = miembrosValidos.filter(m => m.banda && m.banda.trim());
     const miembrosSinPuntosCorrectos = miembrosConBanda.filter(m => !validarPuntosMiembro(m));
@@ -299,8 +292,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       const otrosMiembros = miembrosValidos.filter(m => !m.esYo);
       
       // Contar usuarios no registrados ANTES de enviar
-      const usuariosNoRegistrados = otrosMiembros.filter(m => m.usuarioValido === false);
-
+      const usuariosNoRegistrados = otrosMiembros.filter(
+      m => m.usuarioValido === false || m.usuarioValido === null
+    );
       const inscripcionData = {
         nombreEquipo: nombreEquipo.trim(),
         miembros: modoEdicion 
@@ -330,12 +324,6 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
         inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null;
         inscripcionData.miDetalleMercenarios = (misDatos.banda && misDatos.detalleMercenarios) ? misDatos.detalleMercenarios : null;
       }
-
-      console.log('📤 Datos a enviar:');
-      console.log('  - Nombre equipo:', inscripcionData.nombreEquipo);
-      console.log('  - Otros miembros:', inscripcionData.miembros.length);
-      console.log('  - Mi época:', inscripcionData.miEpoca);
-      console.log('  - Mi banda:', inscripcionData.miBanda);
 
       let resultado;
       
