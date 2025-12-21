@@ -111,29 +111,29 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   };
 
   const eliminarInscripcion = async () => {
-  if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
-    return;
-  }
-
-  if (!user?.id) {
-    setError ("No se puedo obtener tu ID de usuario")
-  }
-  
-  try {
-    setLoading(true);
-    const resultado = await torneosSagaApi.eliminarJugadorTorneo(torneoId, user.id);
-
-    if (resultado.success) {
-      alert("✅ Inscripción eliminada correctamente");
-      navigate('/');
+    if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
+      return;
     }
-  } catch (error) {
-    console.error("❌ Error al eliminar inscripción:", error);
-    setError(error.message || "Error al eliminar la inscripción");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    if (!user?.id) {
+      setError ("No se puedo obtener tu ID de usuario")
+    }
+    
+    try {
+      setLoading(true);
+      const resultado = await torneosSagaApi.eliminarJugadorTorneo(torneoId, user.id);
+
+      if (resultado.success) {
+        alert("✅ Inscripción eliminada correctamente");
+        navigate('/');
+      }
+    } catch (error) {
+      console.error("❌ Error al eliminar inscripción:", error);
+      setError(error.message || "Error al eliminar la inscripción");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

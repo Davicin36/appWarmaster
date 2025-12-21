@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const crypto = require('crypto');
 const { pool } = require('../config/bd');
-const { enviarInvitacionEquipo } = require('../utils/nodemailer');
+const { enviarInvitacionEquipo } = require('../utils/emailInscripcionEquipos');
 const { verificarToken, verificarOrganizador } = require('../middleware/auth');
 const { 
   calcularPuntosTorneo,
@@ -1103,7 +1103,12 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         equipos_max,
         puntos_banda,
         estado,
-        nombre_torneo
+        nombre_torneo,
+        created_by,
+        sistema,
+        ubicacion,
+        fecha_inicio,
+        fecha_fin
       FROM torneos_sistemas 
       WHERE id = ?`,
       [torneoId]
@@ -1231,7 +1236,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       )
 
       if (yaEnOtroEquipo.length > 0) {
-        const detalles = yaEnOtroEquipo.map (u =>`${u.emial} (en "${u.nombre_equipo}")`).join(', ')
+        const detalles = yaEnOtroEquipo.map (u =>`${u.email} (en "${u.nombre_equipo}")`).join(', ')
         await connection.rollback()
         return res.status(400).json(
           errorResponse(`Usuarios ya inscritos en otros Equipos: ${detalles}`)
@@ -1256,8 +1261,8 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         if (usuarioExistente){
           miembrosConUsuarioId.push ({
             ...miembro,
-            usuarioID: usuarioExistente.id,
-            nombre: miembro.nombre || `${usuarioExistente.nombre} ${usuarioExistente.id}`.trim(),
+            usuarioId: usuarioExistente.id,
+            nombre: miembro.nombre || `${usuarioExistente.nombre} ${usuarioExistente.apellidos}`.trim(),
             esNuevo: false
           })
         } else {
@@ -1332,9 +1337,9 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         torneoId,
         inscriptorId,
         equipoId,
-        miEpoca,
-        miBanda,
-        composicionInscriptor
+        miEpoca || null,
+        miBanda || null,
+        miBanda ? composicionInscriptor :  null
       ]
     );
 
@@ -1348,8 +1353,6 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       ) VALUES (?, ?, ?)`,
       [equipoId, inscriptorId, inscriptorJugadorId]
     );
-
-      const usuarioId = usuario[0].id;
 
     for (const miembro of miembrosConUsuarioId) {
           const composicionMiembro = JSON.stringify({
@@ -1373,9 +1376,9 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           torneoId,
           miembro.usuarioId,
           equipoId,
-          miembro.epoca,
+          miembro.epoca || null,
           miembro.banda || null,
-          composicionMiembro
+          miembro.banda ? composicionMiembro : null
         ]
       );
 
@@ -1425,12 +1428,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           ON DUPLICATE KEY UPDATE jugador_id = jugador_id
         `, [torneoId, inscriptorId, equipoId]);
 
-        for (const miembro of miembros) {
-            const [usuario] = await connection.execute(
-              'SELECT id FROM usuarios WHERE email = ?',
-              [miembro.email.toLowerCase().trim()]
-            );
-          
+        for (const miembro of miembrosConUsuarioId) {         
           await connection.execute(`
               INSERT INTO clasificacion_jugadores_saga (
                 torneo_id,
@@ -1451,7 +1449,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 
       await connection.commit();
 
-      if (miembrosParaInvitar.length > 0) {
+      if (miembrosConUsuarioId.length > 0) {
        
       // Obtener info del capitán
       const [inscriptorInfo] = await connection.execute(
@@ -1464,23 +1462,47 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         email: inscriptorInfo[0].email
       };
 
+      const [organizadorInfo] = await connection.execute(
+        'SELECT nombre, apellidos, email FROM usuarios WHERE id = ?',
+        [torneo.created_by]
+      );
+
+      const organizador = {
+        nombre: `${organizadorInfo[0].nombre} ${organizadorInfo[0].apellidos}`.trim(),
+        email: organizadorInfo[0].email
+      };
+
+      console.log('📧 Correos a enviar:', miembrosConUsuarioId.map(m => ({
+        email: m.email,
+        esNuevo: m.esNuevo,
+        usuarioId: m.usuarioId
+    })));
+
       // Enviar correos en segundo plano (no bloquear la respuesta)
       setImmediate(async () => {
-        for (const miembro of miembrosParaInvitar) {
+        for (const miembro of miembrosConUsuarioId) {
           try {
             await enviarInvitacionEquipo(
               {
                 nombre: miembro.nombre,
                 email: miembro.email,
                 epoca: miembro.epoca,
-                banda: miembro.banda
+                banda: miembro.banda,
+                esNuevo: miembro.esNuevo
               },
               {
                 nombreEquipo,
                 capitan
               },
               {
-                nombre_torneo: torneo.nombre_torneo
+                nombre_torneo: torneo.nombre_torneo,
+                sistema: torneo.sistema,
+                organizador,
+                tipo_torneo: torneo.tipo_torneo,
+                ubicacion: torneo.ubicacion,
+                fecha_inicio: torneo.fecha_inicio,
+                fecha_fin: torneo.fecha_fin,
+                puntos_banda: torneo.puntos_banda
               },
               null // Ya no usamos token
             );
@@ -1492,15 +1514,15 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
     }
     
         res.json(
-      successResponse('Equipo inscrito exitosamente', {
-        equipoId,
-        torneoId,
-        nombreEquipo,
-        totalMiembros,
-        miembrosNuevos: miembrosParaInvitar.length,
-        correosProgramados: miembrosParaInvitar.map(m => m.email)
-      })
-    );
+          successResponse('Equipo inscrito exitosamente', {
+            equipoId,
+            torneoId,
+            nombreEquipo,
+            totalMiembros,
+            miembrosNuevos: miembrosInvitar.length,
+            correosProgramados: miembrosConUsuarioId.map(m => m.email)
+          })
+        );
 
   } catch (error) {
     await connection.rollback();
@@ -1520,7 +1542,9 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, res) => {
   try {
     const { torneoId } = req.params;
-    const userId =req.usuario.userId
+    const userId = req.usuario.userId;
+    
+    console.log(`📖 GET /${torneoId}/obtenerInscripcionEquipo - User: ${userId}`);
     
     // Buscar equipo del usuario
     const [equipos] = await pool.execute(`
@@ -1540,7 +1564,7 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
 
     const equipo = equipos[0];
 
-    // Obtener todos los miembros con su información
+    // ✅ OBTENER TODOS LOS MIEMBROS (ACTIVOS Y PENDIENTES)
     const [miembros] = await pool.execute(`
       SELECT 
         j.id as jugador_id,
@@ -1551,6 +1575,7 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
         u.nombre,
         u.apellidos,
         u.email,
+        u.estado_cuenta,
         e.capitan_id = j.jugador_id as es_capitan
       FROM jugador_torneo_saga j
       INNER JOIN equipo_miembros em ON j.id = em.jugador_eq_id
@@ -1560,43 +1585,62 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
       ORDER BY (e.capitan_id = j.jugador_id) DESC, u.nombre
     `, [equipo.id]);
 
+    console.log(`📋 Miembros encontrados: ${miembros.length}`);
+    
+    // ✅ PROCESAR MIEMBROS (INCLUYENDO PENDIENTES)
+    const miembrosProcesados = miembros.map(m => {
+      let composicion = {};
+      try {
+        composicion = typeof m.composicion_ejercito === 'string'
+          ? JSON.parse(m.composicion_ejercito)
+          : m.composicion_ejercito || {};
+      } catch (e) {
+        console.error('Error al parsear composición:', e);
+      }
+
+      // ✅ LOG para debugging
+      console.log(`  - ${m.nombre} ${m.apellidos} (${m.email}): ${m.estado_cuenta}`);
+
+      return {
+        jugador_id: m.jugador_id,
+        usuario_id: m.usuario_id,
+        nombre: `${m.nombre} ${m.apellidos}`,
+        email: m.email,
+        epoca: m.epoca,
+        banda: m.banda,
+        puntos: {
+          guardias: composicion.guardias || 0,
+          guerreros: composicion.guerreros || 0,
+          levas: composicion.levas || 0,
+          mercenarios: composicion.mercenarios || 0
+        },
+        detalle_mercenarios: composicion.detalleMercenarios || '',
+        es_capitan: Boolean(m.es_capitan),
+        estado_cuenta: m.estado_cuenta 
+      };
+    });
+
     const respuesta = {
       ...equipo,
       esCapitan: equipo.capitan_id === userId,
-      miembros: miembros.map(m => {
-        let composicion = {};
-        try {
-          composicion = typeof m.composicion_ejercito === 'string'
-            ? JSON.parse(m.composicion_ejercito)
-            : m.composicion_ejercito;
-        } catch (e) {
-          console.error('Error al parsear composición:', e);
-        }
-
-        return {
-          jugador_id: m.jugador_id,
-          usuario_id: m.usuario_id,
-          nombre: `${m.nombre} ${m.apellidos}`,
-          email: m.email,
-          epoca: m.epoca,
-          banda: m.banda,
-          puntos: {
-            guardias: composicion.guardias || 0,
-            guerreros: composicion.guerreros || 0,
-            levas: composicion.levas || 0,
-            mercenarios: composicion.mercenarios || 0
-          },
-          detalle_mercenarios: composicion.detalleMercenarios || '',
-          es_capitan: Boolean(m.es_capitan)
-        };
-      })
+      miembros: miembrosProcesados,
+      // ✅ NUEVO: Estadísticas del equipo
+      estadisticas: {
+        total: miembrosProcesados.length,
+        activos: miembrosProcesados.filter(m => m.estado_cuenta === 'activo').length,
+        pendientes: miembrosProcesados.filter(m => m.estado_cuenta === 'pendiente_registro').length
+      }
     };
     
     console.log(`✅ Equipo encontrado: ${equipo.nombre_equipo}`);
+    console.log(`   - Miembros activos: ${respuesta.estadisticas.activos}`);
+    console.log(`   - Miembros pendientes: ${respuesta.estadisticas.pendientes}`);
+    
     res.json(successResponse('Equipo encontrado', respuesta));
     
   } catch (error) {
     console.error('❌ Error al obtener equipo:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json(errorResponse('Error al obtener equipo'));
   }
 });
@@ -1611,17 +1655,15 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
     const userId = req.userId;
     const { nombreEquipo, miembros } = req.body;
 
-    console.log(`📝 PUT /${torneoId}/actualizarEquipo - User: ${userId}`);
-
     await connection.beginTransaction();
 
     // Verificar que el usuario es miembro del equipo
     const [equipos] = await connection.execute(
       `SELECT DISTINCT e.id, e.nombre_equipo 
-       FROM torneo_saga_equipo e
-       INNER JOIN equipo_miembros em ON e.id = em.equipo_id
-       INNER JOIN jugador_torneo_saga j ON em.jugador_eq_id = j.id
-       WHERE e.torneo_id = ? AND j.jugador_id = ?`,
+          FROM torneo_saga_equipo e
+          INNER JOIN equipo_miembros em ON e.id = em.equipo_id
+          INNER JOIN jugador_torneo_saga j ON em.jugador_eq_id = j.id
+          WHERE e.torneo_id = ? AND j.jugador_id = ?`,
       [torneoId, userId]
     );
 
@@ -1660,6 +1702,43 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       [nombreEquipo, nuevoCapitanId, equipoId]
     );
 
+    //VALIDAR LOS EMAILS DE LOS MIEMBROS QUE EXISTAN
+    const emailsUnicos = new Set();
+    for (const miembro of miembros) {
+      const emailLower = miembro.email.toLowerCase().trim();
+        
+       // Validar emails únicos
+       if (emailsUnicos.has(emailLower)) {
+        await connection.rollback();
+          return res.status(400).json(
+            errorResponse(`Email duplicado: ${miembro.email}`)
+          );
+      }
+      emailsUnicos.add(emailLower);
+    }
+
+    const usuariosMap = new Map();
+    
+    for (const miembro of miembros) {
+      const emailLower = miembro.email.toLowerCase().trim();
+          
+      const [usuario] = await connection.execute(
+        'SELECT id, nombre, apellidos, estado_cuenta FROM usuarios WHERE email = ?',
+        [emailLower]
+      );
+
+      if (usuario.length === 0) {
+        await connection.rollback();
+          return res.status(400).json(
+            errorResponse(
+              `El usuario ${miembro.email} no existe en el sistema. ` +
+              `Debe haber sido invitado previamente o estar registrado.`
+            )
+          );
+      }
+      usuariosMap.set(emailLower, usuario[0]);
+    }
+
     // Eliminar miembros anteriores
     await connection.execute(
       'DELETE FROM equipo_miembros WHERE equipo_id = ?',
@@ -1673,19 +1752,16 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
     // Insertar todos los miembros nuevamente
     for (const miembro of miembros) {
-      const [usuario] = await connection.execute(
-        'SELECT id FROM usuarios WHERE email = ?',
-        [miembro.email.toLowerCase().trim()]
-      );
-
-      const usuarioId = usuario[0].id;
+      const emailLower = miembro.email.toLowerCase().trim();
+      const usuario = usuariosMap.get(emailLower);
+      const usuarioId = usuario.id
 
       const composicion = JSON.stringify({
-        guardias: miembro.puntos?.guardias || null,
-        guerreros: miembro.puntos?.guerreros || null,
-        levas: miembro.puntos?.levas || null,
-        mercenarios: miembro.puntos?.mercenarios || null,
-        detalleMercenarios: miembro.detalleMercenarios || null
+          guardias: miembro.puntos?.guardias || 0,
+          guerreros: miembro.puntos?.guerreros || 0,
+          levas: miembro.puntos?.levas || 0,
+          mercenarios: miembro.puntos?.mercenarios || 0,
+          detalleMercenarios: miembro.detalleMercenarios || null
       });
 
       const [resultadoJugador] = await connection.execute(
@@ -1697,7 +1773,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
           faccion,
           composicion_ejercito
         ) VALUES (?, ?, ?, ?, ?, ?)`,
-        [torneoId, usuarioId, equipoId, miembro.epoca, miembro.banda, composicion]
+        [torneoId, usuarioId, equipoId, miembro.epoca, miembro.banda || null, composicion]
       );
 
       const jugadorId = resultadoJugador.insertId;
@@ -1714,8 +1790,13 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
     await connection.commit();
 
-    console.log(`✅ Equipo "${nombreEquipo}" actualizado`);
-    res.json(successResponse('Equipo actualizado correctamente'));
+    res.json(successResponse('Equipo actualizado correctamente', {
+      equipoId,
+      nombreEquipo,
+      totalMiembros: miembros.length,
+      miembrosActivos: [...usuariosMap.values()].filter(u => u.estado_cuenta === 'activo').length,
+      miembrosPendientes: [...usuariosMap.values()].filter(u => u.estado_cuenta === 'pendiente_registro').length
+    }));
 
   } catch (error) {
     await connection.rollback();
@@ -2043,7 +2124,7 @@ router.delete('/:torneoId/equipo/:equipoId', verificarToken, async (req, res) =>
 
     // Verificar que el equipo existe
     const [equipos] = await connection.execute(
-      'SELECT id FROM torneo_saga_equipo WHERE id = ? AND torneo_id = ?',
+      'SELECT id, capitan_id FROM torneo_saga_equipo WHERE id = ? AND torneo_id = ?',
       [equipoId, torneoId]
     );
 

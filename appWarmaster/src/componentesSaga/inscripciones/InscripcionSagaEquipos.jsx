@@ -17,6 +17,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
   const modoEdicion = location.pathname.includes('editar-inscripcion');
   
   const [nombreEquipo, setNombreEquipo] = useState("");
+  const [equipoId, setEquipoId] = useState(null);
   const [miembrosEquipo, setMiembrosEquipo] = useState([
     { 
       nombre: `${user?.nombre} ${user?.apellidos}`,
@@ -82,18 +83,20 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
           const equipo = data.data;
           
           setNombreEquipo(equipo.nombre_equipo || "");
+          setEquipoId(equipo.id);
           
           if (equipo.miembros && Array.isArray(equipo.miembros)) {
             setMiembrosEquipo(equipo.miembros.map(m => ({
-              nombre: m.nombre,
-              email: m.email,
-              epoca: m.epoca,
-              banda: m.banda || "",
-              puntos: m.puntos || { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 },
-              detalleMercenarios: m.detalle_mercenarios || "",
-              esCapitan: m.es_capitan,
-              esYo: m.usuario_id === user.id,
-              usuarioValido: true
+                nombre: m.nombre,
+                email: m.email,
+                epoca: m.epoca,
+                banda: m.banda || "",
+                puntos: m.puntos || { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 },
+                detalleMercenarios: m.detalle_mercenarios || "",
+                esCapitan: m.es_capitan,
+                esYo: m.usuario_id === user.id,
+                usuarioValido: m.estado_cuenta === 'activo', 
+                estadoCuenta: m.estado_cuenta 
             })));
           }
         }
@@ -146,6 +149,32 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       setError("");
     }
   };
+
+  const eliminarInscripcionEquipo = async () => {
+      if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar la inscripción de tu equipo?')) {
+        return;
+      }
+  
+      if (!equipoId) {
+        setError("No se pudo obtener el ID del equipo");
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const resultado = await torneosSagaApi.eliminarEquipoTorneo(torneoId, equipoId);
+  
+        if (resultado.success) {
+          alert("✅ Inscripción del Equipo eliminada correctamente");
+          navigate('/');
+        }
+      } catch (error) {
+        console.error("❌ Error al eliminar inscripción:", error);
+        setError(error.message || "Error al eliminar la inscripción");
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const actualizarMiembro = (index, campo, valor) => {
     const nuevosMiembros = [...miembrosEquipo];
@@ -207,6 +236,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
         actualizarMiembro(index, 'usuarioValido', true);
       } else {
         actualizarMiembro(index, 'usuarioValido', false);
+        if (modoEdicion) {
+          setError(`El usuario ${email} no está registrado. En modo edición solo puedes agregar usuarios ya registrados.`);
+        }
       }
     } catch (err) {
       console.error("Error:", err);
@@ -291,10 +323,10 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       // Otros miembros (sin "yo")
       const otrosMiembros = miembrosValidos.filter(m => !m.esYo);
       
-      // Contar usuarios no registrados ANTES de enviar
-      const usuariosNoRegistrados = otrosMiembros.filter(
-      m => m.usuarioValido === false || m.usuarioValido === null
-    );
+      const usuariosConEmail = otrosMiembros.filter(
+        m => m.email && m.email.trim() !== ' '
+      )
+
       const inscripcionData = {
         nombreEquipo: nombreEquipo.trim(),
         miembros: modoEdicion 
@@ -334,11 +366,11 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
         resultado = await torneosSagaApi.IncripcionEquipo(torneoId, inscripcionData);
         
         // Mensaje mejorado con info de invitaciones
-        if (usuariosNoRegistrados.length > 0) {
+        if (usuariosConEmail.length > 0) {
           alert(
             `✅ Equipo inscrito correctamente\n\n` +
-            `📧 Se han enviado ${usuariosNoRegistrados.length} invitación(es) por email:\n` +
-            usuariosNoRegistrados.map(m => `• ${m.nombre} (${m.email})`).join('\n') +
+            `📧 Se han enviado ${usuariosConEmail.length} invitación(es) por email:\n` +
+            usuariosConEmail.map(m => `• ${m.nombre} (${m.email})`).join('\n') +
             `\n\nLos jugadores recibirán instrucciones para completar su registro.`
           );
         } else {
@@ -473,15 +505,18 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                             miembro.usuarioValido === true ? 'input-success' : ''
                           }
                         />
-                        {!miembro.esYo && miembro.email && miembro.usuarioValido === true && (
-                          <span className="badge-registro registrado">✅ Registrado</span>
-                        )}
-                        {!miembro.esYo && miembro.email && miembro.usuarioValido === false && (
+                        {!miembro.esYo && miembro.email && miembro.estadoCuenta === 'pendiente_registro' && (
                           <span 
-                            className="badge-registro no-registrado" 
-                            title="Recibirá invitación automática por email"
+                            className="badge-registro pendiente" 
+                            title="Usuario invitado, pendiente de registro"
                           >
-                            ⚠️ No registrado
+                            ⏳ Pendiente de registro
+                          </span>
+                        )}
+
+                        {!miembro.esYo && miembro.email && miembro.estadoCuenta === 'activo' && (
+                          <span className="badge-registro registrado">
+                            ✅ Registrado
                           </span>
                         )}
                       </div>
@@ -656,7 +691,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       disabled={loading}
                       title="Eliminar jugador"
                     >
-                      🗑️ Eliminar
+                      🗑️ 
                     </button>
                   )}
                 </div>
@@ -669,6 +704,17 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? '⏳ Procesando...' : (modoEdicion ? '✅ Guardar Cambios' : '✅ Inscribir Equipo')}
           </button>
+
+           {modoEdicion && (
+                <button 
+                  type="button" 
+                  className="btn-danger" 
+                  onClick={eliminarInscripcionEquipo}
+                  disabled={loading}
+                >
+                  🗑️ Eliminar Inscripción
+                </button>
+              )}
           
           <button 
             type="button" 

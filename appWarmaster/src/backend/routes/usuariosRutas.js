@@ -62,185 +62,160 @@ router.get('/', async (req, res) => {
 // ======REGISTRO DE USUARIO=======
 
 router.post('/registro', async (req, res) => {
+  const connection = await pool.getConnection();
+  
   try {
-    const { nombre, apellidos, nombre_alias, club, email, password, localidad, pais, codigo_postal} = req.body;
-    
-    // Validar campos requeridos
-    const camposFaltantes = validarCamposRequeridos(req.body, [
-      'nombre', 'apellidos', 'email', 'password', 'localidad', 'pais', 'codigo_postal'
-    ]);
+    const {
+      nombre,
+      apellidos,
+      nombre_alias,
+      club,
+      email,
+      codigo_postal,
+      localidad,
+      pais,
+      password
+    } = req.body;
 
-    if (camposFaltantes.length > 0) {
-      return res.status(400).json(
-        errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
-      );
-    }
-    
-    // Validar email
-    if (!validarEmail(email)) {
-      return res.status(400).json(
-        errorResponse('Formato de email inválido')
-      );
-    }
-    
-    // Validar longitud de contraseña
-    if (password.length < 6) {
-      return res.status(400).json(
-        errorResponse('La contraseña debe tener al menos 6 caracteres')
-      );
-    }
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{6,}$/;
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json(
-        errorResponse('La contraseña debe contener al menos una letra y un número')
-      );
-    }
+    await connection.beginTransaction();
 
-     const validacionCP = validarCodigoPostal(codigo_postal, pais); 
-    if (!validacionCP.valido) {
-      console.log('❌ Código postal inválido:', validacionCP.mensaje);
-      return res.status(400).json(
-        errorResponse(validacionCP.mensaje)
-      );
-    }
-    
-    // Verificar si el email ya existe
-    const emailLower = email.toLowerCase().trim();
-    const [existeUsuario] = await pool.execute(
-      'SELECT id, email, estado_cuenta FROM usuarios WHERE email = ?', 
-      [emailLower]
+    // VERIFICAR SI YA EXISTE UN USUARIO PENDIENTE
+    const [usuarioExistente] = await connection.execute(
+      'SELECT id, estado_cuenta FROM usuarios WHERE email = ?',
+      [email.toLowerCase().trim()]
     );
-    
-    if (existeUsuario.length > 0) {
-      const usuarioExistente = existeUsuario[0];
 
-      //permitir completar registro si "pendiente_registro"
-      if (usuarioExistente.estado_cuenta === 'pendiente_registro') {
-      //encriptar nueva contraseña
-      const passwordEncriptada = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-      await pool.execute(
-            `UPDATE usuarios 
-            SET nombre = ?,
-                apellidos = ?,
-                nombre_alias = ?,
-                club = ?,
-                password = ?,
-                localidad = ?,
-                pais = ?,
-                codigo_postal = ?,
-                estado_cuenta = 'activo'
-            WHERE id = ?`,
-            [
-              nombre, 
-              apellidos, 
-              nombre_alias || null, 
-              club || null, 
-              passwordEncriptada,
-              localidad,
-              pais,
-              codigo_postal,
-              usuarioExistente.id
-            ]
+    if (usuarioExistente.length > 0) {
+      const usuario = usuarioExistente[0];
+
+      // ✅ SI ESTÁ PENDIENTE, ACTUALIZAR
+      if (usuario.estado_cuenta === 'pendiente_registro') {
+        await connection.execute(
+          `UPDATE usuarios 
+           SET nombre = ?,
+               apellidos = ?,
+               nombre_alias = ?,
+               club = ?,
+               codigo_postal = ?,
+               localidad = ?,
+               pais = ?,
+               password = ?,
+               estado_cuenta = 'activo'
+           WHERE id = ?`,
+          [
+            nombre,
+            apellidos || null,
+            nombre_alias || null,
+            club || null,
+            codigo_postal || null,
+            localidad || null,
+            pais || null,
+            hashedPassword,
+            usuario.id
+          ]
         );
 
+        await connection.commit();
+
+        // Generar token
         const token = jwt.sign(
-          { 
-            userId: usuarioExistente.id,
-            email: emailLower
-          },
+          { userId: usuario.id, email: email },
           process.env.JWT_SECRET,
           { expiresIn: '7d' }
         );
-    
-    return res.status(200).json(
+
+        console.log(`✅ Usuario pendiente ${email} completó su registro`);
+
+        return res.status(200).json(
           successResponse('Registro completado exitosamente', {
             token,
             usuario: {
-              id: usuarioExistente.id,
+              id: usuario.id,
               nombre,
               apellidos,
-              nombre_alias,
-              club,
-              email: emailLower,
-              localidad,
-              pais,
-              mensaje: '🎮 Tu inscripción al torneo ya está activa. Puedes gestionarla desde tu panel.'
+              email: email.toLowerCase()
             }
           })
         );
+      } else {
+        // ❌ Si ya está activo, error de email duplicado
+        await connection.rollback();
+        return res.status(400).json(
+          errorResponse('Este email ya está registrado')
+        );
       }
-    
-  return res.status(400).json(
-        errorResponse('El email ya está registrado. Intenta iniciar sesión.')
-      );
     }
 
-    //PARA REGISTRAR UN NUEVO USUARIOS
-
-    // Encriptar contraseña
-    const passwordEncriptada = await bcrypt.hash(password, 12);
-    
-    // Insertar usuario
-    const [resultado] = await pool.execute(
+    // ✅ SI NO EXISTE, CREAR NUEVO USUARIO
+    const [resultado] = await connection.execute(
       `INSERT INTO usuarios (
-        nombre, 
-        apellidos, 
-        nombre_alias, 
-        club, 
-        email, 
-        password, 
-        localidad, 
-        pais,
+        nombre,
+        apellidos,
+        nombre_alias,
+        club,
+        email,
         codigo_postal,
-        estado_cuenta
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo')`,
-      [
-        nombre, 
-        apellidos, 
-        nombre_alias || null, 
-        club || null, 
-        emailLower, 
-        passwordEncriptada, 
-        localidad, 
+        localidad,
         pais,
-        codigo_postal
+        password,
+        estado_cuenta
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        nombre,
+        apellidos || null,
+        nombre_alias || null,
+        club || null,
+        email.toLowerCase().trim(),
+        codigo_postal || null,
+        localidad || null,
+        pais || null,
+        hashedPassword,
+        'activo'
       ]
     );
 
+    const nuevoUserId = resultado.insertId;
+
+    await connection.commit();
+
     // Generar token
     const token = jwt.sign(
-      { 
-        userId: resultado.insertId,
-        email: emailLower
-      },
+      { userId: nuevoUserId, email: email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    
-    // Respuesta exitosa
-    return res.status(201).json(
+
+    console.log(`✅ Nuevo usuario registrado: ${email}`);
+
+    res.status(201).json(
       successResponse('Usuario registrado exitosamente', {
         token,
         usuario: {
-          id: resultado.insertId,
+          id: nuevoUserId,
           nombre,
           apellidos,
-          nombre_alias,
-          club,
-          email: emailLower,
-          localidad,
-          pais,
-          codigo_postal
+          email: email.toLowerCase()
         }
       })
     );
-    
+
   } catch (error) {
+    await connection.rollback();
     console.error('❌ Error en registro:', error);
-       
-    const mensaje = manejarErrorDB(error);
-    return res.status(500).json(errorResponse(mensaje));
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json(
+        errorResponse('Este email ya está registrado')
+      );
+    }
+
+    res.status(500).json(
+      errorResponse('Error al registrar usuario')
+    );
+  } finally {
+    connection.release();
   }
 });
 

@@ -6,7 +6,7 @@ import { validarCodigoPostal } from "../servicios/validaciones";
 
 import '../estilos/registrarse.css'
 
-function Registrarse({ onOpenLogin }) {
+function Registrarse({ onOpenLogin }) { 
     const [formData, setFormData] = useState({
         nombre: "",
         apellidos: "",
@@ -54,7 +54,15 @@ function Registrarse({ onOpenLogin }) {
         setFormData(prev => ({
             ...prev,
             [name]: value
-        }));
+        }))
+
+        if (name === 'pais') {
+            setFormData(prev => ({
+                ...prev,
+                codigo_postal: "",
+                localidad: ""
+            }))
+        }
 
         if (errors[name]) {
             setErrors (prev => {
@@ -68,15 +76,6 @@ function Registrarse({ onOpenLogin }) {
         if (success) setSuccess("");
     };
 
-    //PARA RESETEAR CP Y LOCALIDAD SI CAMBIA PAIS
-    if (name === 'pais') {
-        setFormData (prev => ({
-            ...prev,
-            codigo_postal: "",
-            localidad: ""
-        }))
-    }
-
     const buscarLocalidadCP = async (codigoPostal, paisNombre) => {
         if(!codigoPostal || !paisNombre) return
 
@@ -89,7 +88,7 @@ function Registrarse({ onOpenLogin }) {
             setLoadingCP(true)
 
             const response =await fetch (
-                `http://api.zippopotam.us/${codigoISO}/${codigoPostal}`
+                `https://api.zippopotam.us/${codigoISO}/${codigoPostal}`
             )
 
             if (!response.ok){
