@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 
 // 🔍 DEBUG PARA RENDER
+console.log('🔥 EMAIL FILE LOADED - NODE_ENV =', process.env.NODE_ENV);
+
 console.log('═══════════════════════════════════════');
 console.log('🔍 EMAIL CONFIGURATION DEBUG');
 console.log('═══════════════════════════════════════');
