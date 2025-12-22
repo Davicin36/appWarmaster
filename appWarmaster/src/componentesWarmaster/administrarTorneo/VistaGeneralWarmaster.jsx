@@ -730,8 +730,8 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             </div>
 
                             <div className="info-item">
-                                <label>⚔️ Puntos de Banda:</label>
-                                <p>{torneo.puntos_banda} puntos</p>
+                                <label>⚔️ Puntos de Ejercito:</label>
+                                <p>{torneo.puntos_ejercito} puntos</p>
                             </div>
 
                             <div className="info-item">

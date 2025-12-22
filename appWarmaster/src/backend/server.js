@@ -1,19 +1,22 @@
 // server.js
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Cargar variables de entorno
+dotenv.config();
 
 // Importar configuración
-const { testConnection } = require('./config/bd');
+import { testConnection } from './config/bd.js';
 
 // Importar rutas
-const torneosSagaRoutes = require('./routes/torneosSaga'); 
-const torneosWarmasterRoutes = require('./routes/torneosWarmaster')
-const torneosFowRoutes = require('./routes/torneosFow')
+import torneosSagaRoutes from './routes/torneosSaga.js';
+import torneosWarmasterRoutes from './routes/torneosWarmaster.js';
+import torneosFowRoutes from './routes/torneosFow.js';
 /*
-const torneosBoltRoutes = require ('./routes/torneosBolt')
+import torneosBoltRoutes from './routes/torneosBolt.js';
 */
-const usuariosRutas = require('./routes/usuariosRutas');
+import usuariosRutas from './routes/usuariosRutas.js';
 
 const app = express();
 

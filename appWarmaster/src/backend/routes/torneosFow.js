@@ -1,16 +1,16 @@
-const express = require('express');
-const jwt = require('jsonwebtoken'); 
-const multer = require('multer');
-const { pool } = require('../config/bd');
-const { verificarToken, verificarOrganizador } = require('../middleware/auth');
-const { 
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import { pool } from '../config/bd.js';
+import { verificarToken, verificarOrganizador } from '../middleware/auth.js';
+import { 
   validarFecha,
   validarCamposRequeridos,
   errorResponse,
   successResponse,
   manejarErrorDB,
   paginar
-} = require('../utils/helpers');
+} from '../utils/helpers.js';
 
 const router = express.Router(); 
 
@@ -2378,4 +2378,4 @@ router.get('/:torneoId/bases-pdf', async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;

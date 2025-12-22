@@ -1,5 +1,5 @@
-const cron = require('node-cron');
-const { pool } = require('../config/db');
+import cron from 'node-cron';
+import { pool } from '../config/db.js';
 
 /**
  * Limpia los tokens de recuperación de contraseña expirados o usados
@@ -53,7 +53,7 @@ if (require.main === module) {
     limpiezaManual();
 }
 
-module.exports = {
+export {
     iniciarLimpieza,
     limpiarTokensExpirados
 };

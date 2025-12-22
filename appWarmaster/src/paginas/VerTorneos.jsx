@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import torneosSagaApi from "../servicios/apiSaga";
 
+// Importar todas las APIs
+import torneosSagaApi from "@/servicios/apiSaga";
+import torneosWarmasterApi from "@/servicios/apiWarmaster";
+
+// Portales de vistas públicas
 import VistaInformacionPublica from "@/componente/vistasVerTorneo/VistaInformacionPublica";
 import VistaEmparejamientosPublica from "@/componente/vistasVerTorneo/VistaEmparejamientosPublica";
 import VistaClasificacionPublica from "@/componente/vistasVerTorneo/VistaClasificacionPublica";
 
-import "../estilos/verTorneo.css";
+import "@/estilos/verTorneo.css";
 
 function VerTorneo() {
     const { torneoId } = useParams();
@@ -18,6 +22,13 @@ function VerTorneo() {
     const [vistaActual, setVistaActual] = useState('informacion');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Mapeo de APIs por sistema
+    const APIS_POR_SISTEMA = {
+        'SAGA': torneosSagaApi,
+        'WARMASTER': torneosWarmasterApi,
+        // Agregar más sistemas aquí en el futuro
+    };
 
     const formatearFecha = (fecha) => {
         if (!fecha) return 'Sin fecha';
@@ -43,16 +54,37 @@ function VerTorneo() {
         try {
             setLoading(true);
             
-            const responseTorneo = await torneosSagaApi.obtenerTorneo(torneoId);
-            const dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
+            // Intentar detectar el sistema del torneo
+            let dataTorneo = null;
+            let sistemaDetectado = null;
+
+            // Probar cada API hasta encontrar el torneo
+            for (const [sistema, api] of Object.entries(APIS_POR_SISTEMA)) {
+                try {
+                    const responseTorneo = await api.obtenerTorneo(torneoId);
+                    dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
+                    
+                    if (dataTorneo && dataTorneo.sistema === sistema) {
+                        sistemaDetectado = sistema;
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`No encontrado en ${sistema}, continuando...`, error);
+                }
+            }
+
+            if (!dataTorneo || !sistemaDetectado) {
+                throw new Error('No se pudo cargar el torneo o identificar su sistema');
+            }
+
             setTorneo(dataTorneo);
+            console.log('Torneo cargado:', dataTorneo, 'Sistema:', sistemaDetectado);
 
-            console.log (dataTorneo)
-
+            // Cargar datos específicos según el tipo
             if (dataTorneo.tipo_torneo === 'Individual') {
-                await cargarJugadoresIndividuales();
+                await cargarJugadoresIndividuales(sistemaDetectado);
             } else if (dataTorneo.tipo_torneo === 'Por equipos') {
-                await cargarEquipos();
+                await cargarEquipos(sistemaDetectado);
             }
 
         } catch (error) {
@@ -63,21 +95,25 @@ function VerTorneo() {
         }
     };
 
-    const cargarJugadoresIndividuales = async () => {
+    const cargarJugadoresIndividuales = async (sistema) => {
         try {
-            const responseInscritos = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+            const api = APIS_POR_SISTEMA[sistema];
+            const responseInscritos = await api.obtenerJugadoresTorneo(torneoId);
             const dataInscritos = responseInscritos.data || responseInscritos || [];
 
+            // Procesar datos específicos del sistema
             const inscritosParseados = dataInscritos.map((inscrito) => {
-                let composicion = {};
-                if (inscrito.composicion_ejercito) {
+                if (sistema === 'SAGA' && inscrito.composicion_ejercito) {
                     try {
-                        composicion = JSON.parse(inscrito.composicion_ejercito);
+                        return {
+                            ...inscrito,
+                            composicion_ejercito: JSON.parse(inscrito.composicion_ejercito)
+                        };
                     } catch {
-                        composicion = {};
+                        return inscrito;
                     }
                 }
-                return { ...inscrito, composicion_ejercito: composicion };
+                return inscrito;
             });
 
             setInscritos(inscritosParseados);
@@ -86,9 +122,10 @@ function VerTorneo() {
         }
     };
 
-    const cargarEquipos = async () => {
+    const cargarEquipos = async (sistema) => {
         try {
-            const responseEquipos = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
+            const api = APIS_POR_SISTEMA[sistema];
+            const responseEquipos = await api.obtenerEquiposTorneo(torneoId);
             const dataEquipos = responseEquipos.data || responseEquipos || [];
             setEquipos(dataEquipos);
         } catch (error) {
@@ -98,7 +135,8 @@ function VerTorneo() {
 
     const descargarBases = async () => {
         try {
-            await torneosSagaApi.descargarBasesPDF(torneoId);
+            const api = APIS_POR_SISTEMA[torneo.sistema];
+            await api.descargarBasesPDF(torneoId);
         } catch (error) {
             console.error('Error al descargar bases:', error);
             alert('❌ Error al descargar las bases del torneo');
@@ -129,10 +167,7 @@ function VerTorneo() {
         );
     }
 
-    // ⬅️ Determinar tipo de juego
-    const tipoJuego = torneo?.sistema;
-
-    if (!tipoJuego) {
+    if (!torneo || !torneo.sistema) {
         return (
             <div className="error-container">
                 <div className="error-message-box">
@@ -143,51 +178,79 @@ function VerTorneo() {
         );
     }
 
-    const totalInscritos = torneo?.tipo_torneo === 'Por equipos' 
+    const totalInscritos = torneo.tipo_torneo === 'Por equipos' 
         ? equipos.length 
         : inscritos.length;
 
-    const maxInscritos = torneo?.tipo_torneo === 'Por equipos'
-        ? torneo?.equipos_max || 0
-        : torneo?.participantes_max || 0;
+    const maxInscritos = torneo.tipo_torneo === 'Por equipos'
+        ? torneo.equipos_max || 0
+        : torneo.participantes_max || 0;
+
+    // Configuración específica por sistema para el header
+    const getConfiguracionSistema = () => {
+        switch (torneo.sistema) {
+            case 'SAGA':
+                return {
+                    iconoPuntos: '⚔️',
+                    labelPuntos: torneo.puntos_banda || 0,
+                    camposExtra: torneo.epocas_disponibles && (
+                        <span className="info-item">
+                            🎭 {torneo.epocas_disponibles}
+                        </span>
+                    )
+                };
+            case 'WARMASTER':
+                return {
+                    iconoPuntos: '🎖️',
+                    labelPuntos: torneo.puntos_ejercito || 0,
+                    camposExtra: null
+                };
+            default:
+                return {
+                    iconoPuntos: '⚔️',
+                    labelPuntos: 0,
+                    camposExtra: null
+                };
+        }
+    };
+
+    const config = getConfiguracionSistema();
 
     return (
         <div className="ver-torneo-container">
             <header className="torneo-header">
-                <h1>🏆 {torneo?.nombre_torneo || 'Torneo sin nombre'}</h1>
+                <h1>🏆 {torneo.nombre_torneo || 'Torneo sin nombre'}</h1>
                 <div className="torneo-info">
-                    <span className={`estado-badge estado-${torneo?.estado || 'pendiente'}`}>
-                        {(torneo?.estado || 'pendiente').toUpperCase()}
+                    <span className={`estado-badge estado-${torneo.estado || 'pendiente'}`}>
+                        {(torneo.estado || 'pendiente').toUpperCase()}
                     </span>
                     <span className="info-item">
-                        🎮 {tipoJuego}
+                        🎮 {torneo.sistema}
                     </span>
                     <span className="info-item">
-                        📅 {formatearFecha(torneo?.fecha_inicio)}
+                        📅 {formatearFecha(torneo.fecha_inicio)}
                     </span>
                     <span className="info-item">
-                        {torneo?.tipo_torneo || 'Tipo no especificado'}
+                        {torneo.tipo_torneo || 'Tipo no especificado'}
                     </span>
                     <span className="info-item">
-                        {torneo?.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos}
+                        {torneo.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos}
                     </span>
-                    <span className="info-item">
-                        🎭 {torneo?.epocas_disponibles || 'No especificada'}
-                    </span>
-                    {torneo?.ubicacion && (
+                    {config.camposExtra}
+                    {torneo.ubicacion && (
                         <span className="info-item">
                             📍 {torneo.ubicacion}
                         </span>
                     )}
                     <span className="info-item">
-                        ⚔️ {torneo?.puntos_banda || 0} pts
+                        {config.iconoPuntos} {config.labelPuntos} pts
                     </span>
                     <span className="info-item">
-                        🎲 {torneo?.rondas_max || 0} rondas
+                        🎲 {torneo.rondas_max || 0} rondas
                     </span>
                 </div>
 
-                {torneo?.bases_nombre && (
+                {torneo.bases_nombre && (
                     <div className="torneo-bases">
                         <h3>📄 Bases del Torneo</h3>
                         <p className="bases-nombre">{torneo.bases_nombre}</p>
@@ -222,23 +285,24 @@ function VerTorneo() {
             <div className="contenido-principal">
                 {vistaActual === 'informacion' && (
                     <VistaInformacionPublica
-                        tipoJuego={tipoJuego}
+                        tipoJuego={torneo.sistema}
                         inscritos={inscritos}
                         equipos={equipos}
-                        tipoTorneo={torneo?.tipo_torneo}
+                        tipoTorneo={torneo.tipo_torneo}
+                        estadoTorneo={torneo.estado}
                     />
                 )}
 
                 {vistaActual === 'emparejamientos' && (
                     <VistaEmparejamientosPublica
-                        tipoJuego={tipoJuego}
+                        tipoJuego={torneo.sistema}
                         torneoId={torneoId}
                     />
                 )}
 
                 {vistaActual === 'clasificacion' && (
                     <VistaClasificacionPublica
-                        tipoJuego={tipoJuego}
+                        tipoJuego={torneo.sistema}
                         torneoId={torneoId}
                     />
                 )}

@@ -78,8 +78,10 @@
 /* Grid de Juegos */
 .juegos-grid {
   display: flex;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 25px;
+  justify-content: center;   /* centra el conjunto */
+  align-items: stretch;
+  flex-wrap: wrap;
 }
 
 .juego-card {
@@ -91,8 +93,11 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  height: 100%;
   min-height: 280px;
   display: flex;
+  flex: 1 1 260px; 
+  max-width: 300px;
   flex-direction: column;
 }
 
@@ -374,10 +379,6 @@
 
   .seleccion-header .subtitle {
     font-size: 1rem;
-  }
-
-  .juegos-grid {
-    grid-template-columns: 1fr;
   }
 
   .juego-card {

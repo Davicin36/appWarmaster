@@ -1,31 +1,12 @@
-const nodemailer = require('nodemailer');
-
-// Configurar el transportador de email
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST, // ej: smtp.gmail.com
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, // true para 465, false para otros puertos
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
-// Verificar configuración
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('Error en configuración de email:', error);
-    } else {
-        console.log('✅ Servidor de email listo');
-    }
-});
+import { transporter } from "./emailHelpers.js";
 
 const emailRecuperar = {
     // Enviar email de recuperación de contraseña
     enviarRecuperacionPassword: async ({ email, nombre, resetUrl }) => {
         try {
             const mailOptions = {
-                from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+                from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
+                replyTo: process.env.BREVO_USER || process.env.EMAIL_USER,
                 to: email,
                 subject: 'Recuperación de contraseña - Gestiona tus torneos',
                 html: `
@@ -139,7 +120,6 @@ const emailRecuperar = {
             };
 
             const info = await transporter.sendMail(mailOptions);
-            console.log('✅ Email de recuperación enviado:', info.messageId);
             return { success: true, messageId: info.messageId };
 
         } catch (error) {
@@ -152,7 +132,8 @@ const emailRecuperar = {
     enviarConfirmacionCambioPassword: async ({ email, nombre }) => {
         try {
             const mailOptions = {
-                from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+                from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
+                replyTo: process.env.BREVO_USER || process.env.EMAIL_USER,
                 to: email,
                 subject: 'Contraseña actualizada - Gestiona tus Torneos',
                 html: `
@@ -203,7 +184,6 @@ const emailRecuperar = {
             };
 
             await transporter.sendMail(mailOptions);
-            console.log('✅ Email de confirmación enviado');
 
         } catch (error) {
             console.error('❌ Error al enviar confirmación:', error);
@@ -212,4 +192,4 @@ const emailRecuperar = {
     }
 };
 
-module.exports = emailRecuperar;
+export default emailRecuperar;

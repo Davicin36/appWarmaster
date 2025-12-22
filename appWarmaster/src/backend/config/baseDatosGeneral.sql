@@ -16,6 +16,7 @@ CREATE TABLE usuarios (
   club VARCHAR(100),
   email VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
+  codigo_postal VARCHAR(15) NOT NULL DEFAULT ' - ',
   rol ENUM('organizador', 'jugador') DEFAULT 'jugador',
   localidad VARCHAR(200),
   pais VARCHAR(200),

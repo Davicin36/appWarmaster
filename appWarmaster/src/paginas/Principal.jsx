@@ -42,12 +42,14 @@ function Principal({ onOpenLogin }) {
                 >
                     FLAMES OF WAR
                 </button>
+                {/*}
                 <button 
                     className={juegoActivo === 'bolt' ? 'activo' : ''}
                     onClick={() => setJuegoActivo('bolt')}
                 >
                     BOLT ACTION
                 </button>
+                {*/}
             </nav>
 
             {juegoActivo === 'saga' && <PrincipalSaga onOpenLogin={onOpenLogin} />}

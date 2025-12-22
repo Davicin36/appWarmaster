@@ -204,7 +204,4 @@ const validarCodigoPostal = (codigo_postal, pais)=> {
 
   return { valido: true };
 }
-
-module.exports = {
-    validarCodigoPostal
-  }
+export { validarCodigoPostal }

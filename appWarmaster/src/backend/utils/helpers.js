@@ -169,7 +169,7 @@ const calcularPuntosTorneo = (puntosPartidaJ1, puntosPartidaJ2, jugador1Id, prim
 };
 
 
-module.exports = {
+export {
   calcularPuntosTorneo,
   calcularPuntosTorneoFow,
   validarEmail,

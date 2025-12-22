@@ -430,3 +430,33 @@
         text-align: center;
     }
 }
+
+/* Botón para ver lista PDF */
+.btn-ver-lista {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #3b82f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+    margin-top: 10px;
+}
+
+.btn-ver-lista:hover {
+    background-color: #2563eb;
+}
+
+.lista-documento {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.sin-lista {
+    color: #6b7280;
+    font-style: italic;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}

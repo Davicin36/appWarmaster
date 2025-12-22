@@ -9,6 +9,9 @@ import InscripcionWarmasterIndividual from '@/componentesWarmaster/inscripcionWa
 /*
 //FOW
 import inscripcionFowIndividual from '../componentesFow/inscripciones/inscripcionFowIndividual';
+
+//BOLT ACTION
+import inscripcionBoltIndividual from '../componentesBolt/inscripciones/inscripcionBoltIndividual';
 */
 
 
@@ -22,8 +25,12 @@ export const REGISTRO_INSCRIPCIONES ={
         "Por equipos": null
     },
     /*
-    "Flames of War": {
+    "FOW": {
         "Individual": InscripcionFowIndividual,
+        "Por equipos": null
+    },
+     "BOLT": {
+        "Individual": InscripcionBoltIndividual,
         "Por equipos": null
     }
     */

@@ -6,6 +6,7 @@ import '../estilos/seleccionJuegos.css';
 import logoSaga from '../assets/logoSaga.webp'
 import logoWarmaster from '../assets/logoWarmaster.webp'
 import logoFow from '../assets/logoFow.webp'
+import logoBolt from '../assets/logoBolt.webp'
 
 /**
  * Componente para seleccionar tipo de juego y modalidad antes de crear un torneo
@@ -63,6 +64,16 @@ function SeleccionJuego() {
                     soportaEquipos: false,
                     ruta: '/crearTorneo/fow',
                     activo: true
+                },
+                {
+                    id: 4,
+                    nombre: 'Bolt Action',
+                    descripcion: 'Juego de batallas de la II Guerra Mundial con miniaturas a escala 28mm',
+                    imagen: logoBolt,
+                    soportaIndividual: true,
+                    soportaEquipos: false,
+                    ruta: '/crearTorneo/bolt',
+                    activo: false
                 }
             ];
             

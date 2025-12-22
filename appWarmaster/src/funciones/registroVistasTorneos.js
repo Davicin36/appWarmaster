@@ -33,6 +33,18 @@ import VistaInformacionPublicaFow from '../componentesFow/verTorneo/VistaInforma
 import VistaEmparejamientosPublicaFow from '../componentesFow/verTorneo/VistaEmparejamientosPublicaFow';
 import VistaClasificacionPublicaFow from '../componentesFow/verTorneo/VistaClasificacionPublicaFow';
 */
+
+// BOLT ACTION- Importar todas las vistas
+/*
+import VistaGeneralBolt from '../componentesBolt/administrarTorneo/VistaGeneralBolt;
+import VistaJugadoresBoltfrom '../componentesBolt/administrarTorneo/VistaJugadoresBolt';
+import VistaEmparejamientosBolt from '../componentesBolt/administrarTorneo/VistaEmparejamientosBolt';
+import VistaClasificacionBolt from '../componentesBolt/administrarTorneo/VistaClasificacionBolt';
+
+import VistaInformacionPublicaBolt from '../componentesBolt/verTorneo/VistaInformacionPublicaBolt'
+import VistaEmparejamientosPublicaBolt from '../componentesBolt/verTorneo/VistaEmparejamientosPublicaBolt';
+import VistaClasificacionPublicabolt from '../componentesBolt/verTorneo/VistaClasificacionPublicaBolt';
+*/
 // REGISTRO PRINCIPAL
 
 export const REGISTRO_VISTAS_TORNEOS = {
@@ -54,6 +66,12 @@ export const REGISTRO_VISTAS_TORNEOS = {
         jugadores: VistaJugadoresFow,
         emparejamientos: VistaEmparejamientosFow,
         clasificacion: VistaClasificacionFow
+    },
+    "BOLT": {
+        general: VistaGeneralBolt,
+        jugadores: VistaJugadoresBolt,
+        emparejamientos: VistaEmparejamientosBolt,
+        clasificacion: VistaClasificacionBolt
     }
     */
 };
@@ -74,8 +92,13 @@ export const REGISTRO_VISTAS_PUBLICAS = {
     /*
     "FOW": {
         informacion: VistaInformacionPublicaFow,
-        emparejamientos: VistaEmparejamientosPublicFow,
+        emparejamientos: VistaEmparejamientosPublicaFow,
         clasificacion: VistaClasificacionPublicaFow
+    },
+    "BOLT": {
+        informacion: VistaInformacionPublicaBolt,
+        emparejamientos: VistaEmparejamientosPublicaBolt,
+        clasificacion: VistaClasificacionPublicaBolt
     }
     */
 };

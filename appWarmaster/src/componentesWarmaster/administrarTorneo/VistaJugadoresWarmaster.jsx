@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
 import torneosWarmasterApi from '@/servicios/apiWarmaster';
@@ -13,11 +13,16 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, tipoTorneo, jugadores
     const [loading, setLoading] = useState(false);
     const [loadingPago, setLoadingPago] = useState({});
 
+    useEffect(() => {
+        if (!propJugadores){
+            cargarDatos();  
+        }
+    }, [torneoId]);
+
     const cargarDatos = async () => {
         try {
             setLoading(true);
-                const data = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
-                console.log(data)
+                const { data } = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
                 setJugadores(data)      
         } catch (error) {
             console.error('Error al cargar datos:', error);
@@ -27,7 +32,12 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, tipoTorneo, jugadores
     };
 
     const cambiarEstadoPagoJugador = async (jugadorId, estadoActual) => {
-        const nuevoEstado = estadoActual === 'pagado' ? 'pendiente' : 'pagado';
+
+        const estadoNormalizado = (estadoActual === 1 || estadoActual === true || estadoActual === 'pagado') 
+        ? 'pagado' 
+        : 'pendiente';
+
+        const nuevoEstado = estadoNormalizado === 'pagado' ? 'pendiente' : 'pagado';
 
         const confirmar = window.confirm(
             `¿Cambiar estado de pago a "${nuevoEstado.toUpperCase()}"?`
@@ -102,7 +112,6 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, tipoTorneo, jugadores
                                     <th>Jugador</th>
                                     <th>Club</th>
                                     <th>Ejercito</th>
-                                    <th>Puntos</th>
                                     <th>Pago</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -110,7 +119,7 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, tipoTorneo, jugadores
                             <tbody>
                                 {jugadores.map((jugador, index) => {
                         
-                                    const isPagado = jugador.pagado === 'pagado';
+                                    const isPagado = jugador.pagado === 'pagado' || jugador.pagado === 1 || jugador.pagado === true;
                                     const isLoadingPago = loadingPago[`jugador-${jugador.id}`];
 
                                     return (
@@ -121,7 +130,6 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, tipoTorneo, jugadores
                                             </td>
                                             <td>{jugador.club || '-'}</td>
                                             <td>{jugador.ejercito || '-'}</td>
-                                            <td>{jugador.puntos_ejercito || '-'}</td>
                                             <td>
                                                 <button
                                                     onClick={() => cambiarEstadoPagoJugador(jugador.id, jugador.pagado)}

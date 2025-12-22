@@ -1,12 +1,12 @@
 // routes/torneosSaga.js
-const express = require('express');
-const jwt = require('jsonwebtoken'); 
-const multer = require('multer');
-const crypto = require('crypto');
-const { pool } = require('../config/bd');
-const { enviarInvitacionEquipo } = require('../utils/emailInscripcionEquipos');
-const { verificarToken, verificarOrganizador } = require('../middleware/auth');
-const { 
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import crypto from 'crypto';
+import { pool } from '../config/bd.js';
+import { enviarInvitacionEquipo } from '../utils/emailInscripcionEquipos.js';
+import { verificarToken, verificarOrganizador } from '../middleware/auth.js';
+import { 
   calcularPuntosTorneo,
   validarFecha,
   validarCamposRequeridos,
@@ -15,7 +15,7 @@ const {
   manejarErrorDB,
   paginar,
   limpiarFecha
-} = require('../utils/helpers');
+} from '../utils/helpers.js';
 
 const router = express.Router(); 
 
@@ -1273,7 +1273,8 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
               nombre,
               apellidos,
               password,
-              estado_cuenta
+              estado_cuenta,
+              codigo_postal
             ) VALUES (?, ?, ?, ?, ?)`,
             [
               emailLower,
@@ -4158,4 +4159,4 @@ router.get('/:torneoId/bases-pdf', async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;

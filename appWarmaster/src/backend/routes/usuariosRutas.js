@@ -1,23 +1,23 @@
 // routes/authRutas.js
-const express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { promisify } = require('util');
-// ✅ Al inicio del archivo, convierte jwt.verify a Promise
-const verifyToken = promisify(jwt.verify);
-const { verificarToken  } = require('../middleware/auth');
-const crypto = require('crypto');
-
-const { pool } = require('../config/bd');
-const { validarCodigoPostal } = require('../utils/validaciones');
-const emailRecuperar = require('../utils/emailRecuperar');
-const { 
+import express from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { promisify } from 'util';
+import { verificarToken } from '../middleware/auth.js';
+import crypto from 'crypto';
+import { pool } from '../config/bd.js';
+import { validarCodigoPostal } from '../utils/validaciones.js';
+import emailRecuperar from '../utils/emailRecuperar.js';
+import { 
   validarEmail, 
   validarCamposRequeridos, 
   errorResponse, 
   successResponse,
   manejarErrorDB 
-} = require('../utils/helpers');
+} from '../utils/helpers.js';
+
+// ✅ Al inicio del archivo, convierte jwt.verify a Promise
+const verifyToken = promisify(jwt.verify);
 
 const router = express.Router(); 
 
@@ -956,4 +956,4 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

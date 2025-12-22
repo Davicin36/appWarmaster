@@ -320,7 +320,7 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
   //PARA VER LAS LISTAS DE EJERCITO EN PDF
   async verListaEjercito(torneoId, jugadorId) {
     const token = localStorage.getItem('token');
-    const url = `${this.baseURL}/${torneoId}/ver-lista-pdf/${jugadorId}`;
+    const url = `${this.baseURL}/${torneoId}/listasEjercitos-pdf/${jugadorId}`;
     
     try {
       const response = await fetch(url, {

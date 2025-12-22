@@ -1,5 +1,5 @@
 // middleware/auth.js
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const verificarToken = (req, res, next) => {
   
@@ -62,7 +62,7 @@ const verificarOrganizador = (req, res, next) => {
   next();
 };
 
-module.exports = {
+export {
   verificarToken,
   verificarOrganizador
 };

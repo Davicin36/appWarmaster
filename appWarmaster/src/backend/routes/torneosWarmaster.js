@@ -1,17 +1,16 @@
-const express = require('express');
-const jwt = require('jsonwebtoken'); 
-const multer = require('multer');
-const { pool } = require('../config/bd');
-const { verificarToken, verificarOrganizador } = require('../middleware/auth');
-const { 
-  calcularPuntosTorneo,
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import { pool } from '../config/bd.js';
+import { verificarToken, verificarOrganizador } from '../middleware/auth.js';
+import { 
   validarFecha,
   validarCamposRequeridos,
   errorResponse,
   successResponse,
   manejarErrorDB,
   paginar
-} = require('../utils/helpers');
+} from '../utils/helpers.js';
 
 const router = express.Router(); 
 
@@ -886,28 +885,41 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('li
 router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req, res) => {
     try {
         const { torneoId, jugadorId } = req.params;
-        const { pagado } = req.body; // 'pagado' o 'pendiente'
+        const { pagado } = req.body;
+
+        console.log('📥 Datos recibidos:', { torneoId, jugadorId, pagado, userId: req.userId }); // 👈 LOG
 
         // Validar valor
         if (!['pendiente', 'pagado'].includes(pagado)) {
-            return res.status(400).json(errorResponse('Valor de pago inválido. Debe ser "pendiente" o "pagado"'));
+            return res.status(400).json(errorResponse('Valor de pago inválido'));
         }
 
-        // Verificar que el usuario es organizador del torneo (opcional)
+        const valorPagado = pagado === 'pagado' ? 1 : 0;
+
+        // Verificar que el usuario es organizador del torneo
         const [torneo] = await pool.execute(
-             'SELECT created_by FROM torneos_sistemas WHERE id = ?',
-             [torneoId]
-         );
-         if (torneo[0].created_by !== req.userId) {
-             return res.status(403).json(errorResponse('No tienes permisos'));
-         }
+            'SELECT created_by FROM torneos_sistemas WHERE id = ?',
+            [torneoId]
+        );
+        
+        console.log('🏆 Torneo encontrado:', torneo[0]); // 👈 LOG
+        
+        if (!torneo[0]) { // 👈 AGREGAR VALIDACIÓN
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+        
+        if (torneo[0].created_by !== req.userId) {
+            return res.status(403).json(errorResponse('No tienes permisos'));
+        }
 
         // Actualizar estado de pago
         const [result] = await pool.execute(`
             UPDATE jugador_torneo_warmaster 
             SET pagado = ?
             WHERE torneo_id = ? AND id = ?
-        `, [pagado, torneoId, jugadorId]);
+        `, [valorPagado, torneoId, jugadorId]);
+
+        console.log('✅ Resultado UPDATE:', result); // 👈 LOG
 
         if (result.affectedRows === 0) {
             return res.status(404).json(errorResponse('Inscripción no encontrada'));
@@ -916,7 +928,7 @@ router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req,
         res.json(successResponse(`Estado de pago actualizado a: ${pagado}`));
 
     } catch (error) {
-        console.error('Error al actualizar pago:', error);
+        console.error('❌ Error completo:', error); // 👈 LOG DETALLADO
         res.status(500).json(errorResponse('Error al actualizar estado de pago'));
     }
 });
@@ -1066,10 +1078,10 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     }
     
     const [participante] = await pool.execute(
-      `SELECT jtw.id, u.nombre, u.apellidos 
+      `SELECT jtw.id, jtw.jugador_id, u.nombre, u.apellidos 
        FROM jugador_torneo_warmaster jtw
        INNER JOIN usuarios u ON jtw.jugador_id = u.id
-       WHERE jtw.torneo_id = ? AND jtw.jugador_id = ?`,
+       WHERE jtw.torneo_id = ? AND jtw.id = ?`,
       [torneoId, jugadorId]
     );
     
@@ -1079,13 +1091,14 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
       );
     }
     
+    const jugadorInscritoId = participante[0].jugador_id
     const nombreJugador = `${participante[0].nombre} ${participante[0].apellidos || ''}`.trim();
     
     const [partidas] = await pool.execute(
       `SELECT COUNT(*) as total 
        FROM partidas_warmaster 
        WHERE torneo_id = ? AND (jugador1_id = ? OR jugador2_id = ?)`,
-      [torneoId, jugadorId, jugadorId]
+      [torneoId, jugadorInscritoId, jugadorInscritoId]
     );
     
     if (partidas[0].total > 0) {
@@ -1095,7 +1108,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     }
     
     await pool.execute(
-      'DELETE FROM jugador_torneo_warmaster WHERE torneo_id = ? AND jugador_id = ?',
+      'DELETE FROM jugador_torneo_warmaster WHERE torneo_id = ? AND id = ?',
       [torneoId, jugadorId]
     );
     
@@ -2023,7 +2036,7 @@ router.get('/:torneoId/listasEjercitos-pdf/:jugadorId', verificarToken, async (r
     
     // Verificar permisos (solo el jugador o el organizador pueden descargar)
     const [torneo] = await pool.execute(
-      'SELECT organizador_id FROM torneos_sistemas WHERE id = ?',
+      'SELECT created_by FROM torneos_sistemas WHERE id = ?',
       [torneoId]
     );
     
@@ -2031,7 +2044,7 @@ router.get('/:torneoId/listasEjercitos-pdf/:jugadorId', verificarToken, async (r
       return res.status(404).json(errorResponse('Torneo no encontrado'));
     }
     
-    const esOrganizador = torneo[0].organizador_id === usuarioActual;
+    const esOrganizador = torneo[0].created_by === usuarioActual;
     const esMiLista = parseInt(jugadorId) === usuarioActual;
     
     if (!esOrganizador && !esMiLista) {
@@ -2069,4 +2082,4 @@ router.get('/:torneoId/listasEjercitos-pdf/:jugadorId', verificarToken, async (r
 });
 
 
-module.exports = router;
+export default router;

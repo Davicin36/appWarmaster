@@ -1,25 +1,4 @@
-const nodemailer = require('nodemailer');
-
-// Configurar transportador de correo
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || 587,
-  secure: false, // true para 465, false para otros puertos
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-// Verificar conexión al iniciar
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Error en configuración de email:', error.message);
-    console.log('⚠️ Los correos NO se enviarán. Revisa tus credenciales en .env');
-  } else {
-    console.log('✅ Servidor de email listo para enviar correos');
-  }
-});
+import { transporter } from "./emailHelpers.js";
 
 /**
  * Enviar correo de invitación a equipo
@@ -340,7 +319,8 @@ ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torne
   `;
 
   const mailOptions = {
-    from: `"Gestiona Tus Torneos" <${process.env.EMAIL_USER}>`,
+    from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
+    replyTo: process.env.BREVO_USER || process.env.EMAIL_USER, // ✅ Funciona en ambos
     to: destinatario.email,
     subject: `🎮 Invitación: ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}" - Equipo: ${datosEquipo.nombreEquipo}`,
     html: htmlEmail,
@@ -356,7 +336,4 @@ ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torne
     return { success: false, error: error.message };
   }
 };
-
-module.exports = {
-  enviarInvitacionEquipo
-};
+export { enviarInvitacionEquipo };

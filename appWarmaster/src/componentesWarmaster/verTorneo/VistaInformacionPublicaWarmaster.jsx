@@ -1,6 +1,8 @@
 import React from 'react';
 
-function VistaInformacionWarmaster({ inscritos, tipoTorneo }) {
+function VistaInformacionWarmaster({ inscritos, tipoTorneo, estadoTorneo }) {
+
+    const mostrarPDF = estadoTorneo ==='en_curso'
 
     if (tipoTorneo === 'Individual') {
         return (
@@ -13,13 +15,6 @@ function VistaInformacionWarmaster({ inscritos, tipoTorneo }) {
                 ) : (
                     <div className="grid-inscritos">
                         {inscritos.map((inscrito) => {
-                            const comp = inscrito.composicion_ejercito || {};
-                            const totalPuntos = 
-                                (parseFloat(comp.guardias) || 0) +
-                                (parseFloat(comp.guerreros) || 0) +
-                                (parseFloat(comp.levas) || 0) +
-                                (parseFloat(comp.mercenarios) || 0);
-
                             return (
                                 <div key={inscrito.id} className="card-inscrito">
                                     <div className="jugador-info">
@@ -32,23 +27,18 @@ function VistaInformacionWarmaster({ inscritos, tipoTorneo }) {
 
                                     <div className="banda-info">
                                         <p><strong>Ejercito:</strong> {inscrito.ejercito || "Sin definir"}</p>
-                                        <p><strong>Puntos:</strong> {totalPuntos.toFixed(1)} pts</p>
                                     </div>
 
-                                    {Object.keys(comp).length > 0 && (
-                                        <div className="composicion-banda">
-                                            <h5>📜 Composición:</h5>
-                                            <ul>
-                                                <li>Guardias: {parseFloat(comp.guardias) || 0}</li>
-                                                <li>Guerreros: {parseFloat(comp.guerreros) || 0}</li>
-                                                <li>Levas: {parseFloat(comp.levas) || 0}</li>
-                                                <li>Mercenarios: {parseFloat(comp.mercenarios) || 0}</li>
-                                                {comp.detalleMercenarios && (
-                                                    <li className="detalle-mercenarios">
-                                                        🧾 {comp.detalleMercenarios}
-                                                    </li>
-                                                )}
-                                            </ul>
+                                    {mostrarPDF && inscrito.lista_ejercito && (
+                                        <div className="lista-documento">
+                                            <a 
+                                                href={inscrito.lista_ejercito} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="btn-ver-lista"
+                                            >
+                                                📄 Ver Lista de Ejército
+                                            </a>
                                         </div>
                                     )}
                                 </div>
