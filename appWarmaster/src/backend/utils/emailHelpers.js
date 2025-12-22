@@ -31,14 +31,4 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000,
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  transporter.verify()
-    .then(() => {
-      console.log('✅ SMTP verificado correctamente (local)');
-    })
-    .catch(err => {
-      console.error('❌ Error SMTP (local):', err.message);
-    });
-}
-
 export { transporter };
