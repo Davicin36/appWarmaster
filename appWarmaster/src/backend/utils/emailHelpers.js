@@ -19,23 +19,26 @@ const transporter = nodemailer.createTransport({
   host: isBrevo ? 'smtp-relay.brevo.com' : process.env.EMAIL_HOST,
   port: isBrevo ? 587 : parseInt(process.env.EMAIL_PORT || '587'),
   secure: false,
-  connectionTimeout: 60000,
-  greetingTimeout: 30000,
-  socketTimeout: 60000,
   auth: {
     user: isBrevo ? process.env.BREVO_USER : process.env.EMAIL_USER,
     pass: isBrevo ? process.env.BREVO_SMTP_KEY : process.env.EMAIL_PASS
-  }
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Error en configuración de email:', error.message);
-    console.error('Error completo:', error);
-  } else {
-    const service = isBrevo ? '🟢 Brevo (Producción)' : '🔵 Gmail (Local)';
-    console.log(`✅ Servidor de email listo - ${service}`);
-  }
-});
+if (process.env.NODE_ENV !== 'production') {
+  transporter.verify()
+    .then(() => {
+      console.log('✅ SMTP verificado correctamente (local)');
+    })
+    .catch(err => {
+      console.error('❌ Error SMTP (local):', err.message);
+    });
+}
 
 export { transporter };
