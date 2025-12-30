@@ -31,6 +31,17 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
+  debug: true, 
+  logger: true 
+});
+
+// 🧪 Verificar conexión al iniciar
+transporter.verify(function (error, success) {
+  if (error) {
+    console.log('❌ Error de configuración SMTP:', error);
+  } else {
+    console.log('✅ Servidor SMTP listo para enviar emails');
+  }
 });
 
 export { transporter };
