@@ -1,48 +1,79 @@
-import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo'
 
 // 🔍 DEBUG PARA RENDER
-console.log('🔥 EMAIL FILE LOADED - NODE_ENV =', process.env.NODE_ENV);
+console.log(' EMAIL API LOADED - NODE_ENV =', process.env.NODE_ENV);
 
 console.log('═══════════════════════════════════════');
-console.log('🔍 EMAIL CONFIGURATION DEBUG');
+console.log(' EMAIL CONFIGURATION DEBUG');
 console.log('═══════════════════════════════════════');
-console.log('BREVO_USER existe:', !!process.env.BREVO_USER);
-console.log('BREVO_SMTP_KEY existe:', !!process.env.BREVO_SMTP_KEY);
+console.log('BREVO_API_KEY existe:', !!process.env.BREVO_API_KEY);
 console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
-const isBrevo = process.env.BREVO_USER && process.env.BREVO_SMTP_KEY;
+const apiInstance = new brevo.TransactionalEmailsApi()
+apiInstance.setApiKey (
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY || ''
+)
 
-console.log('isBrevo:', !!isBrevo);
-console.log('Puerto usado:', isBrevo ? '465 (SSL)' : process.env.EMAIL_PORT);
-console.log('Host usado:', isBrevo ? 'smtp-relay.brevo.com' : process.env.EMAIL_HOST);
-console.log('═══════════════════════════════════════\n');
+async function  sendEmail (opcionesEmail) {
+  try {
+    const sendSmtpEmail = new brevo.SendSmtpEmail()
 
-const transporter = nodemailer.createTransport({
-  host: isBrevo ? 'smtp-relay.brevo.com' : process.env.EMAIL_HOST,
-  port: isBrevo ? 465 : parseInt(process.env.EMAIL_PORT || '587'),
-  secure: isBrevo ? true : false,
-  auth: {
-    user: isBrevo ? process.env.BREVO_USER : process.env.EMAIL_USER,
-    pass: isBrevo ? process.env.BREVO_SMTP_KEY : process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
-  debug: true, 
-  logger: true 
-});
+    sendSmtpEmail.sender = {
+      email: opcionesEmail.from?.match(/<(.+)>/)?.[1] || opcionesEmail.from || process.env.EMAIL_FROM,
+      name: opcionesEmail.from?.match(/"(.+)"/)?.[1] || 'Gestiona Tus Torneos'
+    };
 
-// 🧪 Verificar conexión al iniciar
-transporter.verify(function (error, success) {
-  if (error) {
-    console.log('❌ Error de configuración SMTP:', error);
-  } else {
-    console.log('✅ Servidor SMTP listo para enviar emails');
+    sendSmtpEmail.to = [
+      {
+        email: opcionesEmail.to
+      }
+    ]
+
+    sendSmtpEmail.subject = opcionesEmail.subject
+    sendSmtpEmail.htmlContent = opcionesEmail.html
+
+    if (opcionesEmail.text) {
+      sendSmtpEmail.textContent = opcionesEmail.text;
+    }
+    
+    if (opcionesEmail.replyTo) {
+      sendSmtpEmail.replyTo = {
+        email: opcionesEmail.replyTo
+      };
+    }
+
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
+    console.log('Email enviado correctamente:', {
+      messageId: result.messageId,
+      to: opcionesEmail.to
+    })
+
+    return {
+      success: true,
+      messageId: result.messageId,
+      response: result
+    }
+  } catch (error) {
+    console.error('Error al enviar el email:', {
+      to: opcionesEmail.to,
+      error: error.message,
+      body: error.body
+    })
+    throw error
   }
-});
+}
 
-export { transporter };
+if (process.env.BREVO_API_KEY) { 
+  console.log('BRevo API configurada correctamente.')
+} else {
+  console.log('BREVO_API_KEY no encontrada')
+}
+
+const transporter = {
+  sendMail: sendEmail
+}
+
+export { sendEmail, transporter};
