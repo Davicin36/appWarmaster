@@ -13,14 +13,15 @@ console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const isBrevo = process.env.BREVO_USER && process.env.BREVO_SMTP_KEY;
 
-console.log('isBrevo:', isBrevo);
+console.log('isBrevo:', !!isBrevo);
+console.log('Puerto usado:', isBrevo ? '465 (SSL)' : process.env.EMAIL_PORT);
 console.log('Host usado:', isBrevo ? 'smtp-relay.brevo.com' : process.env.EMAIL_HOST);
 console.log('═══════════════════════════════════════\n');
 
 const transporter = nodemailer.createTransport({
   host: isBrevo ? 'smtp-relay.brevo.com' : process.env.EMAIL_HOST,
-  port: isBrevo ? 587 : parseInt(process.env.EMAIL_PORT || '587'),
-  secure: false,
+  port: isBrevo ? 465 : parseInt(process.env.EMAIL_PORT || '587'),
+  secure: isBrevo ? true : false,
   auth: {
     user: isBrevo ? process.env.BREVO_USER : process.env.EMAIL_USER,
     pass: isBrevo ? process.env.BREVO_SMTP_KEY : process.env.EMAIL_PASS
@@ -28,9 +29,9 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
   debug: true, 
   logger: true 
 });
