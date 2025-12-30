@@ -1273,7 +1273,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
               nombre,
               apellidos,
               password,
-              estado_cuenta,
+              estado_cuenta
             ) VALUES (?, ?, ?, ?, ?)`,
             [
               emailLower,
