@@ -802,7 +802,7 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 
     // Validar que el torneo existe y obtener su época
     const [torneos] = await pool.execute(
-      `SELECT puntos_banda, particpantes_max, estado, tipo_torneo 
+      `SELECT puntos_banda, participantes_max, estado, tipo_torneo 
           FROM torneos_sistemas 
           WHERE id = ?`,
       [torneoId]
