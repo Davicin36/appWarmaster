@@ -6,7 +6,7 @@ const emailRecuperar = {
         try {
             const mailOptions = {
                 from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
-                replyTo: process.env.BREVO_USER || process.env.EMAIL_USER,
+                replyTo: process.env.EMAIL_USER,
                 to: email,
                 subject: 'Recuperación de contraseña - Gestiona tus torneos',
                 html: `
@@ -133,7 +133,7 @@ const emailRecuperar = {
         try {
             const mailOptions = {
                 from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
-                replyTo: process.env.BREVO_USER || process.env.EMAIL_USER,
+                replyTo: process.env.EMAIL_USER,
                 to: email,
                 subject: 'Contraseña actualizada - Gestiona tus Torneos',
                 html: `

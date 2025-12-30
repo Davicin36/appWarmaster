@@ -320,7 +320,7 @@ ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torne
 
   const mailOptions = {
     from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
-    replyTo: process.env.BREVO_USER || process.env.EMAIL_USER, // ✅ Funciona en ambos
+    replyTo: process.env.EMAIL_USER,
     to: destinatario.email,
     subject: `🎮 Invitación: ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}" - Equipo: ${datosEquipo.nombreEquipo}`,
     html: htmlEmail,
