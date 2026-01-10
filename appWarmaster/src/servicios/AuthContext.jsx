@@ -24,7 +24,14 @@ export const AuthProvider = ({ children }) => {
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
           try {
-            setUser(JSON.parse(savedUser));
+            const parseUser = JSON.parse(savedUser)
+            setUser(parseUser)
+
+            if (parseUser.rol) {
+              localStorage.setItem ('userRole', parseUser.rol)
+              localStorage.setItem('userId', parseUser.id?.toString())
+              localStorage.setItem('userEmail', parseUser.email)
+            }
           } catch (error) {
             console.error('Error parseando usuario:', error);
             localStorage.removeItem('user');
@@ -40,17 +47,28 @@ export const AuthProvider = ({ children }) => {
         if (response.success && response.data?.usuario) {
           const usuarioBackend = response.data.usuario;
           setUser(usuarioBackend);
-          localStorage.setItem('user', JSON.stringify(usuarioBackend));
+          localStorage.setItem('user', JSON.stringify(usuarioBackend))
+
+          localStorage.setItem ('userRole', usuarioBackend.rol)
+          localStorage.setItem('userId', usuarioBackend.id?.toString())
+          localStorage.setItem('userEmail', usuarioBackend.email)
+
          } else {
           console.warn('Token invalido');
           usuarioApi.eliminarToken();
           localStorage.removeItem('user');
+          localStorage.removeItem('userRole')
+          localStorage.removeItem('userId')
+          localStorage.removeItem('userEmail')
           setUser(null);
         }
       } catch (error) {
         console.error('Error verificando token:', error);
         usuarioApi.eliminarToken();
-        localStorage.removeItem('user');
+        localStorage.removeItem('user')
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
         setUser(null);
       } finally {
         setLoading(false);
@@ -69,6 +87,22 @@ export const AuthProvider = ({ children }) => {
 
         usuarioApi.guardarToken(token);
         localStorage.setItem('user', JSON.stringify(usuario));
+        localStorage.setItem('userRole', usuario.rol);
+        localStorage.setItem('userId', usuario.id.toString());
+        localStorage.setItem('userEmail', usuario.email);
+
+        console.log('✅ Login exitoso:', {
+          id: usuario.id,
+          email: usuario.email,
+          rol: usuario.rol,
+          nombre: usuario.nombre
+        });
+        
+        console.log('💾 Datos guardados en localStorage:');
+        console.log('- Token:', !!usuarioApi.obtenerToken());
+        console.log('- Role:', localStorage.getItem('userRole'));
+        console.log('- UserId:', localStorage.getItem('userId'));
+
         setUser(usuario);
 
         return usuario;
@@ -156,7 +190,8 @@ export const AuthProvider = ({ children }) => {
       if (response.success && response.data?.usuario) {
         const usuarioActualizado = response.data.usuario;
         
-        localStorage.setItem('user', JSON.stringify(usuarioActualizado));
+        localStorage.setItem('user', JSON.stringify(usuarioActualizado))
+        localStorage.setItem('userRole', usuarioActualizado.rol);
         setUser(usuarioActualizado);
         
         return { 
@@ -182,12 +217,19 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     usuarioApi.eliminarToken();
     localStorage.removeItem('user');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
   };
 
   const actualizarUsuario = (nuevosDatos) => {
     const usuarioActualizado = { ...user, ...nuevosDatos };
     setUser(usuarioActualizado);
     localStorage.setItem('user', JSON.stringify(usuarioActualizado));
+
+    if (nuevosDatos.rol) {
+      localStorage.setItem('userRole', nuevosDatos.rol);
+    }
   };
 
   const refrescarUsuario = async () => {
@@ -205,6 +247,10 @@ export const AuthProvider = ({ children }) => {
       const usuarioBackend = response.data.usuario;
       setUser(usuarioBackend);
       localStorage.setItem('user', JSON.stringify(usuarioBackend));
+      localStorage.setItem('userRole', usuarioBackend.rol);
+      localStorage.setItem('userId', usuarioBackend.id?.toString());
+      localStorage.setItem('userEmail', usuarioBackend.email);
+
       return { success: true, usuario: usuarioBackend };
     } else {
       return { success: false, error: 'Error al refrescar usuario' };
@@ -214,6 +260,16 @@ export const AuthProvider = ({ children }) => {
     return { success: false, error: error.message };
   }
 };
+
+const isOrganizador = () => {
+    const role = user?.rol || localStorage.getItem('userRole');
+    return role === 'organizador' || role === 'superadmin';
+  };
+
+  const isSuperAdmin = () => {
+    const role = user?.rol || localStorage.getItem('userRole');
+    return role === 'superadmin';
+  };
 
   const value = useMemo(
     () => ({
@@ -226,7 +282,9 @@ export const AuthProvider = ({ children }) => {
       cambiarPassword,
       convertirOrganizador,
       actualizarUsuario,
-      refrescarUsuario
+      refrescarUsuario,
+      isOrganizador,
+      isSuperAdmin
     }),
     [user, loading]
   );

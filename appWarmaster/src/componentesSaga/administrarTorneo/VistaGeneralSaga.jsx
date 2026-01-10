@@ -53,9 +53,14 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
     const [archivoPDF, setArchivoPDF] = useState(null);
     const [eliminarPDF, setEliminarPDF] = useState(false);
 
+    const [organizadores, setOrganizadores] = useState({ activos: [], pendientes: [] });
+    const [nuevoOrganizadorEmail, setNuevoOrganizadorEmail] = useState('');
+    const [loadingOrganizadores, setLoadingOrganizadores] = useState(false);
+
     useEffect(() => {
         if (torneoId) {
             cargarDatos();
+            cargarOrganizadores()
         }
     }, [torneoId]);
 
@@ -136,6 +141,35 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             setLoading(false);
         }
     };
+
+    const cargarOrganizadores = async () => {
+        try {
+            const data = await torneosSagaApi.obtenerOrganizadores(torneoId);
+            setOrganizadores(data.data || { activos: [], pendientes: [] });
+        } catch (error) {
+            console.error('Error al cargar organizadores:', error);
+        }
+    };
+
+    const handleReenviarInvitacion = async (org) => {
+        console.log('📧 Reenviando invitación a:', org);
+        
+        if (!org.organizador_id) {
+          alert('❌ Error: No se puede reenviar (falta ID).');
+          return;
+        }
+        
+        if (window.confirm(`¿Reenviar invitación a ${org.email}?`)) {
+          try {
+            await torneosSagaApi.reenviarInvitacion(torneo.id, org.organizador_id);
+            alert('✅ Invitación reenviada correctamente');
+          } catch (error) {
+            console.error('❌ Error:', error);
+            alert(`❌ Error: ${error.message}`);
+          }
+        }
+      };
+    
 
     const handleEdicionChange = (e) => {
         const { name, value } = e.target;
@@ -434,6 +468,69 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             alert('Error al descargar las bases');
         }
     };
+
+    const handleAgregarOrganizador = async (e) => {
+        e.preventDefault();
+        
+        if (!nuevoOrganizadorEmail.trim()) {
+            alert('⚠️ Debes ingresar un email');
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(nuevoOrganizadorEmail)) {
+            alert('⚠️ Email inválido');
+            return;
+        }
+
+        try {
+            setLoadingOrganizadores(true);
+            
+            const response = await torneosSagaApi.agregarOrganizador(torneoId, {
+            email: nuevoOrganizadorEmail.trim(),
+            rol: 'organizador'
+            });
+
+            if (response.data.tipo === 'activo') {
+            alert(`✅ ${nuevoOrganizadorEmail} agregado como organizador`);
+            } else {
+            alert(`📧 Invitación enviada a ${nuevoOrganizadorEmail}`);
+            }
+
+            setNuevoOrganizadorEmail('');
+            await cargarOrganizadores();
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Error al agregar organizador');
+        } finally {
+            setLoadingOrganizadores(false);
+        }
+    };
+
+const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
+    const mensaje = tipo === 'pendiente'
+        ? `¿Cancelar invitación para ${nombre}?`
+        : `¿Eliminar a ${nombre} como organizador?`;
+
+    if (!window.confirm(mensaje)) return;
+
+    try {
+        setLoadingOrganizadores(true);
+        
+        await torneosSagaApi.eliminarOrganizador(torneoId, organizadorId);
+        
+        alert('✅ Organizador eliminado correctamente');
+        await cargarOrganizadores();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error.message || 'Error al eliminar organizador');
+    } finally {
+        setLoadingOrganizadores(false);
+    }
+};
 
     if (loading) {
         return (
@@ -855,14 +952,125 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                         )}
                     </fieldset>
 
-                    <div className="button-group">
-                        <button type="submit" className="btn-primary" disabled={loadingEdicion}>
-                            {loadingEdicion ? '⏳ Guardando...' : '✅ Guardar Cambios'}
-                        </button>
-                        <button type="button" className="btn-secondary" onClick={handleCancelarEdicion} disabled={loadingEdicion}>
-                            ❌ Cancelar
-                        </button>
-                    </div>
+                    <fieldset>
+                        <legend>👥 Organizadores del Torneo</legend>
+
+                        {/* ORGANIZADORES ACTIVOS */}
+                        <div className="organizadores-section">
+                            <h4>✅ Organizadores Activos</h4>
+                            {organizadores.activos && organizadores.activos.length > 0 ? (
+                                <div className="organizadores-list">
+                                    {organizadores.activos.map(org => (
+                                        <div key={org.organizador_id} className="organizador-item">
+                                            <div className="organizador-info">
+                                                <span className="organizador-nombre">
+                                                    {org.es_creador ? '👑 ' : '👤 '}
+                                                    <strong>{org.nombre_usuario}</strong>
+                                                </span>
+                                                <span className="organizador-email">{org.email}</span>
+                                                <span className="organizador-rol">
+                                                    {org.rol === 'organizador' ? '🎯 Organizador' : '⚙️ Administrador'}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEliminarOrganizador(
+                                                    org.organizador_id, 
+                                                    'activo', 
+                                                    org.nombre_usuario
+                                                )}
+                                                className="btn-danger-small"
+                                                disabled={loadingOrganizadores || loadingEdicion}
+                                                title="Eliminar organizador"
+                                            >
+                                                    ❌
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="info-text">Solo el creador está registrado como organizador</p>
+                            )}
+                        </div>
+
+                        {/* INVITACIONES PENDIENTES */}
+                        {organizadores.pendientes && organizadores.pendientes.length > 0 && (
+                            <div className="organizadores-section mt-20">
+                                <h4>⏳ Invitaciones Pendientes</h4>
+                                <div className="organizadores-list">
+                                    {organizadores.pendientes.map(org => (
+                                        <div key={org.organizador_id} className="organizador-item pendiente">
+                                            <div className="organizador-info">
+                                                <span className="organizador-email">
+                                                    📧 {org.email}
+                                                </span>
+                                                <span className="organizador-fecha">
+                                                    Invitado el {new Date(org.fecha_asignacion).toLocaleDateString('es-ES')}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleReenviarInvitacion(org)}
+                                                className="btn-reenviar"
+                                                title="Reenviar invitación"
+                                            >
+                                                📧
+                                            </button>                                          
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEliminarOrganizador(
+                                                    org.organizador_id, 
+                                                    'pendiente', 
+                                                    org.email
+                                                )}
+                                                className="btn-danger-small"
+                                                disabled={loadingOrganizadores || loadingEdicion}
+                                                title="Cancelar invitación"
+                                            >
+                                                ❌
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                        )}
+
+                        {/* FORMULARIO PARA AGREGAR NUEVO ORGANIZADOR */}
+                        <div className="agregar-organizador-form mt-20">
+                            <h4>➕ Agregar Nuevo Organizador</h4>
+                            <div className="form-row">
+                                <input
+                                    type="email"
+                                    placeholder="email@ejemplo.com"
+                                    value={nuevoOrganizadorEmail}
+                                    onChange={(e) => setNuevoOrganizadorEmail(e.target.value)}
+                                    disabled={loadingOrganizadores || loadingEdicion}
+                                    className="input-email-organizador"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAgregarOrganizador}
+                                    className="btn-success"
+                                    disabled={loadingOrganizadores || loadingEdicion}
+                                >
+                                    {loadingOrganizadores ? '⏳ Agregando...' : '➕ Agregar'}
+                                </button>
+                            </div>
+                            <small className="help-text">
+                                ℹ️ Si el usuario está registrado, se agregará automáticamente. 
+                                Si no, recibirá una invitación por email.
+                            </small>
+                        </div>
+
+                         <div className="button-group">
+                            <button type="submit" className="btn-primary" disabled={loadingEdicion}>
+                                {loadingEdicion ? '⏳ Guardando...' : '✅ Guardar Cambios'}
+                            </button>
+                            <button type="button" className="btn-secondary" onClick={handleCancelarEdicion} disabled={loadingEdicion}>
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </fieldset>
                 </form>
             ) : (
                 <>
@@ -1044,6 +1252,54 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                             </div>
                         ) : (
                             <p>ℹ️ Este torneo no tiene bases cargadas. Usa el botón "Editar Torneo" para subir un PDF.</p>
+                        )}
+                    </section>
+
+                    <section className="seccion-organizadores">
+                        <h2>👥 Organizadores del Torneo</h2>
+                        
+                        {/* ORGANIZADORES ACTIVOS */}
+                        {organizadores.activos && organizadores.activos.length > 0 ? (
+                            <div className="organizadores-grid">
+                                {organizadores.activos.map(org => (
+                                    <div key={org.organizador_id} className="organizador-card">
+                                        <div className="organizador-avatar">
+                                            {org.es_creador ? '👑' : '👤'}
+                                        </div>
+                                        <div className="organizador-datos">
+                                            <h3>
+                                                {org.nombre_usuario}
+                                                {org.es_creador && (
+                                                    <span className="badge-creador">Creador</span>
+                                                )}
+                                            </h3>
+                                            <p className="organizador-email-display">{org.email}</p>
+                                            <p className="organizador-rol-display">
+                                                {org.rol === 'organizador' ? '🎯 Organizador' : '⚙️ Administrador'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="info-text">Solo el creador está registrado como organizador</p>
+                        )}
+
+                        {/* INVITACIONES PENDIENTES */}
+                        {organizadores.pendientes && organizadores.pendientes.length > 0 && (
+                            <div className="invitaciones-pendientes-vista mt-20">
+                                <h3>⏳ Invitaciones Pendientes ({organizadores.pendientes.length})</h3>
+                                <div className="invitaciones-list">
+                                    {organizadores.pendientes.map(org => (
+                                        <div key={org.organizador_id} className="invitacion-item">
+                                            <span>📧 {org.email}</span>
+                                            <span className="fecha-invitacion">
+                                                {new Date(org.fecha_asignacion).toLocaleDateString('es-ES')}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </section>
                 </>

@@ -65,29 +65,36 @@ function Login({ isOpen, onClose }) {
         setError("");
         
         try {
+            console.log('🔐 Intentando login con:', { 
+                email: formData.email 
+                // NO loguear password en producción
+            });
             const usuario = await login(formData.email, formData.password);
             
             if (usuario) {
                 onClose(); // ✅ Cerrar modal después de login exitoso
                 navigate('/', { replace: true });
-                // Limpiar formulario
                 setFormData({ email: "", password: "" });
                 setShowPassword(false);
             } else {
                 setError('Error al iniciar sesión, Email o contraseña incorrectos, Intenta de nuevo.')
                 setFormData (prev => ({ ...prev, password: ' '}))
             }
-        } catch (err) {
-            console.error("Error en login:", err);
-
-            let mensajeError =  "";
-            if(err) {
-                 console.error("Error en login:", err);
-                 mensajeError = "Error de conexión. Intenta nuevamente."
+        }catch (err) {
+            console.error("❌ Error completo en login:", err);
+            
+            // Manejo específico de errores
+            if (err.message?.includes('401')) {
+                setError('Email o contraseña incorrectos. Verifica tus datos.');
+            } else if (err.message?.includes('500')) {
+                setError('Error del servidor. Intenta más tarde.');
+            } else if (err.message?.includes('Failed to fetch')) {
+                setError('No se puede conectar con el servidor. Verifica tu conexión.');
+            } else {
+                setError('Error al iniciar sesión. Intenta nuevamente.');
             }
-
-            setError(mensajeError);
-            setFormData (prev => ({ ...prev, password: ' '}))
+            
+            setFormData(prev => ({ ...prev, password: '' }));
         } finally {
             setLoading(false);
         }

@@ -71,6 +71,34 @@ class TorneosSagaApi {
       body: torneoData,
     });
   }
+
+  // Obtener organizadores del torneo
+  async obtenerOrganizadores(torneoId) {
+    return this.request(`/${torneoId}/organizadores`);
+  }
+
+  // Agregar organizador
+  async agregarOrganizador(torneoId, datos) {
+    return this.request(`/${torneoId}/organizadores`, {
+      method: 'POST',
+      body: JSON.stringify(datos)
+    });
+  }
+
+  // Eliminar organizador
+  async eliminarOrganizador(torneoId, organizadorId) {
+    return this.request(
+      `/${torneoId}/organizadores/${organizadorId}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  async reenviarInvitacion(torneoId, organizadorId) {
+    return this.request(`/torneos/${torneoId}/organizadores/${organizadorId}/reenviar`, {
+      method: 'POST'
+    });
+  }
+
   //metodo para que cambie el estado del torneo
   async cambiarEstadoTorneo(torneoId, estado) {
     return this.request(`/${torneoId}/estado`, { 
@@ -78,6 +106,7 @@ class TorneosSagaApi {
       body: { estado },
     });
   }
+  
    async eliminarTorneo(torneoId) {
     return this.request(`/${torneoId}/eliminarTorneo`, {
       method: 'DELETE',
@@ -95,6 +124,31 @@ class TorneosSagaApi {
     });
   }
 
+    async obtenerIncripcion (torneoId){
+    return this.request(`/${torneoId}/obtenerInscripcion`);
+  }
+  
+  async actualizarInscripcion(torneoId, datosInscripcion) {
+      return this.request(`/${torneoId}/actualizarInscripcion`, {
+          method: 'PUT',
+          body: datosInscripcion
+      });
+  }
+
+  async añadirJugadorIndividual(torneoId, participante) {
+    return this.request(`/${torneoId}/add-individual-participant`, {
+      method: 'POST',
+      body: { participante }
+    });
+  }
+
+  async actualizarPagoJugador (torneoId, jugadorId, pagado){
+    return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
+        method: 'PATCH',
+        body: { pagado }
+    })
+  }
+
   async IncripcionEquipo (torneoId, inscripcionData){
     return this.request(`/${torneoId}/inscripcionEquipo`, {
       method: 'POST',
@@ -102,47 +156,36 @@ class TorneosSagaApi {
     });
   }
 
-  async obtenerIncripcion (torneoId){
-    return this.request(`/${torneoId}/obtenerInscripcion`);
-  }
-
   async obtenerInscripcionEquipo(torneoId) {
     return this.request(`/${torneoId}/obtenerInscripcionEquipo`);
-}
+  }
 
-async actualizarInscripcion(torneoId, datosInscripcion) {
-    return this.request(`/${torneoId}/actualizarInscripcion`, {
-        method: 'PUT',
-        body: datosInscripcion
+  async actualizarInscripcionEquipos(torneoId, datosInscripcion) {
+      return this.request(`/${torneoId}/actualizarInscripcionEquipo`, {
+          method: 'PUT',
+          body: datosInscripcion
+      });
+  }
+
+  async añadirEquipo(torneoId, equipo) {
+    return this.request(`/${torneoId}/add-team`, {
+      method: 'POST',
+      body:  equipo 
     });
-}
+  }
 
-async actualizarInscripcionEquipos(torneoId, datosInscripcion) {
-    return this.request(`/${torneoId}/actualizarInscripcionEquipo`, {
-        method: 'PUT',
-        body: datosInscripcion
+  async actualizarPagoEquipo (torneoId, equipoId, pagado){
+    return this.request (`/${torneoId}/equipos/${equipoId}/pago`, {
+      method : 'PATCH',
+      body : { pagado }
+    })
+  }
+
+  async verificarPagos (torneoId){
+    return this.request (`/${torneoId}/verificarPagos`, { 
+      method : 'GET'
     });
-}
-
-async actualizarPagoJugador (torneoId, jugadorId, pagado){
-  return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
-      method: 'PATCH',
-      body: { pagado }
-  })
-}
-
-async actualizarPagoEquipo (torneoId, equipoId, pagado){
-  return this.request (`/${torneoId}/equipos/${equipoId}/pago`, {
-    method : 'PATCH',
-    body : { pagado }
-  })
-}
-
-async verificarPagos (torneoId){
-  return this.request (`/${torneoId}/verificarPagos`, { 
-    method : 'GET'
-  });
-}
+  }
 
 //====================================================
 // //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA

@@ -219,46 +219,48 @@ function VerTorneo() {
     return (
         <div className="ver-torneo-container">
             <header className="torneo-header">
-                <h1>🏆 {torneo.nombre_torneo || 'Torneo sin nombre'}</h1>
-                <div className="torneo-info">
-                    <span className={`estado-badge estado-${torneo.estado || 'pendiente'}`}>
-                        {(torneo.estado || 'pendiente').toUpperCase()}
-                    </span>
-                    <span className="info-item">
-                        🎮 {torneo.sistema}
-                    </span>
-                    <span className="info-item">
-                        📅 {formatearFecha(torneo.fecha_inicio)}
-                    </span>
-                    <span className="info-item">
-                        {torneo.tipo_torneo || 'Tipo no especificado'}
-                    </span>
-                    <span className="info-item">
-                        {torneo.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos}
-                    </span>
-                    {config.camposExtra}
-                    {torneo.ubicacion && (
-                        <span className="info-item">
-                            📍 {torneo.ubicacion}
+            <h1>🏆 {torneo.nombre_torneo || 'Torneo sin nombre'}</h1>
+                <div className="torneo-content">
+                    <div className="torneo-info">
+                        <span className={`estado-badge estado-${torneo.estado || 'pendiente'}`}>
+                            {(torneo.estado || 'pendiente').toUpperCase()}
                         </span>
-                    )}
-                    <span className="info-item">
-                        {config.iconoPuntos} {config.labelPuntos} pts
-                    </span>
-                    <span className="info-item">
-                        🎲 {torneo.rondas_max || 0} rondas
-                    </span>
-                </div>
-
-                {torneo.bases_nombre && (
-                    <div className="torneo-bases">
-                        <h3>📄 Bases del Torneo</h3>
-                        <p className="bases-nombre">{torneo.bases_nombre}</p>
-                        <button onClick={descargarBases} className="btn-primary">
-                            ⬇️ Descargar Bases
-                        </button>
+                        <span className="info-item">
+                            🎮 {torneo.sistema}
+                        </span>
+                        <span className="info-item">
+                            📅 {formatearFecha(torneo.fecha_inicio)}
+                        </span>
+                        <span className="info-item">
+                            {torneo.tipo_torneo || 'Tipo no especificado'}
+                        </span>
+                        <span className="info-item">
+                            {torneo.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos}
+                        </span>
+                        {config.camposExtra}
+                        {torneo.ubicacion && (
+                            <span className="info-item">
+                                📍 {torneo.ubicacion}
+                            </span>
+                        )}
+                        <span className="info-item">
+                            {config.iconoPuntos} {config.labelPuntos} pts
+                        </span>
+                        <span className="info-item">
+                            🎲 {torneo.rondas_max || 0} rondas
+                        </span>
                     </div>
-                )}
+
+                    {torneo.bases_nombre && (
+                        <div className="torneo-bases">
+                            <h3>📄 Bases del Torneo</h3>
+                            <p className="bases-nombre">{torneo.bases_nombre}</p>
+                            <button onClick={descargarBases} className="btn-primary">
+                                ⬇️ Descargar Bases
+                            </button>
+                        </div>
+                    )}
+                </div>
             </header>
 
             <nav className="vista-nav">

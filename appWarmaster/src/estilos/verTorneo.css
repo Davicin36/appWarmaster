@@ -39,6 +39,8 @@
     border-radius: 15px;
     margin-bottom: 2rem;
     box-shadow: 0 8px 20px rgba(98, 129, 65, 0.3);
+    display: flex;
+    flex-direction: column;
 }
 
 .ver-torneo-container .torneo-header h1 {
@@ -46,31 +48,57 @@
     font-size: 2.5rem;
     color: white;
     text-align: center;
+    font-weight: 700;
+    width: 100%;
+    order: -1; /* Fuerza que esté arriba */
+}
+
+.ver-torneo-container .torneo-content {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .ver-torneo-container .torneo-info {
+    flex: 1;
     display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
     align-items: center;
-    justify-content: center;
 }
 
 .ver-torneo-container .info-item {
-    background: rgba(255, 255, 255, 0.15);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.6rem 1.2rem;
+    border-radius: 25px;
     font-size: 0.95rem;
+    font-weight: 500;
     backdrop-filter: blur(10px);
     color: white;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.ver-torneo-container .info-item:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
 }
 
 .ver-torneo-container .estado-badge {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    display: inline-flex;
+    padding: 0.6rem 1.2rem;
+    border-radius: 25px;
     font-weight: 700;
     font-size: 0.9rem;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .ver-torneo-container .estado-pendiente {
@@ -89,23 +117,44 @@
 }
 
 .ver-torneo-container .torneo-bases {
-    margin-top: 1.5rem;
+    flex-shrink: 0;
+    min-width: 280px;
+    max-width: 320px;
     padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    text-align: center;
 }
 
 .ver-torneo-container .torneo-bases h3 {
     margin: 0 0 0.5rem 0;
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     color: white;
 }
 
 .ver-torneo-container .bases-nombre {
     margin: 0.5rem 0 1rem 0;
-    font-size: 1rem;
-    color: white;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    word-break: break-word;
+}
+
+.ver-torneo-container .torneo-bases .btn-primary {
+    width: 100%;
+}
+
+@media (max-width: 968px) {
+    .ver-torneo-container .torneo-content {
+        flex-direction: column;
+    }
+    
+    .ver-torneo-container .torneo-bases {
+        width: 100%;
+        max-width: 100%;
+        min-width: unset;
+    }
 }
 
 /* ===== NAVEGACIÓN TABS ===== */

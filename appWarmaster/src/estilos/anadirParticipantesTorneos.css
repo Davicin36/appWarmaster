@@ -1,0 +1,511 @@
+.add-participants-container {
+  max-width: 900px;
+  margin: 20px auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+}
+
+/* Modo página - ocupa todo el ancho disponible */
+.add-participants-page {
+  max-width: 100%;
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+
+}
+
+/* Estado de carga */
+.loading-container {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 18px;
+  color: #666;
+}
+
+.loading-text {
+  color: #3a7ca5;
+  font-style: italic;
+  margin: 10px 0;
+}
+
+/* Sección de selección de torneo */
+.seleccion-torneo-section {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  border: 2px solid #e0e0e0;
+
+}
+
+.seleccion-torneo-section .form-group {
+  margin-bottom: 20px;
+}
+
+.seleccion-torneo-section .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.seleccion-torneo-section label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2f5f7f;
+  margin-bottom: 10px;
+  display: block;
+}
+
+/* Información del torneo */
+.tournament-info {
+  background: #f0f8ff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  border-left: 4px solid #3a7ca5;
+}
+
+.tournament-info h3 {
+  margin: 0 0 10px 0;
+  color: #2f5f7f;
+  font-size: 20px;
+}
+
+.tournament-info p {
+  margin: 5px 0 0 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.tournament-info strong {
+  color: #2f5f7f;
+  font-weight: 600;
+}
+
+/* Badges de estado de registro */
+.input-con-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge-registro {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-registro.registrado {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #34d399;
+}
+
+.badge-registro.pendiente {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #60a5fa;
+}
+
+/* Estados de input según verificación */
+.input-success {
+  border-color: #34d399 !important;
+  background-color: #f0fdf4;
+}
+
+.input-warning {
+  border-color: #fbbf24 !important;
+  background-color: #fffbeb;
+}
+
+.input-error {
+  border-color: #f87171 !important;
+  background-color: #fef2f2;
+}
+
+.add-participants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #3a7ca5;
+}
+
+.add-participants-header h2 {
+  color: #2f5f7f;
+  margin: 0;
+  font-size: 28px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #666;
+  cursor: pointer;
+  padding: 5px 10px;
+  transition: color 0.3s ease;
+}
+
+.close-btn:hover {
+  color: #d32f2f;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c62828;
+}
+
+.success-message {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2e7d32;
+}
+
+.add-participants-form {
+  display: grid;
+  flex-direction: row;
+  gap: 25px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #2f5f7f;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3a7ca5;
+  box-shadow: 0 0 0 3px rgba(58, 124, 165, 0.1);
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 16px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.radio-label:hover {
+  border-color: #3a7ca5;
+  background-color: #f5f9fc;
+}
+
+.radio-label input[type="radio"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.radio-label input[type="radio"]:checked + span {
+  color: #3a7ca5;
+  font-weight: 600;
+}
+
+.radio-label span {
+  font-size: 14px;
+  color: #333;
+}
+
+.individual-form,
+.team-form {
+  background: #f8fafc;
+  padding: 25px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.individual-form h3,
+.team-form h3 {
+  color: #2f5f7f;
+  margin: 0 0 20px 0;
+  font-size: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.members-section {
+  margin-top: 20px;
+}
+
+.members-section h5 {
+  color: #2f5f7f;
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.members-header h4 {
+  color: #2f5f7f;
+  margin: 0;
+  font-size: 18px;
+}
+
+.add-member-btn {
+  background-color: #3a7ca5;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.add-member-btn:hover {
+  background-color: #2f5f7f;
+}
+
+.member-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+   display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 20px;
+  align-items: start;
+}
+
+.member-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.member-card-header h5 {
+  color: #2f5f7f;
+  margin: 0;
+  font-size: 16px;
+}
+
+.member-card-header h6 {
+  color: #2f5f7f;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.member-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.capitan-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px 12px;
+  background-color: #f0f8ff;
+  border-radius: 4px;
+  border: 1px solid #3a7ca5;
+  transition: all 0.3s ease;
+}
+
+.capitan-checkbox:hover {
+  background-color: #e0f2ff;
+}
+
+.capitan-checkbox input[type="radio"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.capitan-checkbox span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a7ca5;
+}
+
+.remove-member-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.remove-member-btn:hover {
+  background-color: #b71c1c;
+}
+
+.form-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.cancel-btn {
+  background-color: #757575;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.cancel-btn:hover {
+  background-color: #616161;
+}
+
+.submit-btn {
+  background-color: #3a7ca5;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #2f5f7f;
+}
+
+.submit-btn:disabled {
+  background-color: #b0bec5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .add-participants-container {
+    padding: 20px;
+    margin: 10px;
+  }
+
+  .add-participants-header h2 {
+    font-size: 22px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .radio-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .members-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .add-member-btn {
+    width: 100%;
+  }
+
+  .member-card-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .capitan-checkbox,
+  .remove-member-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .cancel-btn,
+  .submit-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-participants-container {
+    padding: 15px;
+  }
+
+  .add-participants-header h2 {
+    font-size: 20px;
+  }
+
+  .individual-form,
+  .team-form {
+    padding: 15px;
+  }
+
+  .member-card {
+    padding: 15px;
+  }
+}

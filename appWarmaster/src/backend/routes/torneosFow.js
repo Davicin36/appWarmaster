@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { pool } from '../config/bd.js';
-import { verificarToken, verificarOrganizador } from '../middleware/auth.js';
+import { verificarToken } from '../middleware/auth.js';
 import { 
   validarFecha,
   validarCamposRequeridos,

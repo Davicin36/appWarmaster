@@ -1,178 +1,481 @@
 /* ================================================
-   ESTILOS ADICIONALES PARA INSCRIPCIONES POR EQUIPOS
+   ESTILOS MEJORADOS - INSCRIPCIONES POR EQUIPOS
    ================================================ */
 
-/* Mensaje informativo de equipos */
+/* Contenedor principal */
+.inscripcion-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Mensajes informativos */
+.info-message {
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .info-equipos {
   background-color: #e3f2fd;
   border-left: 4px solid #2196f3;
-  margin-bottom: 20px;
+  color: #0d47a1;
+}
+
+.info-invitaciones {
+  background-color: #e0f2fe;
+  border-left: 4px solid #0284c7;
+  color: #075985;
 }
 
 /* Sección de miembros */
 .miembros-section {
-  background-color: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin: 20px 0;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin: 2rem 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .miembros-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-beige);
 }
 
 .miembros-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--color-verde-oscuro);
+  font-size: 1.5rem;
 }
 
 .btn-agregar {
-  background-color: #4caf50;
+  background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn-agregar:hover:not(:disabled) {
-  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
 }
 
 .btn-agregar:disabled {
-  background-color: #cccccc;
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Lista de miembros */
 .miembros-lista {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 1.5rem;
 }
 
+/* Card de cada miembro */
 .miembro-item {
+  background: linear-gradient(135deg, #f8f9fa 0%, white 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid var(--color-beige);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.miembro-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-verde-claro);
+}
+
+/* Header del miembro */
+.miembro-header-row {
   display: flex;
-  gap: 15px;
-  background-color: white;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  align-items: flex-start;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-beige);
 }
 
 .miembro-numero {
-  flex-shrink: 0;
-  padding: 4px, 12px;
-  background-color: #0d7dd9;
+  background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
   color: white;
-  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 14px;
-  white-space: nowrap;
-  gap: 4px;
+  gap: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
+.btn-capitan {
+  background: white;
+  color: var(--color-verde-oscuro);
+  border: 2px solid var(--color-beige);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-capitan:hover:not(:disabled) {
+  background: var(--color-beige);
+  transform: scale(1.05);
+}
+
+.btn-capitan.activo {
+  background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
+  color: white;
+  border-color: var(--color-naranja);
+  box-shadow: 0 2px 6px rgba(230, 126, 34, 0.3);
+}
+
+.btn-capitan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Campos del miembro */
 .miembro-campos {
-  flex: 1;
   display: grid;
-  grid-template-columns: 2fr 2fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .miembro-campos .form-group {
   margin-bottom: 0;
 }
 
+.miembro-campos .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
 .miembro-campos label {
-  font-size: 12px;
-  margin-bottom: 4px;
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-verde-oscuro);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .miembro-campos input,
-.miembro-campos select {
-  font-size: 14px;
-  padding: 8px;
+.miembro-campos select,
+.miembro-campos textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--color-beige);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
 }
 
-.btn-eliminar {
-  flex-shrink: 0;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 18px;
-  transition: background-color 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.miembro-campos input:focus,
+.miembro-campos select:focus,
+.miembro-campos textarea:focus {
+  outline: none;
+  border-color: var(--color-verde-claro);
+  box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
 }
 
-.btn-eliminar:hover:not(:disabled) {
-  background-color: #d32f2f;
-}
-
-.btn-eliminar:disabled {
-  background-color: #cccccc;
+.miembro-campos input:disabled,
+.miembro-campos select:disabled {
+  background: #f5f5f5;
+  color: #999;
   cursor: not-allowed;
 }
 
-/* Información de miembros */
-.miembros-info {
-  margin-top: 15px;
-  padding: 12px;
-  background-color: #fff3cd;
-  border-left: 4px solid #ffc107;
-  border-radius: 4px;
+/* Estados de validación de email */
+.input-error {
+  border-color: #f44336 !important;
 }
 
-.miembros-info p {
-  margin: 5px 0;
-  font-size: 14px;
+.input-success {
+  border-color: #4caf50 !important;
+}
+
+.input-con-badge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.badge-registro {
+  align-self: flex-start;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-registro.pendiente {
+  background: linear-gradient(135deg, #fff3cd, #ffe69c);
   color: #856404;
+  border: 1px solid #ffc107;
 }
 
-/* Responsive para móviles */
-@media (max-width: 768px) {
-  .miembros-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+.badge-registro.registrado {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+/* Sección de puntos de banda */
+.puntos-banda-section {
+  grid-column: 1 / -1;
+  margin-top: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  border-left: 4px solid var(--color-naranja);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.puntos-banda-section h4 {
+  margin: 0 0 1rem 0;
+  color: var(--color-verde-oscuro);
+  font-size: 1.1rem;
+}
+
+.puntos-info {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, var(--color-beige), #fff);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.puntos-error {
+  color: #f44336;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.puntos-ok {
+  color: #4caf50;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.puntos-grid-mini {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.punto-item-mini label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-verde-oscuro);
+  margin-bottom: 0.5rem;
+}
+
+.punto-item-mini input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--color-beige);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.punto-item-mini input:focus {
+  outline: none;
+  border-color: var(--color-verde-claro);
+  box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
+}
+
+/* Botón eliminar miembro */
+.btn-eliminar {
+  width: auto;
+  background: linear-gradient(135deg, var(--color-error), #C0392B);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  margin-left: auto;
+  box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+}
+
+.btn-eliminar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4);
+}
+
+.btn-eliminar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Grupo de botones del formulario */
+.button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--color-beige);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--color-error), #C0392B);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(231, 76, 60, 0.4);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--color-verde-oscuro);
+  border: 2px solid var(--color-beige);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-beige);
+  transform: translateY(-2px);
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ================================================
+   RESPONSIVE
+   ================================================ */
+
+@media (max-width: 1024px) {
+  .miembro-campos {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .miembro-item {
+  .puntos-grid-mini {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .inscripcion-container {
+    padding: 1rem;
+  }
+
+  .miembros-section {
+    padding: 1rem;
+  }
+
+  .miembros-header {
     flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
   }
 
   .miembro-campos {
     grid-template-columns: 1fr;
   }
 
-  .btn-eliminar {
-    align-self: flex-end;
+  .puntos-grid-mini {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .miembro-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .button-group button {
+    width: 100%;
   }
 }
 
-/* Checkbox para capitán */
-.form-group label input[type="checkbox"] {
-  margin-right: 8px;
-  cursor: pointer;
+@media (max-width: 480px) {
+  .puntos-grid-mini {
+    grid-template-columns: 1fr;
+  }
+
+  .miembro-numero {
+    justify-content: center;
+    text-align: center;
+  }
 }
 
-.form-group label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
+/* Mensaje de error general */
+.error-message {
+  background: linear-gradient(135deg, #ffebee, #ffcdd2);
+  color: #c62828;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #f44336;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
 }

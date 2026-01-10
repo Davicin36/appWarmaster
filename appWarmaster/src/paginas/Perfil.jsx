@@ -861,7 +861,16 @@ function Perfil() {
                                         <div className="torneo-info">
                                             <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
                                             <p><strong>🎭 Época:</strong> {torneo.epocas_disponibles}</p>
-                                            <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                           {torneo.tipo_torneo === 'Por equipos' && (
+                                                <>
+                                                    <p><strong>👥 Equipos:</strong> {torneo.total_equipos || 0} / {torneo.equipos_max || 0}</p>
+                                                    <p><strong>👤 Participantes totales:</strong> {torneo.total_participantes || 0}</p>
+                                                </>
+                                            )}
+
+                                            {torneo.tipo_torneo === 'Individual' && (
+                                                <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                            )}
                                             <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
                                             {torneo.ubicacion && (
                                                 <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>
@@ -911,7 +920,16 @@ function Perfil() {
                                         <p><strong>📅 Fecha:</strong> {formatearFecha(torneo.fecha_inicio)}</p>
                                         <p><strong>🎭 Época:</strong> {torneo.epocas_disponibles}</p>
                                         <p><strong>⚔️ Mi Facción:</strong> {torneo.faccion || 'No especificada'}</p>
-                                        <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                        {torneo.tipo_torneo === 'Por equipos' && (
+                                                <>
+                                                    <p><strong>👥 Equipos:</strong> {torneo.total_equipos || 0} / {torneo.equipos_max || 0}</p>
+                                                    <p><strong>👤 Participantes totales:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                                </>
+                                            )}
+
+                                            {torneo.tipo_torneo === 'Individual' && (
+                                                <p><strong>👥 Participantes:</strong> {torneo.total_participantes} / {torneo.participantes_max || 0}</p>
+                                            )}
                                         <p><strong>🎲 Rondas:</strong> {torneo.rondas_max}</p>
                                         {torneo.ubicacion && (
                                             <p><strong>📍 Ubicación:</strong> {torneo.ubicacion}</p>

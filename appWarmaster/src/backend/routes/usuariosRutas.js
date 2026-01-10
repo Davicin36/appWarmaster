@@ -220,53 +220,90 @@ router.post('/registro', async (req, res) => {
 });
 
 // ======LOGIN=========
-
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // ✅ Log 1: Verificar qué llega
+    console.log('🔐 =========================');
+    console.log('🔐 LOGIN ATTEMPT');
+    console.log('🔐 Email recibido:', email);
+    console.log('🔐 Password recibido:', password ? '***' : 'UNDEFINED');
+    console.log('🔐 Body completo:', req.body);
+    console.log('🔐 =========================');
+
     // Validar campos
     if (!email || !password) {
-      return res.status(400).json(
-        errorResponse('Email y contraseña son requeridos')
-      );
+      console.log('❌ Campos vacíos');
+      return res.status(400).json({
+        success: false,
+        mensaje: 'Email y contraseña son requeridos'
+      });
     }
 
     // Buscar usuario
+    console.log('🔍 Buscando usuario en BD...');
     const [usuarios] = await pool.execute(
       'SELECT * FROM usuarios WHERE email = ?',
       [email]
     );
 
+    console.log('👤 Usuarios encontrados:', usuarios.length);
+
     if (usuarios.length === 0) {
-      return res.status(401).json(
-        errorResponse('Credenciales inválidas')
-      );
+      console.log('❌ Usuario no encontrado');
+      return res.status(401).json({
+        success: false,
+        mensaje: 'Credenciales inválidas'
+      });
     }
 
     const usuario = usuarios[0];
+    
+    // ✅ Log 2: Info del usuario encontrado
+    console.log('✅ Usuario encontrado:', {
+      id: usuario.id,
+      email: usuario.email,
+      rol: usuario.rol,
+      passwordHashLength: usuario.password?.length || 0
+    });
 
     // Verificar contraseña
+    console.log('🔒 Verificando contraseña...');
+    console.log('🔒 Password ingresado length:', password.length);
+    console.log('🔒 Hash en BD length:', usuario.password?.length);
+    
     const passwordValida = await bcrypt.compare(password, usuario.password);
     
+    console.log('🔒 Resultado comparación:', passwordValida);
+    
     if (!passwordValida) {
-      return res.status(401).json(
-        errorResponse('Credenciales inválidas')
-      );
+      console.log('❌ Contraseña incorrecta');
+      return res.status(401).json({
+        success: false,
+        mensaje: 'Credenciales inválidas'
+      });
     }
 
     // Generar token
+    console.log('🎫 Generando token...');
     const token = jwt.sign(
-      { userId: usuario.id,
-        email: usuario.email
-       },
+      { 
+        userId: usuario.id,
+        email: usuario.email,
+        rol: usuario.rol
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // ✅ CRÍTICO: Debe devolver success: true
-    return res.json(
-      successResponse('Login exitoso', {
+    console.log('✅ Login exitoso para:', email);
+    console.log('🔐 =========================');
+
+    return res.json({
+      success: true,
+      mensaje: 'Login exitoso',
+      data: {
         token,
         usuario: {
           id: usuario.id,
@@ -279,14 +316,15 @@ router.post('/login', async (req, res) => {
           localidad: usuario.localidad,
           pais: usuario.pais
         }
-      })
-    );
+      }
+    });
 
   } catch (error) {
-    console.error('Error en login:', error);
-    return res.status(500).json(
-      errorResponse('Error interno del servidor')
-    );
+    console.error('💥 ERROR FATAL en login:', error);
+    return res.status(500).json({
+      success: false,
+      mensaje: 'Error interno del servidor'
+    });
   }
 });
 
@@ -727,10 +765,12 @@ router.get('/:userId', verificarToken, async (req, res) => {
         ts.created_by,
         ts.created_at,
         GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
-        COUNT(DISTINCT jts.id) as total_participantes
+        COUNT(DISTINCT jts.id) as total_participantes,
+        COUNT (DISTINCT tseq.id) as total_equipos
       FROM torneos_sistemas ts 
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      LEFT JOIN torneo_saga_equipo tseq ON ts.id = tseq.torneo_id
       WHERE ts.created_by = ?
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
@@ -768,10 +808,12 @@ router.get('/:userId', verificarToken, async (req, res) => {
         GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         jts.faccion,
         jts.composicion_ejercito,
-        (SELECT COUNT(*) FROM jugador_torneo_saga WHERE torneo_id = ts.id) as total_participantes
+        (SELECT COUNT(DISTINCT jts2.id) FROM jugador_torneo_saga jts2 WHERE jts2.torneo_id = ts.id) as total_participantes,
+        (SELECT COUNT(DISTINCT tseq2.id) FROM torneo_saga_equipo tseq2 WHERE tseq2.torneo_id = ts.id) as total_equipos
       FROM torneos_sistemas ts 
       INNER JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      LEFT JOIN torneo_saga_equipo tseq ON ts.id = tseq.torneo_id
       WHERE jts.jugador_id = ?
       GROUP BY ts.id, jts.id, jts.faccion, jts.composicion_ejercito
       ORDER BY ts.fecha_inicio ASC

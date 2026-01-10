@@ -226,3 +226,23 @@
         font-size: 0.85rem;
     }
 }
+
+/* Separador visual entre opciones normales y admin */
+.navbar-separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 8px 0;
+}
+
+/* Estilos especiales para enlaces de admin */
+.navbar-link-admin {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 140, 0, 0.1));
+    border-left: 3px solid #ffd700;
+    font-weight: 600;
+}
+
+.navbar-link-admin:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2));
+    border-left-color: #ffed4e;
+}
+

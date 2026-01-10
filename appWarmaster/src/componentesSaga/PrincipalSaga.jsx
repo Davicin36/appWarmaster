@@ -13,9 +13,7 @@ import '../estilos/principal.css';
 
 function PrincipalSaga({ onOpenLogin }) {
     const navigate = useNavigate();
-    const { isAuthenticated, user} = useAuth();
-
-    const userId = user?.id || null;
+    const { isAuthenticated } = useAuth();
     
     const [torneosSaga, setTorneosSaga] = useState([]);
 
@@ -163,7 +161,7 @@ function PrincipalSaga({ onOpenLogin }) {
                                             </span>
                                         </td>
                                         <td className="acciones-cell">
-                                            {torneo.created_by === userId && (
+                                            {torneo.soy_organizador === 1 && (
                                                 <button 
                                                     className="btn-administrar"
                                                     onClick={() => navigate(`/administrarTorneo/${torneo.id}`)}

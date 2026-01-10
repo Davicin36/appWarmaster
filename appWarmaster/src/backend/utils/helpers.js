@@ -99,6 +99,8 @@ const limpiarFecha = (fecha) => {
   return fecha;
 };
 
+//CALCULAR PUNTOS TORNEOS FOW
+
 const tablaPuntuacionFow = [
   {rango : 1, vencedor : 6, perdedor : 1},
   {rango : 2, vencedor : 5, perdedor : 2},
@@ -127,6 +129,7 @@ const calcularPuntosTorneoFow = (pelotonesMuertosVencedor) => {
   }
 }
 
+//CALCULAR PUNTOS TORNEOS SAGA
 
 const tablaPuntuacionSaga = [
     {rango : [0, 0], vencedor : 10.5 , perdedor : 10},

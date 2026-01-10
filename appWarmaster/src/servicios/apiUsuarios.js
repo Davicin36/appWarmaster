@@ -21,13 +21,28 @@ class apiUsuarios {
       ...options,
     };
 
-    if (config.body && typeof config.body === 'object') {
+    if (config.body && typeof config.body !== 'string') {
       config.body = JSON.stringify(config.body);
     }
 
     try {
+      // ✅ Log para debugging (quitar en producción)
+      console.log('📤 API Request:', {
+        url,
+        method: config.method || 'GET',
+        hasBody: !!config.body,
+        hasToken: !!token
+      });
+
       const response = await fetch(url, config);
+
+      console.log('📥 API Response:', {
+        status: response.status,
+        ok: response.ok
+      });
+
       const data = await response.json().catch(() => ({}));
+      console.log('📦 Response data:', data);
       
       if (!response.ok) {
         throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
@@ -42,7 +57,7 @@ class apiUsuarios {
 
   //======REGISTRO===========
 
-    async registro(userData) {
+  async registro(userData) {
     return this.request('/registro', {
       method: 'POST',
       body: userData,
@@ -126,8 +141,13 @@ class apiUsuarios {
   }
 
   async healthCheck() {
-    const response = await fetch('http://localhost:5000/health');
-    return response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`);
+      return response.json();
+    } catch (error) {
+      console.error('Health check failed:', error);
+      throw error;
+    }
   }
 }
 

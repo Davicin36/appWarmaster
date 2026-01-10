@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
 import torneosSagaApi from '@/servicios/apiSaga';
+import AnadirParticipantesTorneos from '@/componente/vistasAdministrarTorneos/AnadirParticipantesTorneos';
 
 import '@/estilos/vistasTorneos/vistaJugadores.css';
 
@@ -13,6 +14,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
     const [equipos, setEquipos] = useState(propEquipos || []);
     const [loading, setLoading] = useState(false);
     const [loadingPago, setLoadingPago] = useState({});
+    const [mostrarModalAnadir, setMostrarModalAnadir] = useState(false);
 
     useEffect(() => {
         if (!propJugadores && !propEquipos) {
@@ -46,8 +48,11 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                 
                 setJugadores(jugadoresNormalizados);
             } else if (tipoTorneo === 'Por equipos') {
-                const data = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
-                setEquipos(Array.isArray(data) ? data : data.data || []);
+                const response = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
+                const equiposData = response.data || response || [];
+                setEquipos(Array.isArray(equiposData) ? equiposData : []);
+                
+                console.log('📊 Equipos cargados:', equiposData);
             }
         } catch (error) {
             console.error('Error al cargar datos:', error);
@@ -177,11 +182,25 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
     if (tipoTorneo === 'Individual') {
         return (
             <div className="vista-jugadores">
-                <h2>👥 Jugadores Inscritos ({jugadores.length})</h2>
+                <div className="header-jugadores-con-boton">
+                    <h2>👥 Jugadores Inscritos ({jugadores.length})</h2>
+                    <button 
+                        className="btn-primary"
+                        onClick={() => setMostrarModalAnadir(true)}
+                    >
+                        Invitar Jugador
+                    </button>
+                </div>
                 
                 {jugadores.length === 0 ? (
                     <div className="empty-message">
                         <p>📭 No hay jugadores inscritos todavía</p>
+                        <button 
+                            className="btn-primary"
+                            onClick={() => setMostrarModalAnadir(true)}
+                        >
+                            ➕ Invitar Primer Jugador
+                        </button>
                     </div>
                 ) : (
                     <div className="tabla-jugadores-container">
@@ -255,6 +274,23 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                         </table>
                     </div>
                 )}
+
+                {/* MODAL AÑADIR JUGADOR */}
+                {mostrarModalAnadir && (
+                    <div className="modal-overlay" onClick={() => setMostrarModalAnadir(false)}>
+                        <div className="modal-content-anadir" onClick={(e) => e.stopPropagation()}>
+                            <AnadirParticipantesTorneos
+                                torneoId={torneoId}
+                                onClose={() => setMostrarModalAnadir(false)}
+                                onSuccess={async () => {
+                                    setMostrarModalAnadir(false);
+                                    await cargarDatos();
+                                    if (onUpdate) onUpdate();
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -262,11 +298,24 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
     // VISTA DE EQUIPOS
     return (
         <div className="vista-jugadores">
-            <h2>👥 Equipos Inscritos ({equipos.length})</h2>
-            
+            <div className="header-jugadores-con-boton">
+                <h2>👥 Equipos Inscritos ({equipos.length})</h2>
+                <button 
+                    className="btn-primary"
+                    onClick={() => setMostrarModalAnadir(true)}
+                >
+                    Invitar Equipo
+                </button>
+            </div>
             {equipos.length === 0 ? (
                 <div className="empty-message">
                     <p>📭 No hay equipos inscritos todavía</p>
+                    <button 
+                        className="btn-primary"
+                        onClick={() => setMostrarModalAnadir(true)}
+                    >
+                        ➕ Invitar Primer Equipo
+                    </button>
                 </div>
             ) : (
                 <div className="grid-equipos-admin">
@@ -354,6 +403,23 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* MODAL AÑADIR EQUIPO */}
+            {mostrarModalAnadir && (
+                <div className="modal-overlay" onClick={() => setMostrarModalAnadir(false)}>
+                    <div className="modal-content-anadir" onClick={(e) => e.stopPropagation()}>
+                        <AnadirParticipantesTorneos
+                            torneoId={torneoId}
+                            onClose={() => setMostrarModalAnadir(false)}
+                            onSuccess={async () => {
+                                setMostrarModalAnadir(false);
+                                await cargarDatos();
+                                if (onUpdate) onUpdate();
+                            }}
+                        />
+                    </div>
                 </div>
             )}
         </div>

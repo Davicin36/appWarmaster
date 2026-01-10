@@ -18,7 +18,7 @@ import '../estilos/crearTorneo.css';
 
 function CrearTorneoSaga() {
     const navigate = useNavigate();
-    const {refrescarUusario} = useAuth()
+    const {refrescarUsuario} = useAuth()
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -41,6 +41,11 @@ function CrearTorneoSaga() {
     const [partidaRonda3, setPartidaRonda3] = useState("");
     const [partidaRonda4, setPartidaRonda4] = useState("");
     const [partidaRonda5, setPartidaRonda5] = useState("");
+
+    //ESTADOS PARA LOS ORGANIZADORES DEL TORNEO
+    const [organizadorAdicional, setOrganizadorAdicional] = useState("");
+    const [emailOrganizador, setEmailOrganizador] = useState("");
+
 
     useEffect(() => {
     if (tipoTorneo === "Por equipos") {
@@ -74,6 +79,40 @@ function CrearTorneoSaga() {
         setEpocasSeleccionadas([]); // Resetear épocas al cambiar tipo
     };
 
+    const handleAnadirOrganizador = () => {
+        
+        const emailCorto = emailOrganizador.trim().toLowerCase()
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if(!emailRegex.test(emailCorto)){
+            setError("Introduce un email valido")
+            setTimeout(() => setError(""), 3000);
+            return
+        }
+
+        if (organizadorAdicional.length >= 5) {
+            setError("Solo se puede añadir un máximo de 5 organizadores adicionales por torneo")
+            setTimeout(() => setError(""), 3000);
+            return
+        }
+
+        setOrganizadorAdicional([...organizadorAdicional, emailCorto]);
+        setEmailOrganizador("");
+        setError("")
+    };
+
+     const handleEliminarOrganizador = (email) => {
+        setOrganizadorAdicional(organizadorAdicional.filter(org => org !== email));
+    };
+
+    // 🆕 MANEJAR ENTER EN EL INPUT
+    const handleKeyPressOrganizador = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAnadirOrganizador();
+        }
+    }
+
     // Función para manejar la selección de archivo PDF
    const handleArchivoPDF = (e) => {
         const file = e.target.files[0];
@@ -93,7 +132,7 @@ function CrearTorneoSaga() {
         }
         
         // Validar tamaño (máximo 5MB)
-        const maxSize =16 * 1024 * 1024; // 5MB en bytes
+        const maxSize =16 * 1024 * 1024; // 16MB en bytes
         if (file.size > maxSize) {
             const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
             setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 5MB. Por favor, comprime el PDF o sube uno más pequeño.`);
@@ -200,6 +239,7 @@ function CrearTorneoSaga() {
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
                 torneoData.append('bases_pdf', archivoPDF);
+                torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional))
                 
             } else {
                 //CUANDO NO SE AÑADEN BASES PDF
@@ -219,16 +259,21 @@ function CrearTorneoSaga() {
                     partida_ronda_2: partidaRonda2,
                     partida_ronda_3: partidaRonda3,
                     partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
-                    partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null
+                    partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null,
+                    organizadores_emails: organizadorAdicional
                 };
             }
 
             const result = await torneosSagaApi.crearTorneo(torneoData);
             
             if (result.success || result.data) {
-                alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}\n🎉 Ahora eres un organizador.`);
+                const mensajeOrganizadores = organizadorAdicional.length > 0 
+                    ? `\n👥 ${organizadorAdicional.length} organizador(es) adicional(es) añadido(s).`
+                    : '';
+                    
+                alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}${mensajeOrganizadores}\n🎉 Ahora eres un organizador.`);
                 navigate("/");
-                await refrescarUusario()
+                await refrescarUsuario()
                 navigate("/perfil")
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
@@ -237,14 +282,13 @@ function CrearTorneoSaga() {
         } catch (err) {
             console.error("❌ Error completo:", err);
             
-            // ✅ MEJORADO: Manejo específico de errores
             let mensajeError = "Error al crear el torneo. Por favor, intenta nuevamente.";
             
             if (err.message) {
                 if (err.message.includes('max_allowed_packet')) {
                     mensajeError = "⚠️ El archivo PDF es demasiado grande para el servidor. Por favor, comprime el PDF o contacta al administrador.";
                 } else if (err.message.includes('LIMIT_FILE_SIZE')) {
-                    mensajeError = "⚠️ El archivo PDF excede el tamaño máximo permitido (5MB). Por favor, comprime el archivo.";
+                    mensajeError = "⚠️ El archivo PDF excede el tamaño máximo permitido (16MB). Por favor, comprime el archivo.";
                 } else if (err.message.includes('Network') || err.message.includes('fetch')) {
                     mensajeError = "⚠️ Error de conexión con el servidor. Verifica tu conexión a internet.";
                 } else if (err.message.includes('timeout')) {
@@ -255,8 +299,6 @@ function CrearTorneoSaga() {
             }
             
             setError(mensajeError);
-            
-            // Auto-limpiar error después de 8 segundos
             setTimeout(() => {
                 setError('');
             }, 8000);
@@ -265,6 +307,7 @@ function CrearTorneoSaga() {
             setLoading(false);
         }
     };
+
     const volverInicio = () => {
         navigate('/');
     };
@@ -606,6 +649,61 @@ function CrearTorneoSaga() {
                             >
                                 🗑️ Eliminar archivo
                             </button>
+                        </div>
+                    )}
+                </fieldset>
+
+                {/* 🆕 SECCIÓN DE ORGANIZADORES ADICIONALES */}
+                <fieldset>
+                    <legend>👥 Organizadores Adicionales (Opcional)</legend>
+                    
+                    <label htmlFor="emailOrganizador">Añadir Organizador por Email:</label>
+                    <div className="organizador-input-container">
+                        <input 
+                            name="emailOrganizador" 
+                            id="emailOrganizador" 
+                            type="email"
+                            value={emailOrganizador}
+                            onChange={(e) => setEmailOrganizador(e.target.value)}
+                            onKeyPress={handleKeyPressOrganizador}
+                            placeholder="correo@ejemplo.com"
+                            disabled={loading}
+                        />
+                        <button
+                            type="button"
+                            onClick={handleAnadirOrganizador}
+                            className="btn-añadir-organizador"
+                            disabled={loading || !emailOrganizador.trim()}
+                        >
+                            ➕ Añadir
+                        </button>
+                    </div>
+                    <small className="help-text">
+                        Presiona Enter o haz clic en "Añadir" para agregar un organizador. Máximo 5 organizadores adicionales.
+                    </small>
+
+                    {/* LISTA DE ORGANIZADORES */}
+                    {organizadorAdicional.length > 0 && (
+                        <div className="organizadores-lista">
+                            <p className="organizadores-titulo">
+                                <strong>Organizadores añadidos ({organizadorAdicional.length}/5):</strong>
+                            </p>
+                            <ul className="organizadores-items">
+                                {organizadorAdicional.map((email, index) => (
+                                    <li key={index} className="organizador-item">
+                                        <span className="organizador-email">📧 {email}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleEliminarOrganizador(email)}
+                                            className="btn-eliminar-organizador"
+                                            disabled={loading}
+                                            title="Eliminar organizador"
+                                        >
+                                            ✖️
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
                 </fieldset>

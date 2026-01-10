@@ -16,8 +16,9 @@ CREATE TABLE usuarios (
   club VARCHAR(100),
   email VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
+  estado_cuenta ENUM('activo', 'pendiente_registro', 'suspendido') DEFAULT 'activo',
   codigo_postal VARCHAR(15) NOT NULL DEFAULT ' - ',
-  rol ENUM('organizador', 'jugador') DEFAULT 'jugador',
+  rol ENUM('organizador', 'jugador', 'superadmin') DEFAULT 'jugador',
   localidad VARCHAR(200),
   pais VARCHAR(200),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -50,6 +51,16 @@ CREATE TABLE torneos_sistemas (
   created_by INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES usuarios(id)
+);
+
+CREATE TABLE organizadores_torneos (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+    torneo_id INT NOT NULL,
+    usuario_id INT NOT NULL,
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+	UNIQUE KEY unique_torneo_usuario (torneo_id, usuario_id)
 );
 
 CREATE TABLE IF NOT EXISTS password_reset_tokens (

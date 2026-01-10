@@ -1,10 +1,10 @@
 /* ============================================
-   CREAR TORNEO - Estilos siguiendo el tema
+   CREAR TORNEO - Estilos mejorados
    ============================================ */
 
 .crear-torneo-container {
   width: 100%;
-  max-width: 1600px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
@@ -47,15 +47,13 @@
 }
 
 /* ============================================
-   FORMULARIO PRINCIPAL - GRID 4 COLUMNAS
+   FORMULARIO PRINCIPAL - LAYOUT MEJORADO
    ============================================ */
 
 .torneo-form {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
-  justify-content: center;
-  align-items: flex-start;
   width: 100%;
   padding: 2rem;
   margin: 0 auto;
@@ -66,17 +64,44 @@
 }
 
 /* ============================================
-   FIELDSETS
+   FIELDSETS - ORGANIZACIÓN ESPECÍFICA
    ============================================ */
 
 .torneo-form fieldset {
-  flex: 1 1 calc(25% - 1.5rem);
-  min-width: 260px;
-  max-width: 360px;
   background: linear-gradient(145deg, #fafafa, #f9f9f9);
   border: 2px solid #d7ccc8;
   border-radius: 10px;
-  padding: 1.25rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+/* Primera fila - Información Básica (2 columnas completas) */
+.torneo-form fieldset:nth-child(1) {
+  grid-column: 1 / -1;
+}
+
+/* Segunda fila - Fechas y Ubicación (columna izquierda) */
+.torneo-form fieldset:nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Segunda fila - Organizadores Adicionales (columna derecha) */
+.torneo-form fieldset:nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* Tercera fila - Bases del Torneo (columna izquierda) */
+.torneo-form fieldset:nth-child(4) {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+/* Tercera fila - Escenarios por Ronda (columna derecha) */
+.torneo-form fieldset:nth-child(5) {
+  grid-column: 2;
+  grid-row: 3;
 }
 
 .torneo-form fieldset:hover {
@@ -87,7 +112,7 @@
 
 .torneo-form legend {
   font-weight: 700;
-  font-size: 1rem !important;
+  font-size: 1.1rem !important;
   color: #5d4037;
   padding: 0 10px !important;
   background: linear-gradient(135deg, #f5f5dc, #faf8f5);
@@ -120,6 +145,7 @@
   display: flex;
   gap: 20px;
   margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
 .tipo-torneo-option {
@@ -127,6 +153,8 @@
   align-items: center;
   cursor: pointer;
   margin: 0 !important;
+  flex: 1;
+  min-width: 150px;
 }
 
 .tipo-torneo-option input {
@@ -148,6 +176,7 @@
   position: relative;
   transition: all 0.3s ease;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .torneo-form input[type="radio"]:checked {
@@ -192,6 +221,7 @@
   position: relative;
   transition: all 0.3s ease;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .torneo-form input[type="checkbox"]:checked {
@@ -226,14 +256,14 @@
 
 .epocas-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
-  padding: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  padding: 12px;
   border: 2px solid #d7ccc8;
   border-radius: 8px;
   background: linear-gradient(145deg, #fafafa, #f9f9f9);
   margin-bottom: 15px;
-  max-height: 300px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -281,14 +311,14 @@
    ============================================ */
 
 .epocas-seleccionadas {
-  padding: 12px 15px;
+  padding: 10px 12px;
   background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
   border: 2px solid #4caf50;
   border-radius: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   color: #2e7d32;
   font-size: 0.85rem;
-  line-height: 1.5;
+  line-height: 1.4;
   box-shadow: 0 2px 6px rgba(76, 175, 80, 0.15);
   animation: fadeIn 0.3s ease-out;
 }
@@ -302,17 +332,18 @@
    ============================================ */
 
 .torneo-form input[type="text"],
+.torneo-form input[type="email"],
 .torneo-form input[type="date"],
 .torneo-form input[type="number"],
 .torneo-form input[type="file"],
 .torneo-form select {
-  padding: 0.5em;
-  font-size: 1em;
+  padding: 0.6em;
+  font-size: 0.95em;
   border: 1px solid #a1887f;
-  border-radius: 4px;
+  border-radius: 6px;
   width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.3s ease;
+  transition: all 0.3s ease;
   background-color: #fafafa;
   color: #000000;
   font-family: inherit;
@@ -347,50 +378,168 @@
 .torneo-form input[type="number"]::-webkit-inner-spin-button,
 .torneo-form input[type="number"]::-webkit-outer-spin-button {
   opacity: 1;
-  height: 35px;
+  height: 30px;
 }
 
+/* ============================================
+   DURACIÓN DEL TORNEO
+   ============================================ */
+
 .duracion-torneo-container {
-    display: flex;
-    gap: 15px;
-    margin: 10px 0 20px 0;
-    flex-wrap: wrap;
+  display: flex;
+  gap: 12px;
+  margin: 10px 0 15px 0;
+  flex-wrap: wrap;
 }
 
 .duracion-option {
-    flex: 1;
-    min-width: 150px;
-    padding: 12px 15px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: white;
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
 }
 
 .duracion-option:hover {
-    border-color: #4a90e2;
-    background-color: #f0f7ff;
+  border-color: #4a90e2;
+  background-color: #f0f7ff;
 }
 
 .duracion-option input[type="radio"] {
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
-    margin: 0;
-}
-
-.duracion-option input[type="radio"]:checked + * {
-    font-weight: bold;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  margin: 0;
 }
 
 .duracion-option:has(input:checked) {
-    border-color: #4a90e2;
-    background-color: #e3f2fd;
-    box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+  border-color: #4a90e2;
+  background-color: #e3f2fd;
+  box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+  font-weight: 600;
+}
+
+/* ============================================
+   🆕 ORGANIZADORES ADICIONALES - MEJORADO
+   ============================================ */
+
+.organizador-input-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: stretch;
+}
+
+.organizador-input-container input {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-añadir-organizador {
+  padding: 0.6em 1.2em;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+}
+
+.btn-añadir-organizador:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #388e3c);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
+}
+
+.btn-añadir-organizador:disabled {
+  background: linear-gradient(135deg, #cccccc, #bbbbbb);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.organizadores-lista {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.organizadores-titulo {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.organizadores-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.organizador-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background-color: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+  gap: 10px;
+}
+
+.organizador-item:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  border-color: #d0d0d0;
+}
+
+.organizador-email {
+  flex: 1;
+  color: #555;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-eliminar-organizador {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #f44336, #e53935);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-eliminar-organizador:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e53935, #c62828);
+  transform: scale(1.05);
+}
+
+.btn-eliminar-organizador:disabled {
+  background: linear-gradient(135deg, #cccccc, #bbbbbb);
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ============================================
@@ -404,6 +553,7 @@
   cursor: pointer;
   background: linear-gradient(145deg, #fafafa, #f9f9f9);
   transition: all 0.3s ease;
+  font-size: 0.9rem;
 }
 
 .torneo-form input[type="file"]:hover:not(:disabled) {
@@ -412,15 +562,16 @@
 }
 
 .torneo-form input[type="file"]::-webkit-file-upload-button {
-  padding: 8px 16px;
+  padding: 8px 14px;
   background: linear-gradient(135deg, #8d6e63, #6d4c41);
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
   font-weight: 600;
-  margin-right: 12px;
+  margin-right: 10px;
   transition: all 0.3s ease;
+  font-size: 0.85rem;
 }
 
 .torneo-form input[type="file"]::-webkit-file-upload-button:hover {
@@ -428,34 +579,36 @@
 }
 
 /* ============================================
-   ARCHIVO PDF SELECCIONADO - Contenedor mejorado
+   ARCHIVO PDF SELECCIONADO
    ============================================ */
 
 .archivo-seleccionado-container {
   background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
   border: 2px solid #4caf50;
-  border-radius: 10px;
-  padding: 20px;
-  margin-top: 15px;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 12px;
   animation: fadeIn 0.3s ease-out;
-  box-shadow: 0 3px 10px rgba(76, 175, 80, 0.2);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15);
 }
 
 .archivo-info {
   flex: 1;
-  min-width: 250px;
+  min-width: 0;
 }
 
 .archivo-nombre {
-  margin: 0 0 10px 0;
-  font-size: 1rem;
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
   color: #2e7d32;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .archivo-nombre strong {
@@ -465,29 +618,29 @@
 
 .archivo-tamaño {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #558b2f;
 }
 
-/* Botón para eliminar PDF */
 .btn-eliminar-pdf {
   background: linear-gradient(135deg, #f44336, #d32f2f);
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 8px 14px;
   border-radius: 6px;
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
-  box-shadow: 0 3px 8px rgba(244, 67, 54, 0.3);
+  box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
+  flex-shrink: 0;
 }
 
 .btn-eliminar-pdf:hover:not(:disabled) {
   background: linear-gradient(135deg, #d32f2f, #c62828);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(244, 67, 54, 0.4);
 }
 
 .btn-eliminar-pdf:disabled {
@@ -496,27 +649,6 @@
   opacity: 0.6;
   transform: none;
   box-shadow: none;
-}
-
-.btn-eliminar-pdf:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-/* Badge simple para compatibilidad */
-.archivo-seleccionado {
-  margin-top: 10px;
-  padding: 12px 15px;
-  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
-  border: 2px solid #4caf50;
-  border-radius: 8px;
-  color: #2e7d32;
-  font-size: 0.85rem;
-  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.15);
-  animation: fadeIn 0.3s ease-out;
-}
-
-.archivo-seleccionado strong {
-  font-weight: 600;
 }
 
 /* ============================================
@@ -529,8 +661,8 @@
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d4037' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  background-size: 18px;
-  padding-right: 40px;
+  background-size: 16px;
+  padding-right: 36px;
 }
 
 .torneo-form select:disabled {
@@ -546,73 +678,66 @@
 .torneo-form select + small,
 .help-text {
   display: block;
-  margin-top: 5px !important;
-  font-size: 0.85rem;
+  margin-top: 4px !important;
+  font-size: 0.8rem;
   color: #666;
   font-style: italic;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .help-text-file {
   display: block;
-  margin-top: 5px;
-  font-size: 0.85rem;
+  margin-top: 4px;
+  font-size: 0.8rem;
   color: #666;
   font-style: italic;
 }
 
 .label-hint {
   color: #666;
-  font-size: 0.85rem;
-  margin-left: 10px;
+  font-size: 0.8rem;
+  margin-left: 8px;
   font-weight: 400;
   font-style: italic;
 }
 
 /* ============================================
-   FORM ACTIONS (BOTONES) - CENTRADO DEBAJO
+   FORM ACTIONS (BOTONES)
    ============================================ */
 
 .form-actions {
   grid-column: 1 / -1;
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   justify-content: center;
   margin-top: 1rem;
   padding-top: 1.5rem;
   border-top: 2px solid #d7ccc8;
-  width: 100%;
 }
 
 .btn-primary,
 .btn-secondary {
-  border-radius: 6px;
+  border-radius: 8px;
   border: none;
-  padding: 12px 24px;
-  font-size: 1rem;
+  padding: 14px 32px;
+  font-size: 1.05rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 150px;
+  min-width: 160px;
 }
 
-/* Botón primario - Verde (Crear Torneo) */
 .btn-primary {
   background: linear-gradient(135deg, #4caf50, #388e3c);
   color: white;
-  box-shadow: 0 3px 8px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #388e3c, #2e7d32);
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
-}
-
-.btn-primary:focus,
-.btn-primary:focus-visible {
-  outline: 4px auto rgba(76, 175, 80, 0.4);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
 }
 
 .btn-primary:disabled {
@@ -623,22 +748,16 @@
   opacity: 0.7;
 }
 
-/* Botón secundario - Marrón (Cancelar) */
 .btn-secondary {
   background: linear-gradient(135deg, #8d6e63, #6d4c41);
   color: white;
-  box-shadow: 0 3px 8px rgba(141, 110, 99, 0.3);
+  box-shadow: 0 4px 10px rgba(141, 110, 99, 0.3);
 }
 
 .btn-secondary:hover:not(:disabled) {
   background: linear-gradient(135deg, #6d4c41, #5d4037);
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(141, 110, 99, 0.4);
-}
-
-.btn-secondary:focus,
-.btn-secondary:focus-visible {
-  outline: 4px auto rgba(141, 110, 99, 0.4);
+  box-shadow: 0 6px 16px rgba(141, 110, 99, 0.4);
 }
 
 .btn-secondary:disabled {
@@ -647,36 +766,6 @@
   transform: none;
   box-shadow: none;
   opacity: 0.7;
-}
-
-/* ============================================
-   LOADING STATE - Animación para botón
-   ============================================ */
-
-.btn-primary:disabled::after,
-.btn-secondary:disabled::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
-  animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
 }
 
 /* ============================================
@@ -695,27 +784,31 @@
 }
 
 /* ============================================
-   RESPONSIVE - Adaptación móvil
+   RESPONSIVE
    ============================================ */
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
   .torneo-form {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 1.5rem !important;
+    grid-template-columns: 1fr;
   }
-  
-  .torneo-form fieldset {
-    padding: 1.5rem !important;
+
+  .torneo-form fieldset:nth-child(1),
+  .torneo-form fieldset:nth-child(2),
+  .torneo-form fieldset:nth-child(3),
+  .torneo-form fieldset:nth-child(4),
+  .torneo-form fieldset:nth-child(5) {
+    grid-column: 1 !important;
+    grid-row: auto !important;
   }
 
   .epocas-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
   .crear-torneo-container {
-    padding: 1rem !important;
+    padding: 1rem;
   }
 
   .crear-torneo-container h1 {
@@ -723,21 +816,16 @@
   }
 
   .torneo-form {
-    padding: 1.5rem !important;
+    padding: 1.5rem;
+    gap: 1.2rem;
   }
 
   .torneo-form fieldset {
-    padding: 1rem !important;
-    min-width: 100%;
-  }
-
-  .torneo-form legend {
-    font-size: 1rem !important;
+    padding: 1.2rem;
   }
 
   .form-actions {
     flex-direction: column;
-    gap: 0.75rem;
   }
 
   .btn-primary,
@@ -746,73 +834,50 @@
     min-width: auto;
   }
 
-  .epocas-grid {
-    grid-template-columns: 1fr;
-    max-height: 250px;
+  .organizador-input-container {
+    flex-direction: column;
+  }
+
+  .btn-añadir-organizador {
+    width: 100%;
   }
 
   .archivo-seleccionado-container {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .btn-eliminar-pdf {
     width: 100%;
   }
 }
 
 @media (max-width: 480px) {
-  .crear-torneo-container {
-    padding: 0.5rem;
-  }
-
   .crear-torneo-container h1 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
   }
 
   .torneo-form {
     padding: 1rem;
-    gap: 1rem;
   }
 
   .torneo-form fieldset {
-    padding: 0.75rem;
+    padding: 1rem;
   }
 
-  .torneo-form legend {
-    font-size: 0.9rem;
-    padding: 0 8px;
-  }
-
-  .torneo-form label {
-    font-size: 0.85rem;
-  }
-
-  .torneo-form input,
-  .torneo-form select {
-    font-size: 0.9rem;
-    padding: 0.45em;
-  }
-
-  .epocas-grid label {
-    font-size: 0.8rem !important;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    font-size: 0.9rem;
-    padding: 10px 20px;
+  .epocas-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 /* ============================================
-   ANIMACIONES DE ENTRADA
+   ANIMACIONES
    ============================================ */
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -824,46 +889,19 @@
   animation: fadeIn 0.4s ease-out;
 }
 
-.torneo-form fieldset {
-  animation: fadeIn 0.5s ease-out;
-}
-
-.torneo-form fieldset:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.torneo-form fieldset:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.torneo-form fieldset:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
 /* ============================================
    ACCESIBILIDAD
    ============================================ */
 
 @media (prefers-reduced-motion: reduce) {
-  .torneo-form,
-  .torneo-form fieldset,
-  .archivo-seleccionado,
-  .archivo-seleccionado-container,
-  .epocas-seleccionadas,
-  .error-message {
-    animation: none;
-  }
-
-  .btn-primary:hover:not(:disabled),
-  .btn-secondary:hover:not(:disabled),
-  .btn-eliminar-pdf:hover:not(:disabled) {
-    transform: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
-
-/* ============================================
-   UTILIDADES
-   ============================================ */
 
 .torneo-form input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;

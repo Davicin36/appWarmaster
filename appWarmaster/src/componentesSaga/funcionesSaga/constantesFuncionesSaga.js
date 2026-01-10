@@ -242,7 +242,7 @@ export const esEpocaValida = (epoca) => {
  */
 export const formatearEpocas = (epocasString) => {
   if (!epocasString) return 'No especificadas';
-  return epocasString.split('|').map(e => e.trim()).filter(e => e).join(', ');
+  return epocasString.split('/').map(e => e.trim()).filter(e => e).join(', ');
 };
 
 /**

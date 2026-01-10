@@ -682,8 +682,6 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       </div>
                     )}
                   </div>
-
-                  {!miembro.esYo && miembrosEquipo.length > 1 && (
                     <button
                       type="button"
                       onClick={() => eliminarMiembro(index)}
@@ -693,7 +691,6 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                     >
                       🗑️ 
                     </button>
-                  )}
                 </div>
               );
             })}

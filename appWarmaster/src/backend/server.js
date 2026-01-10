@@ -10,6 +10,7 @@ dotenv.config();
 import { testConnection } from './config/bd.js';
 
 // Importar rutas
+import rutasAdministrador  from './routes/rutasAdmin.js'
 import torneosSagaRoutes from './routes/torneosSaga.js';
 import torneosWarmasterRoutes from './routes/torneosWarmaster.js';
 import torneosFowRoutes from './routes/torneosFow.js';
@@ -89,7 +90,8 @@ app.get('/', (req, res) => {
       health: '/health',
       test: '/api/test',
       torneos: '/api/torneosSaga',
-      usuarios: '/api/usuarios'
+      usuarios: '/api/usuarios',
+      administrador: '/api/administrador'
     }
   });
 });
@@ -114,7 +116,8 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Rutas principales                 
+// Rutas principales
+app.use('/api/administrador', rutasAdministrador)
 app.use('/api/torneosSaga', torneosSagaRoutes)
 app.use('/api/torneosWarmaster', torneosWarmasterRoutes)
 app.use('/api/torneosFow', torneosFowRoutes)
