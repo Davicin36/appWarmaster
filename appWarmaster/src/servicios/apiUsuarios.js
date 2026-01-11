@@ -8,39 +8,43 @@ class apiUsuarios {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const token = localStorage.getItem('token');
-    
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers,
-      },
-      credentials: 'include',
-      ...options,
-    };
+  const url = `${this.baseURL}${endpoint}`;
+  const token = localStorage.getItem('token');
+  
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    },
+    credentials: 'include',
+    ...options,
+  };
 
-    if (config.body && typeof config.body !== 'string') {
-      config.body = JSON.stringify(config.body);
-    }
-
-    try {
-
-      const response = await fetch(url, config);
-
-      const data = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
+  if (config.body && typeof config.body !== 'string') {
+    config.body = JSON.stringify(config.body);
   }
+
+  try {
+    const response = await fetch(url, config);
+
+    const data = await response.json().catch(() => ({}));
+    
+    if (!response.ok) {
+      console.error('❌ ERROR DEL SERVIDOR:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData: data
+      });
+      throw new Error(data.mensaje || data.error || data.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
 
   //======REGISTRO===========
 

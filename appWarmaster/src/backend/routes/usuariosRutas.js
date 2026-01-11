@@ -22,7 +22,6 @@ const verifyToken = promisify(jwt.verify);
 const router = express.Router(); 
 
 // =======LISTAR TODOS LOS USUARIOS===========
-//Para ver a todos los usuarios de la base de datos
 
 router.get('/', async (req, res) => {
   try {
@@ -43,8 +42,6 @@ router.get('/', async (req, res) => {
       FROM usuarios
       ORDER BY created_at DESC
     `);
-    
-    console.log(`✅ ${usuarios.length} usuarios encontrados`);
     
     res.json(
       successResponse('Usuarios obtenidos exitosamente', {
@@ -74,10 +71,18 @@ router.post('/registro', async (req, res) => {
       codigo_postal,
       localidad,
       pais,
-      password
+      password,
+      aceptaTerminos
     } = req.body;
 
     await connection.beginTransaction();
+
+    if (!aceptaTerminos) {
+      await connection.rollback();
+      return res.status(400).json(
+        errorResponse('Debes aceptar los Términos y Condiciones')
+      );
+    }
 
     // VERIFICAR SI YA EXISTE UN USUARIO PENDIENTE
     const [usuarioExistente] = await connection.execute(
@@ -102,6 +107,7 @@ router.post('/registro', async (req, res) => {
                localidad = ?,
                pais = ?,
                password = ?,
+               acepta_terminos = ?,
                estado_cuenta = 'activo'
            WHERE id = ?`,
           [
@@ -113,6 +119,7 @@ router.post('/registro', async (req, res) => {
             localidad || null,
             pais || null,
             hashedPassword,
+            aceptaTerminos,
             usuario.id
           ]
         );
@@ -125,8 +132,6 @@ router.post('/registro', async (req, res) => {
           process.env.JWT_SECRET,
           { expiresIn: '7d' }
         );
-
-        console.log(`✅ Usuario pendiente ${email} completó su registro`);
 
         return res.status(200).json(
           successResponse('Registro completado exitosamente', {
@@ -160,6 +165,7 @@ router.post('/registro', async (req, res) => {
         localidad,
         pais,
         password,
+        acepta_terminos,
         estado_cuenta
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -172,6 +178,7 @@ router.post('/registro', async (req, res) => {
         localidad || null,
         pais || null,
         hashedPassword,
+        aceptaTerminos,
         'activo'
       ]
     );
@@ -186,8 +193,6 @@ router.post('/registro', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    console.log(`✅ Nuevo usuario registrado: ${email}`);
 
     res.status(201).json(
       successResponse('Usuario registrado exitosamente', {
@@ -224,14 +229,6 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ Log 1: Verificar qué llega
-    console.log('🔐 =========================');
-    console.log('🔐 LOGIN ATTEMPT');
-    console.log('🔐 Email recibido:', email);
-    console.log('🔐 Password recibido:', password ? '***' : 'UNDEFINED');
-    console.log('🔐 Body completo:', req.body);
-    console.log('🔐 =========================');
-
     // Validar campos
     if (!email || !password) {
       console.log('❌ Campos vacíos');
@@ -248,8 +245,6 @@ router.post('/login', async (req, res) => {
       [email]
     );
 
-    console.log('👤 Usuarios encontrados:', usuarios.length);
-
     if (usuarios.length === 0) {
       console.log('❌ Usuario no encontrado');
       return res.status(401).json({
@@ -260,22 +255,8 @@ router.post('/login', async (req, res) => {
 
     const usuario = usuarios[0];
     
-    // ✅ Log 2: Info del usuario encontrado
-    console.log('✅ Usuario encontrado:', {
-      id: usuario.id,
-      email: usuario.email,
-      rol: usuario.rol,
-      passwordHashLength: usuario.password?.length || 0
-    });
-
-    // Verificar contraseña
-    console.log('🔒 Verificando contraseña...');
-    console.log('🔒 Password ingresado length:', password.length);
-    console.log('🔒 Hash en BD length:', usuario.password?.length);
-    
     const passwordValida = await bcrypt.compare(password, usuario.password);
     
-    console.log('🔒 Resultado comparación:', passwordValida);
     
     if (!passwordValida) {
       console.log('❌ Contraseña incorrecta');
@@ -286,7 +267,6 @@ router.post('/login', async (req, res) => {
     }
 
     // Generar token
-    console.log('🎫 Generando token...');
     const token = jwt.sign(
       { 
         userId: usuario.id,
@@ -296,9 +276,6 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    console.log('✅ Login exitoso para:', email);
-    console.log('🔐 =========================');
 
     return res.json({
       success: true,
@@ -729,8 +706,6 @@ router.get('/:userId', verificarToken, async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log('🔍 Buscando torneos para usuario:', userId);
-    
     // ✅ Verifica que coincida con el usuario autenticado
     if (req.usuario.userId !== parseInt(userId)) {
       return res.status(403).json(
@@ -776,8 +751,6 @@ router.get('/:userId', verificarToken, async (req, res) => {
       ORDER BY ts.created_at DESC
     `, [userId]);
     
-    console.log(`✅ Torneos creados: ${torneosCreados.length}`);
-    
     // ✅ CONSULTA 2: Torneos donde PARTICIPA (TODOS, incluyendo propios)
     // 🔥 CAMBIO: Se ELIMINÓ el filtro "ts.created_by != ?"
     const [torneosParticipando] = await pool.execute(`
@@ -819,8 +792,6 @@ router.get('/:userId', verificarToken, async (req, res) => {
       ORDER BY ts.fecha_inicio ASC
     `, [userId]);
     
-    console.log(`✅ Torneos participando: ${torneosParticipando.length}`);
-    
     res.json(
       successResponse('Torneos del usuario obtenidos exitosamente', {
         torneosCreados,
@@ -848,12 +819,6 @@ router.get('/verificarUsuario/:email', async (req, res) => {
       `SELECT id, nombre, apellidos, email FROM usuarios WHERE email = ?`,
       [email.toLowerCase().trim()]
     );
-
-    if (usuarios.length > 0) {
-      console.log(`✅ Usuario encontrado: ${usuarios[0].nombre} ${usuarios[0].apellidos}`);
-    } else {
-      console.log(`⚠️ Usuario NO encontrado: ${email}`);
-    }
 
     res.json({
       success: true,
