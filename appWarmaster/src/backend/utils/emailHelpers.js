@@ -30,10 +30,33 @@ if (isProduction) {
     try {
       const sendSmtpEmail = new brevo.SendSmtpEmail()
 
+       let senderEmail = process.env.EMAIL_FROM; // Default
+      let senderName = 'Gestiona Tus Torneos'; 
+
+      // Si viene from en las opciones
+    if (opcionesEmail.from) {
+      // Intenta extraer email y nombre del formato "Nombre <email@ejemplo.com>"
+      const emailMatch = opcionesEmail.from.match(/<(.+)>/);
+      const nameMatch = opcionesEmail.from.match(/"?([^"<]+)"?\s*<?/);
+      
+      if (emailMatch) {
+        senderEmail = emailMatch[1];
+      }
+      if (nameMatch && nameMatch[1].trim() !== senderEmail) {
+        senderName = nameMatch[1].trim();
+      }
+      
+      // Si solo viene el nombre (sin email), usar EMAIL_FROM
+      if (!emailMatch && opcionesEmail.from.indexOf('@') === -1) {
+        senderName = opcionesEmail.from;
+        senderEmail = process.env.EMAIL_FROM;
+      }
+    }
+
       sendSmtpEmail.sender = {
-        email: opcionesEmail.from?.match(/<(.+)>/)?.[1] || opcionesEmail.from || process.env.EMAIL_FROM,
-        name: opcionesEmail.from?.match(/"(.+)"/)?.[1] || 'Gestiona Tus Torneos'
-      };
+        email: senderEmail,
+        name: senderName
+      }
 
       sendSmtpEmail.to = [{email: opcionesEmail.to}]
       sendSmtpEmail.subject = opcionesEmail.subject
@@ -48,6 +71,12 @@ if (isProduction) {
           email: opcionesEmail.replyTo
         };
       }
+
+      console.log('📤 Enviando email con Brevo:', {
+      from: sendSmtpEmail.sender,
+      to: sendSmtpEmail.to,
+      subject: sendSmtpEmail.subject
+    });
 
       const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
 
