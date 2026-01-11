@@ -274,7 +274,6 @@ router.get('/torneos', verificarToken, verificarSuperAdmin, async (req, res) => 
     const torneosCompletos = torneos.map(torneo => {
       const organizadoresList = organizadoresPorTorneo.get(torneo.id) || [];
       const creador = organizadoresList.find(o => o.es_creador);
-      const organizadoresSecundarios = organizadoresList.filter(o => !o.es_creador);
       
       return {
         ...torneo,
@@ -310,8 +309,6 @@ router.get('/torneos', verificarToken, verificarSuperAdmin, async (req, res) => 
     
     const total = totalRows[0].total;
     const totalPages = Math.ceil(total / limitNum);
-    
-    console.log(`✅ ${torneosCompletos.length} torneos obtenidos (superadmin)`);
     
     res.json({
       success: true,
@@ -620,7 +617,6 @@ router.put('/torneos/:torneoId', verificarToken, verificarSuperAdmin, upload.sin
       camposActualizar.push('bases_torneo = NULL');
       camposActualizar.push('bases_nombre = NULL');
       camposActualizar.push('base_tamaño = NULL');
-      console.log('🗑️ Eliminando PDF existente');
     }
 
     // ✅ EJECUTAR UPDATE SI HAY CAMBIOS
@@ -630,12 +626,10 @@ router.put('/torneos/:torneoId', verificarToken, verificarSuperAdmin, upload.sin
         `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`,
         valores
       );
-      console.log(`✅ Torneo ${torneoId} actualizado por superadmin`);
     }
 
     // ✅ ACTUALIZAR ÉPOCAS (solo para SAGA)
     if (sistemaActual === 'SAGA' && epocas_disponibles && Array.isArray(epocas_disponibles)) {
-      console.log('📝 Actualizando épocas en torneo_saga_epocas...');
       
       // Eliminar épocas antiguas
       await pool.execute(
@@ -649,7 +643,6 @@ router.put('/torneos/:torneoId', verificarToken, verificarSuperAdmin, upload.sin
           `INSERT INTO torneo_saga_epocas (torneo_id, epoca) VALUES (?, ?)`,
           [torneoId, epoca]
         );
-        console.log(`  ✓ Época guardada: ${epoca}`);
       }
     }
 
@@ -674,8 +667,6 @@ router.put('/torneos/:torneoId', verificarToken, verificarSuperAdmin, upload.sin
       );
       epocasActualizadas = epocas.map(e => e.epoca);
     }
-
-    console.log(`✅ Torneo ${torneoId} (${sistemaActual}) actualizado exitosamente por superadmin`);
 
     res.json(
       successResponse('Torneo actualizado exitosamente', {
@@ -765,8 +756,6 @@ router.delete('/torneos/:torneoId', verificarToken, verificarSuperAdmin, async (
     await connection.execute('DELETE FROM torneos_sistemas WHERE id = ?', [torneoId]);
     
     await connection.commit();
-    
-    console.log(`🗑️ Torneo ${torneoId} (${sistema}) eliminado por superadmin: "${torneoData.nombre_torneo}"`);
     
     res.json(
       successResponse(`Torneo "${torneoData.nombre_torneo}" eliminado exitosamente`, {
@@ -861,10 +850,6 @@ router.get('/torneos/:torneoId/organizadores', verificarToken, verificarSuperAdm
     const pendientes = organizadoresConInfo.filter(org => 
       org.estado_cuenta === 'pendiente_registro' || org.es_invitacion_pendiente
     );
-
-    console.log(`👑 SuperAdmin consultó organizadores del torneo ${torneoId}:`);
-    console.log(`  ✅ Activos: ${activos.length}`);
-    console.log(`  ⏳ Pendientes: ${pendientes.length}`);
 
     res.json(successResponse('Organizadores obtenidos', {
       torneo: {
@@ -993,12 +978,9 @@ router.post('/torneos/:torneoId/organizadores', verificarToken, verificarSuperAd
             tipoTorneo: torneo[0].tipo_torneo,
             rondasMax: torneo[0].rondas_max
           });
-          console.log(`📧 Email enviado a usuario registrado: ${emailLimpio}`);
         } catch (emailError) {
           console.error('⚠️ Error al enviar email:', emailError);
         }
-
-        console.log(`👑 SuperAdmin agregó organizador activo: ${emailLimpio} al torneo ${torneoId}`);
 
       } else {
         tipoRespuesta = 'pendiente_registro';
@@ -1009,8 +991,6 @@ router.post('/torneos/:torneoId/organizadores', verificarToken, verificarSuperAd
            VALUES (?, ?, NOW())`,
           [torneoId, usuarioId]
         );
-
-        console.log(`👑 SuperAdmin agregó organizador pendiente: ${emailLimpio} al torneo ${torneoId}`);
       }
 
     } else {
@@ -1061,13 +1041,9 @@ router.post('/torneos/:torneoId/organizadores', verificarToken, verificarSuperAd
             tipoTorneo: torneo[0].tipo_torneo,
             rondasMax: torneo[0].rondas_max
           });
-          console.log(`📧 Email de invitación enviado a: ${emailLimpio}`);
         } catch (emailError) {
           console.error('⚠️ Error al enviar email:', emailError);
         }
-
-        console.log(`👑 SuperAdmin creó usuario temporal e invitó: ${emailLimpio} (ID: ${usuarioId}) al torneo ${torneoId}`);
-
       } catch (insertError) {
         console.error('Error al crear usuario temporal:', insertError);
         if (insertError.code === 'ER_DUP_ENTRY') {
@@ -1187,7 +1163,6 @@ router.delete('/torneos/:torneoId/organizadores/:organizadorId', verificarToken,
         );
 
         nuevoCreadorAsignado = true;
-        console.log(`👑 Nuevo creador asignado por SuperAdmin: usuario_id ${nuevoCreador[0].usuario_id}`);
       }
     }
 
@@ -1200,8 +1175,6 @@ router.delete('/torneos/:torneoId/organizadores/:organizadorId', verificarToken,
     if (result.affectedRows === 0) {
       return res.status(404).json(errorResponse('No se pudo eliminar el organizador'));
     }
-
-    console.log(`👑 SuperAdmin eliminó organizador: ${nombreUsuario} (${emailUsuario}) del torneo ${torneoId}`);
 
     // Si era una invitación temporal, verificar si tiene otros torneos
     if (esInvitacionTemporal) {
@@ -1216,10 +1189,7 @@ router.delete('/torneos/:torneoId/organizadores/:organizadorId', verificarToken,
           'DELETE FROM usuarios WHERE id = ? AND password LIKE "TEMP_%"',
           [usuarioIdAEliminar]
         );
-        console.log(`👑 SuperAdmin eliminó usuario temporal completamente: ${emailUsuario}`);
-      } else {
-        console.log(`ℹ️ Usuario temporal ${emailUsuario} mantiene su cuenta (tiene ${otrosTorneos[0].total} torneo(s) más)`);
-      }
+      } 
     }
 
     res.json(successResponse('Organizador eliminado exitosamente', {
@@ -1311,8 +1281,6 @@ router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verifica
           rondasMax: info.rondas_max
         });
       }
-
-      console.log(`👑 SuperAdmin reenvió invitación a: ${info.email} para torneo ${torneoId}`);
 
       res.json(successResponse('Invitación reenviada exitosamente', {
         email: info.email,

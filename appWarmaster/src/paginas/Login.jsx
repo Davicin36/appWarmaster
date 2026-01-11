@@ -65,10 +65,7 @@ function Login({ isOpen, onClose }) {
         setError("");
         
         try {
-            console.log('🔐 Intentando login con:', { 
-                email: formData.email 
-                // NO loguear password en producción
-            });
+    
             const usuario = await login(formData.email, formData.password);
             
             if (usuario) {

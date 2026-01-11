@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../servicios/AuthContext";
 import { validarCodigoPostal } from "../servicios/validaciones";
+import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/registrarse.css'
 
@@ -23,6 +24,8 @@ function Registrarse({ onOpenLogin }) {
         password: "",
         confirmPassword: ""
     });
+
+    const [aceptaTerminos, setAceptaTerminos] = useState (false)
     
     const [loading, setLoading] = useState(false);
     const [loadingCP, setLoadingCP] = useState(false);
@@ -215,6 +218,10 @@ function Registrarse({ onOpenLogin }) {
             nuevosErrores.confirmPassword = "Las contraseñas no coinciden";
         }
 
+        if (!aceptaTerminos) {
+            nuevosErrores.terminos = "Debes aceptar los Términos y Condiciones para registrarte";
+        }
+
         setErrors(nuevosErrores);
         
         if (Object.keys(nuevosErrores).length > 0) {
@@ -246,7 +253,8 @@ function Registrarse({ onOpenLogin }) {
                 codigo_postal: formData.codigo_postal,
                 localidad: formData.localidad,
                 pais: formData.pais,
-                password: formData.password
+                password: formData.password,
+                aceptaTerminos: true
             };
             
             const resultado = await registro(datosRegistro);
@@ -529,6 +537,45 @@ function Registrarse({ onOpenLogin }) {
                     </div>
                 </div>
 
+                {/* ✅ NUEVO: CHECKBOX DE TÉRMINOS Y CONDICIONES */}
+                <div className="terms-checkbox-container">
+                    <label className={`terms-checkbox-label ${errors.terminos ? 'error' : ''}`}>
+                        <input
+                            type="checkbox"
+                            id="aceptaTerminos"
+                            checked={aceptaTerminos}
+                            onChange={(e) => {
+                                setAceptaTerminos(e.target.checked);
+                                // Limpiar error de términos si se acepta
+                                if (e.target.checked && errors.terminos) {
+                                    setErrors(prev => {
+                                        const newErrors = {...prev};
+                                        delete newErrors.terminos;
+                                        return newErrors;
+                                    });
+                                }
+                            }}
+                            required
+                            disabled={loading}
+                            className="terms-checkbox-input"
+                        />
+                        <span className="checkbox-text">
+                            Acepto los{' '}
+                            <Link to="/terminos-condiciones" target="_blank" rel="noopener noreferrer">
+                                Términos y Condiciones
+                            </Link>
+                            {' '}y la{' '}
+                            <Link to="/politica-privacidad" target="_blank" rel="noopener noreferrer">
+                                Política de Privacidad
+                            </Link>
+                        </span>
+                    </label>
+                    {errors.terminos && (
+                        <span className="terms-error-message">{errors.terminos}</span>
+                    )}
+                </div>
+
+
                 <div className="button-group">
                     <button 
                         type="submit" 
@@ -560,6 +607,7 @@ function Registrarse({ onOpenLogin }) {
                     </button>
                 </p>
             </form>
+            <Footer />
         </div>
     );
 }

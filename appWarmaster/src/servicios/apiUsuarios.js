@@ -26,23 +26,10 @@ class apiUsuarios {
     }
 
     try {
-      // ✅ Log para debugging (quitar en producción)
-      console.log('📤 API Request:', {
-        url,
-        method: config.method || 'GET',
-        hasBody: !!config.body,
-        hasToken: !!token
-      });
 
       const response = await fetch(url, config);
 
-      console.log('📥 API Response:', {
-        status: response.status,
-        ok: response.ok
-      });
-
       const data = await response.json().catch(() => ({}));
-      console.log('📦 Response data:', data);
       
       if (!response.ok) {
         throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);

@@ -91,18 +91,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('userId', usuario.id.toString());
         localStorage.setItem('userEmail', usuario.email);
 
-        console.log('✅ Login exitoso:', {
-          id: usuario.id,
-          email: usuario.email,
-          rol: usuario.rol,
-          nombre: usuario.nombre
-        });
-        
-        console.log('💾 Datos guardados en localStorage:');
-        console.log('- Token:', !!usuarioApi.obtenerToken());
-        console.log('- Role:', localStorage.getItem('userRole'));
-        console.log('- UserId:', localStorage.getItem('userId'));
-
         setUser(usuario);
 
         return usuario;
@@ -120,7 +108,6 @@ export const AuthProvider = ({ children }) => {
       const response = await usuarioApi.registro(userData);
 
       if (response.success) {
-        console.log('Usuario registrado:', response.data);
         return { success: true, data: response.data };
       } else {
         return { 
@@ -154,7 +141,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.success) {
-        console.log('Contraseña cambiada exitosamente');
         return { 
           success: true, 
           message: response.message || 'Contraseña actualizada' 

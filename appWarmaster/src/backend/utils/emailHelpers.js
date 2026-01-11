@@ -72,18 +72,7 @@ if (isProduction) {
         };
       }
 
-      console.log('📤 Enviando email con Brevo:', {
-      from: sendSmtpEmail.sender,
-      to: sendSmtpEmail.to,
-      subject: sendSmtpEmail.subject
-    });
-
       const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
-
-      console.log('Email enviado correctamente:', {
-        messageId: result.messageId,
-        to: opcionesEmail.to
-      })
 
       return {
         success: true,

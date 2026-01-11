@@ -10,6 +10,7 @@ import {
     RONDAS_DISPONIBLES,
     PARTICIPANTES_RANGO,
 } from '@/componentesWarmaster/funcionesWarmaster/constantesFuncionesWarmaster.js';
+import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/crearTorneo.css';
 
@@ -532,6 +533,7 @@ function CrearTorneoSaga() {
                     </button>
                 </div>
             </form>
+            <Footer/>
         </div>
     );
 }

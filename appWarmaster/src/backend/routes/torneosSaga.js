@@ -395,20 +395,14 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
     const creadorNombre = `${usuarios[0].nombre} ${usuarios[0].apellidos}`;
 
     if (usuarios[0].rol !== 'organizador') {
-      console.log('🔄 Actualizando rol a organizador...');
       
       const [updateResult] = await pool.execute(
         'UPDATE usuarios SET rol = ? WHERE id = ?',
         ['organizador', req.usuario.userId]
       );
       
-      console.log('✅ Resultado UPDATE:', updateResult);
-      console.log('  Filas afectadas:', updateResult.affectedRows);
-      
       rolActualizado = 'organizador';
     }
-
-    console.log('📋 Rol final:', rolActualizado);
     
     let basesPdf = null;
     let basesNombre = null;
@@ -418,7 +412,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       basesPdf = req.file.buffer;
       basesNombre = req.file.originalname;
       baseTamaño = req.file.size;
-      console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
     }
 
     const [resultado] = await pool.execute(
@@ -476,7 +469,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         `INSERT INTO torneo_saga_epocas (torneo_id, epoca) VALUES (?, ?)`,
         [torneoId, epoca]
       );
-      console.log(`  ✓ Época guardada: ${epoca}`);
     }
 
     //INSERTAR A LOS ORGANIZADORES DEL TORNEO EN SU BD.
@@ -484,7 +476,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       `INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)`,
       [torneoId, req.usuario.userId]
     )
-    console.log(`👤 Creador añadido como organizador principal`);
 
     let organizadoresRegistrados = []
     let organizadoresNoRegistrados = []
@@ -525,18 +516,13 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
                   nombre: `${usuario.nombre} ${usuario.apellidos }`,
                   estado: usuario.estado_cuenta
               })
-
-                  console.log(`  ✓ Organizador añadido: ${usuario.email} (${usuario.estado_cuenta})`);
             }  else {
                   organizadoresNoRegistrados.push({
                   email: usuario.email
                 });
-                  console.log(`  ⏳ Organizador pendiente de registro: ${usuario.email}`);
             }
           }
       } else {
-
-          console.log(`  ⚠️ Organizador no registrado: ${emailLower}`);
 
           try {
             // Crear usuario pendiente
@@ -563,8 +549,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
               usuarioId: usuarioId
             });
 
-            console.log(`  ✅ Usuario pendiente creado: ${emailLower} (ID: ${usuarioId})`);
-
           } catch (dbError) {
             console.error(`  ❌ Error creando usuario pendiente para ${emailLower}:`, dbError);
           }
@@ -573,7 +557,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
 
     // ✅ ENVIAR EMAILS
       if (organizadoresRegistrados.length > 0 || organizadoresNoRegistrados.length > 0) {
-        console.log(`\n📧 Enviando notificaciones por email...`);
 
         // Enviar emails a organizadores activos
         for (const org of organizadoresRegistrados) {
@@ -589,7 +572,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
               tipoTorneo: tipo_torneo,
               rondasMax: rondas_max
             });
-            console.log(`  ✅ Email enviado a organizador activo: ${org.email}`);
           } catch (emailError) {
             console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
           }
@@ -608,7 +590,6 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
               tipoTorneo: tipo_torneo,
               rondasMax: rondas_max
             });
-            console.log(`  ✅ Email de invitación enviado a: ${org.email}`);
           } catch (emailError) {
             console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
           }
@@ -877,7 +858,6 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
     
     // ✅ NUEVO: Actualizar épocas si se proporcionaron
     if (epocas_disponibles && Array.isArray(epocas_disponibles)) {
-      console.log('📝 Actualizando épocas en torneo_saga_epocas...');
       
       // Eliminar épocas antiguas
       await pool.execute(
@@ -891,7 +871,6 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
           `INSERT INTO torneo_saga_epocas (torneo_id, epoca) VALUES (?, ?)`,
           [torneoId, epoca]
         );
-        console.log(`  ✓ Época guardada: ${epoca}`);
       }
     }
     
@@ -1005,10 +984,6 @@ router.get('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorne
     const pendientes = organizadoresConInfo.filter(org => 
       org.estado_cuenta === 'pendiente_registro' || org.es_invitacion_pendiente
     );
-
-    console.log(`📊 Organizadores del torneo ${torneoId}:`);
-    console.log(`  ✅ Activos: ${activos.length}`);
-    console.log(`  ⏳ Pendientes: ${pendientes.length}`);
 
     res.json(successResponse('Organizadores obtenidos', {
       activos,
@@ -1153,14 +1128,10 @@ router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorn
               tipoTorneo: torneo[0].tipo_torneo,
               rondasMax: torneo[0].rondas_max
           });
-          console.log(`📧 Email enviado a usuario registrado: ${emailLimpio}`);
         } catch (emailError) {
           console.error('⚠️ Error al enviar email:', emailError);
           // No bloquear el proceso si falla el email
         }
-
-        console.log(`✅ Usuario activo agregado por ${nombreInvitador}: ${emailLimpio}`);
-
       } else {
         tipoRespuesta = 'pendiente_registro';
         
@@ -1170,8 +1141,6 @@ router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorn
            VALUES (?, ?)`,
           [torneoId, usuarioId]
         );
-
-        console.log(`⏳ Usuario pendiente agregado por ${nombreInvitador}: ${emailLimpio}`);
       }
 
     } else {
@@ -1221,8 +1190,6 @@ router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorn
           console.error('⚠️ Error al enviar email:', emailError);
           // No bloquear el proceso si falla el email
         }
-
-        console.log(`📧 Usuario temporal creado por ${nombreInvitador}: ${emailLimpio} (ID: ${usuarioId})`);
 
       } catch (insertError) {
         console.error('Error al crear usuario temporal:', insertError);
@@ -1352,8 +1319,6 @@ router.delete('/:torneoId/organizadores/:organizadorId', verificarToken, verific
           'UPDATE torneos_sistemas SET created_by = ? WHERE id = ?',
           [nuevoCreador[0].usuario_id, torneoId]
         );
-
-        console.log(`👑 Nuevo creador asignado: usuario_id ${nuevoCreador[0].usuario_id}`);
       }
     }
 
@@ -1366,8 +1331,6 @@ router.delete('/:torneoId/organizadores/:organizadorId', verificarToken, verific
     if (result.affectedRows === 0) {
       return res.status(404).json(errorResponse('No se pudo eliminar el organizador'));
     }
-
-    console.log(`🗑️ Organizador eliminado: ${emailUsuario} (ID: ${organizadorId})`);
 
     // Si era una invitación temporal, verificar si tiene otros torneos
     if (esInvitacionTemporal) {
@@ -1383,9 +1346,6 @@ router.delete('/:torneoId/organizadores/:organizadorId', verificarToken, verific
           'DELETE FROM usuarios WHERE id = ? AND password LIKE "TEMP_%"',
           [usuarioIdAEliminar]
         );
-        console.log(`🗑️ Usuario temporal eliminado completamente: ${emailUsuario}`);
-      } else {
-        console.log(`ℹ️ Usuario temporal ${emailUsuario} mantiene su cuenta (tiene ${otrosTorneos[0].total} torneo(s) más)`);
       }
     }
 
@@ -1474,8 +1434,6 @@ router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verifica
           rondasMax: info.rondas_max
         });
       }
-
-      console.log(`👑 Organizador del torneo reenvió invitación a: ${info.email} para torneo ${torneoId}`);
 
       res.json(successResponse('Invitación reenviada exitosamente', {
         email: info.email,
@@ -1832,14 +1790,6 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
         message: 'Torneo no encontrado'
       });
     }
-
-    console.log('🔍 DEBUG - Comparación:', {
-      created_by: torneoCheck[0].created_by,
-      usuarioOrganizadorId: usuarioOrganizadorId,
-      sonIguales: torneoCheck[0].created_by === usuarioOrganizadorId,
-      tipoCreatedBy: typeof torneoCheck[0].created_by,
-      tipoUsuarioId: typeof usuarioOrganizadorId
-    });
 
     if (torneoCheck[0].created_by !== usuarioOrganizadorId) {
       await connection.rollback();

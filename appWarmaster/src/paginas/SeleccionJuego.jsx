@@ -8,6 +8,8 @@ import logoWarmaster from '../assets/logoWarmaster.webp'
 import logoFow from '../assets/logoFow.webp'
 import logoBolt from '../assets/logoBolt.webp'
 
+import Footer from '@/paginas/Footer.jsx'
+
 /**
  * Componente para seleccionar tipo de juego y modalidad antes de crear un torneo
  * Navega a rutas específicas según el juego y modalidad seleccionados
@@ -165,8 +167,7 @@ function SeleccionJuego() {
                         </div>
                     ))}
                 </div>
-            </section>
-
+            </section> 
 
             {/* RESUMEN Y BOTÓN CREAR TORNEO */}
             {juegoSeleccionado  && (
@@ -186,10 +187,13 @@ function SeleccionJuego() {
                     >
                         Crear Torneo →
                     </button>
-                </div>
+                </div>   
             )}
+
+        <Footer />
         </div>
     );
+
 }
 
 export default SeleccionJuego;

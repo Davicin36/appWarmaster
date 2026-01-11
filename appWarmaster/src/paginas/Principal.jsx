@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import PrincipalSaga from '@/componentesSaga/PrincipalSaga';
 import PrincipalWarmaster from '@/componentesWarmaster/PrincipalWarmaster';
 import PrincipalFow from '@/componentesFow/PrincipalFow';
+import Footer from '@/paginas/Footer.jsx'
 
 import vikingo from '../assets/vikingo.png';
 
@@ -56,11 +57,7 @@ function Principal({ onOpenLogin }) {
             {juegoActivo === 'warmaster' && <PrincipalWarmaster onOpenLogin={onOpenLogin} />}
             {juegoActivo === 'fow' && <PrincipalFow onOpenLogin={onOpenLogin} />}
 
-            <footer>
-                <Link to="/ayudaTorneos">
-                    Como Crear Un Torneo y gestionarlo
-                </Link>
-            </footer>
+            <Footer />
         </div>
     );
 }

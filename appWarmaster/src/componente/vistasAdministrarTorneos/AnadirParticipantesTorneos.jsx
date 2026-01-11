@@ -266,7 +266,6 @@ const AnadirParticipantesTorneos = ({
           email: individualData.email || null
         };
 
-        console.log('📤 Enviando participante:', participanteNormalizado);
         resultado = await torneosSagaApi.añadirJugadorIndividual(torneoId, participanteNormalizado);
         
       } else {
@@ -280,7 +279,6 @@ const AnadirParticipantesTorneos = ({
           }))
         };
 
-        console.log('📤 Enviando equipo:', equipoNormalizado);
         resultado = await torneosSagaApi.añadirEquipo(torneoId, equipoNormalizado);
       }
 

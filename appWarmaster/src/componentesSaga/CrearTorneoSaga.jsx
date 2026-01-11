@@ -13,6 +13,7 @@ import {
     EQUIPOS_RANGO,
     JUGADORES_EQUIPO_RANGO
 } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga.js';
+import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/crearTorneo.css';
 
@@ -806,6 +807,7 @@ function CrearTorneoSaga() {
                     </button>
                 </div>
             </form>
+            <Footer /> 
         </div>
     );
 }

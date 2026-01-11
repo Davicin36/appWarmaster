@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import torneosSagaApi from '../../servicios/apiSaga.js';
 import { obtenerBandasDisponibles } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
+import Footer from '@/paginas/Footer.jsx'
 import '../../estilos/inscripcion.css';
 
 function InscripcionSagaIndividual({ torneoId, torneo, user }) {
@@ -466,6 +467,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                 Cancelar
               </button>
             </div>
+          <Footer />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
     RONDAS_DISPONIBLES,
     PARTICIPANTES_RANGO,
 } from '@/componentesFow/funcionesFow/constantesFuncionesFow.js';
+import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/crearTorneo.css';
 
@@ -585,6 +586,7 @@ function CrearTorneoFow() {
                     </button>
                 </div>
             </form>
+            <Footer />
         </div>
     );
 }

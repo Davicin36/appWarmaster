@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 import torneosWarmasterApi from '@/servicios/apiWarmaster.js';
 import { EJERCITOS_WARMASTER } from '@/componentesWarmaster/funcionesWarmaster/constantesFuncionesWarmaster';
+import Footer from '@/paginas/Footer.jsx'
 
 import '@/estilos/inscripcion.css';
 
@@ -438,6 +439,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
           </button>
         </div>
       </form>
+      <Footer />
     </div>
   );
 }

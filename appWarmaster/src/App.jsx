@@ -12,9 +12,13 @@ import Perfil from './paginas/Perfil.jsx';
 import AdministrarTorneo from './paginas/AdministrarTorneo.jsx';
 import VerTorneos from './paginas/VerTorneos.jsx';
 import Inscripcion from './paginas/Inscripcion.jsx';
-import AyudaTorneos from './paginas/AyudaTorneos.jsx';
 import SeleccionJuego from './paginas/SeleccionJuego.jsx';
 import ResetPassword from './paginas/loginRecuperacion/ResetPassword.jsx'
+
+import AvisoLegal from './paginas/documentosLegales/AvisoLegal.jsx';
+import PoliticaCokies from './paginas/documentosLegales/PoliticaCokies.jsx';
+import PoliticaPrivacidad from './paginas/documentosLegales/PoliticaPrivacidad.jsx';
+import TerminosCondiciones from './paginas/documentosLegales/TerminosCondiciones.jsx';
 
 import AdminPanel from './paginas/administrador/AdminPanel.jsx'
 import PrivateRoute from './servicios/RutasPrivadas.jsx';
@@ -58,9 +62,21 @@ function App() {
             path='/torneosWarmaster/:torneoId/detalles'
             element={<VerTorneos />}
         />
+        <Route
+            path='/aviso-legal'
+            element={<AvisoLegal />}
+        />
          <Route
-            path='/ayudaTorneos'
-            element={<AyudaTorneos />}
+            path='/politica-privacidad'
+            element={<PoliticaPrivacidad />}
+        />
+         <Route
+            path='/politica-cookies'
+            element={<PoliticaCokies />}
+        />
+         <Route
+            path='/terminos-condiciones'
+            element={<TerminosCondiciones />}
         />
         {/**RUTAS PRIVADAS, SOLO LOGUEADOS*/}
         <Route 

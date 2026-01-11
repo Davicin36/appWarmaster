@@ -41,7 +41,7 @@ function Inscripcion() {
             torneoData = dataTorneo.data.torneo || dataTorneo.data
           }
         } catch (sagaError) {
-          console.log('No es un torneo SAGA, intentando WARMASTER...', sagaError);
+          console.error('No es un torneo SAGA, intentando WARMASTER...', sagaError);
         }
 
         if (!torneoData){
@@ -140,6 +140,8 @@ function Inscripcion() {
         user={user}
     />
   );
+
+  
 }
 
 export default Inscripcion;

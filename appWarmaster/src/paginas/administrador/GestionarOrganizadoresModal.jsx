@@ -18,11 +18,8 @@ const GestionarOrganizadoresModal = ({ torneo, onClose, onSuccess }) => {
   const fetchOrganizadores = async () => {
     try {
       setLoading(true);
-      console.log('📥 Obteniendo organizadores del torneo:', torneo.id);
-      
+
       const response = await apiAdministrador.obtenerOrganizadores(torneo.id);
-      
-      console.log('✅ Organizadores obtenidos:', response);
       
       setOrganizadores({
         activos: response.data.activos || [],
@@ -57,11 +54,8 @@ const GestionarOrganizadoresModal = ({ torneo, onClose, onSuccess }) => {
     )) {
       try {
         setAgregando(true);
-        console.log('➕ Agregando organizador:', nuevoEmail);
         
         const response = await apiAdministrador.agregarOrganizador(torneo.id, nuevoEmail);
-        
-        console.log('✅ Organizador agregado:', response);
         
         alert(`✅ ${response.message || 'Organizador agregado correctamente'}`);
         setNuevoEmail('');
@@ -82,7 +76,6 @@ const GestionarOrganizadoresModal = ({ torneo, onClose, onSuccess }) => {
   };
 
   const handleEliminarOrganizador = async (org) => {
-    console.log('🗑️ Datos del organizador a eliminar:', org);
     
     if (!org.organizador_id) {
       console.error('❌ ERROR: No hay organizador_id');
@@ -122,16 +115,8 @@ const GestionarOrganizadoresModal = ({ torneo, onClose, onSuccess }) => {
 
     if (window.confirm(mensajeConfirmacion)) {
       try {
-        console.log('🗑️ Eliminando:', {
-          torneoId: torneo.id,
-          organizadorId: org.organizador_id,
-          esCreador: org.es_creador,
-          totalOrganizadores
-        });
         
         const response = await apiAdministrador.eliminarOrganizador(torneo.id, org.organizador_id);
-        
-        console.log('✅ Respuesta:', response);
         
         // Mensaje diferente si era el creador
         if (org.es_creador && response.nuevo_creador_asignado) {
@@ -156,7 +141,6 @@ const GestionarOrganizadoresModal = ({ torneo, onClose, onSuccess }) => {
   };
 
   const handleReenviarInvitacion = async (org) => {
-    console.log('📧 Reenviando invitación a:', org);
     
     if (!org.organizador_id) {
       alert('❌ Error: No se puede reenviar (falta ID).');

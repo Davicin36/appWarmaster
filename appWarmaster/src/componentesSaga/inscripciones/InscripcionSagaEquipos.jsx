@@ -7,6 +7,7 @@ import {
   PUNTOS_BANDA_RANGO,
   obtenerBandasDisponibles
 } from '../funcionesSaga/constantesFuncionesSaga';
+import Footer from '@/paginas/Footer.jsx'
 
 import '../../estilos/inscripcionesEquipo.css';
 
@@ -723,6 +724,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
           </button>
         </div>
       </form>
+      <Footer />
     </div>
   );
 }

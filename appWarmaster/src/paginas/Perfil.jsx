@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
 import { validarCodigoPostal } from '../servicios/validaciones';
 
+import Footer from '@/paginas/Footer.jsx'
+
 import usuarioApi from "../servicios/apiUsuarios.js";
 
 import '../estilos/perfil.css'
@@ -980,6 +982,7 @@ function Perfil() {
                     </button>
                 </section>
             </div>
+            <Footer />
         </div>
     );
 }

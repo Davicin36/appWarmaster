@@ -491,3 +491,159 @@
     font-size: 0.9rem;
   }
 }
+
+/* ===================================
+   ESTILOS PARA CHECKBOX DE TÉRMINOS
+   =================================== */
+
+/* Contenedor principal del checkbox de términos */
+.terms-checkbox-container {
+  margin: 25px 0;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  transition: border-color 0.3s ease;
+}
+
+.terms-checkbox-container:has(.error) {
+  border-color: #e74c3c;
+  background-color: #fff5f5;
+}
+
+/* Label del checkbox */
+.terms-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+}
+
+.terms-checkbox-label.error {
+  color: #e74c3c;
+}
+
+/* Input checkbox */
+.terms-checkbox-input {
+  margin-top: 4px;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  accent-color: #3498db;
+  flex-shrink: 0;
+}
+
+.terms-checkbox-input:hover {
+  opacity: 0.8;
+}
+
+.terms-checkbox-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Texto del checkbox */
+.checkbox-text {
+  color: #495057;
+  font-size: 14px;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.checkbox-text a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.checkbox-text a:hover {
+  border-bottom-color: #3498db;
+  color: #2980b9;
+}
+
+.checkbox-text a:active {
+  color: #1f6391;
+}
+
+/* Mensaje de error para términos */
+.terms-error-message {
+  display: block;
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 10px;
+  padding-left: 32px;
+  font-weight: 500;
+  animation: shake 0.3s ease;
+}
+
+/* Animación de error */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+/* Responsive - Móviles */
+@media (max-width: 768px) {
+  .terms-checkbox-container {
+    padding: 15px;
+    margin: 20px 0;
+  }
+
+  .checkbox-text {
+    font-size: 13px;
+  }
+
+  .terms-checkbox-input {
+    width: 18px;
+    height: 18px;
+  }
+
+  .terms-error-message {
+    font-size: 12px;
+    padding-left: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .terms-checkbox-container {
+    padding: 12px;
+  }
+
+  .terms-checkbox-label {
+    gap: 10px;
+  }
+
+  .checkbox-text {
+    font-size: 12px;
+  }
+
+  .terms-checkbox-input {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Estados de focus para accesibilidad */
+.terms-checkbox-input:focus {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+.terms-checkbox-input:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+/* Efecto hover en el contenedor completo */
+.terms-checkbox-label:hover .checkbox-text {
+  color: #2c3e50;
+}
+
+/* Estado cuando está marcado */
+.terms-checkbox-input:checked + .checkbox-text {
+  color: #2c3e50;
+}

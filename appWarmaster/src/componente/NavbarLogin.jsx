@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../servicios/AuthContext';
 import { MenuNavBar } from '../assets/icons/menu-navbar';
 
@@ -7,16 +7,8 @@ import '../estilos/navBarLogin.css';
 
 function NavbarLogin() {
     const [menuAbierto, setMenuAbierto] = useState(false);
-    const { user, isSuperAdmin } = useAuth();
+    const { isSuperAdmin } = useAuth();
 
-    // 🧪 DEBUG - Ver qué está pasando
-    useEffect(() => {
-        console.log('🔍 NavbarLogin - Debug:');
-        console.log('   User:', user);
-        console.log('   User.rol:', user?.rol);
-        console.log('   isSuperAdmin():', isSuperAdmin());
-        console.log('   localStorage rol:', localStorage.getItem('userRole'));
-    }, [user]);
 
     const alternarMenu = () => {
         setMenuAbierto(!menuAbierto);

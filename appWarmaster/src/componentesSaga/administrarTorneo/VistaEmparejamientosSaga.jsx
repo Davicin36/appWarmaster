@@ -87,7 +87,7 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                     const dataEquipos = responseEquipos.data || responseEquipos || [];
                     setEquipos(Array.isArray(dataEquipos) ? dataEquipos : []);
                 } catch (err) {
-                    console.log('No hay equipos todavía', err);
+                    console.error('No hay equipos todavía', err);
                     setEquipos([]);
                 }
             } else {
@@ -96,7 +96,7 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                     const dataJugadores = responseJugadores.data || responseJugadores || [];
                     setJugadores(Array.isArray(dataJugadores) ? dataJugadores : []);
                 } catch (err) {
-                    console.log('No hay jugadores todavía', err);
+                    console.error('No hay jugadores todavía', err);
                     setJugadores([]);
                 }
             }
@@ -239,8 +239,6 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
             alert(`⚠️ Se necesitan al menos 2 ${esEquipos ? 'equipos' : 'jugadores'} para generar emparejamientos`);
             return;
         }
-
-        console.log(`🎲 Tipo de torneo: ${esEquipos ? 'EQUIPOS' : 'INDIVIDUALES'}`);
 
         // Preparar participantes SOLO para torneos individuales
         let participantes = [];

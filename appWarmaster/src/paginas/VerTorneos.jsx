@@ -5,6 +5,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import torneosSagaApi from "@/servicios/apiSaga";
 import torneosWarmasterApi from "@/servicios/apiWarmaster";
 
+import Footer from '@/paginas/Footer.jsx'
+
 // Portales de vistas públicas
 import VistaInformacionPublica from "@/componente/vistasVerTorneo/VistaInformacionPublica";
 import VistaEmparejamientosPublica from "@/componente/vistasVerTorneo/VistaEmparejamientosPublica";
@@ -78,7 +80,6 @@ function VerTorneo() {
             }
 
             setTorneo(dataTorneo);
-            console.log('Torneo cargado:', dataTorneo, 'Sistema:', sistemaDetectado);
 
             // Cargar datos específicos según el tipo
             if (dataTorneo.tipo_torneo === 'Individual') {
@@ -315,6 +316,7 @@ function VerTorneo() {
                     ⬅️ Volver
                 </button>
             </footer>
+            <Footer />
         </div>
     );
 }

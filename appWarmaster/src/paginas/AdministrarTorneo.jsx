@@ -8,6 +8,8 @@ import VistaClasificacion from '@/componente/vistasAdministrarTorneos/VistaClasi
 import VistaEmparejamientos from '@/componente/vistasAdministrarTorneos/VistaEmparejamientos';
 import VistaGeneral from '@/componente/vistasAdministrarTorneos/VistaGeneral';
 
+import Footer from '@/paginas/Footer.jsx'
+
 import '../estilos/administrarTorneo.css';
 
 function AdministrarTorneo() {
@@ -159,6 +161,7 @@ function AdministrarTorneo() {
                     ⬅️ Volver al Inicio
                 </button>
             </footer>
+            <Footer />
         </div>
     );
 }

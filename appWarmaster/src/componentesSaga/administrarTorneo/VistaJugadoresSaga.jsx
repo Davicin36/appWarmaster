@@ -52,7 +52,6 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                 const equiposData = response.data || response || [];
                 setEquipos(Array.isArray(equiposData) ? equiposData : []);
                 
-                console.log('📊 Equipos cargados:', equiposData);
             }
         } catch (error) {
             console.error('Error al cargar datos:', error);
@@ -145,7 +144,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
         try {
             const resultado = await torneosSagaApi.eliminarJugadorTorneo(torneoId, jugadorId);
 
-            console.log ('eliminar', resultado)
+            console.warn ('eliminar', resultado)
             alert('✅ Jugador eliminado');
             await cargarDatos();
             if (onUpdate) onUpdate();
