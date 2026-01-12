@@ -36,6 +36,7 @@ const emailRecuperar = {
                                 padding: 30px;
                                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                             }
+                                console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
                             .header {
                                 text-align: center;
                                 margin-bottom: 30px;

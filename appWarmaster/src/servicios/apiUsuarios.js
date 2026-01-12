@@ -133,7 +133,7 @@ class apiUsuarios {
   }
 
   async resetPassword (token, password) {
-    return this.request(`/reset-password/`, {
+    return this.request(`/reset-password`, {
       method: 'POST',
       body: { token, password } 
     })
