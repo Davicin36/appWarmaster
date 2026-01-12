@@ -3664,7 +3664,7 @@ router.get('/:torneoId/equipos', async (req, res) => {
       const [miembros] = await pool.execute(`
         SELECT 
           j.epoca,
-          j.faccion as banda,
+          j.faccion,
           j.composicion_ejercito,
           u.nombre,
           u.apellidos,
@@ -3691,7 +3691,7 @@ router.get('/:torneoId/equipos', async (req, res) => {
         return {
           nombre: `${m.nombre} ${m.apellidos}`,
           epoca: m.epoca,
-          banda: m.banda,
+          faccion: m.faccion,
           es_capitan: Boolean(m.es_capitan),
           composicion: composicion
         };

@@ -330,39 +330,97 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             return;
         }
 
-        // ✅ VALIDAR PAGOS SI SE INTENTA INICIAR EL TORNEO
+        // ✅ VALIDAR PAGOS Y LISTAS SI SE INTENTA INICIAR EL TORNEO
         if (nuevoEstado === 'en_curso') {
             try {
 
-                // 1️⃣ VERIFICAR INSCRIPCIONES
-                const jugadoresData = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
-                const jugadoresList = Array.isArray(jugadoresData) ? jugadoresData : jugadoresData.data || [];
-                
-                if (jugadoresList.length === 0) {
-                    alert('❌ NO SE PUEDE INICIAR EL TORNEO\n\nNo hay jugadores inscritos.');
-                    return;
-                }
+                if(torneo.tipo_torneo === 'Individual') {
 
-                const inscripcionesIncompletas = jugadoresList.filter(jugador => {
-                    const faltaNombreBanda = !jugador.nombre_banda || jugador.nombre_banda.trim() === '';
-                    const faltaFaccion = !jugador.faccion_banda || jugador.faccion_banda.trim() === '';
-                    return faltaNombreBanda || faltaFaccion;
-                });
-
-                if (inscripcionesIncompletas.length > 0) {
-                    const nombresIncompletos = inscripcionesIncompletas
-                        .map(j => `• ${j.nombre_usuario}`)
-                        .join('\n');
+                     // 1️⃣ VERIFICAR INSCRIPCIONES
+                    const jugadoresData = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
+                    const jugadoresList = Array.isArray(jugadoresData) ? jugadoresData : jugadoresData.data || [];
                     
-                    alert(
-                        `❌ NO SE PUEDE INICIAR EL TORNEO\n\n` +
-                        `HAY ${inscripcionesIncompletas.length} INSCRIPCIÓN(ES) INCOMPLETA(S):\n\n` +
-                        `${nombresIncompletos}\n\n` +
-                        `Todos los jugadores deben completar:\n` +
-                        `✓ Nombre de la banda\n` +
-                        `✓ Facción de la banda`
-                    );
-                    return;
+                    if (jugadoresList.length === 0) {
+                        alert('❌ NO SE PUEDE INICIAR EL TORNEO\n\nNo hay jugadores inscritos.');
+                        return;
+                    }
+
+                    const inscripcionesIncompletas = jugadoresList.filter(jugador => {
+                        const faltaFaccion = !jugador.faccion || jugador.faccion.trim() === '';
+                        const faltaComposicionBanda = !jugador.composicion_ejercito || jugador.composicion_ejercito === '';
+                        return faltaComposicionBanda || faltaFaccion;
+                    });
+
+                    if (inscripcionesIncompletas.length > 0) {
+                        const nombresIncompletos = inscripcionesIncompletas
+                            .map(j => `• ${j.nombre_usuario}`)
+                            .join('\n');
+                        
+                        alert(
+                            `❌ NO SE PUEDE INICIAR EL TORNEO\n\n` +
+                            `HAY ${inscripcionesIncompletas.length} INSCRIPCIÓN(ES) INCOMPLETA(S):\n\n` +
+                            `${nombresIncompletos}\n\n` +
+                            `Todos los jugadores deben completar:\n` +
+                            `✓ Facción de la banda\n` +
+                            `✓ Composición de la banda`
+                        );
+                        return;
+                    }
+                } else if (torneo.tipo_torneo === 'Por equipos') {
+
+                     // 1️⃣ VERIFICAR INSCRIPCIONES
+                    const equiposData = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
+                    const equiposList = Array.isArray(equiposData.data) ? equiposData.data : [];
+                    console.log('equipos', equiposList)
+                    
+                    if (equiposList.length === 0) {
+                        alert('❌ NO SE PUEDE INICIAR EL TORNEO\n\nNo hay jugadores inscritos.');
+                        return;
+                    }
+
+                    const miembrosEquipos = equiposList.map (equipo => equipo.miembros).filter (Boolean)
+
+                    console.log('miembros equipos', miembrosEquipos)
+
+                    const inscripcionesEquiposIncompletas = equiposList.filter(equipo => {
+                        return equipo.miembros.some (miembro => {
+                            const faltaFaccion = !miembro.faccion || miembro.faccion.trim() === ''
+                            const faltaComposicion = !miembro.composicion || miembro.composicion === ''
+
+                            return faltaFaccion || faltaComposicion
+                        })
+                    });
+                        
+                    console.log('listas incompletas:', inscripcionesEquiposIncompletas)
+
+                    if (inscripcionesEquiposIncompletas.length > 0){
+                        const nombresIncompletos = inscripcionesEquiposIncompletas
+                            .map(equipo => {
+                                const miembrosIncompletos = equipo.miembros
+                                    .filter(m => 
+                                        !m.faccion || m.faccion.trim() === '' ||
+                                        !m.composicion
+                                    )
+                                    .map(m => m.nombre)
+                                    .join(', ');
+
+                                return `• ${equipo.nombre_equipo} → ${miembrosIncompletos}`;
+                            })
+                            .join('\n');
+                        
+                        
+                        alert(
+                            `❌ NO SE PUEDE INICIAR EL TORNEO\n\n` +
+                            `HAY ${inscripcionesEquiposIncompletas.length} INSCRIPCIÓN(ES) DE EQUIPOS INCOMPLETA(S):\n\n` +
+                            `${nombresIncompletos}\n\n` +
+                            `Todos los equipos deben completar:\n` +
+                            `✓ Seleccionar una epoca para cada jugador\n` +
+                            `✓ Facción de la banda\n` +
+                            `✓ Composición de la banda`
+
+                        );
+                        return;
+                    }
                 }
 
                 //VERIFICAR LOS PAGOS DE LOS JUGADORES
@@ -376,10 +434,10 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 if ( pendientes > 0 || todosPagados === false ) {
                     alert(
                         `❌ NO SE PUEDE INICIAR EL TORNEO\n\n` +
-                        `Total de participantes: ${total}\n` +
+                        `Total de  ${torneo.tipo_torneo === 'Por equipos' ? 'equipos'  : 'participantes'}: ${total}\n` +
                         `✅ Pagados: ${pagados}\n` +
                         `⏰ Pendientes: ${pendientes}\n\n` +
-                        `Todos los participantes deben estar marcados como PAGADOS antes de iniciar el torneo.`
+                        `Todos ${torneo.tipo_torneo === 'Por equipos' ? 'los equipos' : 'los participantes'} deben estar marcados como PAGADOS antes de iniciar el torneo.`
                     );
                     return;
                 }
@@ -387,7 +445,7 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
                 // Si todos están pagados, mostrar confirmación
                 if (!window.confirm(
                     `▶️ ¿Iniciar el torneo?\n\n` +
-                    `✅ Todos los ${total} participantes están pagados.\n` +
+                    `✅ ✅ Todos los ${total} ${torneo.tipo_torneo === 'Por equipos' ? 'equipos' : 'participantes'} están pagados.\n` +
                     `¿Deseas continuar?`
                 )) {
                     return;
