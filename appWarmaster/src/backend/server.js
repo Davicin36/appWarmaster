@@ -30,7 +30,8 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_E
 const origenesWeb = isProduction                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
  ? [
       'https://www.gestionatustorneos.es',
-      'https://gestionatustorneos.es'
+      'https://gestionatustorneos.es',
+       'https://appwarmaster-frontend.onrender.com'
     ] 
   : [
       'http://localhost:5000', 
