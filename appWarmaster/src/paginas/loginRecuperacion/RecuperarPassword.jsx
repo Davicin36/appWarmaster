@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import usuarioApi from "@/servicios/apiUsuarios";
 
 import '@/estilos/recuperarPassword.css';
 
@@ -43,25 +44,17 @@ function RecuperarPassword({ isOpen, onClose }) {
         setError("");
         
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/recuperar-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email })
-            });
+            
+            const data = await usuarioApi.recuperarPassword(email)
 
-            const data = await response.json();
-
-            if (response.ok) {
-                setSuccess(true);
-                setEmail("");
-                // Cerrar modal después de 3 segundos
+            if(data.success) {
+                setSuccess (false)
+                setEmail ("")
                 setTimeout(() => {
-                    setSuccess(false);
-                    onClose();
-                }, 3000);
-            } else {
+                    setSuccess(false)
+                    onClose()
+                }, 3000)
+            }else {
                 setError(data.mensaje || "Error al enviar el correo de recuperación");
             }
         } catch (err) {

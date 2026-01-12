@@ -6,11 +6,12 @@ console.log('══════════════════════�
 console.log(' EMAIL CONFIGURATION DEBUG');
 console.log('═══════════════════════════════════════');
 console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('EMAIL_USER:', process.env.EMAIL_USER); // ← Ver valor completo
-console.log('EMAIL_PASS existe:', !!process.env.EMAIL_PASS); // ← Ver si existe
-console.log('EMAIL_PASS (primeros 4):', process.env.EMAIL_PASS?.substring(0, 4)); // ← Ver primeros caracteres
+console.log('EMAIL_USER:', process.env.EMAIL_USER);
+console.log('EMAIL_PASS existe:', !!process.env.EMAIL_PASS);
 console.log('BREVO_API_KEY existe:', !!process.env.BREVO_API_KEY);
+console.log('BREVO_API_KEY (primeros 10):', process.env.BREVO_API_KEY?.substring(0, 10));
 console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
+console.log('═══════════════════════════════════════');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -18,40 +19,58 @@ let transporter;
 
 if (isProduction) {
   // ============ CONFIGURACIÓN BREVO (PRODUCCIÓN) ============
-  console.log('📧 Usando BREVO para emails (producción)');
+  console.log('📧 Configurando BREVO para emails (producción)');
+
+  if (!process.env.BREVO_API_KEY) {
+    console.error('❌ ERROR CRÍTICO: BREVO_API_KEY no está definida en producción');
+    throw new Error('BREVO_API_KEY no configurada');
+  }
 
   const apiInstance = new brevo.TransactionalEmailsApi()
-  apiInstance.setApiKey (
-    brevo.TransactionalEmailsApiApiKeys.apiKey,
-    process.env.BREVO_API_KEY || ''
-  )
+  
+  try {
+    apiInstance.setApiKey(
+      brevo.TransactionalEmailsApiApiKeys.apiKey,
+      process.env.BREVO_API_KEY
+    )
+    console.log('✅ Brevo API Key configurada correctamente');
+  } catch (error) {
+    console.error('❌ Error al configurar Brevo API Key:', error);
+    throw error;
+  }
 
-  async function  sendEmail (opcionesEmail) { 
+  async function sendEmail(opcionesEmail) { 
     try {
+      console.log('📤 Preparando email con Brevo:', {
+        to: opcionesEmail.to,
+        subject: opcionesEmail.subject,
+        from: opcionesEmail.from
+      });
+
       const sendSmtpEmail = new brevo.SendSmtpEmail()
 
-       let senderEmail = process.env.EMAIL_FROM; // Default
+      let senderEmail = process.env.EMAIL_FROM || 'noreply@gestionatustorneos.es';
       let senderName = 'Gestiona Tus Torneos'; 
 
       // Si viene from en las opciones
-    if (opcionesEmail.from) {
-      // Intenta extraer email y nombre del formato "Nombre <email@ejemplo.com>"
-      const emailMatch = opcionesEmail.from.match(/<(.+)>/);
-      const nameMatch = opcionesEmail.from.match(/"?([^"<]+)"?\s*<?/);
-      
-      if (emailMatch) {
-        senderEmail = emailMatch[1];
+      if (opcionesEmail.from) {
+        const emailMatch = opcionesEmail.from.match(/<(.+)>/);
+        const nameMatch = opcionesEmail.from.match(/"?([^"<]+)"?\s*<?/);
+        
+        if (emailMatch) {
+          senderEmail = emailMatch[1];
+        }
+        if (nameMatch && nameMatch[1].trim() !== senderEmail) {
+          senderName = nameMatch[1].trim();
+        }
+        
+        if (!emailMatch && opcionesEmail.from.indexOf('@') === -1) {
+          senderName = opcionesEmail.from;
+          senderEmail = process.env.EMAIL_FROM || 'noreply@gestionatustorneos.es';
+        }
       }
-      if (nameMatch && nameMatch[1].trim() !== senderEmail) {
-        senderName = nameMatch[1].trim();
-      }
-      
-      // Si solo viene el nombre (sin email), usar EMAIL_FROM
-      if (!emailMatch && opcionesEmail.from.indexOf('@') === -1) {
-        senderName = opcionesEmail.from;
-        senderEmail = process.env.EMAIL_FROM;
-      }
-    }
+
+      console.log('📧 Sender configurado:', { email: senderEmail, name: senderName });
 
       sendSmtpEmail.sender = {
         email: senderEmail,
@@ -72,7 +91,9 @@ if (isProduction) {
         };
       }
 
+      console.log('🚀 Enviando email con Brevo...');
       const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+      console.log('✅ Email enviado exitosamente con Brevo:', result.messageId);
 
       return {
         success: true,
@@ -80,20 +101,30 @@ if (isProduction) {
         response: result
       }
     } catch (error) {
-      console.error('Error al enviar el email:', {
+      console.error('❌ Error detallado al enviar email con Brevo:', {
         to: opcionesEmail.to,
-        error: error.message,
-        body: error.body
-      })
-      throw error
+        subject: opcionesEmail.subject,
+        errorMessage: error.message,
+        errorBody: error.body,
+        errorResponse: error.response?.body,
+        errorStatus: error.status,
+        fullError: JSON.stringify(error, null, 2)
+      });
+      throw error;
     }
   }
 
-   transporter = { sendMail: sendEmail }
+  transporter = { sendMail: sendEmail }
+  console.log('✅ Transporter Brevo configurado');
   
 } else {
   // ============ CONFIGURACIÓN GMAIL (DESARROLLO) ============
-  console.log('📧 Usando Gmail para emails (desarrollo)');
+  console.log('📧 Configurando Gmail para emails (desarrollo)');
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error('❌ ERROR: EMAIL_USER o EMAIL_PASS no configurados');
+    throw new Error('Credenciales de Gmail no configuradas');
+  }
 
   transporter = nodemailer.createTransport({
     service: 'gmail',

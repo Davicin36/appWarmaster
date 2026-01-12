@@ -114,6 +114,30 @@ class apiUsuarios {
       method: 'GET'
     });
   }
+
+  //===================
+  //MODULOS PARA RECUPERACION CONTRASEÑA
+  //===================
+
+  async verificarTokenRecuperar (token) {
+    return this.request (`/verificar-token/${token}`, {
+      method: 'GET'
+    })
+  }
+
+  async recuperarPassword (email){
+    return this.request (`/recuperar-password`, {
+      method: 'POST',
+      body: { email }
+    })
+  }
+
+  async resetPassword (token, password) {
+    return this.request(`/reset-password/`, {
+      method: 'POST',
+      body: { token, password } 
+    })
+  }
   
 //  =========================
 //GESTIONES CON LOS TOKENS

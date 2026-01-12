@@ -7,7 +7,7 @@ import { verificarToken } from '../middleware/auth.js';
 import crypto from 'crypto';
 import { pool } from '../config/bd.js';
 import { validarCodigoPostal } from '../utils/validaciones.js';
-import emailRecuperar from '../utils/emailRecuperar.js';
+import emailRecuperar  from '../utils/emailRecuperar.js';
 import { 
   validarEmail, 
   validarCamposRequeridos, 
@@ -835,51 +835,102 @@ router.get('/verificarUsuario/:email', async (req, res) => {
 // ===== RECUPERACIÓN DE CONTRASEÑA =====
 
 router.post('/recuperar-password', async (req, res) => {
+  console.log('🔥 INICIO recuperar-password');
+  
   const { email } = req.body;
 
   try {
+    console.log('═══════════════════════════════════════');
+    console.log('🌍 RECUPERACIÓN DE PASSWORD');
+    console.log('═══════════════════════════════════════');
+    console.log('Email recibido:', email);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
+    console.log('BREVO_API_KEY existe:', !!process.env.BREVO_API_KEY);
+
+    if (!email || !email.trim()) {
+      console.log('❌ Email vacío');
+      return res.status(400).json({
+        success: false,
+        mensaje: 'El email es requerido'
+      });
+    }
+
+    console.log('🔍 Buscando usuario...');
     const [usuarios] = await pool.execute(
-      'SELECT id, nombre FROM usuarios WHERE email = ?',
+      'SELECT id, nombre, email FROM usuarios WHERE email = ?',
       [email.toLowerCase().trim()]
     );
 
+    console.log('Usuarios encontrados:', usuarios.length);
+
     if (usuarios.length === 0) {
-      return res.status(200).json(
-        successResponse('Si el email existe, recibirás un enlace de recuperación')
-      );
+      console.log('⚠️ Usuario no encontrado');
+      return res.status(200).json({
+        success: true,
+        mensaje: 'Si el email existe, recibirás un enlace de recuperación'
+      });
     }
 
     const usuario = usuarios[0];
+    console.log('✅ Usuario encontrado:', { id: usuario.id, email: usuario.email });
     
     const token = crypto.randomBytes(32).toString('hex');
-    const expiracion = new Date(Date.now() + 3600000); // 1 hora
+    const expiracion = new Date(Date.now() + 3600000);
 
+    console.log('🗄️ Invalidando tokens antiguos...');
     await pool.execute(
-      `INSERT INTO password_reset_tokens (usuario_id, token, expiracion) 
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE 
-       token = VALUES(token), 
-       expiracion = VALUES(expiracion)`,
+      'UPDATE password_reset_tokens SET usado = TRUE WHERE usuario_id = ? AND usado = FALSE',
+      [usuario.id]
+    );
+
+    console.log('💾 Insertando nuevo token...');
+    await pool.execute(
+      'INSERT INTO password_reset_tokens (usuario_id, token, expiracion, usado) VALUES (?, ?, ?, FALSE)',
       [usuario.id, token, expiracion]
     );
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
     
-    await emailRecuperar.enviarRecuperacionPassword({
-      email: email,
+    console.log('═══════════════════════════════════════');
+    console.log('📧 DATOS DEL EMAIL');
+    console.log('Token:', token);
+    console.log('URL:', resetUrl);
+    console.log('Destinatario:', usuario.email);
+    console.log('Nombre:', usuario.nombre);
+    console.log('Expira:', expiracion.toISOString());
+    console.log('═══════════════════════════════════════');
+    
+    console.log('📤 Llamando a enviarRecuperacionPassword...');
+    const resultadoEmail = await emailRecuperar.enviarRecuperacionPassword({
+      email: usuario.email,
       nombre: usuario.nombre,
       resetUrl: resetUrl
     });
 
-    res.status(200).json(
-      successResponse('Si el email existe, recibirás un enlace de recuperación')
-    );
+    console.log('✅ Email enviado:', resultadoEmail);
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Si el email existe, recibirás un enlace de recuperación'
+    });
 
   } catch (error) {
-    console.error('❌ Error en solicitud de recuperación:', error);
-    res.status(500).json(
-      errorResponse('Error al procesar la solicitud')
-    );
+    console.error('═══════════════════════════════════════');
+    console.error('❌ ERROR EN RECUPERAR-PASSWORD');
+    console.error('═══════════════════════════════════════');
+    console.error('Tipo:', error.name);
+    console.error('Mensaje:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('Body:', error.body);
+    console.error('Response:', error.response);
+    console.error('═══════════════════════════════════════');
+    
+    res.status(500).json({
+      success: false,
+      mensaje: 'Error al procesar la solicitud'
+    });
   }
 });
 

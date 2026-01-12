@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import usuarioApi from "@/servicios/apiUsuarios";
+
 import '@/estilos/resetPassword.css';
 
 function ResetPassword() {
@@ -31,10 +33,9 @@ function ResetPassword() {
 
     const verificarToken = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/verificar-token/${token}`);
-            const data = await response.json();
+            const data = await usuarioApi.verificarTokenRecuperar(token)
 
-            if (response.ok) {
+            if (data.success) {
                 setTokenValido(true);
             } else {
                 setTokenValido(false);
@@ -43,7 +44,7 @@ function ResetPassword() {
         } catch (err) {
             console.error("Error:", err);
             setTokenValido(false);
-            setError("Error al verificar el enlace de recuperación");
+            setError(err.message || "Error al verificar el enlace de recuperación");
         }
     };
 
@@ -95,20 +96,9 @@ function ResetPassword() {
         setError("");
         
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/usuarios/reset-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token,
-                    password: formData.password
-                })
-            });
+            const data =await usuarioApi.resetPassword(token, formData.password)
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (data.success) {
                 setSuccess(true);
                 // Redirigir al login después de 3 segundos
                 setTimeout(() => {
@@ -119,7 +109,7 @@ function ResetPassword() {
             }
         } catch (err) {
             console.error("Error:", err);
-            setError("Error de conexión. Intenta nuevamente.");
+            setError(err.message || "Error de conexión. Intenta nuevamente.");
         } finally {
             setLoading(false);
         }
