@@ -1,6 +1,6 @@
 import './App.css'
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './servicios/AuthContext.jsx';
 
@@ -27,12 +27,6 @@ import Navbar from './componente/Navbar.jsx';
 import NavbarLogin from './componente/NavbarLogin.jsx';
 
 function App() {
-
-    useEffect(() => {
-  console.log('🔍 VITE_API_URL:', import.meta.env.VITE_API_URL);
-  console.log('🔍 MODE:', import.meta.env.MODE);
-  console.log('🔍 Todas las env:', import.meta.env);
-}, []);
 
     const [isLoginOpen, setIsLoginOpen] = useState(false);
 

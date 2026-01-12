@@ -1867,7 +1867,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
     // Insertar en jugador_torneo_saga (SIN nombre_alias)
     const [jugadorInsertado] = await connection.query(
       `INSERT INTO jugador_torneo_saga (torneo_id, jugador_id, epoca, faccion, composicion_ejercito, puntos_victoria, puntos_torneo, puntos_masacre, warlord_muerto, created_at, pagado)
-       VALUES (?, ?, ?, NULL, NULL, 0, 0, 0, 0, NOW(), 'pendiente')`,
+       VALUES (?, ?, ?, NULL, NULL, 0, 0, 0, 0, NOW(), 0)`,
       [torneoId, usuarioId, torneo.epocaTorneo]
     );
 
@@ -3096,7 +3096,7 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
       const [resultJugador] = await connection.query(
         `INSERT INTO jugador_torneo_saga 
          (torneo_id, jugador_id, equipo_id, epoca, faccion, composicion_ejercito, pagado,  puntos_victoria, puntos_torneo, puntos_masacre, warlord_muerto) 
-         VALUES (?, ?, ?, NULL, NULL, NULL, 'pendiente', 0, 0, 0, 0)`,
+         VALUES (?, ?, ?, NULL, NULL, NULL, 0, 0, 0, 0, 0)`,
         [torneoId, miembro.usuarioId, equipoId]
       );
 
