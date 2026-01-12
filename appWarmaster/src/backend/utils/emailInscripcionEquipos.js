@@ -235,12 +235,12 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
           </div>
           
           <div class="button-container">
-            <a href="https://gestionatustorneos.es" class="button">🌐 Ir a Gestiona Tus Torneos</a>
+            <a href="gestionatustorneos.es" class="button">🌐 Ir a Gestiona Tus Torneos</a>
           </div>
           
           <p style="font-size: 14px; color: #666; text-align: center;">
             Si el botón no funciona, accede directamente a:<br>
-            <strong>https://gestionatustorneos.es</strong>
+            <strong>https://www.gestionatustorneos.es</strong>
           </p>
           
           <div class="divider"></div>
