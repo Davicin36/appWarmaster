@@ -3520,7 +3520,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, verificarOrgani
 
 // =====ELIMINAR INSCRIPCIÓN DE EQUIPO=====
 
-router.delete('/:torneoId/equipo/:equipoId', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+router.delete('/:torneoId/equipo/:equipoId', verificarToken, async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
