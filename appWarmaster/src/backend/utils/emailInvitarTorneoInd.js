@@ -3,7 +3,7 @@ import { transporter } from "./emailHelpers.js";
 /**
  * Enviar correo de invitación a jugador individual
  */
-const enviarInvitarTorneoInd = async (destinatario, torneoInfo) => {
+const enviarInvitarJugador = async (destinatario, torneoInfo) => {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'Por definir';
@@ -14,6 +14,13 @@ const enviarInvitarTorneoInd = async (destinatario, torneoInfo) => {
       day: 'numeric'
     });
   };
+
+  const esNuevoUsuario = destinatario.esNuevo === true;
+  const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+  const urlAcceso = esNuevoUsuario
+    ? `${urlBase}/registrarse?email=${encodeURIComponent(destinatario.email)}&nombre=${encodeURIComponent(destinatario.nombre)}`
+    : `${urlBase}/perfil`; // perfil de usuario ya registrado
+
 
   const esNuevo = destinatario.esNuevo === true;
 
@@ -170,7 +177,7 @@ const enviarInvitarTorneoInd = async (destinatario, torneoInfo) => {
           <h1>🎯 Invitación a Torneo ${torneoInfo.nombre_torneo}</h1>
           <h2>${torneoInfo.sistema}</h2>
           <p style="margin: 0; opacity: 0.9;">
-            ${esNuevo ? 'Has sido invitado a participar' : 'Has sido inscrito'}
+            ${esNuevoUsuario ? 'Has sido invitado a participar' : 'Estás inscrito en el torneo'}
           </p>
         </div>
         
@@ -213,123 +220,42 @@ const enviarInvitarTorneoInd = async (destinatario, torneoInfo) => {
               : '<p class="warning">⚠️ <strong>Banda:</strong> Pendiente de seleccionar</p>'}
           </div>
           
-          ${esNuevo ? `
-          <div class="highlight-box">
-            <h3 style="color: #1976d2; margin-bottom: 15px;">🆕 Nuevo en la plataforma</h3>
-            <p style="color: #555; margin-bottom: 0;">
-              Como es tu primera vez, necesitarás crear una cuenta en nuestra plataforma 
-              para gestionar tu inscripción y acceder a toda la información del torneo.
-            </p>
-          </div>
-          ` : ''}
-          
-          <div class="divider"></div>
-          
-          <p><strong>Para completar tu inscripción, sigue estos pasos:</strong></p>
-          
-          <div class="steps">
-            <ol>
-              ${esNuevo ? `
-                <li>Accede a <span class="url-highlight">gestionatustorneos.es</span></li>
-                <li><strong>Regístrate</strong> con este email: <strong>${destinatario.email}</strong></li>
-                <li>Ve a <strong>"Perfil"</strong> y <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
-                <li>En <strong>"Administrar Inscripción"</strong>, completa los datos de tu banda</li>
-                <li>¡Prepara tu ejército y a disfrutar del torneo! ⚔️</li>
-              ` : `
-                <li><strong>Inicia sesión</strong> en <span class="url-highlight">gestionatustorneos.es</span></li>
-                <li>Ve a <strong>"Perfil"</strong> y <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
-                <li>En <strong>"Administrar Inscripción"</strong>, completa los datos de tu banda</li>
-                <li>¡Prepara tu ejército y a disfrutar del torneo! ⚔️</li>
-              `}
-            </ol>
-          </div>
-          
           <div class="button-container">
-            <a href="https://gestionatustorneos.es" class="button">🌐 Ir a Gestiona Tus Torneos</a>
+            <a href="${urlAcceso}" class="button">
+              ${esNuevoUsuario ? '🆕 Crear tu perfil y acceder al torneo' : '🌐 Acceder a tu perfil'}
+            </a>
           </div>
-          
-          <p style="font-size: 14px; color: #666; text-align: center;">
-            Si el botón no funciona, accede directamente a:<br>
-            <strong>https://gestionatustorneos.es</strong>
-          </p>
-          
+
           <div class="divider"></div>
           
+            <p style="font-size: 14px; color: #666; text-align: center;">Si el botón no funciona, accede directamente a: <br> <strong>${urlAcceso}</strong></p>
+
+          <div class="divider"></div>
+
           ${torneoInfo.organizador ? `
-          <div class="contact-box">
-            <h3>📞 Información de Contacto</h3>
-            <p><strong>Organizador del torneo:</strong> ${torneoInfo.organizador.nombre}</p>
-            <p style="font-size: 14px;">
-              <a href="mailto:${torneoInfo.organizador.email}" class="email-link">${torneoInfo.organizador.email}</a>
-            </p>
-            <p style="margin-top: 15px; font-size: 14px; color: #666;">
-              Si tienes alguna duda sobre el torneo, no dudes en contactar con el organizador.
-            </p>
-          </div>
-          ` : `
-          <p style="margin-bottom: 0;">
-            Si tienes alguna duda sobre el torneo, contacta con el organizador.
-          </p>
-          `}
+          <div class="info-box">
+            <h3>📞 Contacto</h3>
+            <p><strong>Organizador:</strong> ${torneoInfo.organizador.nombre}</p>
+            <p><a href="mailto:${torneoInfo.organizador.email}" class="email-link">${torneoInfo.organizador.email}</a></p>
+          </div>` : ''}
         </div>
-        
+
         <div class="footer">
           <p><strong>Equipo de Gestiona Tus Torneos</strong></p>
           <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-          ${torneoInfo.organizador 
-            ? `<p>Para consultas sobre el torneo, contacta con ${torneoInfo.organizador.nombre} (${torneoInfo.organizador.email})</p>`
-            : '<p>Si necesitas ayuda, contacta con el organizador del torneo.</p>'}
         </div>
       </div>
     </body>
-    </html>
+  </html>
   `;
-
-  const textEmail = `
-Has sido inscrito en un torneo de ${torneoInfo.sistema || 'wargaming'}
-
-Hola ${destinatario.nombre},
-
-Te informamos que has sido invitado a participar en el siguiente torneo:
-
-DETALLES DEL TORNEO:
-- Nombre: ${torneoInfo.nombre_torneo}
-- Sistema: ${torneoInfo.sistema}
-- Tipo: Individual
-${torneoInfo.ubicacion ? `- Ubicación: ${torneoInfo.ubicacion}` : ''}
-${torneoInfo.fecha_inicio ? `- Fecha inicio: ${formatearFecha(torneoInfo.fecha_inicio)}` : ''}
-${torneoInfo.puntos_banda ? `- Puntos de banda: ${torneoInfo.puntos_banda}` : ''}
-
-TUS DATOS:
-- Email: ${destinatario.email}
-${destinatario.epoca ? `- Época asignada: ${destinatario.epoca}` : '- Época: Pendiente de seleccionar'}
-${destinatario.banda ? `- Banda: ${destinatario.banda}` : '- Banda: Pendiente de seleccionar'}
-
-PARA COMPLETAR TU INSCRIPCIÓN:
-1. Accede a gestionatustorneos.es
-2. ${esNuevo ? `Regístrate con este email: ${destinatario.email}` : 'Inicia sesión'}
-3. Ve a "Mis Torneos" → "${torneoInfo.nombre_torneo}"
-4. En "Gestionar Inscripción", completa los datos de tu banda
-5. ¡Prepara tu ejército y a disfrutar del torneo!
-
-${torneoInfo.organizador ? `
-INFORMACIÓN DE CONTACTO:
-- Organizador del torneo: ${torneoInfo.organizador.nombre} (${torneoInfo.organizador.email})
-` : ''}
-
----
-Equipo de Gestiona Tus Torneos
-Este es un correo automático, por favor no respondas.
-${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torneoInfo.organizador.nombre}` : ''}
-  `;
-
+  
   const mailOptions = {
     from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
     replyTo: process.env.EMAIL_USER,
     to: destinatario.email,
-    subject: `🎯 Invitación: ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}"`,
+    subject: `🎯 ${esNuevoUsuario ? 'Invitación' : 'Inscripción'} - ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}"`,
     html: htmlEmail,
-    text: textEmail
+    text: `Hola ${destinatario.nombre},\nHas sido ${esNuevoUsuario ? 'invitado/a' : 'inscrito/a'} en el torneo ${torneoInfo.nombre_torneo} (${torneoInfo.sistema}). Accede aquí: ${urlAcceso}`
   };
 
   try {
@@ -342,4 +268,4 @@ ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torne
   }
 };
 
-export { enviarInvitarTorneoInd };
+export { enviarInvitarJugador };

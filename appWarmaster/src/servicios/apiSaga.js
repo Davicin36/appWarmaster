@@ -142,6 +142,18 @@ class TorneosSagaApi {
     });
   }
 
+  async reenviarInscripcionTodosJugadores (torneoId) {
+    return this.request (`/${torneoId}/reenviarInscripciontodosIndividual`, {
+      method: 'POST'
+    })
+  }
+
+  async reenviarInscripcionIndivivual (torneoId, jugadorId) {
+      return this.request(`/${torneoId}/jugadores/${jugadorId}/reenviarInvitacionInd`, {
+        method: 'POST'
+      })
+    }
+
   async actualizarPagoJugador (torneoId, jugadorId, pagado){
     return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
         method: 'PATCH',
@@ -172,6 +184,18 @@ class TorneosSagaApi {
       method: 'POST',
       body:  equipo 
     });
+  }
+
+  async reenviarInscripcionEquipo (torneoId, equipoId) {
+    return this.request(`/${torneoId}/equipos/${equipoId}/reenviarInvitacionEq`, {
+      method: 'POST'
+    })
+  }
+
+  async reenviarInscripcionTodosEquipos (torneoId) {
+    return this.request(`/${torneoId}/reenviarTodasInvitaciones`, {
+      method: 'POST'
+    })
   }
 
   async actualizarPagoEquipo (torneoId, equipoId, pagado){

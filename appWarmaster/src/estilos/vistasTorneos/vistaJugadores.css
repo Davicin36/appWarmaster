@@ -1,14 +1,114 @@
 /* ==========================================
-   VISTA JUGADORES - ESTILOS
+   VISTA JUGADORES - ESTILOS COMPLETOS
+   ========================================== */
+
+/* ==========================================
+   VARIABLES CSS (Asegúrate de tenerlas en tu archivo principal)
+   ========================================== */
+:root {
+    --color-verde-oscuro: #2E7D32;
+    --color-verde-claro: #4CAF50;
+    --color-naranja: #E67E22;
+    --color-naranja-hover: #D35400;
+    --color-beige: #F5E6D3;
+    --color-beige-oscuro: #D4C5B0;
+    --color-fondo-principal: #FAF8F5;
+    --color-texto-principal: #333333;
+    --color-exito: #27AE60;
+    --color-error: #E74C3C;
+}
+
+/* ==========================================
+   CONTENEDOR PRINCIPAL
    ========================================== */
 
 .vista-jugadores {
     width: 100%;
+    padding: 1rem;
 }
 
 .vista-jugadores h2 {
     margin-bottom: 25px;
     color: var(--color-verde-oscuro);
+}
+
+/* ==========================================
+   HEADER CON BOTONES
+   ========================================== */
+
+.header-jugadores-con-boton {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.header-jugadores-con-boton h2 {
+    margin: 0;
+    color: var(--color-verde-oscuro);
+    flex: 1;
+}
+
+/* ==========================================
+   BOTONES PRINCIPALES Y SECUNDARIOS
+   ========================================== */
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(46, 125, 50, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary-small {
+    background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(230, 126, 34, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.btn-secondary-small:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4);
+}
+
+.btn-secondary-small:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* ==========================================
@@ -94,6 +194,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
 }
 
 .btn-pago:hover:not(:disabled) {
@@ -127,6 +228,39 @@
     box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4);
 }
 
+/* ==========================================
+   BOTÓN DE REENVÍO INDIVIDUAL
+   ========================================== */
+
+.btn-reenvio-individual {
+    background: linear-gradient(135deg, #3498DB, #2980B9);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+    white-space: nowrap;
+}
+
+.btn-reenvio-individual:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
+}
+
+.btn-reenvio-individual:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ==========================================
+   BOTÓN DE ELIMINAR
+   ========================================== */
+
 .btn-danger-small {
     background: linear-gradient(135deg, var(--color-error), #C0392B);
     color: white;
@@ -138,6 +272,7 @@
     transition: all 0.3s ease;
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+    white-space: nowrap;
 }
 
 .btn-danger-small:hover {
@@ -287,6 +422,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 /* ==========================================
@@ -304,20 +440,91 @@
 }
 
 .vista-jugadores .empty-message p {
-    margin: 0;
+    margin: 0 0 20px 0;
 }
 
 /* ==========================================
-   RESPONSIVE
+   MODAL OVERLAY Y CONTENT
+   ========================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content-anadir {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+/* Scrollbar personalizado para el modal */
+.modal-content-anadir::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content-anadir::-webkit-scrollbar-track {
+    background: var(--color-fondo-principal);
+    border-radius: 4px;
+}
+
+.modal-content-anadir::-webkit-scrollbar-thumb {
+    background: var(--color-verde-claro);
+    border-radius: 4px;
+}
+
+.modal-content-anadir::-webkit-scrollbar-thumb:hover {
+    background: var(--color-verde-oscuro);
+}
+
+/* ==========================================
+   RESPONSIVE - TABLETS (max-width: 768px)
    ========================================== */
 
 @media (max-width: 768px) {
+    .vista-jugadores {
+        padding: 0.5rem;
+    }
+
+    .header-jugadores-con-boton {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .header-jugadores-con-boton h2 {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .btn-primary,
+    .btn-secondary-small {
+        width: 100%;
+        justify-content: center;
+    }
+
     .tabla-jugadores-container {
         font-size: 0.9em;
     }
 
     .grid-equipos-admin {
         grid-template-columns: 1fr;
+        gap: 1.5rem;
     }
 
     .equipo-acciones-admin {
@@ -327,15 +534,202 @@
     .equipo-acciones-admin button {
         width: 100%;
     }
+
+    .modal-content-anadir {
+        padding: 1.5rem;
+        width: 95%;
+    }
+
+    .puntos-detalle-admin {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .puntos-detalle-admin span {
+        display: block;
+    }
 }
 
+/* ==========================================
+   RESPONSIVE - MÓVILES (max-width: 480px)
+   ========================================== */
+
 @media (max-width: 480px) {
+    .vista-jugadores {
+        padding: 0.25rem;
+    }
+
+    .header-jugadores-con-boton {
+        gap: 8px;
+    }
+
+    .btn-primary,
+    .btn-secondary-small {
+        padding: 10px 16px;
+        font-size: 0.9em;
+    }
+
     .tabla-jugadores-detalle {
         font-size: 0.85em;
+        min-width: 800px;
     }
 
     .tabla-jugadores-detalle th,
     .tabla-jugadores-detalle td {
         padding: 10px 8px;
+    }
+
+    .nombre-jugador-completo {
+        font-size: 0.95em;
+    }
+
+    .btn-pago {
+        padding: 6px 12px;
+        font-size: 0.85em;
+    }
+
+    .btn-danger-small,
+    .btn-reenvio-individual {
+        padding: 5px 10px;
+        font-size: 0.8em;
+    }
+
+    .card-equipo-admin {
+        padding: 1rem;
+    }
+
+    .equipo-header-admin h3 {
+        font-size: 1.2rem;
+    }
+
+    .badge-capitan-admin {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+
+    .modal-content-anadir {
+        padding: 1rem;
+        border-radius: 8px;
+        width: 98%;
+    }
+
+    .grid-equipos-admin {
+        gap: 1rem;
+    }
+
+    .miembro-item-admin {
+        padding: 0.75rem;
+    }
+
+    .miembro-composicion-admin {
+        padding: 0.5rem;
+    }
+
+    .empty-message {
+        padding: 40px 15px;
+        font-size: 1em;
+    }
+}
+
+/* ==========================================
+   ANIMACIONES Y TRANSICIONES
+   ========================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.vista-jugadores {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* ==========================================
+   ESTADOS DE CARGA
+   ========================================== */
+
+.btn-primary.loading,
+.btn-secondary-small.loading,
+.btn-pago.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-primary.loading::after,
+.btn-secondary-small.loading::after,
+.btn-pago.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================
+   ACCESIBILIDAD
+   ========================================== */
+
+.btn-primary:focus,
+.btn-secondary-small:focus,
+.btn-pago:focus,
+.btn-danger-small:focus,
+.btn-reenvio-individual:focus {
+    outline: 3px solid rgba(46, 125, 50, 0.5);
+    outline-offset: 2px;
+}
+
+/* Mejoras para lectores de pantalla */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* ==========================================
+   IMPRESIÓN
+   ========================================== */
+
+@media print {
+    .btn-primary,
+    .btn-secondary-small,
+    .btn-danger-small,
+    .btn-reenvio-individual,
+    .equipo-acciones-admin {
+        display: none;
+    }
+
+    .vista-jugadores {
+        padding: 0;
+    }
+
+    .tabla-jugadores-detalle {
+        box-shadow: none;
+    }
+
+    .card-equipo-admin {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
     }
 }

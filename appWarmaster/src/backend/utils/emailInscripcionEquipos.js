@@ -3,7 +3,7 @@ import { transporter } from "./emailHelpers.js";
 /**
  * Enviar correo de invitación a equipo
  */
-const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, token) => {
+const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'Por definir';
@@ -15,7 +15,13 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
     });
   };
 
-  const esNuevo = destinatario.esNuevo === true
+  const esNuevoUsuario = destinatario.esNuevo === true;
+  const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+  
+  // URL con parámetros para pre-rellenar el registro
+  const urlRegistro = esNuevoUsuario 
+    ? `${urlBase}/registrarse?email=${encodeURIComponent(destinatario.email)}&nombre=${encodeURIComponent(destinatario.nombre)}`
+    : urlBase;
 
   const htmlEmail = `
     <!DOCTYPE html>
@@ -155,6 +161,19 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
           font-weight: 600;
           font-size: 16px;
         }
+        .highlight-box {
+          background: #e3f2fd;
+          border: 2px solid #2196f3;
+          padding: 15px;
+          border-radius: 8px;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .highlight-box p {
+          color: #1976d2;
+          font-weight: 600;
+          margin: 0;
+        }
       </style>
     </head>
     <body>
@@ -163,7 +182,7 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
           <h1>🎮 Invitación a Torneo ${torneoInfo.nombre_torneo}</h1>
           <h2>${torneoInfo.sistema}</h2>
           <p style="margin: 0; opacity: 0.9;">
-             ${esNuevo ? 'Has sido invitado a un equipo' : 'Has sido inscrito en un equipo'}
+             ${esNuevoUsuario ? 'Has sido invitado a un equipo' : 'Has sido inscrito en un equipo'}
           </p>
         </div>
         
@@ -180,7 +199,7 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
           <div class="info-box">
             <h3>📋 Detalles del Torneo</h3>
             <p><strong>Nombre:</strong> ${torneoInfo.nombre_torneo}</p>
-            <p><strong>Sistema:</strong> ${torneoInfo.sistema }</p>
+            <p><strong>Sistema:</strong> ${torneoInfo.sistema}</p>
             <p><strong>Tipo:</strong> ${torneoInfo.tipo_torneo || 'Por equipos'}</p>
             ${torneoInfo.ubicacion 
               ? `<p><strong>📍 Ubicación:</strong> ${torneoInfo.ubicacion}</p>` 
@@ -194,7 +213,7 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
             ${torneoInfo.puntos_banda 
               ? `<p><strong>⚔️ Puntos de banda:</strong> ${torneoInfo.puntos_banda}</p>` 
               : ''}
-              <p>Las <strong>BASES</strong> las podrás encontrar en la web</p>
+            <p>Las <strong>BASES</strong> las podrás encontrar en la web</p>
           </div>
           
           <div class="info-box">
@@ -220,27 +239,36 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
           <p><strong>Para completar tu inscripción, sigue estos pasos:</strong></p>
           
           <div class="steps">
-           <ol>
-              ${esNuevo ? `
-                <li>Accede a <span class="url-highlight">gestionatustorneos.es</span></li>
-                <li><strong>Regístrate</strong> con este email: <strong>${destinatario.email}</strong></li>
-                <li>Ve a <strong>"Perfil"</strong> y <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
+            <ol>
+              ${esNuevoUsuario ? `
+                <li><strong>Haz clic en el botón de abajo</strong> para ir a la página de registro</li>
+                <li><strong>Completa tu registro</strong> (tu nombre y email ya estarán precargados)</li>
+                <li>Tras registrarte, automáticamente serás añadido al equipo <strong>"${datosEquipo.nombreEquipo}"</strong></li>
+                <li>Ve a <strong>"Perfil"</strong> → <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
                 <li>En <strong>"Administrar Inscripción"</strong>, completa los datos de tu banda</li>
               ` : `
                 <li><strong>Inicia sesión</strong> en <span class="url-highlight">gestionatustorneos.es</span></li>
-                <li>Ve a <strong>"Perfil"</strong> y <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
+                <li>Ve a <strong>"Perfil"</strong> → <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
                 <li>En <strong>"Administrar Inscripción"</strong>, completa los datos de tu banda</li>
               `}
             </ol>
           </div>
           
+          ${esNuevoUsuario ? `
+          <div class="highlight-box">
+            <p>✨ Tu nombre y email ya estarán precargados en el formulario de registro</p>
+          </div>
+          ` : ''}
+          
           <div class="button-container">
-            <a href="gestionatustorneos.es" class="button">🌐 Ir a Gestiona Tus Torneos</a>
+            <a href="${urlRegistro}" class="button">
+              ${esNuevoUsuario ? '🎯 Registrarse y Unirse al Equipo' : '🌐 Ir a Gestiona Tus Torneos'}
+            </a>
           </div>
           
           <p style="font-size: 14px; color: #666; text-align: center;">
             Si el botón no funciona, accede directamente a:<br>
-            <strong>https://www.gestionatustorneos.es</strong>
+            <strong>${urlRegistro}</strong>
           </p>
           
           <div class="divider"></div>
@@ -279,42 +307,77 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo, tok
   `;
 
   const textEmail = `
-Has sido inscrito en un torneo de ${torneoInfo.sistema || 'wargaming'}
+${esNuevoUsuario ? 'INVITACIÓN A TORNEO' : 'INSCRIPCIÓN EN TORNEO'} - ${torneoInfo.sistema || 'wargaming'}
 
 Hola ${destinatario.nombre},
 
-Te informamos que ${datosEquipo.capitan.nombre} te ha inscrito en el siguiente torneo como miembro de su equipo.
+${esNuevoUsuario 
+  ? `¡Has sido invitado/a a formar parte del equipo "${datosEquipo.nombreEquipo}"!` 
+  : `Te informamos que has sido inscrito/a en el equipo "${datosEquipo.nombreEquipo}".`}
 
-DETALLES DEL TORNEO:
+Te ha inscrito ${datosEquipo.capitan.nombre}, capitán de tu equipo.
+
+═══════════════════════════════════════
+📋 DETALLES DEL TORNEO
+═══════════════════════════════════════
 - Nombre: ${torneoInfo.nombre_torneo}
 - Sistema: ${torneoInfo.sistema}
 - Tipo: ${torneoInfo.tipo_torneo || 'Por equipos'}
 ${torneoInfo.ubicacion ? `- Ubicación: ${torneoInfo.ubicacion}` : ''}
 ${torneoInfo.fecha_inicio ? `- Fecha inicio: ${formatearFecha(torneoInfo.fecha_inicio)}` : ''}
+${torneoInfo.fecha_fin ? `- Fecha fin: ${formatearFecha(torneoInfo.fecha_fin)}` : ''}
 ${torneoInfo.puntos_banda ? `- Puntos de banda: ${torneoInfo.puntos_banda}` : ''}
 
-TU EQUIPO:
+═══════════════════════════════════════
+👥 TU EQUIPO
+═══════════════════════════════════════
 - Equipo: ${datosEquipo.nombreEquipo}
-- Capitán: ${datosEquipo.capitan.nombre} (${datosEquipo.capitan.email})
+- Capitán: ${datosEquipo.capitan.nombre}
+- Email capitán: ${datosEquipo.capitan.email}
 
-TUS DATOS:
-- Email: ${destinatario.email}
+═══════════════════════════════════════
+⚔️ TUS DATOS DE INSCRIPCIÓN
+═══════════════════════════════════════
+- Tu email: ${destinatario.email}
 - Época asignada: ${destinatario.epoca}
-- Banda: ${destinatario.banda || 'Pendiente de seleccionar'}
+- Banda: ${destinatario.banda || 'Pendiente de seleccionar ⚠️'}
 
-PARA COMPLETAR TU INSCRIPCIÓN:
-1. Accede a gestionatustorneos.es
-2. Regístrate con este email: ${destinatario.email} (o inicia sesión si ya tienes cuenta)
-3. Ve a "Mis Torneos" → "${torneoInfo.nombre_torneo}"
-4. En "Gestionar Inscripción", completa los datos de tu banda
+═══════════════════════════════════════
+📝 PARA COMPLETAR TU INSCRIPCIÓN
+═══════════════════════════════════════
 
-INFORMACIÓN DE CONTACTO:
-- Capitán del equipo: ${datosEquipo.capitan.nombre} (${datosEquipo.capitan.email})
-${torneoInfo.organizador ? `- Organizador del torneo: ${torneoInfo.organizador.nombre} (${torneoInfo.organizador.email})` : ''}
+${esNuevoUsuario ? `
+1. Accede al enlace de registro:
+   ${urlRegistro}
 
----
+2. Completa tu registro (tu nombre y email ya estarán precargados)
+
+3. Tras registrarte, automáticamente serás añadido al equipo
+
+4. Ve a "Perfil" → "Mis Torneos" → "${torneoInfo.nombre_torneo}"
+
+5. En "Administrar Inscripción", completa los datos de tu banda
+` : `
+1. Inicia sesión en: ${urlBase}
+
+2. Ve a "Perfil" → "Mis Torneos" → "${torneoInfo.nombre_torneo}"
+
+3. En "Administrar Inscripción", completa los datos de tu banda
+`}
+
+═══════════════════════════════════════
+📞 INFORMACIÓN DE CONTACTO
+═══════════════════════════════════════
+Capitán del equipo: ${datosEquipo.capitan.nombre}
+Email: ${datosEquipo.capitan.email}
+
+${torneoInfo.organizador ? `Organizador del torneo: ${torneoInfo.organizador.nombre}
+Email: ${torneoInfo.organizador.email}` : ''}
+
+═══════════════════════════════════════
+
 Equipo de Gestiona Tus Torneos
-Este es un correo automático, por favor no respondas.
+
 ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torneoInfo.organizador.nombre}` : ''}
   `;
 
@@ -322,7 +385,7 @@ ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torne
     from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
     replyTo: process.env.EMAIL_USER,
     to: destinatario.email,
-    subject: `🎮 Invitación: ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}" - Equipo: ${datosEquipo.nombreEquipo}`,
+    subject: `🎮 ${esNuevoUsuario ? 'Invitación' : 'Inscripción'}: ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}" - Equipo: ${datosEquipo.nombreEquipo}`,
     html: htmlEmail,
     text: textEmail
   };
@@ -336,4 +399,5 @@ ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torne
     return { success: false, error: error.message };
   }
 };
+
 export { enviarInvitacionEquipo };

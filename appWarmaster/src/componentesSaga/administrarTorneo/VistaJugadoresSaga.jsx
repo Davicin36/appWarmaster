@@ -6,7 +6,7 @@ import AnadirParticipantesTorneos from '@/componente/vistasAdministrarTorneos/An
 
 import '@/estilos/vistasTorneos/vistaJugadores.css';
 
-function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: propJugadores, equipos: propEquipos, onUpdate }) {
+function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugadores: propJugadores, equipos: propEquipos, onUpdate }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
     
@@ -14,6 +14,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
     const [equipos, setEquipos] = useState(propEquipos || []);
     const [loading, setLoading] = useState(false);
     const [loadingPago, setLoadingPago] = useState({});
+    const [loadingReenvio, setLoadingReenvio] = useState(false)
     const [mostrarModalAnadir, setMostrarModalAnadir] = useState(false);
 
     useEffect(() => {
@@ -168,6 +169,192 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
         }
     };
 
+    const reenviarTodasLasInvitaciones = async () => {
+        const totalEquipos = equipos.length;
+        
+        const confirmar = window.confirm(
+            `⚠️ REENVÍO MASIVO DE INVITACIONES ⚠️\n\n` +
+            `Se reenviarán las invitaciones a TODOS los equipos del torneo (${totalEquipos} equipos).\n\n` +
+            `Esto enviará emails a:\n` +
+            `• Usuarios registrados (notificación)\n` +
+            `• Usuarios pendientes de registro (invitación)\n\n` +
+            `¿Estás seguro de continuar?`
+        );
+        
+        if (!confirmar) return;
+
+        try {
+            setLoadingReenvio(true);
+            
+            const response = await torneosSagaApi.reenviarInscripcionTodosEquipos(torneoId);
+            
+            if (response.success) {
+                const { totales, resultadosPorEquipo } = response.data;
+                
+                let mensaje = `✅ ${response.message}\n\n`;
+                mensaje += `═══════════════════════════════\n`;
+                mensaje += `📊 RESUMEN GENERAL\n`;
+                mensaje += `═══════════════════════════════\n`;
+                mensaje += `🏆 Equipos procesados: ${totales.emailsEnviados > 0 ? totalEquipos : 0}\n`;
+                mensaje += `📧 Total emails enviados: ${totales.emailsEnviados}\n`;
+                mensaje += `❌ Total emails fallidos: ${totales.emailsFallidos}\n`;
+                mensaje += `🆕 Pendientes de registro: ${totales.pendientesRegistro}\n`;
+                mensaje += `✔️ Ya registrados: ${totales.registrados}\n\n`;
+                
+                mensaje += `═══════════════════════════════\n`;
+                mensaje += `📋 DETALLE POR EQUIPO\n`;
+                mensaje += `═══════════════════════════════\n`;
+                
+                resultadosPorEquipo.forEach(resultado => {
+                    mensaje += `\n🏆 ${resultado.equipo}:\n`;
+                    mensaje += `  ✅ Enviados: ${resultado.emailsEnviados}\n`;
+                    mensaje += `  ❌ Fallidos: ${resultado.emailsFallidos}\n`;
+                    mensaje += `  🆕 Pendientes: ${resultado.pendientesRegistro}\n`;
+                    mensaje += `  ✔️ Registrados: ${resultado.registrados}\n`;
+                    
+                    if (resultado.emailsFallidos > 0 && resultado.detalles?.errores?.length > 0) {
+                        mensaje += `  ⚠️ Errores:\n`;
+                        resultado.detalles.errores.forEach(email => {
+                            mensaje += `    - ${email}\n`;
+                        });
+                    }
+                });
+                
+                alert(mensaje);
+            }
+        } catch (error) {
+            console.error('Error al reenviar todas las invitaciones:', error);
+            alert(`❌ Error al reenviar invitaciones:\n${error.message}`);
+        } finally {
+            setLoadingReenvio(false);
+        }
+    };
+
+    const reenviarInvitacionEquipo = async (equipo) => {
+
+        if (!equipo || !equipo.id) {
+            alert('❌ Error: datos del equipo no disponibles');
+            return;
+        }
+        
+        const confirmar = window.confirm(
+            `¿Reenviar invitaciones a todos los miembros del equipo "${equipo.nombre_equipo}"?\n\n` +
+            `Se enviará un email a cada miembro (tanto a usuarios registrados como pendientes de registro).`
+        );
+        
+        if (!confirmar) return;
+
+        try {
+            setLoadingReenvio(true);
+            
+            const response = await torneosSagaApi.reenviarInscripcionEquipo(torneoId, equipo.id);
+            
+            if (response.success) {
+                const { emails, detalles } = response.data;
+                
+                let mensaje = `✅ ${response.message}\n\n`;
+                mensaje += `📧 Emails enviados: ${emails.enviados}\n`;
+                mensaje += `❌ Emails fallidos: ${emails.fallidos}\n`;
+                mensaje += `🆕 Pendientes de registro: ${emails.pendientesRegistro}\n`;
+                mensaje += `✔️ Ya registrados: ${emails.registrados}\n`;
+                
+                if (emails.fallidos > 0) {
+                    mensaje += `\n⚠️ Emails con error:\n`;
+                    detalles.errores.forEach(error => {
+                        mensaje += `  - ${error.nombre} (${error.email})\n`;
+                    });
+                }
+                
+                alert(mensaje);
+            }
+        } catch (error) {
+            console.error('Error al reenviar invitaciones:', error);
+            alert(`❌ Error al reenviar invitaciones:\n${error.message}`);
+        } finally {
+            setLoadingReenvio(false);
+        }
+    };
+
+    const reenviarInvitacionTodosJugadores = async () => {
+        if (jugadores.length === 0) {
+            alert('❌ No hay jugadores para reenviar invitaciones');
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `⚠️ REENVÍO MASIVO DE INVITACIONES ⚠️\n\n` +
+            `Se reenviarán las invitaciones a TODOS los jugadores del torneo (${jugadores.length} jugadores).\n\n` +
+            `Usuarios registrados recibirán notificación.\n` +
+            `Usuarios pendientes de registro recibirán invitación.\n\n` +
+            `¿Estás seguro de continuar?`
+        );
+
+        if (!confirmar) return;
+
+        try {
+            setLoadingReenvio(true);
+
+            const response = await torneosSagaApi.reenviarInscripcionTodosJugadores(torneoId);
+
+            if (response.success) {
+                const { totales, resultadosPorJugador } = response.data;
+
+                let mensaje = `✅ ${response.message}\n\n`;
+                mensaje += `📊 RESUMEN GENERAL\n`;
+                mensaje += `• Total emails enviados: ${totales.enviados}\n`;
+                mensaje += `• Fallidos: ${totales.fallidos}\n`;
+                mensaje += `• Pendientes de registro: ${totales.pendientesRegistro}\n`;
+                mensaje += `• Registrados: ${totales.registrados}\n\n`;
+
+                mensaje += `📋 DETALLE POR JUGADOR\n`;
+                resultadosPorJugador.forEach(j => {
+                    mensaje += `\n👤 ${j.nombre}:\n`;
+                    mensaje += `  ✅ Enviado: ${j.enviado ? 'Sí' : 'No'}\n`;
+                    mensaje += `  ⚠️ Error: ${j.error || '-' }\n`;
+                });
+
+                alert(mensaje);
+            }
+        } catch (error) {
+            console.error('Error al reenviar invitaciones a todos los jugadores:', error);
+            alert(`❌ Error al reenviar invitaciones:\n${error.message}`);
+        } finally {
+            setLoadingReenvio(false);
+        }
+    };
+
+    const reenviarInvitacionIndividual = async (jugador) => {
+        if (!jugador || !jugador.id) {
+            alert('❌ Error: datos del jugador no disponibles');
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `¿Reenviar invitación al jugador "${jugador.jugador_nombre} ${jugador.jugador_apellidos}"?\n\n` +
+            `Se enviará un email a su dirección: ${jugador.email || 'No disponible'}`
+        );
+
+        if (!confirmar) return;
+
+        try {
+            setLoadingReenvio(true);
+
+            const response = await torneosSagaApi.reenviarInscripcionJugador(torneoId, jugador.id);
+
+            if (response.success) {
+                alert(`✅ Invitación reenviada correctamente a ${jugador.jugador_nombre} ${jugador.jugador_apellidos}`);
+            } else {
+                alert(`❌ No se pudo reenviar la invitación:\n${response.message}`);
+            }
+        } catch (error) {
+            console.error('Error al reenviar invitación individual:', error);
+            alert(`❌ Error al reenviar invitación:\n${error.message}`);
+        } finally {
+            setLoadingReenvio(false);
+        }
+    };
+
+
     if (loading) {
         return (
             <div className="vista-jugadores">
@@ -183,14 +370,24 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
             <div className="vista-jugadores">
                 <div className="header-jugadores-con-boton">
                     <h2>👥 Jugadores Inscritos ({jugadores.length})</h2>
-                    <button 
-                        className="btn-primary"
-                        onClick={() => setMostrarModalAnadir(true)}
-                    >
-                        Invitar Jugador
-                    </button>
+                    {torneoId.estado === 'pendiente' && (
+                        <>
+                            <button 
+                                className="btn-primary"
+                                onClick={() => setMostrarModalAnadir(true)}
+                            >
+                                Invitar Jugador
+                            </button>
+                            <button 
+                                className="btn-secondary-small"
+                                onClick={reenviarInvitacionTodosJugadores}
+                            >
+                                Reenviar Invitaciones
+                            </button>
+                        </>
+                    )}
                 </div>
-                
+               
                 {jugadores.length === 0 ? (
                     <div className="empty-message">
                         <p>📭 No hay jugadores inscritos todavía</p>
@@ -249,6 +446,14 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                                             <td>{jugador.faccion || '-'}</td>
                                             <td>{totalPuntos.toFixed(1)}</td>
                                             <td>
+                                                            <button 
+                                                    className="btn-primary"
+                                                    onClick={() => reenviarInvitacionIndividual(jugador)}
+                                                    disabled={loadingReenvio}
+                                                    title="Reenviar invitacion al jugador"
+                                                >
+                                                    {loadingReenvio ? ' Enviando...' : 'Reenviar Invitación'}
+                                                </button>
                                                 <button
                                                     onClick={() => cambiarEstadoPagoJugador(jugador.id, jugador.pagado)}
                                                     className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`}
@@ -299,13 +504,26 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
         <div className="vista-jugadores">
             <div className="header-jugadores-con-boton">
                 <h2>👥 Equipos Inscritos ({equipos.length})</h2>
-                <button 
-                    className="btn-primary"
-                    onClick={() => setMostrarModalAnadir(true)}
-                >
-                    Invitar Equipo
-                </button>
-            </div>
+                {torneo?.estado === 'pendiente' && (
+                        <>
+                            <button 
+                                className="btn-primary"
+                                onClick={() => setMostrarModalAnadir(true)}
+                                disabled={loadingReenvio}
+                            >
+                                Invitar Equipo
+                            </button>
+                            <button 
+                                className="btn-secondary-small"
+                                onClick={reenviarTodasLasInvitaciones}
+                                disabled={loadingReenvio}
+                                title="Reenviar invitaciones a todos los equipos"
+                            >
+                                {loadingReenvio ? ' Enviando...' : 'Reenviar Invitaciones'}
+                            </button>
+                        </>
+                        )}
+                </div>
             {equipos.length === 0 ? (
                 <div className="empty-message">
                     <p>📭 No hay equipos inscritos todavía</p>
@@ -383,6 +601,15 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, tipoTorneo, jugadores: pro
                                 </div>
 
                                 <div className="equipo-acciones-admin">
+                                    <button 
+                                        className="btn-primary"
+                                        onClick={() => reenviarInvitacionEquipo(equipo)}
+                                        disabled={loadingReenvio}
+                                        title="Reenviar invitaciones al equipo"
+                                    >
+                                        {loadingReenvio ? ' Enviando...' : 'Reenviar Invitaciones'}
+                                    </button>
+
                                     <button
                                         onClick={() => cambiarEstadoPagoEquipo(equipo.id, equipo.pagado)}
                                         className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`}

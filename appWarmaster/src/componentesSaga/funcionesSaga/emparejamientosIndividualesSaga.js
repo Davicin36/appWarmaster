@@ -22,8 +22,6 @@ const generarEmparejamientosIniciales = async (torneoId) => {
         const jugadoresAleatorios = [...jugadores].sort(() => Math.random() - 0.5);
         const emparejamientosRonda1 = [];
 
-        console.log('jugadores', jugadoresAleatorios);
-
            const normalizarClub = (club) => {
             if (!club || club === '-' || club.trim() === '') {
                 return null; // Sin club

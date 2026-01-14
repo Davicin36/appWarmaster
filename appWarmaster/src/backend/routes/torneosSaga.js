@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import crypto from 'crypto';
 import { pool } from '../config/bd.js';
-import { enviarInvitarTorneoInd } from '../utils/emailInvitarTorneoInd.js';
+import { enviarInvitarJugador }  from '../utils/emailInvitarTorneoInd.js';
 import { enviarInvitacionOrganizadorNoRegistrado, enviarInvitacionOrganizadorRegistrado } from '../utils/emailInvitarOrganizador.js'; 
 import { enviarInvitacionEquipo } from '../utils/emailInscripcionEquipos.js';
 import { verificarToken, verificarOrganizadorTorneo } from '../middleware/auth.js';
@@ -1918,7 +1918,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
           }
         };
 
-        const resultado = await enviarInvitarTorneoInd(destinatario, torneoInfo);
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
         
         if (resultado.success) {
           emailEnviado = true;
@@ -1950,6 +1950,251 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
     res.status(500).json({
       success: false,
       message: 'Error al añadir jugador',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// ===== REENVIAR EMAIL A UN JUGADOR INDIVIDUAL (ORGANIZADOR) =====
+
+router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { torneoId, jugadorId } = req.params;
+
+    console.log('📧 Reenviando invitación al jugador:', { torneoId, jugadorId });
+
+    // Obtener datos del jugador en el torneo
+    const [jugadorData] = await connection.query(
+      `SELECT jts.id, jts.usuario_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
+       FROM jugador_torneo_saga jts
+       INNER JOIN usuarios u ON jts.usuario_id = u.id
+       WHERE jts.id = ? AND jts.torneo_id = ?`,
+      [jugadorId, torneoId]
+    );
+
+    if (jugadorData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jugador no encontrado en este torneo'
+      });
+    }
+
+    const jugador = jugadorData[0];
+    const esNuevoUsuario = jugador.estado_cuenta === 'pendiente_registro';
+
+    // Obtener datos del torneo
+    const [torneoData] = await connection.query(
+      `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre,
+          u.apellidos as organizador_apellidos,
+          u.email as organizador_email 
+       FROM torneos_sistemas t 
+       LEFT JOIN usuarios u ON t.created_by = u.id 
+       WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneoData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    const torneo = torneoData[0];
+    const torneoInfo = {
+      nombre_torneo: torneo.nombre_torneo,
+      sistema: torneo.sistema,
+      tipo_torneo: torneo.tipo_torneo,
+      ubicacion: torneo.ubicacion,
+      fecha_inicio: torneo.fecha_inicio,
+      fecha_fin: torneo.fecha_fin,
+      puntos_banda: torneo.puntos_banda,
+      organizador: {
+        nombre: `${torneo.organizador_nombre} ${torneo.organizador_apellidos}`.trim(),
+        email: torneo.organizador_email
+      }
+    };
+
+    // Enviar email
+    const destinatario = {
+      nombre: `${jugador.nombre} ${jugador.apellidos}`.trim(),
+      email: jugador.email,
+      esNuevo: esNuevoUsuario,
+      epoca: jugador.epoca,
+      banda: jugador.faccion
+    };
+
+    const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+
+    if (resultado.success) {
+      res.json({
+        success: true,
+        message: `Invitación reenviada correctamente a ${destinatario.nombre} ${destinatario.apellidos}`,
+        data: {
+          jugador: destinatario.nombre,
+          email: destinatario.email,
+          esNuevo: destinatario.esNuevo
+        }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'No se pudo reenviar la invitación',
+        error: resultado.error
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitación individual:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar invitación individual',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// ===== REENVIAR EMAIL A TODOS LOS JUGADORES (ORGANIZADOR) =====
+
+router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const { torneoId } = req.params;
+
+    console.log('📧 Reenviando invitaciones a todos los jugadores del torneo:', torneoId);
+
+    // Obtener todos los jugadores del torneo
+    const [jugadores] = await connection.query(
+      `SELECT jts.id, jts.usuario_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
+       FROM jugador_torneo_saga jts
+       INNER JOIN usuarios u ON jts.usuario_id = u.id
+       WHERE jts.torneo_id = ?
+       ORDER BY u.nombre ASC`,
+      [torneoId]
+    );
+
+    if (jugadores.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron jugadores en este torneo'
+      });
+    }
+
+    // Obtener datos del torneo
+    const [torneoData] = await connection.query(
+      `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre,
+          u.apellidos as organizador_apellidos,
+          u.email as organizador_email 
+       FROM torneos_sistemas t 
+       LEFT JOIN usuarios u ON t.created_by = u.id 
+       WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneoData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    const torneo = torneoData[0];
+    const torneoInfo = {
+      nombre_torneo: torneo.nombre_torneo,
+      sistema: torneo.sistema,
+      tipo_torneo: torneo.tipo_torneo,
+      ubicacion: torneo.ubicacion,
+      fecha_inicio: torneo.fecha_inicio,
+      fecha_fin: torneo.fecha_fin,
+      puntos_banda: torneo.puntos_banda,
+      organizador: {
+        nombre: `${torneo.organizador_nombre} ${torneo.organizador_apellidos}`.trim(),
+        email: torneo.organizador_email
+      }
+    };
+
+    // Enviar emails
+    const resultadosPorJugador = [];
+    let totalEnviados = 0;
+    let totalFallidos = 0;
+    let totalPendientes = 0;
+    let totalRegistrados = 0;
+
+    for (const jugador of jugadores) {
+      try {
+        const esNuevo = jugador.estado_cuenta === 'pendiente_registro';
+        const destinatario = {
+          nombre: `${jugador.nombre} ${jugador.apellidos}`.trim(),
+          email: jugador.email,
+          esNuevo,
+          epoca: jugador.epoca,
+          banda: jugador.faccion
+        };
+
+        const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+
+        if (resultado.success) {
+          totalEnviados++;
+          if (esNuevo) totalPendientes++;
+          else totalRegistrados++;
+
+          resultadosPorJugador.push({
+            jugador: destinatario.nombre,
+            email: destinatario.email,
+            enviado: true
+          });
+        } else {
+          totalFallidos++;
+          resultadosPorJugador.push({
+            jugador: destinatario.nombre,
+            email: destinatario.email,
+            enviado: false,
+            error: resultado.error
+          });
+        }
+
+      } catch (err) {
+        totalFallidos++;
+        resultadosPorJugador.push({
+          jugador: `${jugador.nombre} ${jugador.apellidos}`,
+          email: jugador.email,
+          enviado: false,
+          error: err.message
+        });
+        console.error(`❌ Error al enviar invitación a ${jugador.email}:`, err.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Se reenviaron invitaciones a ${totalEnviados} jugadores del torneo`,
+      data: {
+        totales: {
+          enviados: totalEnviados,
+          fallidos: totalFallidos,
+          pendientes: totalPendientes,
+          registrados: totalRegistrados
+        },
+        resultadosPorJugador
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitaciones a todos los jugadores:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar invitaciones a todos los jugadores',
       error: error.message
     });
   } finally {
@@ -2899,8 +3144,6 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
     const { nombreEquipo, miembros } = req.body;
     const organizadorId = req.usuario.userId;
 
-    console.log('📥 Añadiendo equipo:', { torneoId, nombreEquipo, numMiembros: miembros?.length });
-
     // Validaciones básicas
     if (!nombreEquipo || !nombreEquipo.trim()) {
       return res.status(400).json({
@@ -3001,6 +3244,34 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
       });
     }
 
+    const emailsAVerificar = miembros
+      .filter(m => m.email && m.email.trim())
+      .map(m => m.email.toLowerCase().trim());
+
+    if (emailsAVerificar.length > 0) {
+      const placeholders = emailsAVerificar.map(() => '?').join(',');
+      const [jugadoresYaInscritos] = await connection.query(
+        `SELECT DISTINCT u.email, u.nombre, e.nombre_equipo
+         FROM usuarios u
+         INNER JOIN jugador_torneo_saga jts ON u.id = jts.jugador_id
+         INNER JOIN torneo_saga_equipo e ON jts.equipo_id = e.id
+         WHERE u.email IN (${placeholders}) AND jts.torneo_id = ?`,
+        [...emailsAVerificar, torneoId]
+      );
+
+      if (jugadoresYaInscritos.length > 0) {
+        await connection.rollback();
+        const detalles = jugadoresYaInscritos.map(j => 
+          `${j.nombre} (${j.email}) ya está en el equipo "${j.nombre_equipo}"`
+        ).join(', ');
+        
+        return res.status(400).json({
+          success: false,
+          message: `Algunos jugadores ya están inscritos en este torneo: ${detalles}`
+        });
+      }
+    }
+
     // ===== PROCESAR CADA MIEMBRO DEL EQUIPO =====
     const miembrosCreados = [];
     const usuariosNuevos = [];
@@ -3019,7 +3290,7 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
       let usuarioId = null;
       let esNuevoUsuario = false;
 
-      // Si tiene email, verificar/crear usuario
+      // Si tiene email, verificar
       if (miembro.email && miembro.email.trim()) {
         const emailNormalizado = miembro.email.toLowerCase().trim();
 
@@ -3033,14 +3304,13 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
           // Usuario existe
           usuarioId = usuarioExistente[0].id;
           esNuevoUsuario = false;
-          console.log(`✓ Usuario existente: ${emailNormalizado} (ID: ${usuarioId})`);
         } else {
           // Crear usuario pendiente
           const passwordTemporal = `TEMP_${crypto.randomBytes(16).toString('hex')}`;
           
           const [nuevoUsuario] = await connection.query(
-            `INSERT INTO usuarios (nombre, apellidos, email, password, estado_cuenta, rol) 
-             VALUES (?, ?, ?, ?, 'pendiente_registro', 'jugador')`,
+            `INSERT INTO usuarios (nombre, apellidos, email, password, estado_cuenta, rol, acepta_terminos) 
+             VALUES (?, ?, ?, ?, 'pendiente_registro', 'jugador', 0)`,
             [miembro.nombre, '', emailNormalizado, passwordTemporal]
           );
 
@@ -3051,7 +3321,6 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
             email: emailNormalizado,
             nombre: miembro.nombre
           });
-          console.log(`✓ Usuario nuevo creado: ${emailNormalizado} (ID: ${usuarioId})`);
         }
       }
 
@@ -3086,7 +3355,6 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
     );
 
     const equipoId = resultEquipo.insertId;
-    console.log(`✅ Equipo creado: ${nombreEquipo} (ID: ${equipoId})`);
 
     // ===== CREAR JUGADORES Y VINCULAR AL EQUIPO =====
     const jugadoresCreados = [];
@@ -3115,11 +3383,9 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
         jugadorEqId
       });
 
-      console.log(`  ✓ Miembro añadido: ${miembro.nombre} (${miembro.epoca})`);
     }
 
     await connection.commit();
-    console.log('✅ Transacción completada exitosamente');
 
     // ===== ENVIAR EMAILS A TODOS LOS MIEMBROS =====
     const emailsEnviados = [];
@@ -3148,7 +3414,6 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
     };
 
     for (const jugador of jugadoresCreados) {
-      if (jugador.email) {
         try {
           const destinatario = {
             nombre: jugador.nombre,
@@ -3161,18 +3426,29 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
           const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo);
           
           if (resultado.success) {
-            emailsEnviados.push(jugador.email);
+            emailsEnviados.push({
+              email: jugador.email,
+              nombre: jugador.nombre,
+              esNuevo: jugador.esNuevoUsuario
+            });
             console.log(`  ✅ Email enviado a: ${jugador.email}`);
           } else {
-            emailsFallidos.push(jugador.email);
+            emailsFallidos.push({
+              email: jugador.email,
+              nombre: jugador.nombre,
+              error: resultado.error
+            });
             console.error(`  ❌ Error enviando email a: ${jugador.email}`);
           }
         } catch (emailError) {
-          emailsFallidos.push(jugador.email);
+          emailsFallidos.push({
+              email: jugador.email,
+              nombre: jugador.nombre,
+              error: emailError.error
+            });
           console.error(`  ❌ Error al enviar email a ${jugador.email}:`, emailError.message);
         }
       }
-    }
 
     res.json({
       success: true,
@@ -3207,6 +3483,406 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
     res.status(500).json({
       success: false,
       message: 'Error al añadir equipo',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// ===== REENVIAR EMAIL A UN  EQUIPOS AÑADIDOS  (ORGANIZADOR) =====
+
+router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { torneoId, equipoId } = req.params;
+
+    console.log('📧 Reenviando invitaciones:', { torneoId, equipoId });
+
+    // Verificar que el equipo existe y pertenece al torneo
+    const [equipoCheck] = await connection.query(
+      `SELECT e.id, e.nombre_equipo, e.capitan_id
+       FROM torneo_saga_equipo e
+       WHERE e.id = ? AND e.torneo_id = ?`,
+      [equipoId, torneoId]
+    );
+
+    if (equipoCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Equipo no encontrado en este torneo'
+      });
+    }
+
+    const equipo = equipoCheck[0];
+
+    // Obtener datos completos del torneo
+    const [torneoData] = await connection.query(
+      `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre,
+          u.apellidos as organizador_apellidos,
+          u.email as organizador_email 
+       FROM torneos_sistemas t 
+       LEFT JOIN usuarios u ON t.created_by = u.id 
+       WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneoData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    const torneo = torneoData[0];
+
+    // Obtener datos del capitán
+    const [capitanData] = await connection.query(
+      `SELECT u.id, u.nombre, u.apellidos, u.email
+       FROM usuarios u
+       WHERE u.id = ?`,
+      [equipo.capitan_id]
+    );
+
+    if (capitanData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Capitán del equipo no encontrado'
+      });
+    }
+
+    const capitan = capitanData[0];
+
+    // Obtener todos los miembros del equipo con su información completa
+    const [miembros] = await connection.query(
+      `SELECT 
+          u.id as usuario_id,
+          u.nombre,
+          u.apellidos,
+          u.email,
+          u.estado_cuenta,
+          jts.epoca,
+          jts.faccion,
+          jts.id as jugador_eq_id,
+          CASE WHEN e.capitan_id = u.id THEN 1 ELSE 0 END as es_capitan
+       FROM equipo_miembros em
+       INNER JOIN usuarios u ON em.usuario_id = u.id
+       INNER JOIN jugador_torneo_saga jts ON em.jugador_eq_id = jts.id
+       INNER JOIN torneo_saga_equipo e ON em.equipo_id = e.id
+       WHERE em.equipo_id = ? AND jts.torneo_id = ?
+       ORDER BY es_capitan DESC, u.nombre ASC`,
+      [equipoId, torneoId]
+    );
+
+    if (miembros.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron miembros en este equipo'
+      });
+    }
+
+    // Preparar información del torneo y equipo
+    const torneoInfo = {
+      nombre_torneo: torneo.nombre_torneo,
+      sistema: torneo.sistema,
+      tipo_torneo: torneo.tipo_torneo,
+      ubicacion: torneo.ubicacion,
+      fecha_inicio: torneo.fecha_inicio,
+      fecha_fin: torneo.fecha_fin,
+      puntos_banda: torneo.puntos_banda,
+      organizador: {
+        nombre: `${torneo.organizador_nombre} ${torneo.organizador_apellidos}`.trim(),
+        email: torneo.organizador_email
+      }
+    };
+
+    const datosEquipo = {
+      nombreEquipo: equipo.nombre_equipo,
+      capitan: {
+        nombre: `${capitan.nombre} ${capitan.apellidos}`.trim(),
+        email: capitan.email
+      }
+    };
+
+    // Enviar emails a todos los miembros
+    const emailsEnviados = [];
+    const emailsFallidos = [];
+    const usuariosPendientes = [];
+    const usuariosRegistrados = [];
+
+    for (const miembro of miembros) {
+      try {
+        const esNuevoUsuario = miembro.estado_cuenta === 'pendiente_registro';
+        
+        const destinatario = {
+          nombre: `${miembro.nombre} ${miembro.apellidos}`.trim(),
+          email: miembro.email,
+          esNuevo: esNuevoUsuario,
+          epoca: miembro.epoca,
+          banda: miembro.faccion // Si ya tiene facción asignada
+        };
+
+        const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo);
+        
+        if (resultado.success) {
+          emailsEnviados.push({
+            email: miembro.email,
+            nombre: destinatario.nombre,
+            esNuevo: esNuevoUsuario
+          });
+          
+          if (esNuevoUsuario) {
+            usuariosPendientes.push(miembro.email);
+          } else {
+            usuariosRegistrados.push(miembro.email);
+          }
+          
+          console.log(`  ✅ Email reenviado a: ${miembro.email} (${esNuevoUsuario ? 'Pendiente registro' : 'Registrado'})`);
+        } else {
+          emailsFallidos.push({
+            email: miembro.email,
+            nombre: destinatario.nombre,
+            error: resultado.error
+          });
+          console.error(`  ❌ Error enviando email a: ${miembro.email}`);
+        }
+      } catch (emailError) {
+        emailsFallidos.push({
+          email: miembro.email,
+          nombre: `${miembro.nombre} ${miembro.apellidos}`.trim(),
+          error: emailError.message
+        });
+        console.error(`  ❌ Error al enviar email a ${miembro.email}:`, emailError.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Se han reenviado ${emailsEnviados.length} invitaciones del equipo "${equipo.nombre_equipo}"`,
+      data: {
+        torneo: torneo.nombre_torneo,
+        equipo: equipo.nombre_equipo,
+        totalMiembros: miembros.length,
+        emails: {
+          enviados: emailsEnviados.length,
+          fallidos: emailsFallidos.length,
+          pendientesRegistro: usuariosPendientes.length,
+          registrados: usuariosRegistrados.length
+        },
+        detalles: {
+          exitosos: emailsEnviados,
+          errores: emailsFallidos,
+          usuariosPendientes,
+          usuariosRegistrados
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitaciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar invitaciones',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// ===== REENVIAR EMAIL A TODOS LOS  EQUIPOS AÑADIDOS  (ORGANIZADOR) =====
+
+router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { torneoId } = req.params;
+
+    console.log('📧 Reenviando invitaciones a todos los equipos del torneo:', torneoId);
+
+    // Obtener todos los equipos del torneo
+    const [equipos] = await connection.query(
+      `SELECT id, nombre_equipo 
+       FROM torneo_saga_equipo 
+       WHERE torneo_id = ?
+       ORDER BY nombre_equipo ASC`,
+      [torneoId]
+    );
+
+    if (equipos.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron equipos en este torneo'
+      });
+    }
+
+    // Obtener datos completos del torneo
+    const [torneoData] = await connection.query(
+      `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre,
+          u.apellidos as organizador_apellidos,
+          u.email as organizador_email 
+       FROM torneos_sistemas t 
+       LEFT JOIN usuarios u ON t.created_by = u.id 
+       WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneoData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    const torneo = torneoData[0];
+
+    const torneoInfo = {
+      nombre_torneo: torneo.nombre_torneo,
+      sistema: torneo.sistema,
+      tipo_torneo: torneo.tipo_torneo,
+      ubicacion: torneo.ubicacion,
+      fecha_inicio: torneo.fecha_inicio,
+      fecha_fin: torneo.fecha_fin,
+      puntos_banda: torneo.puntos_banda,
+      organizador: {
+        nombre: `${torneo.organizador_nombre} ${torneo.organizador_apellidos}`.trim(),
+        email: torneo.organizador_email
+      }
+    };
+
+    // Reenviar invitaciones equipo por equipo
+    const resultadosPorEquipo = [];
+    let totalEmailsEnviados = 0;
+    let totalEmailsFallidos = 0;
+    let totalPendientesRegistro = 0;
+    let totalRegistrados = 0;
+
+    for (const equipo of equipos) {
+      // Obtener datos del capitán
+      const [capitanData] = await connection.query(
+        `SELECT u.id, u.nombre, u.apellidos, u.email
+         FROM torneo_saga_equipo e
+         INNER JOIN usuarios u ON e.capitan_id = u.id
+         WHERE e.id = ?`,
+        [equipo.id]
+      );
+
+      if (capitanData.length === 0) {
+        resultadosPorEquipo.push({
+          equipo: equipo.nombre_equipo,
+          error: 'Capitán no encontrado'
+        });
+        continue;
+      }
+
+      const capitan = capitanData[0];
+
+      // Obtener miembros del equipo
+      const [miembros] = await connection.query(
+        `SELECT 
+            u.id as usuario_id,
+            u.nombre,
+            u.apellidos,
+            u.email,
+            u.estado_cuenta,
+            jts.epoca,
+            jts.faccion,
+            CASE WHEN e.capitan_id = u.id THEN 1 ELSE 0 END as es_capitan
+         FROM equipo_miembros em
+         INNER JOIN usuarios u ON em.usuario_id = u.id
+         INNER JOIN jugador_torneo_saga jts ON em.jugador_eq_id = jts.id
+         INNER JOIN torneo_saga_equipo e ON em.equipo_id = e.id
+         WHERE em.equipo_id = ? AND jts.torneo_id = ?`,
+        [equipo.id, torneoId]
+      );
+
+      const datosEquipo = {
+        nombreEquipo: equipo.nombre_equipo,
+        capitan: {
+          nombre: `${capitan.nombre} ${capitan.apellidos}`.trim(),
+          email: capitan.email
+        }
+      };
+
+      const emailsEnviados = [];
+      const emailsFallidos = [];
+      let pendientesRegistro = 0;
+      let registrados = 0;
+
+      for (const miembro of miembros) {
+        try {
+          const esNuevoUsuario = miembro.estado_cuenta === 'pendiente_registro';
+          
+          const destinatario = {
+            nombre: `${miembro.nombre} ${miembro.apellidos}`.trim(),
+            email: miembro.email,
+            esNuevo: esNuevoUsuario,
+            epoca: miembro.epoca,
+            banda: miembro.faccion
+          };
+
+          const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo);
+          
+          if (resultado.success) {
+            emailsEnviados.push(miembro.email);
+            if (esNuevoUsuario) {
+              pendientesRegistro++;
+            } else {
+              registrados++;
+            }
+          } else {
+            emailsFallidos.push(miembro.email);
+          }
+        } catch (emailError) {
+          emailsFallidos.push(miembro.email);
+          console.error(`  ❌ Error al enviar email a ${miembro.email}:`, emailError.message);
+        }
+      }
+
+      resultadosPorEquipo.push({
+        equipo: equipo.nombre_equipo,
+        emailsEnviados: emailsEnviados.length,
+        emailsFallidos: emailsFallidos.length,
+        pendientesRegistro,
+        registrados,
+        detalles: {
+          exitosos: emailsEnviados,
+          errores: emailsFallidos
+        }
+      });
+
+      totalEmailsEnviados += emailsEnviados.length;
+      totalEmailsFallidos += emailsFallidos.length;
+      totalPendientesRegistro += pendientesRegistro;
+      totalRegistrados += registrados;
+    }
+
+    res.json({
+      success: true,
+      message: `Se procesaron ${equipos.length} equipos. Total de invitaciones enviadas: ${totalEmailsEnviados}`,
+      data: {
+        torneo: torneo.nombre_torneo,
+        totalEquipos: equipos.length,
+        totales: {
+          emailsEnviados: totalEmailsEnviados,
+          emailsFallidos: totalEmailsFallidos,
+          pendientesRegistro: totalPendientesRegistro,
+          registrados: totalRegistrados
+        },
+        resultadosPorEquipo
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitaciones a todos los equipos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar invitaciones a todos los equipos',
       error: error.message
     });
   } finally {

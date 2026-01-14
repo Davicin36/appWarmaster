@@ -16,6 +16,7 @@ CREATE TABLE usuarios (
   club VARCHAR(100),
   email VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
+  acepta_terminos BOOLEAN DEFAULT FALSE,
   estado_cuenta ENUM('activo', 'pendiente_registro', 'suspendido') DEFAULT 'activo',
   codigo_postal VARCHAR(15) NOT NULL DEFAULT ' - ',
   rol ENUM('organizador', 'jugador', 'superadmin') DEFAULT 'jugador',
