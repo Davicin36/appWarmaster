@@ -16,12 +16,26 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
   };
 
   const esNuevoUsuario = destinatario.esNuevo === true;
-  const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es/';
+  const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
   
   // URL con parámetros para pre-rellenar el registro
   const urlRegistro = esNuevoUsuario 
     ? `${urlBase}/registrarse?email=${encodeURIComponent(destinatario.email)}&nombre=${encodeURIComponent(destinatario.nombre)}`
     : urlBase;
+
+    console.log('═══════════════════════════════════════');
+  console.log('🔍 DEBUG URLS EN EMAIL');
+  console.log('═══════════════════════════════════════');
+  console.log('urlBase:', urlBase);
+  console.log('esNuevoUsuario:', esNuevoUsuario);
+  console.log('urlRegistro:', urlRegistro);
+  console.log('destinatario.email:', destinatario.email);
+  console.log('destinatario.nombre:', destinatario.nombre);
+
+  console.log('URL sin encoding:', `${urlBase}/registrarse?email=${destinatario.email}&nombre=${destinatario.nombre}`);
+console.log('URL con encoding:', urlRegistro);
+console.log('Longitud de URL:', urlRegistro.length);
+  console.log('═══════════════════════════════════════');
 
   const htmlEmail = `
     <!DOCTYPE html>

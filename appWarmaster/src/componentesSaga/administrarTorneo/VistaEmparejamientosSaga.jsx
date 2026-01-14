@@ -368,8 +368,6 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
             return
         }
 
-        console.log('partidas guardadas : ', todasLasPartidas)
-
         // 🎯 Usar el endpoint correcto según el tipo de torneo
         if (esEquipos) {
             await torneosSagaApi.guardarEmparejamientosEquipos(
