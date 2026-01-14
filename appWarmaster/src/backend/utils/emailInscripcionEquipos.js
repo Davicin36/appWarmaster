@@ -16,7 +16,7 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
   };
 
   const esNuevoUsuario = destinatario.esNuevo === true;
-  const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+  const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es/';
   
   // URL con parámetros para pre-rellenar el registro
   const urlRegistro = esNuevoUsuario 

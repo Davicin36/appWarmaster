@@ -382,7 +382,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                 className="btn-secondary-small"
                                 onClick={reenviarInvitacionTodosJugadores}
                             >
-                                Reenviar Invitaciones
+                               {loadingReenvio ? '⏳ Enviando...' : '📧 Reenviar Invitaciones'}
                             </button>
                         </>
                     )}
@@ -410,8 +410,8 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                     <th>Época</th>
                                     <th>Facción</th>
                                     <th>Puntos</th>
-                                    <th>Pago</th>
-                                    <th>Acciones</th>
+                                     <th>Pago</th>
+                                    {torneo?.estado === 'pendiente'&& <th>Acciones</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -446,14 +446,6 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                             <td>{jugador.faccion || '-'}</td>
                                             <td>{totalPuntos.toFixed(1)}</td>
                                             <td>
-                                                            <button 
-                                                    className="btn-primary"
-                                                    onClick={() => reenviarInvitacionIndividual(jugador)}
-                                                    disabled={loadingReenvio}
-                                                    title="Reenviar invitacion al jugador"
-                                                >
-                                                    {loadingReenvio ? ' Enviando...' : 'Reenviar Invitación'}
-                                                </button>
                                                 <button
                                                     onClick={() => cambiarEstadoPagoJugador(jugador.id, jugador.pagado)}
                                                     className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`}
@@ -464,12 +456,26 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                                 </button>
                                             </td>
                                             <td>
-                                                <button
-                                                    onClick={() => eliminarJugador(jugador.jugador_id)}
-                                                    className="btn-danger-small"
-                                                >
-                                                    🗑️ Eliminar
-                                                </button>
+                                                {torneo?.estado === 'pendiente' && (
+                                                    <>
+                                                        <button 
+                                                            className="btn-secondary-small"
+                                                            onClick={() => reenviarInvitacionIndividual(jugador)}
+                                                            disabled={loadingReenvio}
+                                                            title="Reenviar invitación al jugador"
+                                                            style={{ marginRight: '5px' }}
+                                                        >
+                                                            {loadingReenvio ? '⏳' : '📧'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => eliminarJugador(jugador.jugador_id)}
+                                                            className="btn-danger-small"
+                                                        >
+                                                            🗑️ Eliminar
+                                                        </button>
+                                                    </>
+                                                )}
+                                               
                                             </td>
                                         </tr>
                                     );
@@ -601,15 +607,6 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                 </div>
 
                                 <div className="equipo-acciones-admin">
-                                    <button 
-                                        className="btn-primary"
-                                        onClick={() => reenviarInvitacionEquipo(equipo)}
-                                        disabled={loadingReenvio}
-                                        title="Reenviar invitaciones al equipo"
-                                    >
-                                        {loadingReenvio ? ' Enviando...' : 'Reenviar Invitaciones'}
-                                    </button>
-
                                     <button
                                         onClick={() => cambiarEstadoPagoEquipo(equipo.id, equipo.pagado)}
                                         className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`}
@@ -618,13 +615,24 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                     >
                                         {isLoadingPago ? '⏳' : (isPagado ? '✅ Pagado' : '⏰ Pendiente')}
                                     </button>
-                                    
-                                    <button
-                                        onClick={() => eliminarEquipo(equipo.id)}
-                                        className="btn-danger-small"
-                                    >
-                                        🗑️ Eliminar Equipo
-                                    </button>
+                                    {torneo?.estado === 'pendiente' && (
+                                        <>
+                                            <button 
+                                                className="btn-primary"
+                                                onClick={() => reenviarInvitacionEquipo(equipo)}
+                                                disabled={loadingReenvio}
+                                                title="Reenviar invitaciones al equipo"
+                                            >
+                                                {loadingReenvio ? ' Enviando...' : 'Reenviar Invitaciones'}
+                                            </button>
+                                            <button
+                                                onClick={() => eliminarEquipo(equipo.id)}
+                                                className="btn-danger-small"
+                                            >
+                                                🗑️ Eliminar Equipo
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         );
