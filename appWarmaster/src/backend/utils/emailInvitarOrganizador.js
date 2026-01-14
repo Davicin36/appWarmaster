@@ -16,6 +16,9 @@ export async function enviarInvitacionOrganizadorRegistrado({
   rondasMax
 }) {
   try {
+
+    const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+
     const asunto = `📋 Has sido añadido como organizador - ${nombreTorneo}`;
     
     const contenidoHtml = `
@@ -142,7 +145,7 @@ export async function enviarInvitacionOrganizadorRegistrado({
           </div>
           
           <center>
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/perfil" class="cta-button">
+            <a href="${urlBase}/perfil" class="cta-button">
               🎮 Ir a Mi Panel de Organizador
             </a>
           </center>
@@ -186,7 +189,7 @@ Como organizador, ahora puedes:
 
 
 Accede a tu panel de organizador en:
-${process.env.FRONTEND_URL || 'http://localhost:5173'}/perfil
+${urlBase}/perfil
 
 ¡Mucha suerte con el torneo!
 
@@ -232,10 +235,11 @@ export async function enviarInvitacionOrganizadorNoRegistrado({
   rondasMax
 }) {
   try {
-    const asunto = `📋 Invitación como organizador - ${nombreTorneo}`;
+
+    const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+    const urlRegistro = `${urlBase}/registrarse?email=${encodeURIComponent(destinatario)}`;
     
-    // URL de registro (sin token, solo con el email)
-    const urlRegistro = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/registrarse?email=${destinatario}`;
+    const asunto = `📋 Invitación como organizador - ${nombreTorneo}`;
     
     const contenidoHtml = `
       <!DOCTYPE html>
