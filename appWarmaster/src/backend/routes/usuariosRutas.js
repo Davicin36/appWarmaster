@@ -840,12 +840,15 @@ router.post('/recuperar-password', async (req, res) => {
   const { email } = req.body;
 
   try {
+    // 👇 AÑADIR ESTA LÍNEA AL PRINCIPIO
+    const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+    
     console.log('═══════════════════════════════════════');
     console.log('🌍 RECUPERACIÓN DE PASSWORD');
     console.log('═══════════════════════════════════════');
     console.log('Email recibido:', email);
     console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('FRONTEND_URL:', urlBase); // 👈 Cambiar aquí
     console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
     console.log('BREVO_API_KEY existe:', !!process.env.BREVO_API_KEY);
 
@@ -877,7 +880,7 @@ router.post('/recuperar-password', async (req, res) => {
     console.log('✅ Usuario encontrado:', { id: usuario.id, email: usuario.email });
     
     const token = crypto.randomBytes(32).toString('hex');
-    const expiracion = new Date(Date.now() + 3600000);
+    const expiracion = new Date(Date.now() + 3600000); // 1 hora
 
     console.log('🗄️ Invalidando tokens antiguos...');
     await pool.execute(
@@ -891,12 +894,14 @@ router.post('/recuperar-password', async (req, res) => {
       [usuario.id, token, expiracion]
     );
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    // 👇 CAMBIAR AQUÍ - Usar urlBase en lugar de process.env.FRONTEND_URL
+    const resetUrl = `${urlBase}/reset-password?token=${token}`;
     
     console.log('═══════════════════════════════════════');
     console.log('📧 DATOS DEL EMAIL');
+    console.log('URL Base:', urlBase); // 👈 Añadir log
     console.log('Token:', token);
-    console.log('URL:', resetUrl);
+    console.log('URL Completa:', resetUrl);
     console.log('Destinatario:', usuario.email);
     console.log('Nombre:', usuario.nombre);
     console.log('Expira:', expiracion.toISOString());
@@ -934,7 +939,7 @@ router.post('/recuperar-password', async (req, res) => {
   }
 });
 
-//======VERIFICAR TOKEM RECUPERAR PASSWORD=======
+//======VERIFICAR TOKEN RECUPERAR PASSWORD=======
 
 router.get('/verificar-token/:token', async (req, res) => {
   const { token } = req.params;
@@ -992,15 +997,38 @@ router.post('/reset-password', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Actualizar la contraseña
     await pool.execute(
       'UPDATE usuarios SET password = ? WHERE id = ?',
       [hashedPassword, usuarioId]
     );
 
+    // Marcar el token como usado
     await pool.execute(
       'UPDATE password_reset_tokens SET usado = TRUE WHERE token = ?',
       [token]
     );
+
+    // 👇 OPCIONAL: Obtener datos del usuario para enviar email de confirmación
+    const [usuarios] = await pool.execute(
+      'SELECT nombre, email FROM usuarios WHERE id = ?',
+      [usuarioId]
+    );
+
+    if (usuarios.length > 0) {
+      const usuario = usuarios[0];
+      try {
+        // Enviar email de confirmación
+        await emailRecuperar.enviarConfirmacionCambioPassword({
+          email: usuario.email,
+          nombre: usuario.nombre
+        });
+        console.log('✅ Email de confirmación enviado a:', usuario.email);
+      } catch (emailError) {
+        console.error('⚠️ Error al enviar email de confirmación:', emailError.message);
+        // No lanzamos error porque el cambio de contraseña ya se hizo
+      }
+    }
 
     res.status(200).json(
       successResponse('Contraseña restablecida exitosamente')

@@ -3,12 +3,10 @@ import { transporter } from "./emailHelpers.js";
 const emailRecuperar = {
     // Enviar email de recuperación de contraseña
     enviarRecuperacionPassword: async ({ email, nombre, resetUrl }) => {
-        console.log('📧 [emailRecuperar] Iniciando envío...');
-        console.log('📧 [emailRecuperar] Email:', email);
-        console.log('📧 [emailRecuperar] Nombre:', nombre);
-        console.log('📧 [emailRecuperar] resetUrl:', resetUrl);
         
         try {
+            const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+            
             const mailOptions = {
                 from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
                 replyTo: process.env.EMAIL_USER,
@@ -59,38 +57,24 @@ const emailRecuperar = {
                                 margin: 15px 0;
                                 font-size: 16px;
                             }
-                            .link-box {
-                                word-break: break-all;
-                                background: #f8f9fa;
-                                padding: 20px;
-                                border-radius: 8px;
-                                border: 2px solid #667eea;
-                                margin: 25px 0;
-                                text-align: center;
-                            }
-                            .link-text {
-                                color: #667eea;
-                                font-size: 14px;
-                                font-weight: 600;
-                                line-height: 1.8;
-                            }
                             .button-container {
                                 text-align: center;
                                 margin: 30px 0;
                             }
-                            .button {
-                                display: inline-block;
-                                padding: 16px 40px;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                color: #ffffff !important;
-                                text-decoration: none;
+                            .url-box {
+                                background: #f8f9fa;
+                                border: 2px solid #667eea;
+                                padding: 15px;
                                 border-radius: 8px;
-                                font-weight: bold;
-                                font-size: 16px;
-                                transition: opacity 0.3s;
+                                margin: 20px 0;
+                                word-break: break-all;
+                                text-align: center;
                             }
-                            .button:hover {
-                                opacity: 0.9;
+                            .url-box a {
+                                color: #667eea;
+                                font-weight: 600;
+                                text-decoration: none;
+                                font-size: 14px;
                             }
                             .warning {
                                 background-color: #fff3cd;
@@ -143,19 +127,24 @@ const emailRecuperar = {
                                 
                                 <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>Gestiona tus Torneos</strong>.</p>
                                 
-                                <p style="margin-top: 25px;"><strong>📋 Copia y pega este enlace en tu navegador:</strong></p>
-                                
-                                <div class="link-box">
-                                    <div class="link-text">${resetUrl}</div>
-                                </div>
-                                
                                 <div class="button-container">
                                     <a href="${resetUrl}" 
-                                       class="button"
-                                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff !important; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; display: inline-block;"
                                        target="_blank"
-                                       rel="noopener noreferrer">
-                                        Restablecer Contraseña
+                                       rel="noopener noreferrer"
+                                       style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                        🔑 Restablecer Contraseña
+                                    </a>
+                                </div>
+                                
+                                <div class="url-box">
+                                    <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+                                        Si el botón no funciona, copia y pega este enlace en tu navegador:
+                                    </p>
+                                    <a href="${resetUrl}" 
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       style="color: #667eea; font-weight: 600; text-decoration: none;">
+                                        ${resetUrl}
                                     </a>
                                 </div>
                                 
@@ -169,7 +158,7 @@ const emailRecuperar = {
                                 </div>
                                 
                                 <div class="note">
-                                    <strong>💡 Consejo:</strong> Si el botón no funciona correctamente, copia el enlace que aparece en el recuadro azul y pégalo directamente en la barra de direcciones de tu navegador.
+                                    <strong>💡 Consejo:</strong> Si tienes problemas, copia el enlace completo que aparece en el recuadro azul y pégalo directamente en la barra de direcciones de tu navegador.
                                 </div>
                                 
                                 <p style="margin-top: 25px;">Si tienes algún problema, no dudes en contactarnos.</p>
@@ -182,6 +171,14 @@ const emailRecuperar = {
                             
                             <div class="footer">
                                 <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+                                <p style="margin-top: 10px;">
+                                    <a href="${urlBase}" 
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       style="color: #667eea; text-decoration: none;">
+                                        www.gestionatustorneos.es
+                                    </a>
+                                </p>
                                 <p style="margin-top: 5px;">© ${new Date().getFullYear()} Gestiona tus Torneos. Todos los derechos reservados.</p>
                                 <p style="margin-top: 10px; font-size: 11px; color: #bbb;">
                                     Si no solicitaste este cambio, tu cuenta sigue siendo segura y puedes ignorar este email.
@@ -196,7 +193,11 @@ Hola ${nombre},
 
 Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en Gestiona tus Torneos.
 
-COPIA Y PEGA ESTE ENLACE EN TU NAVEGADOR:
+═══════════════════════════════════════
+🔑 RESTABLECER CONTRASEÑA
+═══════════════════════════════════════
+
+Copia y pega este enlace en tu navegador:
 ${resetUrl}
 
 ⚠️ IMPORTANTE:
@@ -206,8 +207,12 @@ ${resetUrl}
 
 Si tienes algún problema, contacta con nosotros.
 
+═══════════════════════════════════════
+
 Saludos,
 El equipo de Gestiona tus Torneos
+
+Web: ${urlBase}
 
 ---
 Este es un correo automático, por favor no respondas a este mensaje.
@@ -215,16 +220,7 @@ Este es un correo automático, por favor no respondas a este mensaje.
                 `.trim()
             };
 
-            console.log('📧 [emailRecuperar] Opciones de email preparadas');
-            console.log('📧 [emailRecuperar] From:', mailOptions.from);
-            console.log('📧 [emailRecuperar] To:', mailOptions.to);
-            console.log('📧 [emailRecuperar] Subject:', mailOptions.subject);
-            console.log('📧 [emailRecuperar] Enviando...');
-            
             const info = await transporter.sendMail(mailOptions);
-            
-            console.log('✅ [emailRecuperar] Email enviado exitosamente');
-            console.log('✅ [emailRecuperar] MessageId:', info.messageId || info.response?.messageId);
             
             return { success: true, messageId: info.messageId || info.response?.messageId };
 
@@ -239,11 +235,10 @@ Este es un correo automático, por favor no respondas a este mensaje.
 
     // Enviar email de confirmación (después de cambiar la contraseña)
     enviarConfirmacionCambioPassword: async ({ email, nombre }) => {
-        console.log('📧 [emailRecuperar] Enviando confirmación de cambio de contraseña');
-        console.log('📧 [emailRecuperar] Email:', email);
-        console.log('📧 [emailRecuperar] Nombre:', nombre);
         
         try {
+            const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
+            
             const mailOptions = {
                 from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
                 replyTo: process.env.EMAIL_USER,
@@ -295,6 +290,10 @@ Este es un correo automático, por favor no respondas a este mensaje.
                                 margin: 15px 0;
                                 font-size: 16px;
                             }
+                            .button-container {
+                                text-align: center;
+                                margin: 25px 0;
+                            }
                             .warning-box {
                                 background-color: #fff3cd;
                                 border: 1px solid #ffc107;
@@ -313,12 +312,15 @@ Este es un correo automático, por favor no respondas a este mensaje.
                                 padding-top: 20px;
                                 border-top: 1px solid #e0e0e0;
                             }
+                            .footer p {
+                                margin: 8px 0;
+                            }
                         </style>
                     </head>
                     <body>
                         <div class="container">
                             <div class="header">
-                                <h1>✓ Contraseña Actualizada</h1>
+                                <h1>✅ Contraseña Actualizada</h1>
                             </div>
                             
                             <div class="content">
@@ -331,6 +333,15 @@ Este es un correo automático, por favor no respondas a este mensaje.
                                 <p>Tu contraseña en <strong>Gestiona tus Torneos</strong> ha sido cambiada correctamente.</p>
                                 
                                 <p>Ya puedes iniciar sesión con tu nueva contraseña.</p>
+                                
+                                <div class="button-container">
+                                    <a href="${urlBase}/login" 
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #28a745 0%, #20903a 100%); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);">
+                                        🔐 Iniciar Sesión
+                                    </a>
+                                </div>
                                 
                                 <div class="warning-box">
                                     <strong>⚠️ ¿No fuiste tú?</strong>
@@ -345,7 +356,15 @@ Este es un correo automático, por favor no respondas a este mensaje.
                             
                             <div class="footer">
                                 <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-                                <p>© ${new Date().getFullYear()} Gestiona tus Torneos. Todos los derechos reservados.</p>
+                                <p style="margin-top: 10px;">
+                                    <a href="${urlBase}" 
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       style="color: #667eea; text-decoration: none;">
+                                        www.gestionatustorneos.es
+                                    </a>
+                                </p>
+                                <p style="margin-top: 5px;">© ${new Date().getFullYear()} Gestiona tus Torneos. Todos los derechos reservados.</p>
                             </div>
                         </div>
                     </body>
@@ -354,16 +373,22 @@ Este es un correo automático, por favor no respondas a este mensaje.
                 text: `
 Hola ${nombre},
 
-✓ Tu contraseña ha sido actualizada exitosamente
+✅ Tu contraseña ha sido actualizada exitosamente
 
 Tu contraseña en Gestiona tus Torneos ha sido cambiada correctamente.
 Ya puedes iniciar sesión con tu nueva contraseña.
 
+Accede aquí: ${urlBase}/login
+
 ⚠️ ¿No fuiste tú?
 Si no realizaste este cambio, por favor contacta con nosotros inmediatamente para proteger tu cuenta.
 
+═══════════════════════════════════════
+
 Saludos,
 El equipo de Gestiona tus Torneos
+
+Web: ${urlBase}
 
 ---
 Este es un correo automático, por favor no respondas a este mensaje.

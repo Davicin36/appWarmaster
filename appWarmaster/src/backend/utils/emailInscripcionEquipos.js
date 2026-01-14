@@ -92,18 +92,6 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
           text-align: center;
           margin: 35px 0;
         }
-        .button { 
-          display: inline-block;
-          padding: 15px 40px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white !important;
-          text-decoration: none;
-          border-radius: 6px;
-          font-weight: 600;
-          font-size: 16px;
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-          transition: transform 0.2s;
-        }
         .steps {
           background: #f8f9fa;
           padding: 20px;
@@ -174,6 +162,20 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
           font-weight: 600;
           margin: 0;
         }
+        .url-box {
+          background: #f8f9fa;
+          border: 2px solid #667eea;
+          padding: 15px;
+          border-radius: 8px;
+          margin: 20px 0;
+          word-break: break-all;
+          text-align: center;
+        }
+        .url-box a {
+          color: #667eea;
+          font-weight: 600;
+          text-decoration: none;
+        }
       </style>
     </head>
     <body>
@@ -221,7 +223,12 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
             <p><strong>Equipo:</strong> ${datosEquipo.nombreEquipo}</p>
             <p><strong>Capitán:</strong> ${datosEquipo.capitan.nombre}</p>
             <p style="color: #666; font-size: 14px;">
-              <a href="mailto:${datosEquipo.capitan.email}" class="email-link">${datosEquipo.capitan.email}</a>
+              <a href="mailto:${datosEquipo.capitan.email}" 
+                 style="color: #667eea; text-decoration: none; font-weight: 500;"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                ${datosEquipo.capitan.email}
+              </a>
             </p>
           </div>
           
@@ -247,7 +254,7 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
                 <li>Ve a <strong>"Perfil"</strong> → <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
                 <li>En <strong>"Administrar Inscripción"</strong>, completa los datos de tu banda</li>
               ` : `
-                <li><strong>Inicia sesión</strong> en <span class="url-highlight">gestionatustorneos.es</span></li>
+                <li><strong>Inicia sesión</strong> en <span class="url-highlight">www.gestionatustorneos.es</span></li>
                 <li>Ve a <strong>"Perfil"</strong> → <strong>"Mis Torneos"</strong> → <strong>"${torneoInfo.nombre_torneo}"</strong></li>
                 <li>En <strong>"Administrar Inscripción"</strong>, completa los datos de tu banda</li>
               `}
@@ -261,15 +268,25 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
           ` : ''}
           
           <div class="button-container">
-            <a href="${urlRegistro}" class="button">
+            <a href="${urlRegistro}" 
+               target="_blank"
+               rel="noopener noreferrer"
+               style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
               ${esNuevoUsuario ? '🎯 Registrarse y Unirse al Equipo' : '🌐 Ir a Gestiona Tus Torneos'}
             </a>
           </div>
           
-          <p style="font-size: 14px; color: #666; text-align: center;">
-            Si el botón no funciona, accede directamente a:<br>
-            <strong>${urlRegistro}</strong>
-          </p>
+          <div class="url-box">
+            <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+              Si el botón no funciona, copia y pega este enlace en tu navegador:
+            </p>
+            <a href="${urlRegistro}" 
+               target="_blank"
+               rel="noopener noreferrer"
+               style="color: #667eea; font-weight: 600; text-decoration: none;">
+              ${urlRegistro}
+            </a>
+          </div>
           
           <div class="divider"></div>
           
@@ -278,18 +295,33 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
             <h3>📞 Información de Contacto</h3>
             <p><strong>Capitán del equipo:</strong> ${datosEquipo.capitan.nombre}</p>
             <p style="font-size: 14px; margin-bottom: 15px;">
-              <a href="mailto:${datosEquipo.capitan.email}" class="email-link">${datosEquipo.capitan.email}</a>
+              <a href="mailto:${datosEquipo.capitan.email}" 
+                 style="color: #667eea; text-decoration: none; font-weight: 500;"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                ${datosEquipo.capitan.email}
+              </a>
             </p>
             <p><strong>Organizador del torneo:</strong> ${torneoInfo.organizador.nombre}</p>
             <p style="font-size: 14px;">
-              <a href="mailto:${torneoInfo.organizador.email}" class="email-link">${torneoInfo.organizador.email}</a>
+              <a href="mailto:${torneoInfo.organizador.email}" 
+                 style="color: #667eea; text-decoration: none; font-weight: 500;"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                ${torneoInfo.organizador.email}
+              </a>
             </p>
           </div>
           ` : `
           <p style="margin-bottom: 0;">
             Si tienes alguna duda, contacta con tu capitán 
             <strong>${datosEquipo.capitan.nombre}</strong> 
-            (<a href="mailto:${datosEquipo.capitan.email}" class="email-link">${datosEquipo.capitan.email}</a>).
+            (<a href="mailto:${datosEquipo.capitan.email}" 
+                style="color: #667eea; text-decoration: none; font-weight: 500;"
+                target="_blank"
+                rel="noopener noreferrer">
+              ${datosEquipo.capitan.email}
+            </a>).
           </p>
           `}
         </div>
@@ -297,6 +329,14 @@ const enviarInvitacionEquipo = async (destinatario, datosEquipo, torneoInfo) => 
         <div class="footer">
           <p><strong>Equipo de Gestiona Tus Torneos</strong></p>
           <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+          <p style="margin-top: 10px;">
+            <a href="${urlBase}" 
+               target="_blank"
+               rel="noopener noreferrer"
+               style="color: #667eea; text-decoration: none;">
+              www.gestionatustorneos.es
+            </a>
+          </p>
           ${torneoInfo.organizador 
             ? `<p>Para consultas sobre el torneo, contacta con ${torneoInfo.organizador.nombre} (${torneoInfo.organizador.email})</p>`
             : '<p>Si necesitas ayuda, contacta con el organizador del torneo.</p>'}
@@ -377,6 +417,7 @@ Email: ${torneoInfo.organizador.email}` : ''}
 ═══════════════════════════════════════
 
 Equipo de Gestiona Tus Torneos
+Web: ${urlBase}
 
 ${torneoInfo.organizador ? `Para consultas sobre el torneo, contacta con ${torneoInfo.organizador.nombre}` : ''}
   `;

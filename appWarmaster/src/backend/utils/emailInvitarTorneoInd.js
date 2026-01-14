@@ -19,10 +19,7 @@ const enviarInvitarJugador = async (destinatario, torneoInfo) => {
   const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
   const urlAcceso = esNuevoUsuario
     ? `${urlBase}/registrarse?email=${encodeURIComponent(destinatario.email)}&nombre=${encodeURIComponent(destinatario.nombre)}`
-    : `${urlBase}/perfil`; // perfil de usuario ya registrado
-
-
-  const esNuevo = destinatario.esNuevo === true;
+    : `${urlBase}/perfil`;
 
   const htmlEmail = `
     <!DOCTYPE html>
@@ -93,58 +90,24 @@ const enviarInvitarJugador = async (destinatario, torneoInfo) => {
           text-align: center;
           margin: 35px 0;
         }
-        .button { 
-          display: inline-block;
-          padding: 15px 40px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white !important;
-          text-decoration: none;
-          border-radius: 6px;
-          font-weight: 600;
-          font-size: 16px;
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-          transition: transform 0.2s;
-        }
-        .steps {
-          background: #f8f9fa;
-          padding: 20px;
-          border-radius: 4px;
-          margin: 20px 0;
-        }
-        .steps ol {
-          margin-left: 20px;
-          margin-top: 10px;
-        }
-        .steps li {
-          margin-bottom: 10px;
-          color: #555;
-        }
         .divider {
           height: 1px;
           background: #eee;
           margin: 25px 0;
         }
-        .contact-box {
-          background: #fff3cd;
-          border-left: 4px solid #ffc107;
-          padding: 20px;
-          margin: 25px 0;
-          border-radius: 4px;
+        .url-box {
+          background: #f8f9fa;
+          border: 2px solid #667eea;
+          padding: 15px;
+          border-radius: 8px;
+          margin: 20px 0;
+          word-break: break-all;
+          text-align: center;
         }
-        .contact-box h3 {
-          color: #856404;
-          font-size: 18px;
-          margin-bottom: 15px;
-          font-weight: 600;
-        }
-        .contact-box p {
-          margin-bottom: 8px;
-          color: #856404;
-        }
-        .email-link {
+        .url-box a {
           color: #667eea;
+          font-weight: 600;
           text-decoration: none;
-          font-weight: 500;
         }
         .footer { 
           text-align: center;
@@ -157,17 +120,18 @@ const enviarInvitarJugador = async (destinatario, torneoInfo) => {
         .footer p { 
           margin-bottom: 8px;
         }
-        .url-highlight {
-          color: #667eea;
-          font-weight: 600;
-          font-size: 16px;
-        }
         .highlight-box {
           background: #e3f2fd;
-          border-left: 4px solid #2196f3;
-          padding: 20px;
-          margin: 25px 0;
-          border-radius: 4px;
+          border: 2px solid #2196f3;
+          padding: 15px;
+          border-radius: 8px;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .highlight-box p {
+          color: #1976d2;
+          font-weight: 600;
+          margin: 0;
         }
       </style>
     </head>
@@ -220,15 +184,32 @@ const enviarInvitarJugador = async (destinatario, torneoInfo) => {
               : '<p class="warning">⚠️ <strong>Banda:</strong> Pendiente de seleccionar</p>'}
           </div>
           
+          ${esNuevoUsuario ? `
+          <div class="highlight-box">
+            <p>✨ Tu nombre y email ya estarán precargados en el formulario de registro</p>
+          </div>
+          ` : ''}
+          
           <div class="button-container">
-            <a href="${urlAcceso}" class="button">
+            <a href="${urlAcceso}" 
+               target="_blank"
+               rel="noopener noreferrer"
+               style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
               ${esNuevoUsuario ? '🆕 Crear tu perfil y acceder al torneo' : '🌐 Acceder a tu perfil'}
             </a>
           </div>
 
-          <div class="divider"></div>
-          
-            <p style="font-size: 14px; color: #666; text-align: center;">Si el botón no funciona, accede directamente a: <br> <strong>${urlAcceso}</strong></p>
+          <div class="url-box">
+            <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+              Si el botón no funciona, copia y pega este enlace en tu navegador:
+            </p>
+            <a href="${urlAcceso}" 
+               target="_blank"
+               rel="noopener noreferrer"
+               style="color: #667eea; font-weight: 600; text-decoration: none;">
+              ${urlAcceso}
+            </a>
+          </div>
 
           <div class="divider"></div>
 
@@ -236,17 +217,94 @@ const enviarInvitarJugador = async (destinatario, torneoInfo) => {
           <div class="info-box">
             <h3>📞 Contacto</h3>
             <p><strong>Organizador:</strong> ${torneoInfo.organizador.nombre}</p>
-            <p><a href="mailto:${torneoInfo.organizador.email}" class="email-link">${torneoInfo.organizador.email}</a></p>
-          </div>` : ''}
+            <p>
+              <a href="mailto:${torneoInfo.organizador.email}" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="color: #667eea; text-decoration: none; font-weight: 500;">
+                ${torneoInfo.organizador.email}
+              </a>
+            </p>
+          </div>
+          ` : ''}
         </div>
 
         <div class="footer">
           <p><strong>Equipo de Gestiona Tus Torneos</strong></p>
           <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+          <p style="margin-top: 10px;">
+            <a href="${urlBase}" 
+               target="_blank"
+               rel="noopener noreferrer"
+               style="color: #667eea; text-decoration: none;">
+              www.gestionatustorneos.es
+            </a>
+          </p>
         </div>
       </div>
     </body>
   </html>
+  `;
+
+  const textEmail = `
+${esNuevoUsuario ? 'INVITACIÓN A TORNEO' : 'INSCRIPCIÓN EN TORNEO'} - ${torneoInfo.sistema}
+
+Hola ${destinatario.nombre},
+
+${esNuevoUsuario 
+  ? '¡Has sido invitado/a a participar en un torneo!' 
+  : '¡Estás inscrito/a en el torneo!'}
+
+═══════════════════════════════════════
+📋 DETALLES DEL TORNEO
+═══════════════════════════════════════
+- Nombre: ${torneoInfo.nombre_torneo}
+- Sistema: ${torneoInfo.sistema}
+- Tipo: Individual
+${torneoInfo.ubicacion ? `- Ubicación: ${torneoInfo.ubicacion}` : ''}
+${torneoInfo.fecha_inicio ? `- Fecha inicio: ${formatearFecha(torneoInfo.fecha_inicio)}` : ''}
+${torneoInfo.fecha_fin ? `- Fecha fin: ${formatearFecha(torneoInfo.fecha_fin)}` : ''}
+${torneoInfo.puntos_banda ? `- Puntos de banda: ${torneoInfo.puntos_banda}` : ''}
+
+═══════════════════════════════════════
+👤 TUS DATOS DE INSCRIPCIÓN
+═══════════════════════════════════════
+- Tu email: ${destinatario.email}
+- Época: ${destinatario.epoca || 'Pendiente de seleccionar ⚠️'}
+- Banda: ${destinatario.banda || 'Pendiente de seleccionar ⚠️'}
+
+═══════════════════════════════════════
+📝 PARA ACCEDER
+═══════════════════════════════════════
+
+${esNuevoUsuario ? `
+1. Accede al enlace de registro:
+   ${urlAcceso}
+
+2. Completa tu registro (tu nombre y email ya estarán precargados)
+
+3. Ve a "Perfil" → "Mis Torneos" → "${torneoInfo.nombre_torneo}"
+
+4. Completa los datos de tu inscripción
+` : `
+1. Accede a tu perfil:
+   ${urlAcceso}
+
+2. Ve a "Perfil" → "Mis Torneos" → "${torneoInfo.nombre_torneo}"
+
+3. Completa los datos de tu inscripción
+`}
+
+═══════════════════════════════════════
+📞 INFORMACIÓN DE CONTACTO
+═══════════════════════════════════════
+${torneoInfo.organizador ? `Organizador: ${torneoInfo.organizador.nombre}
+Email: ${torneoInfo.organizador.email}` : 'Contacta con el organizador del torneo si tienes dudas.'}
+
+═══════════════════════════════════════
+
+Equipo de Gestiona Tus Torneos
+Web: ${urlBase}
   `;
   
   const mailOptions = {
@@ -255,7 +313,7 @@ const enviarInvitarJugador = async (destinatario, torneoInfo) => {
     to: destinatario.email,
     subject: `🎯 ${esNuevoUsuario ? 'Invitación' : 'Inscripción'} - ${torneoInfo.sistema || 'Torneo'} - "${torneoInfo.nombre_torneo}"`,
     html: htmlEmail,
-    text: `Hola ${destinatario.nombre},\nHas sido ${esNuevoUsuario ? 'invitado/a' : 'inscrito/a'} en el torneo ${torneoInfo.nombre_torneo} (${torneoInfo.sistema}). Accede aquí: ${urlAcceso}`
+    text: textEmail
   };
 
   try {

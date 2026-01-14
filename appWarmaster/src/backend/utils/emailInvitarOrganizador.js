@@ -16,7 +16,6 @@ export async function enviarInvitacionOrganizadorRegistrado({
   rondasMax
 }) {
   try {
-
     const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
 
     const asunto = `📋 Has sido añadido como organizador - ${nombreTorneo}`;
@@ -34,55 +33,70 @@ export async function enviarInvitacionOrganizadorRegistrado({
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           }
           .header {
             background: linear-gradient(135deg, #4caf50, #388e3c);
             color: white;
-            padding: 20px;
-            border-radius: 8px 8px 0 0;
+            padding: 30px;
             text-align: center;
           }
+          .header h2 {
+            margin: 0;
+            font-size: 24px;
+          }
           .content {
-            background: #f9f9f9;
             padding: 30px;
-            border-radius: 0 0 8px 8px;
-            border: 1px solid #ddd;
+          }
+          .content p {
+            margin: 15px 0;
+            color: #555;
           }
           .torneo-info {
-            background: white;
+            background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
-            margin: 20px 0;
+            margin: 25px 0;
             border-left: 4px solid #4caf50;
           }
           .torneo-info h3 {
             margin-top: 0;
             color: #4caf50;
+            font-size: 20px;
           }
           .torneo-info ul {
             list-style: none;
             padding: 0;
+            margin: 0;
           }
           .torneo-info li {
             padding: 8px 0;
             border-bottom: 1px solid #eee;
+            color: #555;
           }
           .torneo-info li:last-child {
             border-bottom: none;
           }
           .torneo-info strong {
-            color: #555;
+            color: #333;
           }
           .permisos-box {
             background: #e8f5e9;
             border: 2px solid #4caf50;
             border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
+            padding: 20px;
+            margin: 25px 0;
           }
           .permisos-box h4 {
             margin-top: 0;
             color: #2e7d32;
+            font-size: 18px;
           }
           .permisos-box ul {
             margin: 10px 0;
@@ -90,23 +104,37 @@ export async function enviarInvitacionOrganizadorRegistrado({
           }
           .permisos-box li {
             padding: 5px 0;
+            color: #2e7d32;
           }
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #4caf50, #388e3c);
-            color: white !important;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            margin: 20px 0;
+          .button-container {
             text-align: center;
+            margin: 30px 0;
+          }
+          .url-box {
+            background: #f8f9fa;
+            border: 2px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            word-break: break-all;
+            text-align: center;
+          }
+          .url-box a {
+            color: #4caf50;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 14px;
           }
           .footer {
             text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 0.9em;
+            padding: 25px 30px;
+            background: #f8f9fa;
+            color: #999;
+            font-size: 13px;
+            border-top: 1px solid #eee;
+          }
+          .footer p {
+            margin: 8px 0;
           }
           .highlight {
             color: #4caf50;
@@ -115,51 +143,77 @@ export async function enviarInvitacionOrganizadorRegistrado({
         </style>
       </head>
       <body>
-        <div class="header">
-          <h2>¡Has sido añadido como organizador! ⚔️</h2>
-        </div>
-        <div class="content">
-          <p>Hola <strong>${nombreDestinatario}</strong>,</p>
-          
-          <p><span class="highlight">${creadorNombre}</span> te ha añadido como <strong>organizador</strong> del siguiente torneo:</p>
-          
-          <div class="torneo-info">
-            <h3>📋 ${nombreTorneo}</h3>
-            <ul>
-              <li><strong>📅 Fecha:</strong> ${fechaInicio}${fechaFin ? ` - ${fechaFin}` : ''}</li>
-              <li><strong>📍 Ubicación:</strong> ${ubicacion || 'Por confirmar'}</li>
-              <li><strong>🎮 Tipo:</strong> ${tipoTorneo}</li>
-              <li><strong>🎲 Rondas:</strong> ${rondasMax}</li>
-            </ul>
+        <div class="container">
+          <div class="header">
+            <h2>¡Has sido añadido como organizador! ⚔️</h2>
           </div>
           
-          <div class="permisos-box">
-            <h4>🎯 Como organizador, ahora puedes:</h4>
-            <ul>
-              <li>✅ Gestionar participantes y equipos</li>
-              <li>✅ Configurar emparejamientos</li>
-              <li>✅ Registrar y actualizar resultados</li>
-              <li>✅ Modificar información del torneo</li>
-              <li>✅ Gestionar inscripciones</li>
-            </ul>
+          <div class="content">
+            <p>Hola <strong>${nombreDestinatario}</strong>,</p>
+            
+            <p><span class="highlight">${creadorNombre}</span> te ha añadido como <strong>organizador</strong> del siguiente torneo:</p>
+            
+            <div class="torneo-info">
+              <h3>📋 ${nombreTorneo}</h3>
+              <ul>
+                <li><strong>📅 Fecha:</strong> ${fechaInicio}${fechaFin ? ` - ${fechaFin}` : ''}</li>
+                <li><strong>📍 Ubicación:</strong> ${ubicacion || 'Por confirmar'}</li>
+                <li><strong>🎮 Tipo:</strong> ${tipoTorneo}</li>
+                <li><strong>🎲 Rondas:</strong> ${rondasMax}</li>
+              </ul>
+            </div>
+            
+            <div class="permisos-box">
+              <h4>🎯 Como organizador, ahora puedes:</h4>
+              <ul>
+                <li>✅ Gestionar participantes y equipos</li>
+                <li>✅ Configurar emparejamientos</li>
+                <li>✅ Registrar y actualizar resultados</li>
+                <li>✅ Modificar información del torneo</li>
+                <li>✅ Gestionar inscripciones</li>
+              </ul>
+            </div>
+            
+            <div class="button-container">
+              <a href="${urlBase}/perfil" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #4caf50, #388e3c); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
+                🎮 Ir a Mi Panel de Organizador
+              </a>
+            </div>
+            
+            <div class="url-box">
+              <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+                Si el botón no funciona, copia y pega este enlace en tu navegador:
+              </p>
+              <a href="${urlBase}/perfil" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="color: #4caf50; font-weight: 600; text-decoration: none;">
+                ${urlBase}/perfil
+              </a>
+            </div>
+            
+            <p style="margin-top: 20px;">
+              Accede a tu cuenta para comenzar a gestionar el torneo. Encontrarás todas las herramientas necesarias en tu panel de organizador.
+            </p>
+            
+            <p>Si tienes alguna duda sobre cómo gestionar el torneo, no dudes en contactar con ${creadorNombre}.</p>
+            
+            <p><strong>¡Mucha suerte con el torneo!</strong></p>
           </div>
-          
-          <center>
-            <a href="${urlBase}/perfil" class="cta-button">
-              🎮 Ir a Mi Panel de Organizador
-            </a>
-          </center>
-          
-          <p style="margin-top: 20px;">
-            Accede a tu cuenta para comenzar a gestionar el torneo. Encontrarás todas las herramientas necesarias en tu panel de organizador.
-          </p>
-          
-          <p>Si tienes alguna duda sobre cómo gestionar el torneo, no dudes en contactar con ${creadorNombre}.</p>
-          
-          <p><strong>¡Mucha suerte con el torneo!</strong></p>
           
           <div class="footer">
-            <p>Saludos,<br><strong>Equipo de Gestiona tus Torneos</strong></p>
+            <p><strong>Equipo de Gestiona tus Torneos</strong></p>
+            <p style="margin-top: 10px;">
+              <a href="${urlBase}" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="color: #4caf50; text-decoration: none;">
+                www.gestionatustorneos.es
+              </a>
+            </p>
           </div>
         </div>
       </body>
@@ -173,7 +227,9 @@ Hola ${nombreDestinatario},
 
 ${creadorNombre} te ha añadido como organizador del torneo:
 
+═══════════════════════════════════════
 📋 ${nombreTorneo}
+═══════════════════════════════════════
 
 📅 Fecha: ${fechaInicio}${fechaFin ? ` - ${fechaFin}` : ''}
 📍 Ubicación: ${ubicacion || 'Por confirmar'}
@@ -187,6 +243,7 @@ Como organizador, ahora puedes:
 ✅ Modificar información del torneo
 ✅ Gestionar inscripciones
 
+═══════════════════════════════════════
 
 Accede a tu panel de organizador en:
 ${urlBase}/perfil
@@ -195,10 +252,11 @@ ${urlBase}/perfil
 
 Saludos,
 Equipo de Gestiona tus Torneos
+Web: ${urlBase}
     `;
 
     const mailOptions = {
-      from:  'Gestiona Tus Torneos',
+      from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
       to: destinatario,
       subject: asunto,
       html: contenidoHtml,
@@ -235,7 +293,6 @@ export async function enviarInvitacionOrganizadorNoRegistrado({
   rondasMax
 }) {
   try {
-
     const urlBase = process.env.FRONTEND_URL || 'https://www.gestionatustorneos.es';
     const urlRegistro = `${urlBase}/registrarse?email=${encodeURIComponent(destinatario)}`;
     
@@ -254,65 +311,85 @@ export async function enviarInvitacionOrganizadorNoRegistrado({
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           }
           .header {
             background: linear-gradient(135deg, #2196f3, #1976d2);
             color: white;
-            padding: 20px;
-            border-radius: 8px 8px 0 0;
+            padding: 30px;
             text-align: center;
           }
+          .header h2 {
+            margin: 0;
+            font-size: 24px;
+          }
           .content {
-            background: #f9f9f9;
             padding: 30px;
-            border-radius: 0 0 8px 8px;
-            border: 1px solid #ddd;
+          }
+          .content p {
+            margin: 15px 0;
+            color: #555;
           }
           .torneo-info {
-            background: white;
+            background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
-            margin: 20px 0;
+            margin: 25px 0;
             border-left: 4px solid #2196f3;
           }
           .torneo-info h3 {
             margin-top: 0;
             color: #2196f3;
+            font-size: 20px;
           }
           .torneo-info ul {
             list-style: none;
             padding: 0;
+            margin: 0;
           }
           .torneo-info li {
             padding: 8px 0;
             border-bottom: 1px solid #eee;
+            color: #555;
           }
           .torneo-info li:last-child {
             border-bottom: none;
           }
           .torneo-info strong {
-            color: #555;
+            color: #333;
           }
           .warning-box {
             background: #fff3cd;
             border: 2px solid #ffc107;
             border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
+            padding: 20px;
+            margin: 25px 0;
           }
           .warning-box strong {
+            color: #856404;
+            font-size: 16px;
+          }
+          .warning-box p {
+            margin: 10px 0 0 0;
             color: #856404;
           }
           .permisos-box {
             background: #e3f2fd;
             border: 2px solid #2196f3;
             border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
+            padding: 20px;
+            margin: 25px 0;
           }
           .permisos-box h4 {
             margin-top: 0;
             color: #1565c0;
+            font-size: 18px;
           }
           .permisos-box ul {
             margin: 10px 0;
@@ -320,23 +397,37 @@ export async function enviarInvitacionOrganizadorNoRegistrado({
           }
           .permisos-box li {
             padding: 5px 0;
+            color: #1565c0;
           }
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #4caf50, #388e3c);
-            color: white !important;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            margin: 20px 0;
+          .button-container {
             text-align: center;
+            margin: 30px 0;
+          }
+          .url-box {
+            background: #f8f9fa;
+            border: 2px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            word-break: break-all;
+            text-align: center;
+          }
+          .url-box a {
+            color: #2196f3;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 14px;
           }
           .footer {
             text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 0.9em;
+            padding: 25px 30px;
+            background: #f8f9fa;
+            color: #999;
+            font-size: 13px;
+            border-top: 1px solid #eee;
+          }
+          .footer p {
+            margin: 8px 0;
           }
           .highlight {
             color: #2196f3;
@@ -345,53 +436,74 @@ export async function enviarInvitacionOrganizadorNoRegistrado({
         </style>
       </head>
       <body>
-        <div class="header">
-          <h2>Invitación como organizador de torneo ⚔️</h2>
-        </div>
-        <div class="content">
-          <p>Hola,</p>
-          
-          <p><span class="highlight">${creadorNombre}</span> te ha invitado a ser <strong>organizador</strong> del siguiente torneo:</p>
-          
-          <div class="torneo-info">
-            <h3>📋 ${nombreTorneo}</h3>
-            <ul>
-              <li><strong>📅 Fecha:</strong> ${fechaInicio}${fechaFin ? ` - ${fechaFin}` : ''}</li>
-              <li><strong>📍 Ubicación:</strong> ${ubicacion || 'Por confirmar'}</li>
-              <li><strong>🎮 Tipo:</strong> ${tipoTorneo}</li>
-              <li><strong>🎲 Rondas:</strong> ${rondasMax}</li>
-            </ul>
+        <div class="container">
+          <div class="header">
+            <h2>Invitación como organizador de torneo ⚔️</h2>
           </div>
           
-          <div class="warning-box">
-            <strong>⚠️ Para aceptar esta invitación, necesitas completar tu registro</strong>
-            <p style="margin: 10px 0 0 0;">Regístrate en nuestra aplicación usando este email (<strong>${destinatario}</strong>) para convertirte en organizador del torneo.</p>
-          </div>
-          
-          <center>
-            <a href="${urlRegistro}" class="cta-button">
-              ✅ Completar Registro
-            </a>
-          </center>
-          
-          <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
-            Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-            <a href="${urlRegistro}">${urlRegistro}</a>
-          </p>
-          
-          <div class="permisos-box">
-            <h4>🎯 Como organizador, podrás:</h4>
-            <ul>
-              <li>✅ Gestionar participantes y equipos</li>
-              <li>✅ Configurar emparejamientos</li>
-              <li>✅ Registrar resultados</li>
-              <li>✅ Actualizar información del torneo</li>
-              <li>✅ Gestionar inscripciones</li>
-            </ul>
+          <div class="content">
+            <p>Hola,</p>
+            
+            <p><span class="highlight">${creadorNombre}</span> te ha invitado a ser <strong>organizador</strong> del siguiente torneo:</p>
+            
+            <div class="torneo-info">
+              <h3>📋 ${nombreTorneo}</h3>
+              <ul>
+                <li><strong>📅 Fecha:</strong> ${fechaInicio}${fechaFin ? ` - ${fechaFin}` : ''}</li>
+                <li><strong>📍 Ubicación:</strong> ${ubicacion || 'Por confirmar'}</li>
+                <li><strong>🎮 Tipo:</strong> ${tipoTorneo}</li>
+                <li><strong>🎲 Rondas:</strong> ${rondasMax}</li>
+              </ul>
+            </div>
+            
+            <div class="warning-box">
+              <strong>⚠️ Para aceptar esta invitación, necesitas completar tu registro</strong>
+              <p>Regístrate en nuestra aplicación usando este email (<strong>${destinatario}</strong>) para convertirte en organizador del torneo.</p>
+            </div>
+            
+            <div class="button-container">
+              <a href="${urlRegistro}" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #4caf50, #388e3c); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
+                ✅ Completar Registro
+              </a>
+            </div>
+            
+            <div class="url-box">
+              <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+                Si el botón no funciona, copia y pega este enlace en tu navegador:
+              </p>
+              <a href="${urlRegistro}" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="color: #2196f3; font-weight: 600; text-decoration: none;">
+                ${urlRegistro}
+              </a>
+            </div>
+            
+            <div class="permisos-box">
+              <h4>🎯 Como organizador, podrás:</h4>
+              <ul>
+                <li>✅ Gestionar participantes y equipos</li>
+                <li>✅ Configurar emparejamientos</li>
+                <li>✅ Registrar resultados</li>
+                <li>✅ Actualizar información del torneo</li>
+                <li>✅ Gestionar inscripciones</li>
+              </ul>
+            </div>
           </div>
           
           <div class="footer">
-            <p>Saludos,<br><strong>Equipo de Gestiona tus Torneos</strong></p>
+            <p><strong>Equipo de Gestiona tus Torneos</strong></p>
+            <p style="margin-top: 10px;">
+              <a href="${urlBase}" 
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 style="color: #2196f3; text-decoration: none;">
+                www.gestionatustorneos.es
+              </a>
+            </p>
           </div>
         </div>
       </body>
@@ -405,7 +517,9 @@ Hola,
 
 ${creadorNombre} te ha invitado a ser organizador del torneo:
 
+═══════════════════════════════════════
 📋 ${nombreTorneo}
+═══════════════════════════════════════
 
 📅 Fecha: ${fechaInicio}${fechaFin ? ` - ${fechaFin}` : ''}
 📍 Ubicación: ${ubicacion || 'Por confirmar'}
@@ -426,12 +540,15 @@ Como organizador, podrás:
 ✅ Actualizar información del torneo
 ✅ Gestionar inscripciones
 
+═══════════════════════════════════════
+
 Saludos,
 Equipo de Gestiona tus Torneos
+Web: ${urlBase}
     `;
 
     const mailOptions = {
-      from: "Gestiona Tus Torneos",
+      from: `"Gestiona Tus Torneos" <${process.env.EMAIL_FROM}>`,
       to: destinatario,
       subject: asunto,
       html: contenidoHtml,
