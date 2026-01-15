@@ -258,6 +258,8 @@ function Registrarse({ onOpenLogin }) {
             };
             
             const resultado = await registro(datosRegistro);
+
+            console.log('Datos que se guardarán en la base de Datos:', datosRegistro)
             
             if (resultado.success) {
                 setSuccess("✅ Usuario registrado exitosamente! Redirigiendo...");

@@ -254,6 +254,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       fecha_fin, 
       ubicacion,
       puntos_banda,
+      puntos_ejercito,
       participantes_max,
       equipos_max,
       estado,
@@ -424,6 +425,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         fecha_fin, 
         ubicacion, 
         puntos_banda, 
+        puntos_ejercito,
         participantes_max, 
         equipos_max,
         estado, 
@@ -436,7 +438,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         tipo_torneo === 'Por equipos' ? 'Por equipos' : 'Individual',
@@ -445,6 +447,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         fecha_inicio, 
         fecha_fin || null, 
         ubicacion || null,  // ✅ Asegurar que se guarde
+        0,
         puntos_banda,
         participantes_max,
         equipos_max,

@@ -55,7 +55,7 @@ CREATE TABLE torneos_sistemas (
 );
 
 CREATE TABLE organizadores_torneos (
-	id INT PRIMARY KEY AUTO_INCREMENT,
+	  id INT PRIMARY KEY AUTO_INCREMENT,
     torneo_id INT NOT NULL,
     usuario_id INT NOT NULL,
     fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
