@@ -325,7 +325,8 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         rondas_max, 
         fecha_inicio, 
         fecha_fin, 
-        ubicacion, 
+        ubicacion,
+        puntos_banda,
         puntos_ejercito, 
         participantes_max, 
         estado, 
@@ -338,7 +339,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         'WARMASTER',
@@ -347,6 +348,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         fecha_inicio, 
         fecha_fin || null, 
         ubicacion || null, 
+        0,
         puntos_ejercito,
         participantes_max,
         estado,

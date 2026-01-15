@@ -248,15 +248,14 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       nombre_torneo, 
       tipo_torneo,
       num_jugadores_equipo,
-      rondas_max,
+      rondas_max: rondas_max_raw,
       epocas_disponibles: epocas_raw,
       fecha_inicio, 
       fecha_fin, 
       ubicacion,
-      puntos_banda,
-      puntos_ejercito,
-      participantes_max,
-      equipos_max,
+      puntos_banda: puntos_banda_raw,
+      participantes_max: participantes_max_raw,
+      equipos_max: equipos_max_raw,
       estado,
       partida_ronda_1,
       partida_ronda_2,
@@ -265,6 +264,11 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       partida_ronda_5,
       organizadores_emails: organizadores_raw
     } = req.body;
+
+    const rondas_max = parseInt(rondas_max_raw);
+    const puntos_banda = parseInt(puntos_banda_raw);
+    const participantes_max = parseInt(participantes_max_raw);
+    const equipos_max = parseInt(equipos_max_raw);
 
     // ✅ CORREGIDO: Parsear épocas si viene como string
     let epocas_disponibles;

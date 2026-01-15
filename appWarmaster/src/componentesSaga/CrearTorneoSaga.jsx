@@ -52,7 +52,7 @@ function CrearTorneoSaga() {
     if (tipoTorneo === "Por equipos") {
         setParticipantesMax(equiposMax * numJugadoresEquipo);
     }
-}, [equiposMax, numJugadoresEquipo, tipoTorneo]);
+    }, [equiposMax, numJugadoresEquipo, tipoTorneo]);
 
     const handleEpocaSeleccion = (epoca) => {
         if (tipoTorneo === "Individual") {
