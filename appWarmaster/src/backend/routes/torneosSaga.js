@@ -3909,16 +3909,6 @@ router.patch('/:torneoId/equipos/:equipoId/pago', verificarToken, verificarOrgan
             return res.status(400).json(errorResponse('Valor de pago inválido. Debe ser "pendiente" o "pagado"'));
         }
 
-        // Verificar que el usuario es organizador del torneo
-        const [torneo] = await pool.execute(
-            'SELECT created_by FROM torneos_sistemas WHERE id = ?',
-            [torneoId]
-        );
-        
-        if (!torneo.length || torneo[0].created_by !== req.userId) {
-            return res.status(403).json(errorResponse('No tienes permisos'));
-        }
-
         // Actualizar estado de pago del equipo
         const [resultEquipo] = await pool.execute(`
             UPDATE torneo_saga_equipo 
