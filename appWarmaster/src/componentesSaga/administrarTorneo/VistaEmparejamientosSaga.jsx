@@ -29,7 +29,7 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const [partidaSeleccionada, setPartidaSeleccionada] = useState(null);
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [esOrganizador, setEsOrganizador] = useState(false);
-        const [esParticipante, setEsParticipante] = useState (false)
+    const [esParticipante, setEsParticipante] = useState(false);
 
     const esTorneoEquipos = () => torneo?.tipo_torneo === 'Por equipos';
 
@@ -64,12 +64,11 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     }, [torneoId]);
 
     //VER SI ES PARTICIPANTE O NO DEL TORNEO
-    useEffect (() => {
-        if(usuarioActual && (jugadores.length > 0 || equipos.length >0)) {
-            setEsParticipante(verificarEsParticipante())
+    useEffect(() => {
+        if(usuarioActual && (jugadores.length > 0 || equipos.length > 0)) {
+            setEsParticipante(verificarEsParticipante());
         }
-    }, [usuarioActual, jugadores, equipos, torneo])
-
+    }, [usuarioActual, jugadores, equipos, torneo]);
 
     const cargarDatos = async () => {
         try {
@@ -116,95 +115,93 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     };
 
     const verificarEsParticipante = () => {
-        if (!usuarioActual?.id ) return false
+        if (!usuarioActual?.id) return false;
 
         if (esTorneoEquipos()) {
             return equipos.some(equipo => 
-                equipo.jugadores?.some(j=> j.jugador_id === usuarioActual.id)
-            )
+                equipo.jugadores?.some(j => j.jugador_id === usuarioActual.id)
+            );
         } else {
-            return jugadores.some (j => 
+            return jugadores.some(j => 
                 j.jugador_id === usuarioActual.id || j.id === usuarioActual.id
-            )
+            );
         }
-    }
+    };
 
-     const puedeVerPartidas = () => {
+    const puedeVerPartidas = () => {
         // El organizador siempre puede ver
         if (esOrganizador) return true;
         
-        // Si el torneo está finalizado, todos pueden ver
+        // Si el torneo está finalizado, TODOS pueden ver
         if (torneo?.estado === 'finalizado') return true;
         
-        // Si el torneo está en curso, solo los participantes pueden ver
-        if (torneo?.estado === 'en_curso') {
-            return esParticipante;
-        }
+        // Si el torneo está en curso, TODOS pueden ver
+        if (torneo?.estado === 'en_curso') return true;
         
-        // Si está pendiente, nadie puede ver excepto el organizador
+        // Si está pendiente, solo el organizador puede ver
         return false;
     };
 
     const cargarTodasLasPartidas = async (tId = torneoId) => {
         try {
-
             const token = localStorage.getItem('token');
-            if (!token) {
-                setTodasLasPartidas([]);
-                return;
+            
+            try {
+                const response = await torneosSagaApi.obtenerPartidasTorneo(tId);
+                const partidas = response?.data || response || [];
+                const partidasArray = Array.isArray(partidas) ? partidas : [];
+                setTodasLasPartidas(partidasArray);
+                
+            } catch (err) {
+                console.warn('No se pudieron cargar todas las partidas:', err.message);
+                
+                if (!token || err.message?.includes('permisos') || err.message?.includes('Token')) {
+                    setTodasLasPartidas([]);
+                } else {
+                    throw err;
+                }
             }
-
-            const response = await torneosSagaApi.obtenerPartidasTorneo(tId);
-            const partidas = response?.data || response || []
-            const partidasArray = Array.isArray(partidas) ? partidas : []
-
-            setTodasLasPartidas(partidasArray);
         } catch (err) {
-        console.error('Error al cargar todas las partidas:', err);
-        if (err.message?.includes('Token no proporcionado') || 
-            err.message?.includes('Acceso denegado')) {
+            console.error('Error al cargar todas las partidas:', err);
             setTodasLasPartidas([]);
         }
-    }
-};
+    };
 
     const cargarPartidasRonda = async (tId = torneoId, ronda = torneo?.ronda_actual) => {
-    try {
-        setCargandoPartidas(true);
+        try {
+            setCargandoPartidas(true);
 
-        //PARA COMPROBAR SI EL VISITANTE TIENE TOKEN
-         const token = localStorage.getItem('token');
-        if (!token) {
+            const token = localStorage.getItem('token');
+            
+            try {
+                let response;
+                if (esTorneoEquipos()) {
+                    response = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
+                } else {
+                    response = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
+                }
+
+                const partidas = response?.data || response || [];
+                const partidasArray = Array.isArray(partidas) ? partidas : [];
+                setPartidasGuardadas(partidasArray);
+                
+            } catch (err) {
+                console.warn('No se pudieron cargar emparejamientos:', err.message);
+                
+                if (!token || err.message?.includes('permisos') || err.message?.includes('Token')) {
+                    setPartidasGuardadas([]);
+                } else {
+                    throw err;
+                }
+            }
+             
+        } catch (err) {
+            console.error('Error al cargar partidas:', err);
             setPartidasGuardadas([]);
-            return;
+        } finally {
+            setCargandoPartidas(false);
         }
-        
-        // PARA CARGAR EL ENDPOINT DEPENDIENDO DEL TIPO DE TORNEO
-        let response;
-        if (esTorneoEquipos()) {
-            response = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
-        } else {
-            response = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
-        }
-
-        const partidas = response?.data || response || []
-        const partidasArray = Array.isArray (partidas) ? partidas : []
-
-        setPartidasGuardadas(partidasArray);
-         
-    }catch (err) {
-        console.error('Error al cargar partidas:', err);
-        if (err.message?.includes('Token no proporcionado') || 
-            err.message?.includes('Acceso denegado')) {
-            setPartidasGuardadas([]);
-        } else {
-            // Otros errores sí se muestran
-            console.error('Error inesperado:', err);
-        }
-    } finally {
-        setCargandoPartidas(false);
-    }
-};
+    };
 
     const partidasPorRonda = () => {
         const grupos = {};
@@ -225,179 +222,177 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     };
 
     const handleGenerarEmparejamientos = async () => {
-    try {
-        if (!torneoId) {
-            alert('⚠️ Error: No se encontró el ID del torneo');
-            return;
-        }
-
-        const esEquipos = esTorneoEquipos();
-        const minParticipantes = esEquipos ? equipos.length : jugadores.length;
-
-        // Validar participantes mínimos
-        if (minParticipantes < 2) {
-            alert(`⚠️ Se necesitan al menos 2 ${esEquipos ? 'equipos' : 'jugadores'} para generar emparejamientos`);
-            return;
-        }
-
-        // Preparar participantes SOLO para torneos individuales
-        let participantes = [];
-        
-        if (!esEquipos) {
-            const responseClasificacion = await torneosSagaApi.obtenerClasificacionIndividual (torneoId);
-            const clasificacion = responseClasificacion.data || responseClasificacion || [];
-    
-            participantes = jugadores.map(j => {
-                const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
-                return {
-                    ...j,
-                    puntos_torneo: stats?.puntos_torneo || 0,
-                    puntos_victoria: stats?.puntos_victoria || 0,
-                    puntos_masacre: stats?.puntos_masacre || 0,
-                    partidas_jugadas: stats?.partidas_jugadas || 0
-                };
-            });
-        }
-
-        // 🎯 LLAMADA UNIFICADA
-        const nuevosEmparejamientos = await generarEmparejamientos(
-            torneoId,
-            torneo.ronda_actual || 1,
-            esEquipos ? 'Por equipos' : 'individual',
-            participantes
-        );
-        
-        setEmparejamientos(Array.isArray(nuevosEmparejamientos) ? nuevosEmparejamientos : []);
-        alert(`✅ ${nuevosEmparejamientos.length} emparejamientos generados correctamente`);
-        
-    } catch (error) {
-        console.error('❌ Error al generar emparejamientos:', error);
-        alert(`Error al generar emparejamientos: ${error.message}`);
-        setEmparejamientos([]);
-    }
-};
-
-    const guardarResultados = async () => {
-    try {
-        setGuardando(true);
-        setError(null);
-
-        if (!emparejamientos || emparejamientos.length === 0) {
-            alert('⚠️ Primero debes generar los emparejamientos');
-            return;
-        }
-  
-        let nombreEscenario;
-        
-        if (torneo.tipo_torneo === 'Por equipos') {
-            const rondas = [
-                torneo.partida_ronda_1,
-                torneo.partida_ronda_2,
-                torneo.partida_ronda_3,
-                torneo.partida_ronda_4,
-                torneo.partida_ronda_5
-            ].filter(Boolean);
-            
-            nombreEscenario = rondas.length > 0 
-                ? rondas.join(' / ') 
-                : 'Escenarios por definir';
-        } else {
-            // Para torneos individuales, usar el escenario de la ronda actual
-            nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
-            
-            if (!nombreEscenario) {
-                alert(`⚠️ No se encontró el escenario configurado para la Ronda ${torneo.ronda_actual}`);
+        try {
+            if (!torneoId) {
+                alert('⚠️ Error: No se encontró el ID del torneo');
                 return;
             }
-        }
 
-        const confirmar = window.confirm(
-            `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?\n\n` +
-            `Escenario: ${nombreEscenario}`
-        );
+            const esEquipos = esTorneoEquipos();
+            const minParticipantes = esEquipos ? equipos.length : jugadores.length;
+
+            // Validar participantes mínimos
+            if (minParticipantes < 2) {
+                alert(`⚠️ Se necesitan al menos 2 ${esEquipos ? 'equipos' : 'jugadores'} para generar emparejamientos`);
+                return;
+            }
+
+            // Preparar participantes SOLO para torneos individuales
+            let participantes = [];
+            
+            if (!esEquipos) {
+                const responseClasificacion = await torneosSagaApi.obtenerClasificacionIndividual(torneoId);
+                const clasificacion = responseClasificacion.data || responseClasificacion || [];
         
-        if (!confirmar) return;
+                participantes = jugadores.map(j => {
+                    const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
+                    return {
+                        ...j,
+                        puntos_torneo: stats?.puntos_torneo || 0,
+                        puntos_victoria: stats?.puntos_victoria || 0,
+                        puntos_masacre: stats?.puntos_masacre || 0,
+                        partidas_jugadas: stats?.partidas_jugadas || 0
+                    };
+                });
+            }
 
-        const todasLasPartidas = []
-        let  mesaCounter = 1
-        const esEquipos = esTorneoEquipos();
+            // 🎯 LLAMADA UNIFICADA
+            const nuevosEmparejamientos = await generarEmparejamientos(
+                torneoId,
+                torneo.ronda_actual || 1,
+                esEquipos ? 'Por equipos' : 'individual',
+                participantes
+            );
+            
+            setEmparejamientos(Array.isArray(nuevosEmparejamientos) ? nuevosEmparejamientos : []);
+            alert(`✅ ${nuevosEmparejamientos.length} emparejamientos generados correctamente`);
+            
+        } catch (error) {
+            console.error('❌ Error al generar emparejamientos:', error);
+            alert(`Error al generar emparejamientos: ${error.message}`);
+            setEmparejamientos([]);
+        }
+    };
 
-        emparejamientos.forEach ((emp) => {
-            if (emp.partidas && Array.isArray(emp.partidas)) {
-                emp.partidas.forEach ((partida)=> {
+    const guardarResultados = async () => {
+        try {
+            setGuardando(true);
+            setError(null);
 
+            if (!emparejamientos || emparejamientos.length === 0) {
+                alert('⚠️ Primero debes generar los emparejamientos');
+                return;
+            }
+      
+            let nombreEscenario;
+            
+            if (torneo.tipo_torneo === 'Por equipos') {
+                const rondas = [
+                    torneo.partida_ronda_1,
+                    torneo.partida_ronda_2,
+                    torneo.partida_ronda_3,
+                    torneo.partida_ronda_4,
+                    torneo.partida_ronda_5
+                ].filter(Boolean);
+                
+                nombreEscenario = rondas.length > 0 
+                    ? rondas.join(' / ') 
+                    : 'Escenarios por definir';
+            } else {
+                // Para torneos individuales, usar el escenario de la ronda actual
+                nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
+                
+                if (!nombreEscenario) {
+                    alert(`⚠️ No se encontró el escenario configurado para la Ronda ${torneo.ronda_actual}`);
+                    return;
+                }
+            }
+
+            const confirmar = window.confirm(
+                `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?\n\n` +
+                `Escenario: ${nombreEscenario}`
+            );
+            
+            if (!confirmar) return;
+
+            const todasLasPartidas = [];
+            let mesaCounter = 1;
+            const esEquipos = esTorneoEquipos();
+
+            emparejamientos.forEach((emp) => {
+                if (emp.partidas && Array.isArray(emp.partidas)) {
+                    emp.partidas.forEach((partida) => {
+                        todasLasPartidas.push({
+                            mesa: mesaCounter++,
+                            jugador1_id: partida.jugador1_id,
+                            jugador2_id: partida.jugador2_id,
+                            equipo1_id: emp.equipo1_id,
+                            equipo2_id: emp.equipo2_id,
+                            epoca: partida.epoca || null,
+                            es_bye: partida.es_bye || 0,
+                            nombre_partida: nombreEscenario,
+                            ronda: torneo.ronda_actual,
+                        });
+                    });
+                } else {
                     todasLasPartidas.push({
                         mesa: mesaCounter++,
-                        jugador1_id: partida.jugador1_id,
-                        jugador2_id: partida.jugador2_id,
-                        equipo1_id: emp.equipo1_id,
-                        equipo2_id: emp.equipo2_id,
-                        epoca: partida.epoca || null,
-                        es_bye: partida.es_bye || 0,
+                        jugador1_id: emp.jugador1_id,
+                        jugador2_id: emp.jugador2_id,
+                        equipo1_id: null,
+                        equipo2_id: null,
+                        epoca: emp.epoca || null,
+                        es_bye: emp.es_bye || 0,
                         nombre_partida: nombreEscenario,
                         ronda: torneo.ronda_actual,
-                    })
-                })
+                    });
+                }
+            });
+
+            const errores = [];
+            todasLasPartidas.forEach((partida, index) => {
+                if(!partida.jugador1_id) {
+                    errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID (partida ${index+1})`);
+                }
+            });
+
+            if (errores.length > 0){
+                console.error('Errores de validación: ', errores);
+                console.error('Partidas con error: ', todasLasPartidas);
+                alert('Error: Faltan IDs: \n' + errores.join('\n'));
+                return;
+            }
+
+            // 🎯 Usar el endpoint correcto según el tipo de torneo
+            if (esEquipos) {
+                await torneosSagaApi.guardarEmparejamientosEquipos(
+                    torneo.id,
+                    todasLasPartidas,
+                    torneo.ronda_actual
+                );
             } else {
-
-                todasLasPartidas.push({
-                    mesa: mesaCounter++,
-                    jugador1_id: emp.jugador1_id,
-                    jugador2_id: emp.jugador2_id ,
-                    equipo1_id: null,
-                    equipo2_id: null,
-                    epoca: emp.epoca || null,
-                    es_bye: emp.es_bye || 0,
-                    nombre_partida: nombreEscenario,
-                    ronda: torneo.ronda_actual,
-                })
+                await torneosSagaApi.guardarEmparejamientosIndividuales(
+                    torneo.id,
+                    todasLasPartidas,
+                    torneo.ronda_actual
+                );
             }
-        })
 
-        const errores= []
-        todasLasPartidas.forEach((partida, index) => {
-            if(!partida.jugador1_id) {
-                errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID (partida ${index+1})`)
-            }
-        })
+            alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}\nEscenario: ${nombreEscenario}`);
 
-        if (errores.length > 0){
-            console.error('Errores de validación: ', errores)
-            console.error('Partidas con error: ' , todasLasPartidas)
-            alert ('Error:  Faltan IDs: \n' + errores.join('\n'))
-            return
+            setEmparejamientos([]);
+
+            await cargarPartidasRonda();
+            await cargarTodasLasPartidas();
+        
+        } catch (err) {
+            console.error('❌ Error completo al guardar:', err);
+            setError(err.message || 'No se pudieron guardar los emparejamientos');
+            alert(`❌ Error: ${err.message}`);
+        } finally {
+            setGuardando(false);
         }
-
-        // 🎯 Usar el endpoint correcto según el tipo de torneo
-        if (esEquipos) {
-            await torneosSagaApi.guardarEmparejamientosEquipos(
-                torneo.id,
-                todasLasPartidas,
-                torneo.ronda_actual
-            );
-        } else {
-            await torneosSagaApi.guardarEmparejamientosIndividuales(
-                torneo.id,
-                todasLasPartidas,
-                torneo.ronda_actual
-            );
-        }
-
-        alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}\nEscenario: ${nombreEscenario}`);
-
-        setEmparejamientos([])
-
-        await cargarPartidasRonda();
-        await cargarTodasLasPartidas();
-    
-    } catch (err) {
-        console.error('❌ Error completo al guardar:', err);
-        setError(err.message || 'No se pudieron guardar los emparejamientos');
-        alert(`❌ Error: ${err.message}`);
-    } finally {
-        setGuardando(false);
-    }
-};
+    };
 
     const generarSiguienteRonda = async () => {
         try {
@@ -441,7 +436,35 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     };
 
     const puedeEditarPartidas = () => {
-        return torneo?.estado === 'en_curso';
+        // Solo si el torneo está en curso
+        if (torneo?.estado !== 'en_curso') return false;
+        
+        // El organizador siempre puede editar
+        if (esOrganizador) return true;
+        
+        // Los participantes pueden editar
+        return esParticipante;
+    };
+
+    const puedeEditarEstaPartida = (partida) => {
+        // Si no está en curso, nadie puede editar
+        if (torneo?.estado !== 'en_curso') return false;
+        
+        // Si la partida está confirmada, solo el organizador puede desconfirmarla
+        if (partida.resultado_confirmado && !esOrganizador) return false;
+        
+        // El organizador puede editar cualquier partida
+        if (esOrganizador) return true;
+        
+        // Los participantes solo pueden editar sus propias partidas
+        if (!esParticipante || !usuarioActual) return false;
+        
+        // Verificar si es jugador de esta partida
+        const esJugadorDeEstaPartida = 
+            partida.jugador1_id === usuarioActual.id || 
+            partida.jugador2_id === usuarioActual.id;
+        
+        return esJugadorDeEstaPartida;
     };
 
     const esBye = (partida) => {
@@ -459,27 +482,27 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     };
 
     const confirmarPartida = async (partidaId, confirmar) => {
-    try {
-        // 🎯 Usar el endpoint correcto según tipo de torneo
-        if (esTorneoEquipos()) {
-            await torneosSagaApi.confirmarResultadoEquipo(torneo.id, partidaId, confirmar);
-        } else {
-            await torneosSagaApi.confirmarResultado(torneo.id, partidaId, confirmar);
+        try {
+            // 🎯 Usar el endpoint correcto según tipo de torneo
+            if (esTorneoEquipos()) {
+                await torneosSagaApi.confirmarResultadoEquipo(torneo.id, partidaId, confirmar);
+            } else {
+                await torneosSagaApi.confirmarResultado(torneo.id, partidaId, confirmar);
+            }
+            
+            alert(confirmar 
+                ? '✅ Resultado confirmado. Los puntos se han sumado a las clasificaciones.' 
+                : '⚠️ Resultado desconfirmado. Los puntos se han restado de las clasificaciones.'
+            );
+            
+            await cargarPartidasRonda();
+            await cargarTodasLasPartidas();
+            
+        } catch (error) {
+            console.error('Error al confirmar resultado:', error);
+            alert(`❌ Error: ${error.message}`);
         }
-        
-        alert(confirmar 
-            ? '✅ Resultado confirmado. Los puntos se han sumado a las clasificaciones.' 
-            : '⚠️ Resultado desconfirmado. Los puntos se han restado de las clasificaciones.'
-        );
-        
-        await cargarPartidasRonda();
-        await cargarTodasLasPartidas();
-        
-    } catch (error) {
-        console.error('Error al confirmar resultado:', error);
-        alert(`❌ Error: ${error.message}`);
-    }
-};
+    };
 
     /*
     FUNCION PARA AGRUPAR LOS EMPAREJAMIENTOS DE LOS TORNEOS POR EQUIPOS EN FUNCIONES
@@ -532,7 +555,11 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
         const partidaEsBye = esBye(partida);
         const estaConfirmado = partida.resultado_confirmado;
-        const puedeEditar = esRondaActual && puedeEditarPartidas() && !partidaEsBye && !estaConfirmado;
+        
+        // Verificar permisos de edición
+        const puedeEditar = esRondaActual && 
+                            puedeEditarEstaPartida(partida) && 
+                            !partidaEsBye;
 
         return (
             <div 
@@ -541,7 +568,8 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                 onClick={() => puedeEditar && abrirModalPartida(partida)}
                 style={{
                     border: `2px solid ${estaConfirmado ? '#4caf50' : '#ff9800'}`,
-                    background: estaConfirmado ? '#e8f5e9' : '#fff'
+                    background: estaConfirmado ? '#e8f5e9' : '#fff',
+                    cursor: puedeEditar ? 'pointer' : 'default'
                 }}
             >
                 {puedeEditar && (
@@ -570,7 +598,7 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                     </button>
                 )}
 
-               <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
+                <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
                     Mesa {partida.mesa || index + 1}
                     {partidaEsBye ? ' ⭐ BYE' : ''} 
                     {partida.epoca && ` - 📅 ${partida.epoca}`}
@@ -601,10 +629,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
 
                     {partida.jugador2_nombre ? (
                         <div className="jugador">
-                             <div className="nombre">
-                            {partida.jugador2_nombre}
-                            {partida.jugador2?.nombre_alias && ` "${partida.jugador2?.nombre_alias}"`}
-                        </div>
+                            <div className="nombre">
+                                {partida.jugador2_nombre}
+                                {partida.jugador2?.nombre_alias && ` "${partida.jugador2?.nombre_alias}"`}
+                            </div>
                             {partida.jugador2?.equipo_nombre && (
                                 <div className="equipo">🏆 {partida.jugador2.equipo_nombre}</div>
                             )}
@@ -630,71 +658,71 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     };
 
     const renderPartidas = (partidas, esRondaActual = false) => {
-    if (!esTorneoEquipos()) {
-        return partidas.map((partida, index) => 
-            renderPartidaIndividual(partida, index, esRondaActual)
-        );
-    }
-    
-    const rondas = [
-        torneo.partida_ronda_1,
-        torneo.partida_ronda_2,
-        torneo.partida_ronda_3,
-        torneo.partida_ronda_4 || null,
-        torneo.partida_ronda_5 || null
-    ]
+        if (!esTorneoEquipos()) {
+            return partidas.map((partida, index) => 
+                renderPartidaIndividual(partida, index, esRondaActual)
+            );
+        }
+        
+        const rondas = [
+            torneo.partida_ronda_1,
+            torneo.partida_ronda_2,
+            torneo.partida_ronda_3,
+            torneo.partida_ronda_4 || null,
+            torneo.partida_ronda_5 || null
+        ];
 
-    const rondasValidas = rondas.filter(ronda => ronda)
+        const rondasValidas = rondas.filter(ronda => ronda);
 
-    const nombresPartidas = {
-        'En cada ronda se jugarán' : rondasValidas.join('/')     
-    }
+        const nombresPartidas = {
+            'En cada ronda se jugarán': rondasValidas.join('/')     
+        };
 
-    const grupos = agruparPartidasPorEquipos(partidas);
-    
-    return Object.entries(grupos).map(([claveGrupo, grupo]) => (
-        <div key={claveGrupo} className="enfrentamiento-equipos">
-            {/* HEADER DEL ENFRENTAMIENTO */}
-                    <div className="header-equipos">
-            <h4>
-                ⚔️ {grupo.equipo1_nombre} 
-                {grupo.equipo2_nombre ? ` vs ${grupo.equipo2_nombre}` : ' (BYE)'}
-            </h4>
-            <span className="total-partidas">
-                {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? 'partida' : 'partidas'}
-            </span>
-            {/* 🎯 MOSTRAR ESCENARIO SOLO SI EL TORNEO ESTÁ EN CURSO */}
-            {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
-                <div className="escenario">
-                    📋 {nombresPartidas['En cada ronda se jugarán'] || 'Escenario por definir'}
+        const grupos = agruparPartidasPorEquipos(partidas);
+        
+        return Object.entries(grupos).map(([claveGrupo, grupo]) => (
+            <div key={claveGrupo} className="enfrentamiento-equipos">
+                {/* HEADER DEL ENFRENTAMIENTO */}
+                <div className="header-equipos">
+                    <h4>
+                        ⚔️ {grupo.equipo1_nombre} 
+                        {grupo.equipo2_nombre ? ` vs ${grupo.equipo2_nombre}` : ' (BYE)'}
+                    </h4>
+                    <span className="total-partidas">
+                        {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? 'partida' : 'partidas'}
+                    </span>
+                    {/* 🎯 MOSTRAR ESCENARIO SOLO SI EL TORNEO ESTÁ EN CURSO */}
+                    {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
+                        <div className="escenario">
+                            📋 {nombresPartidas['En cada ronda se jugarán'] || 'Escenario por definir'}
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
 
-            {/* PARTIDAS AGRUPADAS POR ÉPOCA */}
-            <div className="contenedor-epocas">
-                {Object.entries(grupo.partidasPorEpoca).map(([epoca, partidasEpoca]) => (
-                    <div key={epoca} className="grupo-epoca">
-                        {/* HEADER DE LA ÉPOCA */}
-                        <div className="epoca-header">
-                            <span className="epoca-badge-grande">📅 {epoca}</span>
-                            <span className="cantidad-partidas">
-                                ({partidasEpoca.length} {partidasEpoca.length === 1 ? 'partida' : 'partidas'})
-                            </span>
-                        </div>
+                {/* PARTIDAS AGRUPADAS POR ÉPOCA */}
+                <div className="contenedor-epocas">
+                    {Object.entries(grupo.partidasPorEpoca).map(([epoca, partidasEpoca]) => (
+                        <div key={epoca} className="grupo-epoca">
+                            {/* HEADER DE LA ÉPOCA */}
+                            <div className="epoca-header">
+                                <span className="epoca-badge-grande">📅 {epoca}</span>
+                                <span className="cantidad-partidas">
+                                    ({partidasEpoca.length} {partidasEpoca.length === 1 ? 'partida' : 'partidas'})
+                                </span>
+                            </div>
 
-                        {/* PARTIDAS DE ESTA ÉPOCA */}
-                        <div className="partidas-epoca">
-                            {partidasEpoca.map((partida, index) => 
-                                renderPartidaIndividual(partida, index, esRondaActual)
-                            )}
+                            {/* PARTIDAS DE ESTA ÉPOCA */}
+                            <div className="partidas-epoca">
+                                {partidasEpoca.map((partida, index) => 
+                                    renderPartidaIndividual(partida, index, esRondaActual)
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
-        </div>
-    ));
-};
+        ));
+    };
 
     if (loading) {
         return (
@@ -728,43 +756,43 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
             <div className="section-header">
                 <div>
                     <div>
-                    <h2>🎲 Emparejamientos {esTorneoEquipos() ? '(Por Equipos)' : '(Individuales)'}</h2>
-                    <p>Ronda {torneo.ronda_actual} de {torneo.rondas_max}</p>
+                        <h2>🎲 Emparejamientos {esTorneoEquipos() ? '(Por Equipos)' : '(Individuales)'}</h2>
+                        <p>Ronda {torneo.ronda_actual} de {torneo.rondas_max}</p>
+                        
+                        {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
+                            <>
+                                {esTorneoEquipos() ? (
+                                    // Para equipos: mostrar TODOS los escenarios
+                                    (() => {
+                                        const rondas = [
+                                            torneo.partida_ronda_1,
+                                            torneo.partida_ronda_2,
+                                            torneo.partida_ronda_3,
+                                            torneo.partida_ronda_4,
+                                            torneo.partida_ronda_5
+                                        ].filter(Boolean);
+                                        
+                                        return rondas.length > 0 ? (
+                                            <p>📋 Escenarios: {rondas.join(' / ')}</p>
+                                        ) : (
+                                            <p>⚠️ No hay escenarios configurados</p>
+                                        );
+                                    })()
+                                ) : (
+                                    // Para individuales: mostrar solo el escenario de la ronda actual
+                                    torneo[`partida_ronda_${torneo.ronda_actual}`] && (
+                                        <p>📋 {torneo[`partida_ronda_${torneo.ronda_actual}`]}</p>
+                                    )
+                                )}
+                            </>
+                        )}
+                        {/* CUANDO TORNEO NO INICIADO */}
+                        {torneo.estado === 'pendiente' && (
+                            <p>⏳ Los escenarios se mostrarán cuando el torneo esté en curso</p>
+                        )}
+                    </div>
                     
-                    {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') &&(
-                        <>
-                            {esTorneoEquipos() ? (
-                                // Para equipos: mostrar TODOS los escenarios
-                                (() => {
-                                    const rondas = [
-                                        torneo.partida_ronda_1,
-                                        torneo.partida_ronda_2,
-                                        torneo.partida_ronda_3,
-                                        torneo.partida_ronda_4,
-                                        torneo.partida_ronda_5
-                                    ].filter(Boolean);
-                                    
-                                    return rondas.length > 0 ? (
-                                        <p>📋 Escenarios: {rondas.join(' / ')}</p>
-                                    ) : (
-                                        <p>⚠️ No hay escenarios configurados</p>
-                                    );
-                                })()
-                            ) : (
-                                // Para individuales: mostrar solo el escenario de la ronda actual
-                                torneo[`partida_ronda_${torneo.ronda_actual}`] && (
-                                    <p>📋 {torneo[`partida_ronda_${torneo.ronda_actual}`]}</p>
-                                )
-                            )}
-                        </>
-                    )}
-                    {/* CUANDO TORNEO NO INICIADO */}
-                    {torneo.estado === 'pendiente' && (
-                        <p>⏳ Los escenarios se mostrarán cuando el torneo esté en curso</p>
-                    )}
-                        </div>
-                    
-                    {!esVistaPublica && (
+                    {!esVistaPublica && esOrganizador && (
                         <div className="botones-grupo">
                             <button 
                                 onClick={handleGenerarEmparejamientos}
@@ -798,9 +826,9 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                 </div>
             </div>
 
-            {partidasGuardadas.length > 0 && !puedeEditarPartidas() && (
+            {partidasGuardadas.length > 0 && !puedeEditarPartidas() && !esOrganizador && (
                 <div className="alerta-estado">
-                    <p>⚠️ El torneo debe estar en estado "En Curso" para introducir resultados</p>
+                    <p>⚠️ Solo los participantes pueden editar sus partidas cuando el torneo está en curso</p>
                 </div>
             )}
 
@@ -813,9 +841,6 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                             <>⏳ Partidas completadas: {partidasGuardadas.filter(p => p.resultado_ps && p.resultado_ps !== 'pendiente').length}/{partidasGuardadas.length}</>
                         )}
                     </p>
-                    {!todasLasPartidasCompletas() && puedeEditarPartidas() && (
-                        <p>Haz clic en cualquier partida para registrar sus resultados</p>
-                    )}
                 </div>
             )}
 
@@ -837,21 +862,50 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                 </div>
             ) : (
                 <>
-                {!puedeVerPartidas() ? (
-                    <div className="empty-message">
-                        <p>🔒 Solo los participantes del torneo pueden ver los emparejamientos</p>
-                        {!usuarioActual && (
+                    {!puedeVerPartidas() ? (
+                        <div className="empty-message">
+                            <p>🔒 El torneo aún no ha comenzado</p>
                             <p style={{marginTop: '10px', fontSize: '0.9em', color: '#666'}}>
-                                Inicia sesión si eres participante
+                                Los emparejamientos se mostrarán cuando el torneo esté en curso
                             </p>
-                        )}
-                    </div>
-                ) : (
-                    <>
-                            {partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
-                                <div className="empty-message">
-                                    <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Mostrar mensaje informativo si no hay partidas cargadas pero sí permisos para ver */}
+                            {partidasGuardadas.length === 0 && todasLasPartidas.length === 0 && !cargandoPartidas && (
+                                <div className="info-message">
+                                    {torneo?.ronda_actual && torneo.ronda_actual > 0 ? (
+                                        <p>ℹ️ Aún no se han generado emparejamientos para esta ronda</p>
+                                    ) : (
+                                        <p>ℹ️ El torneo está en preparación. Los emparejamientos aparecerán pronto.</p>
+                                    )}
                                 </div>
+                            )}
+
+                            {/* Mensaje específico para participantes */}
+                            {partidasGuardadas.length > 0 && !todasLasPartidasCompletas() && puedeEditarPartidas() && (
+                                <div className="info-box">
+                                    {esOrganizador ? (
+                                        <p>📝 Como organizador, puedes editar cualquier partida haciendo clic en ella</p>
+                                    ) : (
+                                        <p>📝 Puedes editar tus propias partidas haciendo clic en ellas</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Mensaje para visitantes */}
+                            {partidasGuardadas.length > 0 && !usuarioActual && (
+                                <div className="info-box" style={{background: '#e3f2fd', borderColor: '#2196f3'}}>
+                                    <p>👁️ Estás viendo los emparejamientos como visitante. Inicia sesión si eres participante para registrar resultados.</p>
+                                </div>
+                            )}
+
+                            {partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
+                                esOrganizador && (
+                                    <div className="empty-message">
+                                        <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
+                                    </div>
+                                )
                             ) : (
                                 <>
                                     {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
@@ -867,9 +921,7 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                                         {partidasGuardadas.length > 0 ? (
                                             renderPartidas(partidasGuardadas, true)
                                         ) : (
-                                           
                                             emparejamientos.map((emp, index) => {
-                                                
                                                 const esEquipos = esTorneoEquipos();
                                                 
                                                 // 🎯 PARA TORNEOS DE EQUIPOS
@@ -913,15 +965,15 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                             
                                                 // 🎯 PARA TORNEOS INDIVIDUALES (mantener código original)
                                                 const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
-                                                const jugador1Alias = emp.jugador1?.nombre_alias
+                                                const jugador1Alias = emp.jugador1?.nombre_alias;
                                                 const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
-                                                const jugador2Alias = emp.jugador2?.nombre_alias
+                                                const jugador2Alias = emp.jugador2?.nombre_alias;
 
                                                 return (
                                                     <div key={index} className="emparejamiento-card">
                                                         <div className="mesa-numero preview">
                                                             Mesa {emp.mesa || index + 1} 
-                                                            {emp.es_bye === 1  && ' ⭐ BYE'}
+                                                            {emp.es_bye === 1 && ' ⭐ BYE'}
                                                         </div>
                                                         <div className="enfrentamiento">
                                                             <div className="jugador">
@@ -950,7 +1002,7 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                                 </>
                             )}
 
-                            {/* ✅ MODIFICADO: Rondas anteriores también protegidas */}
+                            {/* Rondas anteriores también protegidas */}
                             {rondasAnteriores.length > 0 && (
                                 <div className="rondas-anteriores">
                                     <h3>📜 Rondas Anteriores</h3>
