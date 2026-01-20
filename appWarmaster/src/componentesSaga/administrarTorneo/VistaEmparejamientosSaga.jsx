@@ -58,13 +58,11 @@ useEffect(() => {
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    console.log('⚠️ No hay token, no puede ser organizador');
                     setEsOrganizador(false);
                     return;
                 }
 
-                const response = await usuarioApi.verificarOrganizador(torneoId);
-                
+                const response = await usuarioApi.verificarOrganizador(torneoId);           
                 const esOrg = response.data?.esOrganizador || response.esOrganizador || false;
                 
                 setEsOrganizador(esOrg);
@@ -143,44 +141,24 @@ useEffect(() => {
     };
 
     const verificarEsParticipante = () => {
-    console.log('======================================');
-    console.log('🔍 VERIFICANDO SI ES PARTICIPANTE');
-    console.log('======================================');
-    console.log('usuarioActual:', usuarioActual);
-    console.log('esTorneoEquipos:', esTorneoEquipos());
     
     if (!usuarioActual?.id) {
-        console.log('❌ No hay usuario actual');
         return false;
     }
 
     if (esTorneoEquipos()) {
-        console.log('📋 VERIFICANDO EN EQUIPOS');
-        console.log('Equipos:', equipos);
-        
         const resultado = equipos.some(equipo => {
-            console.log('Equipo:', equipo);
-            console.log('Jugadores del equipo:', equipo.jugadores);
-            
+
             const encontrado = equipo.jugadores?.some(j => {
-                console.log('Comparando:', j.jugador_id, 'con', usuarioActual.id);
                 return j.jugador_id === usuarioActual.id;
             });
-            
             return encontrado;
         });
-        
-        console.log('Resultado equipos:', resultado);
-        console.log('======================================\n');
         return resultado;
     } else {
-        console.log('📋 VERIFICANDO EN JUGADORES');
         const resultado = jugadores.some(j => {
-            console.log('Comparando jugador:', j, 'con usuario:', usuarioActual.id);
             return j.jugador_id === usuarioActual.id || j.id === usuarioActual.id;
         });
-        console.log('Resultado jugadores:', resultado);
-        console.log('======================================\n');
         return resultado;
     }
 };
@@ -199,58 +177,56 @@ useEffect(() => {
         return false;
     };
 
-    const cargarTodasLasPartidas = async (tId = torneoId) => {
-        try {
+   const cargarTodasLasPartidas = async (tId = torneoId) => {
+    try {
+        let allPartidas = [];
+        
+        // 🎯 Obtener el número máximo de rondas
+        const rondasMax = torneo?.rondas_max || 5;
+        
+        console.log(`🔄 Cargando partidas de ${rondasMax} rondas...`);
+        
+        // 🔄 Cargar RONDA POR RONDA (igual que la ronda actual)
+        for (let r = 1; r <= rondasMax; r++) {
             try {
-                let response;
+                let roundResponse;
                 
-                // 🎯 SI ES ORGANIZADOR: usar endpoints protegidos completos
+                // 🎯 Usar EXACTAMENTE los mismos endpoints que cargarPartidasRonda()
                 if (esOrganizador) {
-                    // El organizador necesita acceso completo a través de sus endpoints protegidos
-                    // Cargar TODAS las partidas de TODAS las rondas
-                    const allPartidas = [];
-                    const rondasMax = torneo?.rondas_max || 5;
-                    
-                    for (let r = 1; r <= rondasMax; r++) {
-                        try {
-                            let roundResponse;
-                            if (esTorneoEquipos()) {
-                                roundResponse = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, r);
-                                console.log(`🔍 Emparejamientos equipos cargados para ronda ${r}`, roundResponse);
-                            } else {
-                                roundResponse = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, r);
-                            }
-                            
-                            const roundPartidas = roundResponse?.data || roundResponse || [];
-                            if (Array.isArray(roundPartidas) && roundPartidas.length > 0) {
-                                allPartidas.push(...roundPartidas);
-                            }
-                        } catch (err) {
-                            // Si una ronda no tiene partidas, continuar
-                            console.log(`Ronda ${r} sin partidas`, err);
-                        }
+                    if (esTorneoEquipos()) {
+                        roundResponse = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, r);
+                    } else {
+                        roundResponse = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, r);
                     }
-                    
-                    setTodasLasPartidas(allPartidas);
                 } else {
-                    // PARA VISITANTES Y PARTICIPANTES: usar endpoint público
-                    response = await torneosSagaApi.obtenerPartidasTorneoPublico(tId);
-                    const partidas = response?.data || response || [];
-                    const partidasArray = Array.isArray(partidas) ? partidas : [];
-                    setTodasLasPartidas(partidasArray);
-
-                    console.log('🔍 Todas las partidas cargadas para torneo público', partidasArray);
+                    // 👁️ PARA VISITANTES: usar endpoints públicos
+                    if (esTorneoEquipos()) {
+                        roundResponse = await torneosSagaApi.obtenerEmparejamientosEquiposPublico(tId, r);
+                    } else {
+                        roundResponse = await torneosSagaApi.obtenerEmparejamientosIndividualesPublico(tId, r);
+                    }
                 }
                 
+                const roundPartidas = roundResponse?.data || roundResponse || [];
+                if (Array.isArray(roundPartidas) && roundPartidas.length > 0) {
+                    console.log(`✅ Ronda ${r}: ${roundPartidas.length} partidas cargadas`);
+                    allPartidas.push(...roundPartidas);
+                } else {
+                    console.log(`ℹ️ Ronda ${r}: sin partidas`);
+                }
             } catch (err) {
-                console.warn('No se pudieron cargar todas las partidas:', err.message);
-                setTodasLasPartidas([]);
+                console.log(`⚠️ Ronda ${r}: error al cargar -`, err.message);
             }
-        } catch (err) {
-            console.error('Error al cargar todas las partidas:', err);
-            setTodasLasPartidas([]);
         }
-    };
+        
+        console.log(`📊 Total partidas cargadas: ${allPartidas.length}`);
+        setTodasLasPartidas(allPartidas);
+        
+    } catch (err) {
+        console.error('❌ Error al cargar todas las partidas:', err);
+        setTodasLasPartidas([]);
+    }
+};
 
     const cargarPartidasRonda = async (tId = torneoId, ronda = torneo?.ronda_actual) => {
         try {
@@ -263,7 +239,6 @@ useEffect(() => {
                 if (esOrganizador) {
                     if (esTorneoEquipos()) {
                         response = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
-                        console.log('🔍 Emparejamientos equipos cargados para ronda', ronda, response);
                     } else {
                         response = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
                     }
@@ -540,45 +515,22 @@ useEffect(() => {
     
     // 🎯 CORRECCIÓN: Verificar según tipo de torneo
     if (esTorneoEquipos()) {
-        // 🔍 DIAGNÓSTICO
-        console.log('======================================');
-        console.log('🔍 DIAGNÓSTICO DE PERMISOS - EQUIPOS');
-        console.log('======================================');
-        console.log('Usuario actual:', usuarioActual);
-        console.log('Partida:', {
-            id: partida.id,
-            equipo1_id: partida.equipo1_id,
-            equipo2_id: partida.equipo2_id
-        });
-        console.log('Equipos cargados:', equipos);
-        
         // Buscar equipo1
         const equipo1 = equipos.find(eq => 
             eq.id === partida.equipo1_id || eq.equipo_id === partida.equipo1_id
-        );
-        console.log('Equipo 1 encontrado:', equipo1);
-        
+        ); 
         // Buscar equipo2
         const equipo2 = equipos.find(eq => 
             eq.id === partida.equipo2_id || eq.equipo_id === partida.equipo2_id
         );
-        console.log('Equipo 2 encontrado:', equipo2);
-        
         // Verificar si pertenece
         const perteneceEquipo1 = equipo1 && equipo1.jugadores?.some(j => {
-            console.log('Comparando jugador equipo1:', j, 'con usuario:', usuarioActual.id);
             return j.jugador_id === usuarioActual.id;
         });
         
         const perteneceEquipo2 = equipo2 && equipo2.jugadores?.some(j => {
-            console.log('Comparando jugador equipo2:', j, 'con usuario:', usuarioActual.id);
             return j.jugador_id === usuarioActual.id;
         });
-        
-        console.log('Pertenece equipo1:', perteneceEquipo1);
-        console.log('Pertenece equipo2:', perteneceEquipo2);
-        console.log('Puede editar:', perteneceEquipo1 || perteneceEquipo2);
-        console.log('======================================\n');
         
         return perteneceEquipo1 || perteneceEquipo2;
     } else {
@@ -682,34 +634,11 @@ useEffect(() => {
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
         const partidaEsBye = esBye(partida);
         const estaConfirmado = partida.resultado_confirmado;
-        
-         // 🔍 DIAGNÓSTICO TEMPORAL
-    console.log('======================================');
-    console.log('🔍 RENDERIZANDO PARTIDA', partida.id);
-    console.log('======================================');
-    console.log('esRondaActual:', esRondaActual);
-    console.log('esParticipante:', esParticipante);
-    console.log('usuarioActual:', usuarioActual);
-    console.log('torneo.estado:', torneo?.estado);
-    console.log('partidaEsBye:', partidaEsBye);
-    console.log('Partida completa:', partida);
-    
-    if (esTorneoEquipos()) {
-        console.log('📋 ES TORNEO DE EQUIPOS');
-        console.log('Equipos cargados:', equipos.length);
-        console.log('Detalle equipos:', equipos);
-    } else {
-        console.log('📋 ES TORNEO INDIVIDUAL');
-        console.log('Jugadores cargados:', jugadores.length);
-    }
-    
     // Verificar permisos de edición
     const puedeEditar = esRondaActual && 
                         puedeEditarEstaPartida(partida) && 
                         !partidaEsBye;
     
-    console.log('RESULTADO puedeEditar:', puedeEditar);
-    console.log('======================================\n');
         return (
             <div 
                 key={partida.id} 
