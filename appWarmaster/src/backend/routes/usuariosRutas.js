@@ -832,6 +832,61 @@ router.get('/verificarUsuario/:email', async (req, res) => {
   }
 });
 
+// ====== VERIFICAR SI ES ORGANIZADOR ========
+
+router.get('/:torneoId/verificar-organizador', verificarToken, async (req, res) => {
+  try {
+    const { torneoId } = req.params;
+    const userId = req.usuario?.userId || req.userId;
+    
+    console.log('🔍 Verificando organizador:', {
+      torneoId,
+      userId,
+      tieneUserId: !!userId
+    });
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'No autenticado'
+      });
+    }
+    
+    // Verificar si el usuario es organizador del torneo
+    const [organizador] = await pool.execute(
+      `SELECT * FROM organizadores_torneos 
+       WHERE torneo_id = ? AND usuario_id = ?`,
+      [torneoId, userId]
+    );
+    
+    const esOrganizador = organizador.length > 0;
+    
+    console.log('✅ Resultado verificación:', {
+      esOrganizador,
+      userId,
+      torneoId,
+      registrosEncontrados: organizador.length
+    });
+    
+    res.status(200).json({
+      success: true,
+      mensaje: 'Verificación completada',
+      data: {
+        esOrganizador,
+        userId,
+        torneoId
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al verificar organizador:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al verificar permisos'
+    });
+  }
+});
+
 // ===== RECUPERACIÓN DE CONTRASEÑA =====
 
 router.post('/recuperar-password', async (req, res) => {

@@ -93,12 +93,23 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
                 const j2 = jug2Epoca[i];
                 
                 if (j1 || j2) {
-                    partidasPorEpoca.push({
+                    console.log(`🔍 Partida ${epoca}:`, {
+                        j1_id_torneo: j1?.id,
+                        j1_usuario_id: j1?.jugador_id,
+                        j1_nombre: j1?.nombre || j1?.jugador_nombre,
+                        j2_id_torneo: j2?.id,
+                        j2_usuario_id: j2?.jugador_id,
+                        j2_nombre: j2?.nombre || j2?.jugador_nombre
+                    });
+
+                   partidasPorEpoca.push({
                         epoca: epoca === 'Sin época' ? null : epoca,
-                        jugador1_id: j1 ? (j1.jugador_id || j1.id) : null,
-                        jugador2_id: j2 ? (j2.jugador_id || j2.id) : null,
+                        jugador1_id: j1 ? j1.id : null,
+                        jugador2_id: j2 ? j2.id : null,
                         jugador1_nombre: j1 ? (j1.nombre || j1.jugador_nombre) : null,
                         jugador2_nombre: j2 ? (j2.nombre || j2.jugador_nombre) : null,
+                        jugador1_alias: j1 ? j1.nombre_alias : null,
+                        jugador2_alias: j2 ? j2.nombre_alias : null,
                         jugador1: j1,
                         jugador2: j2,
                         es_bye: !j2

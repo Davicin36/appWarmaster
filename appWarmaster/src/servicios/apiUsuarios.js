@@ -115,6 +115,13 @@ class apiUsuarios {
     });
   }
 
+  //======VERIFICAR SI ES ORGANIZADOR DEL TORNEO===========
+  async verificarOrganizador(torneoId) {
+      return this.request(`/${torneoId}/verificar-organizador`, {
+        method: 'GET'
+      });
+  }
+
   //===================
   //MODULOS PARA RECUPERACION CONTRASEÑA
   //===================

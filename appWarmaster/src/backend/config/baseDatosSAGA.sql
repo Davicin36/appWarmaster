@@ -124,6 +124,6 @@ CREATE TABLE partidas_saga (
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (equipo1_id) REFERENCES torneo_saga_equipo(id) ON DELETE SET NULL,   
   FOREIGN KEY (equipo2_id) REFERENCES torneo_saga_equipo(id) ON DELETE SET NULL,
-  FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),
-  FOREIGN KEY (jugador2_id) REFERENCES usuarios(id)
+  FOREIGN KEY (jugador1_id) REFERENCES jugador_torneo_saga(id),
+  FOREIGN KEY (jugador2_id) REFERENCES jugador_torneo_saga(id)
 );

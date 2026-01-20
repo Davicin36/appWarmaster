@@ -242,26 +242,17 @@ class TorneosSagaApi {
 // // MÉTODOS DE PARTIDAS
 // ========================
 
-// Obtener TODAS las partidas de un torneo (con filtro opcional de ronda)
-async obtenerPartidasTorneo(torneoId, ronda) {
-  const endpoint = ronda 
-    ? `/${torneoId}/partidasTorneoSaga?ronda=${ronda}`
-    : `/${torneoId}/partidasTorneoSaga`;
-  
-  const response = await this.request(endpoint);
-  
-  // ✅ EL BACKEND DEVUELVE UN ARRAY DIRECTO
-  if (Array.isArray(response)) {
-    return response;
-  }
-  
-  // Si por alguna razón viene envuelto
-  return response.partidas || response.data?.partidas || [];
-}
-
 //obtener partidas de un torneo
-  async obtenerPartida(torneoId, partidaId) {
+  async obtenerPartidaEspecifica(torneoId, partidaId) {
       return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`);
+  }
+
+  // ENDPOINT PÚBLICO para obtener todas las partidas del torneo
+  async obtenerPartidasTorneoPublico(torneoId) {
+      return this.request(`/${torneoId}/partidasTorneoSaga/publico`, {
+          method: 'GET',
+          requiresAuth: false
+      });
   }
 
   //crear una partida nueva
@@ -297,6 +288,13 @@ async obtenerEmparejamientosIndividuales(torneoId, ronda = null) {
   });
 }
 
+async obtenerEmparejamientosIndividualesPublico(torneoId, ronda) {
+    return this.request(`/${torneoId}/emparejamientos/publico?ronda=${ronda}`, {
+        method: 'GET',
+        requiresAuth: false // ⭐ NO requiere autenticación
+    });
+}
+
 async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
   return this.request(`/${torneoId}/guardarEmparejamientosIndividuales`, {
     method: 'POST',
@@ -305,6 +303,14 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
       ronda: ronda
     }
   });
+}
+
+// ENDPOINT PÚBLICO para obtener emparejamientos de equipos
+async obtenerEmparejamientosEquiposPublico(torneoId, ronda) {
+    return this.request(`/${torneoId}/emparejamientos-equipos/publico?ronda=${ronda}`, {
+        method: 'GET',
+        requiresAuth: false // ⭐ NO requiere autenticación
+    });
 }
 
 async obtenerEmparejamientosEquipos(torneoId, ronda = null) {

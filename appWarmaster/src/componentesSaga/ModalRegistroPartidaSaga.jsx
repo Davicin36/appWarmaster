@@ -44,8 +44,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
             const datosPartida = {
                 puntos_partida_j1: parseInt(resultado.puntos_partida_j1) || 0,
                 puntos_partida_j2: parseInt(resultado.puntos_partida_j2) || 0,
-                puntos_masacre_j1: parseInt(resultado.puntos_masacre_j1) || 0,
-                puntos_masacre_j2: parseInt(resultado.puntos_masacre_j2) || 0,
+                puntos_masacre_j1: parseInt(resultado.puntos_masacre_j1 ?? 0),
+                puntos_masacre_j2: parseInt(resultado.puntos_masacre_j2 ?? 0),
                 warlord_muerto_j1: resultado.warlord_muerto_j1,
                 warlord_muerto_j2: resultado.warlord_muerto_j2,
                 primer_jugador: resultado.primer_jugador
@@ -165,7 +165,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                             {esTorneoEquipos ? (
                                 <>
                                     <p><strong>Equipo:</strong> {partida.equipo1_nombre}</p>
-                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre}</p>
+                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre} - {partida.jugador1_alias}</p>
+                                    <p><strong>Facción:</strong> {partida.jugador1_faccion}</p>
                                 </>
                             ) : (
                                 <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
@@ -215,7 +216,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                             {esTorneoEquipos ? (
                                 <>
                                     <p><strong>Equipo:</strong> {partida.equipo1_nombre}</p>
-                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre}</p>
+                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre} - {partida.jugador1_alias}</p>
                                 </>
                             ) : (
                                 <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
@@ -418,7 +419,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                 <>
                                     <h4>{partida.equipo1_nombre}</h4>
                                     <p className="info-jugador-equipo">
-                                        👤 <strong>{partida.jugador1_nombre}</strong>
+                                        👤 <strong>{partida.jugador1_nombre} - {partida.jugador1_alias}</strong>
                                     </p>
                                     {partida.jugador1_faccion && (
                                         <p className="info-extra">⚔️ {partida.jugador1_faccion}</p>
@@ -478,9 +479,9 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                         <div className="jugador-resultado">
                             {esTorneoEquipos ? (
                                 <>
-                                    <h4>{partida.equipo2_nombre}</h4>
+                                    <h4>{partida.equipo2_nombre} </h4>
                                     <p className="info-jugador-equipo">
-                                        👤 <strong>{partida.jugador2_nombre}</strong>
+                                        👤 <strong>{partida.jugador2_nombre} - {partida.jugador2_alias}</strong>
                                     </p>
                                     {partida.jugador2_faccion && (
                                         <p className="info-extra">⚔️ {partida.jugador2_faccion}</p>
