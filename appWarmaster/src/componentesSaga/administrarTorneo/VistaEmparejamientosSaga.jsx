@@ -177,7 +177,7 @@ useEffect(() => {
         return false;
     };
 
-   const cargarTodasLasPartidas = async (tId = torneoId) => {
+   const cargarTodasLasPartidas = async (tId = torneoId) => { 
     try {
         let allPartidas = [];
         
