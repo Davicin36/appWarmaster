@@ -289,7 +289,7 @@ async obtenerEmparejamientosIndividuales(torneoId, ronda = null) {
 }
 
 async obtenerEmparejamientosIndividualesPublico(torneoId, ronda) {
-    return this.request(`/${torneoId}/emparejamientos/publico?ronda=${ronda}`, {
+    return this.request(`/${torneoId}/emparejamientos/publico/${ronda}`, {
         method: 'GET',
         requiresAuth: false // ⭐ NO requiere autenticación
     });

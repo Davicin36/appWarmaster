@@ -188,7 +188,7 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
         // ✅ NORMALIZAR CAMPOS
         const clasificacion = clasificacionData.map(j => ({
             ...j,
-            id: j.id || j.jugador_id,
+            id: j.id,
             jugador_id: j.jugador_id,
             puntos_victoria: j.puntos_victoria || j.puntos_victoria_totales || 0,
             puntos_torneo: j.puntos_torneo || j.puntos_torneo_totales || 0,

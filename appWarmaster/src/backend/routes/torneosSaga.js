@@ -5534,10 +5534,14 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, veri
         u1.apellidos as jugador1_apellidos,
         u1.nombre_alias as jugador1_alias,
         j1.faccion as jugador1_faccion,
+        j1.epoca as jugador1_epoca,
+        j1.equipo_id as jugador1_equipo_id,
         u2.nombre as jugador2_nombre,
         u2.apellidos as jugador2_apellidos,
         u2.nombre_alias as jugador2_alias,
-        j2.faccion as jugador2_faccion
+        j2.faccion as jugador2_faccion,
+        j2.epoca as jugador2_epoca,
+        j2.equipo_id as jugador2_equipo_id
       FROM partidas_saga ps
       LEFT JOIN jugador_torneo_saga j1 ON ps.jugador1_id = j1.id
       LEFT JOIN usuarios u1 ON j1.jugador_id = u1.id
@@ -5553,12 +5557,20 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, veri
     const partidasFormateadas = partidasConJoins.map(p => ({
         ...p,
         jugador1: {
+          nombre: p.jugador1_nombre,
+          apellidos: p.jugador1_apellidos,
           nombre_alias: p.jugador1_alias || null,
-          faccion: p.jugador1_faccion || null
+          faccion: p.jugador1_faccion || null,
+          epoca: p.jugador1_epoca || null,
+          equipo_id: p.jugador1_equipo_id || null
         },
         jugador2: p.jugador2_id ? {
+          nombre: p.jugador2_nombre,
+          apellidos: p.jugador2_apellidos,
           nombre_alias: p.jugador2_alias || null,
-          faccion: p.jugador2_faccion || null
+          faccion: p.jugador2_faccion || null,
+          epoca: p.jugador2_epoca || null,
+          equipo_id: p.jugador2_equipo_id || null
         } : null
     }));
     
@@ -5575,44 +5587,56 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, veri
 
 // ======= OBTENER EMPAREJAMIENTOS DE RONDA INDIVIDUALES PÚBLICOS (GET) =======
 
-router.get('/:torneoId/emparejamientos/publico', async (req, res) => {
+router.get('/:torneoId/emparejamientos/publico/:ronda', async (req, res) => {
   try {
-    const { torneoId } = req.params;
-    const ronda = req.query.ronda || 1;
+    const { torneoId, ronda } = req.params;
 
-    const [partidas] = await pool.query(`
+    const queryConJoins = `
       SELECT 
         ps.*,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
         u1.nombre_alias as jugador1_alias,
         j1.faccion as jugador1_faccion,
+        j1.epoca as jugador1_epoca,
+        j1.equipo_id as jugador1_equipo_id,
         u2.nombre as jugador2_nombre,
         u2.apellidos as jugador2_apellidos,
         u2.nombre_alias as jugador2_alias,
-        j2.faccion as jugador2_faccion
+        j2.faccion as jugador2_faccion,
+        j2.epoca as jugador2_epoca,
+        j2.equipo_id as jugador2_equipo_id
       FROM partidas_saga ps
       LEFT JOIN jugador_torneo_saga j1 ON ps.jugador1_id = j1.id
       LEFT JOIN usuarios u1 ON j1.jugador_id = u1.id
       LEFT JOIN jugador_torneo_saga j2 ON ps.jugador2_id = j2.id AND ps.es_bye = FALSE
       LEFT JOIN usuarios u2 ON j2.jugador_id = u2.id
       WHERE ps.torneo_id = ? AND ps.ronda = ?
-      ORDER BY ps.mesa ASC
-    `, [torneoId, ronda]);
+      ORDER BY ps.mesa, ps.id
+    `;
 
-    // Formatear con objetos anidados
-    const partidasFormateadas = partidas.map(p => ({
-      ...p,
-      jugador1: {
-        nombre_alias: p.jugador1_alias || null,
-        faccion: p.jugador1_faccion || null
-      },
-      jugador2: p.jugador2_id ? {
-        nombre_alias: p.jugador2_alias || null,
-        faccion: p.jugador2_faccion || null
-      } : null
+    const [partidasConJoins] = await pool.execute(queryConJoins, [torneoId, ronda]);
+    
+    // Formatear completo
+    const partidasFormateadas = partidasConJoins.map(p => ({
+        ...p,
+        jugador1: {
+          nombre: p.jugador1_nombre,
+          apellidos: p.jugador1_apellidos,
+          nombre_alias: p.jugador1_alias || null,
+          faccion: p.jugador1_faccion || null,
+          epoca: p.jugador1_epoca || null,
+          equipo_id: p.jugador1_equipo_id || null
+        },
+        jugador2: p.jugador2_id ? {
+          nombre: p.jugador2_nombre,
+          apellidos: p.jugador2_apellidos,
+          nombre_alias: p.jugador2_alias || null,
+          faccion: p.jugador2_faccion || null,
+          epoca: p.jugador2_epoca || null,
+          equipo_id: p.jugador2_equipo_id || null
+        } : null
     }));
-
     res.json(partidasFormateadas);
   } catch (error) {
     console.error('Error al obtener emparejamientos públicos:', error);
@@ -5620,7 +5644,7 @@ router.get('/:torneoId/emparejamientos/publico', async (req, res) => {
   }
 });
 
-// ======= OBTENER EMPAREJAMIENTOS DE EQUIPOS (GET) =======
+/// ======= OBTENER EMPAREJAMIENTOS DE EQUIPOS (GET) =======
 
 router.get('/:torneoId/obtenerEmparejamientosEquipos', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   try {
@@ -5698,7 +5722,26 @@ router.get('/:torneoId/obtenerEmparejamientosEquipos', verificarToken, verificar
     
     const [partidas] = await pool.execute(query, params);
     
-    res.json(partidas);
+    // ✅ FORMATEAR con objetos jugador1 y jugador2 completos
+    const partidasFormateadas = partidas.map(p => ({
+      ...p,
+      jugador1: {
+        nombre: p.jugador1_nombre,
+        apellidos: p.jugador1_apellidos,
+        nombre_alias: p.jugador1_alias || null,
+        faccion: p.jugador1_faccion || null,
+        epoca: p.jugador1_epoca || null
+      },
+      jugador2: p.jugador2_id ? {
+        nombre: p.jugador2_nombre,
+        apellidos: p.jugador2_apellidos,
+        nombre_alias: p.jugador2_alias || null,
+        faccion: p.jugador2_faccion || null,
+        epoca: p.jugador2_epoca || null
+      } : null
+    }));
+    
+    res.json(partidasFormateadas);
     
   } catch (error) {
     console.error('❌ ERROR COMPLETO:', error);
@@ -5712,40 +5755,61 @@ router.get('/:torneoId/obtenerEmparejamientosEquipos', verificarToken, verificar
 // ======= OBTENER EMPAREJAMIENTOS DE EQUIPOS PÚBLICOS (GET) =======
 
 router.get('/:torneoId/emparejamientos-equipos/publico', async (req, res) => {
-        try {
-            const { torneoId } = req.params;
-            const ronda = req.query.ronda || 1;
+  try {
+    const { torneoId } = req.params;
+    const ronda = req.query.ronda || 1;
 
-            const [partidas] = await pool.query(`
-                SELECT 
-                    u1.nombre as jugador1_nombre,
-                    u1.apellidos as jugador1_apellidos,
-                    u1.nombre_alias as jugador1_alias,
-                    j1.faccion as jugador1_faccion,
-                    u2.nombre as jugador2_nombre,
-                    u2.apellidos as jugador2_apellidos,
-                    u2.nombre_alias as jugador2_alias,
-                    j2.faccion as jugador2_faccion
-                    e1.nombre_equipo as equipo1_nombre,
-                    e2.nombre_equipo as equipo2_nombre
-                FROM partidas_saga ps
-                LEFT JOIN jugador_torneo_saga j1 ON ps.jugador1_id = j1.id
-                LEFT JOIN usuarios u1 ON j1.jugador_id = u1.id
-                LEFT JOIN jugador_torneo_saga j2 ON ps.jugador2_id = j2.id
-                LEFT JOIN usuarios u2 ON j2.jugador_id = u2.id
-                LEFT JOIN torneo_saga_equipos e1 ON ps.equipo1_id = e1.id
-                LEFT JOIN torneo_saga_equipos e2 ON ps.equipo2_id = e2.id
-                WHERE ps.torneo_id = ? AND ps.ronda = ?
-                ORDER BY ps.equipo1_id, ps.epoca, ps.mesa ASC
-            `, [torneoId, ronda]);
+    const [partidas] = await pool.query(`
+      SELECT 
+        ps.*,
+        u1.nombre as jugador1_nombre,
+        u1.apellidos as jugador1_apellidos,
+        u1.nombre_alias as jugador1_alias,
+        j1.faccion as jugador1_faccion,
+        j1.epoca as jugador1_epoca,
+        u2.nombre as jugador2_nombre,
+        u2.apellidos as jugador2_apellidos,
+        u2.nombre_alias as jugador2_alias,
+        j2.faccion as jugador2_faccion,
+        j2.epoca as jugador2_epoca,
+        e1.nombre_equipo as equipo1_nombre,
+        e2.nombre_equipo as equipo2_nombre
+      FROM partidas_saga ps
+      LEFT JOIN jugador_torneo_saga j1 ON ps.jugador1_id = j1.id
+      LEFT JOIN usuarios u1 ON j1.jugador_id = u1.id
+      LEFT JOIN jugador_torneo_saga j2 ON ps.jugador2_id = j2.id
+      LEFT JOIN usuarios u2 ON j2.jugador_id = u2.id
+      LEFT JOIN torneo_saga_equipo e1 ON ps.equipo1_id = e1.id
+      LEFT JOIN torneo_saga_equipo e2 ON ps.equipo2_id = e2.id
+      WHERE ps.torneo_id = ? AND ps.ronda = ?
+      ORDER BY ps.equipo1_id, ps.epoca, ps.mesa ASC
+    `, [torneoId, ronda]);
 
-            res.json(partidas);
-        } catch (error) {
-            console.error('Error al obtener emparejamientos de equipos públicos:', error);
-            res.status(500).json({ error: error.message });
-        }
-    }
-);
+    // ✅ FORMATEAR con objetos jugador1 y jugador2 completos
+    const partidasFormateadas = partidas.map(p => ({
+      ...p,
+      jugador1: {
+        nombre: p.jugador1_nombre,
+        apellidos: p.jugador1_apellidos,
+        nombre_alias: p.jugador1_alias || null,
+        faccion: p.jugador1_faccion || null,
+        epoca: p.jugador1_epoca || null
+      },
+      jugador2: p.jugador2_id ? {
+        nombre: p.jugador2_nombre,
+        apellidos: p.jugador2_apellidos,
+        nombre_alias: p.jugador2_alias || null,
+        faccion: p.jugador2_faccion || null,
+        epoca: p.jugador2_epoca || null
+      } : null
+    }));
+
+    res.json(partidasFormateadas);
+  } catch (error) {
+    console.error('Error al obtener emparejamientos de equipos públicos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // ======= GUARDAR EMPAREJAMIENTOS DE RONDA  INDIVIDUAL (POST) =======
 

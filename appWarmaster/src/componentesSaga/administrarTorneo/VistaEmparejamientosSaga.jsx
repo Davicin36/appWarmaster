@@ -408,7 +408,7 @@ useEffect(() => {
             const todasLasPartidas = [];
             let mesaCounter = 1;
             const esEquipos = esTorneoEquipos();
-
+            
             emparejamientos.forEach((emp) => {
                 if (emp.partidas && Array.isArray(emp.partidas)) {
                     emp.partidas.forEach((partida) => {
