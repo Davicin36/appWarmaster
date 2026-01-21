@@ -93,7 +93,8 @@ export const BANDAS_POR_EPOCA = {
   ],
   "Invasiones": [
     { nombre: "ROMANOS" },
-    { nombre: "GODOS" },
+    { nombre: "GODOS-OSTROGODOS" },
+    { nombre: "GODOS-VISIGODOS" },
     { nombre: "GALESES" },
     { nombre: "FRANCOS" },
     { nombre: "BRITANOS" },
@@ -160,6 +161,7 @@ export const BANDAS_POR_EPOCA = {
   ],
   "Caballeria": [
     { nombre: "INGLESES" },
+    { nombre: "INGLESES-GALESES" },
     { nombre: "FRANCESES" },
     { nombre: "FRANCESES-COMPAÑIA DE ORDENANZA" },
     { nombre: "COMPAÑIAS LIBRES" },
