@@ -543,7 +543,31 @@ useEffect(() => {
     }
 };
 
+// Función para verificar si la partida tiene datos introducidos
+    const tieneDatos = (partida) => {
+        // Verificar si hay un resultado registrado (no pendiente)
+        if (partida.resultado_ps && partida.resultado_ps !== 'pendiente') {
+            return true;
+        }
+        
+        // Verificar si hay puntos mayores a 0
+        const tienePuntos = 
+            (partida.puntos_torneo_j1 && partida.puntos_torneo_j1 > 0) || 
+            (partida.puntos_torneo_j2 && partida.puntos_torneo_j2 > 0) ||
+            (partida.puntos_masacre_j1 && partida.puntos_masacre_j1 > 0) ||
+            (partida.puntos_masacre_j2 && partida.puntos_masacre_j2 > 0) ||
+            (partida.puntos_victoria_j1 && partida.puntos_victoria_j1 > 0) ||
+            (partida.puntos_victoria_j2 && partida.puntos_victoria_j2 > 0);
+        
+        return tienePuntos;
+    };
+
     const esBye = (partida) => {
+        // ✅ Si la partida tiene datos introducidos, NO es BYE
+        if (tieneDatos(partida)) {
+            return false;
+        }
+        // Solo es BYE si no tiene jugador 2 Y tampoco tiene datos
         return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye;
     };
 
@@ -629,12 +653,12 @@ useEffect(() => {
     };
 
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
-        const partidaEsBye = esBye(partida);
+
         const estaConfirmado = partida.resultado_confirmado;
         // Verificar permisos de edición
         const puedeEditar = esRondaActual && 
                             puedeEditarEstaPartida(partida) && 
-                            !partidaEsBye;
+                            !esBye(partida);
     
         return (
             <div 
@@ -655,13 +679,13 @@ useEffect(() => {
 
                 {!esVistaPublica && esOrganizador && esRondaActual && (
                     <button
-                        className={`boton-confirmar ${estaConfirmado ? 'confirmado' : 'pendiente'}`}
+                        className={`boton-confirmar ${estaConfirmado ? 'confirmado' :  (tieneDatos(partida) ? 'por-confirmar' : 'pendiente' )}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (window.confirm(
                                 estaConfirmado 
                                     ? '¿Desconfirmar este resultado?\n\nLos puntos se restarán de la clasificación.'
-                                    : (partidaEsBye 
+                                    : (esBye(partida) 
                                         ? '⭐ ¿Confirmar este BYE?\n\nSe sumarán 10 Puntos de Torneo a la clasificación.'
                                         : '¿Confirmar este resultado?\n\nLos puntos se sumarán a la clasificación.')
                             )) {
@@ -669,13 +693,13 @@ useEffect(() => {
                             }
                         }}
                     >
-                        {estaConfirmado ? '✅ CONFIRMADO' : '⏳ PENDIENTE'}
+                        {estaConfirmado ? '✅ CONFIRMADO' : (tieneDatos(partida) ? 'POR CONFIRMAR' : 'PENDIENTE' ) }
                     </button>
                 )}
 
                 <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
                     Mesa {partida.mesa || index + 1}
-                    {partidaEsBye ? ' ⭐ BYE' : ''} 
+                    {esBye(partida) ? ' ⭐ BYE' : ''}
                     {partida.epoca && ` - 📅 ${partida.epoca}`}
                     {' - '}
                     {estaConfirmado ? '✅ CONFIRMADA' : '⏳ PENDIENTE'}

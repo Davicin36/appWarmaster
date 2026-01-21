@@ -4,7 +4,18 @@ import '@/estilos/modalPartidas.css';
 
 function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = false }) {
     const resultadoConfirmado = partida.resultado_confirmado || false;
-    const esBye = !partida.jugador2_id || partida.resultado_ps === 'victoria_j1';
+
+    const tieneDatos = () => {
+        return (
+            (parseFloat(partida.puntos_partida_j1 || 0) > 0) ||
+            (parseFloat(partida.puntos_partida_j2 || 0) > 0) ||
+            (parseFloat(partida.puntos_torneo_j1 || 0) > 0) ||
+            (parseFloat(partida.puntos_torneo_j2 || 0) > 0)
+        );
+    };
+
+    const esBye = (!partida.jugador2_id || partida.es_bye === 1) && !tieneDatos();
+
     const esTorneoEquipos = !!partida.equipo1_id; // Detectar si es torneo por equipos
     
     const [resultado, setResultado] = useState({

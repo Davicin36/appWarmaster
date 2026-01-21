@@ -167,7 +167,7 @@ router.post('/registro', async (req, res) => {
         password,
         acepta_terminos,
         estado_cuenta
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre,
         apellidos || null,
@@ -225,6 +225,7 @@ router.post('/registro', async (req, res) => {
 });
 
 // ======LOGIN=========
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
