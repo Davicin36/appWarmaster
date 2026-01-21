@@ -2,7 +2,6 @@ import torneosSagaApi from '@/servicios/apiSaga';
 
 export const generarEmparejamientosEquipos = async (torneoId, ronda) => {
     try {
-        console.log(`🏆 Iniciando generación de emparejamientos de equipos - Ronda ${ronda}`);
 
         let emparejamientos;
 
@@ -11,8 +10,6 @@ export const generarEmparejamientosEquipos = async (torneoId, ronda) => {
         } else {
             emparejamientos = await generarEmparejamientosSuizoEquipos(torneoId);
         }
-
-        console.log(`✅ ${emparejamientos.length} emparejamientos de equipos generados`);
         return emparejamientos;
 
     } catch (error) {
@@ -48,8 +45,6 @@ const obtenerJugadoresEquipo = async (torneoId, equipoId) => {
 
 const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, esBye = false) => {
     try {
-        console.log(`🔨 Creando enfrentamiento: ${equipo1.nombre_equipo} vs ${equipo2?.nombre_equipo || 'BYE'}`);
-        
         const equipo1Id = equipo1.id || equipo1.equipo_id;
         const equipo2Id = equipo2 ? (equipo2.id || equipo2.equipo_id) : null;
         
@@ -93,15 +88,6 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
                 const j2 = jug2Epoca[i];
                 
                 if (j1 || j2) {
-                    console.log(`🔍 Partida ${epoca}:`, {
-                        j1_id_torneo: j1?.id,
-                        j1_usuario_id: j1?.jugador_id,
-                        j1_nombre: j1?.nombre || j1?.jugador_nombre,
-                        j2_id_torneo: j2?.id,
-                        j2_usuario_id: j2?.jugador_id,
-                        j2_nombre: j2?.nombre || j2?.jugador_nombre
-                    });
-
                    partidasPorEpoca.push({
                         epoca: epoca === 'Sin época' ? null : epoca,
                         jugador1_id: j1 ? j1.id : null,
@@ -187,23 +173,15 @@ const generarEmparejamientosAleatoriosEquipos = async (torneoId) => {
 
 const generarEmparejamientosSuizoEquipos = async (torneoId) => {
     try {
-        console.log('🏆 Generando emparejamientos sistema suizo de equipos...');
-
         const responseClasificacion = await torneosSagaApi.obtenerClasificacionEquipos(torneoId);
         const clasificacion = responseClasificacion?.data || responseClasificacion || [];
 
         if (!Array.isArray(clasificacion) || clasificacion.length < 2) {
             throw new Error("Se necesitan al menos 2 equipos en la clasificación");
         }
-
-        console.log(`📊 ${clasificacion.length} equipos en clasificación`);
-
         const { historialEnfrentamientos, equiposConBye } = await obtenerHistorialEquipos(torneoId);
-        console.log(`📜 ${historialEnfrentamientos.size} enfrentamientos previos registrados`);
-        console.log(`⭐ ${equiposConBye.size} equipos con BYE previo`);
 
         const equiposOrdenados = ordenarEquipos(clasificacion);
-        console.log('📋 Clasificación ordenada:', equiposOrdenados.map((e, i) => `${i+1}º ${e.nombre_equipo} (ID: ${e.equipo_id})`));
 
         const emparejamientos = [];
         let equiposDisponibles = [...equiposOrdenados];
@@ -221,9 +199,6 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
             
             emparejamientos.push(enfrentamientoBye);
             equiposDisponibles = equiposDisponibles.filter(eq => eq.equipo_id !== equipoBye.equipo_id);
-            
-            console.log(`✅ BYE asignado a: ${equipoBye.nombre_equipo}`);
-            console.log(`📋 Equipos restantes: ${equiposDisponibles.map(e => `${e.nombre_equipo} (ID: ${e.equipo_id})`).join(', ')}`);
         }
 
         // 🎯 PASO 2: Emparejar de arriba hacia abajo, resolviendo rematches
@@ -234,8 +209,6 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
         );
 
         emparejamientos.push(...emparejamientosFinales);
-
-        console.log(`✅ ${emparejamientos.length} emparejamientos suizos de equipos generados`);
         return emparejamientos;
 
     } catch (error) {
@@ -254,8 +227,6 @@ const emparejarSuizoConReajuste = async (torneoId, equiposDisponibles, historial
     if (n % 2 !== 0) {
         throw new Error('Error: número impar de equipos después de asignar BYE');
     }
-
-    console.log('\n🔄 Iniciando emparejamiento suizo con reajuste...');
     
     const yaEnfrentados = (eq1, eq2) => {
         const key = `${eq1.equipo_id}-${eq2.equipo_id}`;
@@ -278,7 +249,6 @@ const emparejarSuizoConReajuste = async (torneoId, equiposDisponibles, historial
 
     // Si no hay rematches en emparejamiento directo, usar ese
     if (!hayRematches) {
-        console.log('✅ No hay rematches, usando emparejamiento directo');
         const emparejamientosBase = [];
         
         for (let i = 0; i < n; i += 2) {
@@ -290,9 +260,6 @@ const emparejarSuizoConReajuste = async (torneoId, equiposDisponibles, historial
         
         return await crearEnfrentamientosDesdeArray(torneoId, emparejamientosBase);
     }
-
-    // Si hay rematches, intentar reajustar
-    console.log('🔧 Reajustando emparejamientos para evitar rematches...');
     
     const emparejamientosReajustados = reajustarEmparejamientos(
         equiposDisponibles,
@@ -300,7 +267,6 @@ const emparejarSuizoConReajuste = async (torneoId, equiposDisponibles, historial
     );
 
     if (emparejamientosReajustados) {
-        console.log('✅ Reajuste exitoso, sin rematches');
         return await crearEnfrentamientosDesdeArray(torneoId, emparejamientosReajustados);
     } else {
         // Si no se puede evitar, forzar rematches
@@ -380,7 +346,7 @@ const reajustarEmparejamientos = (equipos, historialEnfrentamientos) => {
 
     if (resultado) {
         resultado.forEach((par, idx) => {
-            console.log(`   ${idx + 1}. ${par.eq1.nombre_equipo} vs ${par.eq2.nombre_equipo}`);
+            console.warn(`   ${idx + 1}. ${par.eq1.nombre_equipo} vs ${par.eq2.nombre_equipo}`);
         });
         return resultado;
     } else {
@@ -404,7 +370,6 @@ const crearEnfrentamientosDesdeArray = async (torneoId, emparejamientos) => {
             false
         );
         enfrentamientos.push(enfrentamiento);
-        console.log(`⚔️ Creado: ${par.eq1.nombre_equipo} vs ${par.eq2.nombre_equipo}`);
     }
     
     return enfrentamientos;
@@ -480,12 +445,10 @@ const seleccionarEquipoParaBye = (equiposOrdenados, equiposConBye) => {
 
     if (equiposSinBye.length > 0) {
         const equipoSeleccionado = equiposSinBye[equiposSinBye.length - 1];
-        console.log(`✅ BYE asignado al último sin BYE previo: ${equipoSeleccionado.nombre_equipo}`);
         return equipoSeleccionado;
     } else {
         console.warn('⚠️ TODOS los equipos ya tuvieron BYE. Asignando segundo BYE al último clasificado.');
         const equipoSeleccionado = equiposOrdenados[equiposOrdenados.length - 1];
-        console.log(`✅ Segundo BYE asignado a: ${equipoSeleccionado.nombre_equipo}`);
         return equipoSeleccionado;
     }
 };

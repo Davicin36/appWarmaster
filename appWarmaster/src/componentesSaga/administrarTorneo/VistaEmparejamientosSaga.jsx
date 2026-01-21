@@ -305,6 +305,8 @@ useEffect(() => {
         
                 participantes = jugadores.map(j => {
                     const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
+
+    
                     return {
                         ...j,
                         puntos_torneo: stats?.puntos_torneo || 0,
@@ -313,6 +315,7 @@ useEffect(() => {
                         partidas_jugadas: stats?.partidas_jugadas || 0
                     };
                 });
+
             }
 
             // 🎯 LLAMADA UNIFICADA
@@ -322,7 +325,7 @@ useEffect(() => {
                 esEquipos ? 'Por equipos' : 'individual',
                 participantes
             );
-            
+
             setEmparejamientos(Array.isArray(nuevosEmparejamientos) ? nuevosEmparejamientos : []);
             alert(`✅ ${nuevosEmparejamientos.length} emparejamientos generados correctamente`);
             
@@ -342,7 +345,7 @@ useEffect(() => {
                 alert('⚠️ Primero debes generar los emparejamientos');
                 return;
             }
-      
+
             let nombreEscenario;
             
             if (torneo.tipo_torneo === 'Por equipos') {
@@ -406,7 +409,7 @@ useEffect(() => {
                         ronda: torneo.ronda_actual,
                     });
                 }
-            });
+            })
 
             const errores = [];
             todasLasPartidas.forEach((partida, index) => {

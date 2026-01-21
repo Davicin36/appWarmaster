@@ -5,8 +5,6 @@ import { generarEmparejamientosIndividuales } from './emparejamientosIndividuale
 
 export const generarEmparejamientos = async (torneoId, ronda, tipo = 'individual', participantes = []) => {
     try {
-        console.log(`🎯 Generando emparejamientos tipo: ${tipo.toUpperCase()} - Ronda ${ronda}`);
-
         if (!torneoId || !ronda || ronda < 1) {
             throw new Error('Parámetros inválidos: torneoId y ronda son requeridos');
         }
@@ -20,8 +18,6 @@ export const generarEmparejamientos = async (torneoId, ronda, tipo = 'individual
             // 👤 EMPAREJAMIENTOS INDIVIDUALES
             emparejamientos = await generarEmparejamientosIndividuales(torneoId, ronda, participantes);
         }
-
-        console.log(`✅ ${emparejamientos.length} emparejamientos generados correctamente`);
         return emparejamientos;
 
     } catch (error) {

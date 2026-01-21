@@ -5007,7 +5007,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
           partidaData.puntos_masacre_j2 || 0,
           partidaData.warlord_muerto_j2 ? 1 : 0,
           torneoId,
-          partidaData.jts2_id  
+          partidaData.usuario2_id  
         ]);
       }
     }
@@ -5835,9 +5835,6 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, ver
       throw new Error('ronda es requerida');
     }
     
-    console.log('📥 Recibiendo emparejamientos:', emparejamientos.length);
-    console.log('📋 Primer emparejamiento:', emparejamientos[0]);
-    
     await connection.beginTransaction();
     
     // 1. Eliminar emparejamientos existentes de esta ronda
@@ -5942,9 +5939,6 @@ router.post('/:torneoId/guardarEmparejamientosEquipos', verificarToken, verifica
       throw new Error('ronda es requerida');
     }
     
-    console.log('📥 Recibiendo emparejamientos de equipos:', emparejamientos.length);
-    console.log('📋 Primer emparejamiento:', emparejamientos[0]);
-    
     await connection.beginTransaction();
     
     // 1. Eliminar emparejamientos existentes de esta ronda
@@ -5958,7 +5952,7 @@ router.post('/:torneoId/guardarEmparejamientosEquipos', verificarToken, verifica
       const jugador1_id = partida.jugador1_id;
       const jugador2_id = partida.jugador2_id || null;
       const es_bye = !jugador2_id;
-      
+
       const insertQuery = `
         INSERT INTO partidas_saga (
           torneo_id, 
@@ -6135,7 +6129,7 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
 
         const [clasificacion] = await pool.execute(`
             SELECT 
-                cjs.id,
+                jts.id,
                 cjs.jugador_id,
                 cjs.equipo_id,
                 cjs.partidas_ganadas,
@@ -6219,6 +6213,7 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
     // Consulta secundaria: jugadores de cada equipo
     const [jugadoresEquipos] = await pool.execute(`
       SELECT 
+        jts.id,
         jts.equipo_id,
         jts.jugador_id,
         jts.epoca,
@@ -6254,6 +6249,7 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
         jugadoresPorEquipo.set(jugador.equipo_id, []);
       }
       jugadoresPorEquipo.get(jugador.equipo_id).push({
+        id: jugador.id,
         jugador_id: jugador.jugador_id,
         nombre: jugador.jugador_nombre,
         apellidos: jugador.jugador_apellidos,
