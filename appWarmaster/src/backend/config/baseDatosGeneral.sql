@@ -76,3 +76,23 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     INDEX idx_usuario_id (usuario_id),
     INDEX idx_expiracion (expiracion)
 );
+
+CREATE TABLE IF NOT EXISTS logs_correos_torneos (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  torneo_id INT NOT NULL,
+  sistema_juego VARCHAR(50) NOT NULL COMMENT 'SAGA, Warmaster, Flames of War, etc.',
+  asunto VARCHAR(255) NOT NULL,
+  mensaje TEXT NOT NULL,
+  destinatarios_exitosos INT DEFAULT 0,
+  destinatarios_fallidos INT DEFAULT 0,
+  tipo_torneo ENUM('individual', 'equipos') NOT NULL,
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
+  INDEX idx_torneo_fecha (torneo_id, fecha),
+  INDEX idx_tipo_torneo (tipo_torneo),
+  INDEX idx_sistema_juego (sistema_juego),
+  INDEX idx_sistema_fecha (sistema_juego, fecha)
+)
+
+

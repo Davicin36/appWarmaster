@@ -219,9 +219,6 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
                 }
             });
 
-             console.log('📜 Historial cargado:', historialArray.length, 'partidas');
-            console.log('🚫 Jugadores con BYE previo:', Array.from(jugadoresConBye));
-
         } catch (error) {
             console.warn('⚠️ No se pudo obtener historial:', error.message);
         }

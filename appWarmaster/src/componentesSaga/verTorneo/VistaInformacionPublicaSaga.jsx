@@ -99,7 +99,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                                             {miembro.nombre_alias && ` "${miembro.nombre_alias}"`}
                                                         </span>
                                                         <span className="miembro-epoca-banda">
-                                                            {miembro.epoca || 'Sin época'} - {miembro.banda || 'Sin banda'}
+                                                            {miembro.epoca || 'Sin época'} - {miembro.faccion || 'Sin banda'}
                                                         </span>
                                                     </div>
                                                     

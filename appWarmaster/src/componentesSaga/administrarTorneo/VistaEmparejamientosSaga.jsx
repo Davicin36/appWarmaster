@@ -184,8 +184,6 @@ useEffect(() => {
         // 🎯 Obtener el número máximo de rondas
         const rondasMax = torneo?.rondas_max || 5;
         
-        console.log(`🔄 Cargando partidas de ${rondasMax} rondas...`);
-        
         // 🔄 Cargar RONDA POR RONDA (igual que la ronda actual)
         for (let r = 1; r <= rondasMax; r++) {
             try {
@@ -209,17 +207,13 @@ useEffect(() => {
                 
                 const roundPartidas = roundResponse?.data || roundResponse || [];
                 if (Array.isArray(roundPartidas) && roundPartidas.length > 0) {
-                    console.log(`✅ Ronda ${r}: ${roundPartidas.length} partidas cargadas`);
                     allPartidas.push(...roundPartidas);
-                } else {
-                    console.log(`ℹ️ Ronda ${r}: sin partidas`);
                 }
             } catch (err) {
-                console.log(`⚠️ Ronda ${r}: error al cargar -`, err.message);
+                console.error(`⚠️ Ronda ${r}: error al cargar -`, err.message);
             }
         }
-        
-        console.log(`📊 Total partidas cargadas: ${allPartidas.length}`);
+    
         setTodasLasPartidas(allPartidas);
         
     } catch (err) {
@@ -634,10 +628,10 @@ useEffect(() => {
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
         const partidaEsBye = esBye(partida);
         const estaConfirmado = partida.resultado_confirmado;
-    // Verificar permisos de edición
-    const puedeEditar = esRondaActual && 
-                        puedeEditarEstaPartida(partida) && 
-                        !partidaEsBye;
+        // Verificar permisos de edición
+        const puedeEditar = esRondaActual && 
+                            puedeEditarEstaPartida(partida) && 
+                            !partidaEsBye;
     
         return (
             <div 
@@ -697,7 +691,7 @@ useEffect(() => {
                             <div className="faccion">⚔️ {partida.jugador1.faccion}</div>
                         )}
                         <div className="stats">
-                            PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} | 
+                            PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} |
                             PT: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)} | 
                             PM: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)}
                         </div>

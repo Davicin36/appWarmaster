@@ -7,6 +7,7 @@ import VistaJugadores from '@/componente/vistasAdministrarTorneos/VistaJugadores
 import VistaClasificacion from '@/componente/vistasAdministrarTorneos/VistaClasificacion';
 import VistaEmparejamientos from '@/componente/vistasAdministrarTorneos/VistaEmparejamientos';
 import VistaGeneral from '@/componente/vistasAdministrarTorneos/VistaGeneral';
+import VistaEnviarCorreos from '@/componente/vistasAdministrarTorneos/VistaEnviarCorreos';
 
 import Footer from '@/paginas/Footer.jsx'
 
@@ -100,6 +101,12 @@ function AdministrarTorneo() {
                     ℹ️ General
                 </button>
                 <button 
+                    className={vistaActiva === 'correos' ? 'active' : ''} 
+                    onClick={() => setVistaActiva('correos')}
+                >
+                    📧 Correos
+                </button>
+                <button 
                     className={vistaActiva === 'jugadores' ? 'active' : ''} 
                     onClick={() => setVistaActiva('jugadores')}
                 >
@@ -125,6 +132,14 @@ function AdministrarTorneo() {
                         tipoJuego={tipoJuego}
                         torneoId={torneoId} 
                         onUpdate={cargarTorneo} 
+                    />
+                )}
+
+                {vistaActiva === 'correos' && (
+                    <VistaEnviarCorreos 
+                        tipoJuego={tipoJuego}
+                        torneoId={torneoId}
+                        torneo={torneo}
                     />
                 )}
         

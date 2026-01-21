@@ -839,12 +839,6 @@ router.get('/:torneoId/verificar-organizador', verificarToken, async (req, res) 
     const { torneoId } = req.params;
     const userId = req.usuario?.userId || req.userId;
     
-    console.log('🔍 Verificando organizador:', {
-      torneoId,
-      userId,
-      tieneUserId: !!userId
-    });
-    
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -860,13 +854,6 @@ router.get('/:torneoId/verificar-organizador', verificarToken, async (req, res) 
     );
     
     const esOrganizador = organizador.length > 0;
-    
-    console.log('✅ Resultado verificación:', {
-      esOrganizador,
-      userId,
-      torneoId,
-      registrosEncontrados: organizador.length
-    });
     
     res.status(200).json({
       success: true,

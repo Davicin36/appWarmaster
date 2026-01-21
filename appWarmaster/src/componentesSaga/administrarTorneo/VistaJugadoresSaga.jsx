@@ -575,7 +575,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                                                 {miembro.nombre}
                                                             </span>
                                                             <span className="miembro-epoca-banda-admin">
-                                                                {miembro.epoca} - {miembro.banda}
+                                                                {miembro.epoca} - {miembro.faccion}
                                                             </span>
                                                         </div>
                                                         

@@ -8,6 +8,7 @@ import { pool } from '../config/bd.js';
 import { enviarInvitarJugador }  from '../utils/emailInvitarTorneoInd.js';
 import { enviarInvitacionOrganizadorNoRegistrado, enviarInvitacionOrganizadorRegistrado } from '../utils/emailInvitarOrganizador.js'; 
 import { enviarInvitacionEquipo } from '../utils/emailInscripcionEquipos.js';
+import  { emailTorneo }  from '../utils/emailComunicaciones.js';
 import { verificarToken, verificarOrganizadorTorneo } from '../middleware/auth.js';
 import { 
   calcularPuntosTorneo,
@@ -947,8 +948,7 @@ router.get('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorne
         u.apellidos,
         u.nombre_alias,
         u.email,
-        u.estado_cuenta,
-        u.password
+        u.estado_cuenta
       FROM organizadores_torneos torg
       INNER JOIN usuarios u ON torg.usuario_id = u.id
       WHERE torg.torneo_id = ?
@@ -4358,8 +4358,6 @@ router.get('/:torneoId/equipos', async (req, res) => {
       }))
     }
     
-    console.log(`✅ ${equipos.length} equipos encontrados`);
-    
     res.json(successResponse('Equipos obtenidos', equipos));
     
   } catch (error) {
@@ -4607,9 +4605,9 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       SELECT 
         ps.id,
         ps.jugador1_id as jts1_id,
-        jts1.jugador_id as usuario1_id, 
+        u1.nombre as jugador1_nombre,
         ps.jugador2_id as jts2_id, 
-        jts2.jugador_id as usuario2_id,
+        u2.nombre as jugador2_nombre,
         ps.resultado_ps, 
         ps.torneo_id, 
         ps.ronda, 
@@ -4618,8 +4616,10 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         FROM partidas_saga ps
       INNER JOIN torneos_sistemas t ON ps.torneo_id = t.id
       LEFT JOIN jugador_torneo_saga jts1 ON ps.jugador1_id = jts1.id
+      LEFT JOIN usuarios u1 ON jts1.jugador_id = u1.id
       LEFT JOIN jugador_torneo_saga jts2 ON ps.jugador2_id = jts2.id
-      WHERE ps.id = ? AND torneo_id = ?
+      LEFT JOIN usuarios u2 ON jts2.jugador_id = u2.id
+      WHERE ps.id = ? AND ps.torneo_id = ?
     `, [partidaId, torneoId]);
     
     if (partida.length === 0) {
@@ -4629,14 +4629,16 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     }
     
     // ✅ Extraer los IDs de jugadores
-    const jts1_id = partida[0].jugador1_id;
-    const usuario1_id = partida[0].usuario1_id;
-    const jts2_id = partida[0].jugador2_id;
-    const usuario2_id = partida[0].usuario2_id;
-    const tipoTorneo = partida[0].tipo_torneo
+    const jts1_id = partida[0].jts1_id;
+    const jts2_id = partida[0].jts2_id;
+    const tipoTorneo = partida[0].tipo_torneo;
     
-    // ✅ Verificar que no sea una partida BYE
-    if (!jts2_id || partida[0].resultado_ps === 'victoria_j1') {
+    const esBYE = partida[0].es_bye || 
+                  !jts2_id || 
+                  partida[0].jugador1_nombre === 'BYE' || 
+                  partida[0].jugador2_nombre === 'BYE';
+    
+    if (esBYE) {
       return res.status(400).json(
         errorResponse('No se puede actualizar una partida BYE. La victoria automática ya está registrada.')
       );
@@ -4648,9 +4650,12 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         errorResponse('No se puede actualizar una partida con resultado confirmado. El organizador debe desconfirmar el resultado primero.')
       );
     }
+
+        // Determinar quién fue el primer jugador
+    const primerJugadorId = primer_jugador ? parseInt(primer_jugador) : null;
     
     // Validar que primer_jugador sea uno de los dos jugadores
-    if (primer_jugador && primer_jugador !== usuario1_id && primer_jugador !== usuario2_id) {
+    if (primer_jugador && primer_jugador !== jts1_id && primer_jugador !== jts2_id) {
       return res.status(400).json(
         errorResponse('El primer jugador debe ser uno de los dos jugadores de la partida')
       );
@@ -4678,9 +4683,6 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
 
     const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
     const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
-    
-    // Determinar quién fue el primer jugador
-    const primerJugadorId = primer_jugador || null;
 
     let puntosTorneoJ1, puntosTorneoJ2
     
@@ -4693,7 +4695,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       const puntosTorneo = calcularPuntosTorneo(
         puntosPartidaJ1, 
         puntosPartidaJ2, 
-        usuario1_id, 
+        jts1_id, 
         primerJugadorId
       )
 
@@ -4776,8 +4778,8 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
         p.id, 
         p.jugador1_id as jts1_id,           -- ID en jugador_torneo_saga
         p.jugador2_id as jts2_id,           -- ID en jugador_torneo_saga
-        jts1.jugador_id as usuario1_id,     -- ✅ ID en usuarios
-        jts2.jugador_id as usuario2_id,     -- ✅ ID en usuarios
+        jts1.jugador_id AS usuario1_id,
+        jts2.jugador_id AS usuario2_id,
         p.puntos_victoria_j1, 
         p.puntos_victoria_j2,
         p.puntos_torneo_j1, 
@@ -5005,7 +5007,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
           partidaData.puntos_masacre_j2 || 0,
           partidaData.warlord_muerto_j2 ? 1 : 0,
           torneoId,
-          partidaData.usuario2_id  
+          partidaData.jts2_id  
         ]);
       }
     }
@@ -5046,7 +5048,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     
     res.status(500).json(errorResponse('Error al confirmar resultado'));
   }
-});;
+});
 
 // ====== CONFIRMAR RESULTADO EN TORNEOS POR EQUIPOS ========
 
@@ -5058,6 +5060,11 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmarEquipo', verific
     const { confirmar } = req.body; // true para confirmar, false para desconfirmar
     
     await connection.beginTransaction();
+
+    const [torneo] = await connection.execute(
+      'SELECT id, tipo_torneo FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
     
     if (torneo.length === 0) {
       await connection.rollback();
@@ -5093,7 +5100,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmarEquipo', verific
        FROM partidas_saga p
        LEFT JOIN jugador_torneo_saga jts1 ON p.jugador1_id = jts1.id
        LEFT JOIN jugador_torneo_saga jts2 ON p.jugador2_id = jts2.id
-       WHERE id = ? AND torneo_id = ?`,
+       WHERE p.id = ? AND p.torneo_id = ?`,
       [partidaId, torneoId]
     );
     
@@ -6301,6 +6308,275 @@ router.get('/:torneoId/obtenerClasificacionEquipos', async (req, res) => {
     console.error('❌ Error al obtener la clasificación de equipos:', error);
     res.status(500).json(errorResponse('Error al obtener la clasificación de equipos'));
   }
+});
+
+// ======= ENDPOINTS PARA CORREOS - SAGA =======
+
+// ======= OBTENER JUGADORES PARA CORREOS (INDIVIDUAL) =======
+
+router.get('/:torneoId/jugadores-correos', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+
+    try {
+        const { torneoId } = req.params;
+
+        // Verificar que el usuario es uno de los organizadores del torneo
+         const [torneo] = await pool.query(
+            `SELECT 
+              created_by
+            FROM torneos_sistemas 
+            WHERE id = ?`,
+            [torneoId]
+          );
+
+        if (torneo.length === 0) {
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+
+        // Obtener jugadores con su email
+        const [jugadores] = await pool.execute(`
+            SELECT DISTINCT
+                u.id,
+                u.nombre,
+                u.apellidos,
+                u.email,
+                CONCAT(u.nombre, ' ', u.apellidos) as nombre_completo,
+                u.nombre_alias,
+                jts.epoca,
+                jts.faccion
+            FROM jugador_torneo_saga jts
+            INNER JOIN usuarios u ON jts.jugador_id = u.id
+            WHERE jts.torneo_id = ?
+            AND jts.equipo_id IS NULL
+            ORDER BY u.nombre, u.apellidos
+        `, [torneoId]);
+
+        res.json(successResponse('Jugadores obtenidos', jugadores));
+
+    } catch (error) {
+        console.error('Error al obtener jugadores para correos:', error);
+        res.status(500).json(errorResponse('Error al obtener jugadores'));
+    }
+});
+
+// ======= OBTENER CAPITANES PARA CORREOS (EQUIPOS) =======
+
+router.get('/:torneoId/capitanes-correos', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+    try {
+        const { torneoId } = req.params;
+
+          const [torneo] = await pool.query(
+            `SELECT 
+              created_by
+            FROM torneos_sistemas 
+            WHERE id = ?`,
+            [torneoId]
+          );
+
+        if (torneo.length === 0) {
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+
+        // Obtener capitanes con información de su equipo
+        const [capitanes] = await pool.execute(`
+            SELECT DISTINCT
+                u.id,
+                u.nombre as nombre_capitan,
+                u.apellidos as apellidos_capitan,
+                CONCAT(u.nombre, ' ', u.apellidos) as nombre_completo,
+                u.email,
+                e.id as equipo_id,
+                e.nombre_equipo,
+                (SELECT COUNT(*) 
+                 FROM jugador_torneo_saga jts 
+                 WHERE jts.equipo_id = e.id) as num_miembros
+            FROM torneo_saga_equipo e
+            INNER JOIN usuarios u ON e.capitan_id = u.id
+            WHERE e.torneo_id = ?
+            ORDER BY e.nombre_equipo
+        `, [torneoId]);
+
+        res.json(successResponse('Capitanes obtenidos', capitanes));
+
+    } catch (error) {
+        console.error('Error al obtener capitanes para correos:', error);
+        res.status(500).json(errorResponse('Error al obtener capitanes'));
+    }
+});
+
+// ======= ENVIAR CORREOS A PARTICIPANTES =======
+
+router.post('/:torneoId/enviar-correo', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+    const connection = await pool.getConnection();
+
+    try {
+        const { torneoId } = req.params;
+        const { destinatarios, asunto, mensaje, tipoTorneo } = req.body;
+
+        // Verificar que el usuario es el organizador del torneo
+          const [torneo] = await pool.query(
+            `SELECT
+              id,
+              tipo_torneo,
+              nombre_torneo,
+              created_by
+            FROM torneos_sistemas 
+            WHERE id = ?`,
+            [torneoId]
+          );
+
+        if (torneo.length === 0) {
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+
+        // Validaciones
+        if (!destinatarios || destinatarios.length === 0) {
+            return res.status(400).json(errorResponse('Debes seleccionar al menos un destinatario'));
+        }
+
+        if (!asunto || !mensaje) {
+            return res.status(400).json(errorResponse('El asunto y el mensaje son obligatorios'));
+        }
+
+        const [organizadores] = await pool.execute(
+          `SELECT 
+            torg.id as organizador_id,
+            torg.torneo_id,
+            torg.usuario_id,
+            u.nombre,
+            u.apellidos,
+            u.nombre_alias,
+            u.email,
+            u.estado_cuenta
+          FROM organizadores_torneos torg
+          INNER JOIN usuarios u ON torg.usuario_id = u.id
+          WHERE torg.torneo_id = ?
+          ORDER BY torg.fecha_asignacion ASC`,
+          [torneoId]
+        );
+
+        if(organizadores.length === 0){
+          return res.status(400).json(errorResponse('No hay organizadores asignados para este torneo'));
+        }
+
+        const organizadorPrincipal = organizadores[0];
+        const datosOrganizador = {
+            nombre: organizadorPrincipal.nombre,
+            apellidos: organizadorPrincipal.apellidos,
+            nombre_completo: organizadorPrincipal.nombre_completo,
+            email: organizadorPrincipal.email
+        };
+
+        const nombreTorneo = torneo[0].nombre_torneo;
+        const tipoJuego = 'SAGA';
+        let emails = [];
+
+        // Obtener emails según el tipo de torneo
+        if (tipoTorneo === 'equipos') {
+            // Para torneos de equipos, obtener emails de capitanes
+            const [capitanes] = await pool.query(`
+                SELECT DISTINCT 
+                    u.email, 
+                    u.nombre,
+                    u.apellidos,
+                    CONCAT(u.nombre, ' ', u.apellidos) as nombre_completo,
+                    e.nombre_equipo
+                FROM torneo_saga_equipo e
+                INNER JOIN usuarios u ON e.capitan_id = u.id
+                WHERE e.torneo_id = ? AND u.id IN (?)
+            `, [torneoId, destinatarios]);
+
+            emails = capitanes.map(c => ({
+                email: c.email,
+                nombre: c.nombre_completo,
+                equipo: c.nombre_equipo
+            }));
+        } else {
+            // Para torneos individuales, obtener emails de jugadores
+            const [jugadores] = await pool.query(`
+                SELECT DISTINCT 
+                    u.email, 
+                    u.nombre,
+                    u.apellidos,
+                    CONCAT(u.nombre, ' ', u.apellidos) as nombre_completo
+                FROM jugador_torneo_saga jts
+                INNER JOIN usuarios u ON jts.jugador_id = u.id
+                WHERE jts.torneo_id = ? 
+                AND jts.equipo_id IS NULL
+                AND u.id IN (?)
+            `, [torneoId, destinatarios]);
+
+            emails = jugadores.map(j => ({
+                email: j.email,
+                nombre: j.nombre_completo
+            }));
+        }
+
+        if (emails.length === 0) {
+            return res.status(400).json(errorResponse('No se encontraron destinatarios válidos'));
+        }
+
+        const enviosExitosos = [];
+        const enviosFallidos = [];
+
+        // Enviar correos
+        for (const destinatario of emails) {
+            
+            const resultado = await emailTorneo.enviarCorreoParticipantes({
+                email: destinatario.email,
+                nombre: destinatario.nombre,
+                nombreTorneo: nombreTorneo,
+                tipoJuego: tipoJuego,
+                asunto: asunto,
+                mensaje: mensaje,
+                nombreEquipo: destinatario.equipo || null,
+                organizador: datosOrganizador
+            });
+
+            if (resultado.success) {
+                enviosExitosos.push(destinatario.email);
+            } else {
+                enviosFallidos.push(destinatario.email);
+                console.error(`❌ Error enviando a ${destinatario.email}:`, resultado.error);
+            }
+        }
+
+        // Registrar el envío en logs (opcional)
+        try {
+            await pool.query(`
+                INSERT INTO logs_correos_torneos 
+                (torneo_id, sistema_juego, asunto, mensaje, destinatarios_exitosos, destinatarios_fallidos, tipo_torneo, fecha)
+                VALUES (?, 'SAGA', ?, ?, ?, ?, ?, NOW())
+            `, [
+                torneoId,
+                asunto,
+                mensaje,
+                enviosExitosos.length,
+                enviosFallidos.length,
+                tipoTorneo
+            ]);
+        } catch (logError) {
+            console.error('⚠️ Error al registrar log (no crítico):', logError);
+        }
+
+        const mensajeRespuesta = enviosFallidos.length === 0
+            ? `✅ Todos los correos enviados correctamente (${enviosExitosos.length})`
+            : `⚠️ Correos enviados: ${enviosExitosos.length} exitosos, ${enviosFallidos.length} fallidos`;
+
+        res.json(successResponse(mensajeRespuesta, {
+            exitosos: enviosExitosos.length,
+            fallidos: enviosFallidos.length,
+            detalles: {
+                enviosExitosos,
+                enviosFallidos
+            }
+        }));
+
+    } catch (error) {
+        console.error('❌ Error al enviar correos:', error);
+        res.status(500).json(errorResponse('Error al enviar los correos'));
+    } finally {
+        connection.release();
+    }
 });
 
 //===============================================================================

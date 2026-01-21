@@ -354,6 +354,31 @@ async actualizarPrimerJugador (torneoId, jugadorId, partidaId ){
     });
   }
 
+  //=====================
+  // MÉTODOS DE EMAILS
+  //=====================
+
+  async obtenerJugadoresCorreos(torneoId) {
+  return this.request(`/${torneoId}/jugadores-correos`, {
+    method: 'GET'
+  });
+}
+
+// Obtener capitanes para envío de correos (equipos)
+async obtenerCapitanesCorreos(torneoId) {
+  return this.request(`/${torneoId}/capitanes-correos`, {
+    method: 'GET'
+  });
+}
+
+// Enviar correos a participantes
+async enviarCorreoParticipantes(torneoId, datos) {
+  return this.request(`/${torneoId}/enviar-correo`, {
+    method: 'POST',
+    body: datos
+  });
+}
+
 // ==================
   // CLASIFICACIÓN
   // ==================
