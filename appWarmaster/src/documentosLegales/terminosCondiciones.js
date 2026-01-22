@@ -2,7 +2,7 @@
 export const terminosCondicionesContent = `
 # TÉRMINOS Y CONDICIONES DE USO
 
-**Última actualización: 11 de enero de 2026**
+**Última actualización: 22 de enero de 2026**
 
 ---
 

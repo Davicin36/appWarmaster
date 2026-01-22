@@ -68,13 +68,20 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                 datosPartida
             );
 
+            const nombreJ1 = partida.jugador1_nombre || partida.jugador1?.nombre;
+            const nombreJ2 = partida.jugador2_nombre || partida.jugador2?.nombre;   
+
             const mensaje = response.data 
-                ? `✅ Resultado guardado correctamente\n\n` +
-                  `⚠️ Pendiente de confirmación del organizador\n\n` +
-                  `Resultado: ${response.data.resultado}\n` +
-                  `Puntos Torneo J1: ${response.data.puntosTorneo?.jugador1 || 0}\n` +
-                  `Puntos Torneo J2: ${response.data.puntosTorneo?.jugador2 || 0}`
-                : '✅ Resultado guardado correctamente (pendiente de confirmación)';
+                ?   `✅ Resultado guardado correctamente\n\n` +
+                    `⚠️ Pendiente de confirmación del organizador\n\n` +
+                    `Resultado: ${response.data.resultado}\n` +
+                    `Primer Jugador : ${nombreJ1}\n` +
+                    ` * Puntos Torneo J1: ${response.data.puntosTorneo?.jugador1 || 0}` + ' - ' +
+                    ` * Puntos Masacre J1: ${response.data.puntosMasacre?.jugador1 || 0}\n` +
+                    `Segundo Jugador : ${nombreJ2}\n` + 
+                    ` * Puntos Torneo J2: ${response.data.puntosTorneo?.jugador2 || 0}` + ' - ' +
+                    ` * Puntos Masacre J2: ${response.data.puntosMasacre?.jugador2 || 0}` 
+                :   '✅ Resultado guardado correctamente (pendiente de confirmación)';
 
             alert(mensaje);
             
@@ -137,13 +144,33 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
             ? partida.equipo2_nombre 
             : (partida.jugador2_nombre || partida.jugador2?.nombre);
         
-        if (ppJ1 > ppJ2) {
-            return `🏆 Victoria de ${nombre1}`;
+        if (esTorneoEquipos) {
+        // TORNEOS POR EQUIPOS: Victoria si diferencia >= 2
+            const diferencia = Math.abs(ppJ1 - ppJ2);
+
+            const umbralDiferencia = 3; 
+            
+            if (diferencia >= umbralDiferencia) {
+                if (ppJ1 > ppJ2) {
+                    return `🏆 Victoria de ${nombre1}`;
+                } else {
+                    return `🏆 Victoria de ${nombre2}`;
+                }
+            } else {
+                // Diferencia < 2 = EMPATE
+                return `🤝 Empate (${ppJ1}-${ppJ2})`;
+            }
+            
+        } else {
+        // TORNEOS INDIVIDUALES: Victoria por más puntos
+            if (ppJ1 > ppJ2) {
+                return `🏆 Victoria de ${nombre1}`;
+            }
+            if (ppJ2 > ppJ1) {
+                return `🏆 Victoria de ${nombre2}`;
+            }
+            return `🤝 Empate (${ppJ1}-${ppJ2})`;
         }
-        if (ppJ2 > ppJ1) {
-            return `🏆 Victoria de ${nombre2}`;
-        }
-        return '🤝 Empate';
     };
 
     // Función auxiliar para obtener el nombre del jugador

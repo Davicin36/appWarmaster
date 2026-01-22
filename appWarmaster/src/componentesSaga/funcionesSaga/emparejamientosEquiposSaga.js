@@ -334,7 +334,7 @@ const reajustarEmparejamientos = (equipos, historialEnfrentamientos) => {
                 }
 
             } else {
-                console.log(`      ⏭️ Ya jugaron antes, saltando`);
+                console.warn(` Ya jugaron antes, saltando`);
             }
         }
         // Si llegamos aquí, no se encontró combinación válida desde este punto
@@ -384,7 +384,7 @@ const obtenerHistorialEquipos = async (torneoId) => {
     const equiposConBye = new Set();
 
     try {
-        const historial = await torneosSagaApi.obtenerPartidasTorneo(torneoId);
+        const historial = await torneosSagaApi.obtenerPartidasTorneoPublico(torneoId);
         const partidas = Array.isArray(historial) ? historial : [];
 
         for (const partida of partidas) {

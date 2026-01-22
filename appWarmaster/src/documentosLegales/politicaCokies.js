@@ -11,7 +11,7 @@ export const politicaCokiesContent = `
 Esta Política de Cookies explica qué son las cookies y cómo las utiliza **gestionatustorneos.es** (en adelante, "la Web").
 
 **Titular de la Web:**  
-David Alvares Roca  
+David Álvarez Roca  
 NIF: 46362559-X
 Dirección: Avenida Juan Gris 15, 28840 Mejorada del Campo, Madrid, España  
 Email: dalvroca@gmail.com

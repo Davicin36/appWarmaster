@@ -8,7 +8,7 @@ export const politicaPrivacidadContent = `
 
 ## 1. RESPONSABLE DEL TRATAMIENTO
 
-**Identidad:** David Alvares Roca  
+**Identidad:** David Álvarez Roca  
 **NIF:** 46362559-X
 **Dirección:** Avenida Juan Gris 15, 28840 Mejorada del Campo, Madrid, España  
 **Email de contacto:** dalvroca@gmail.com  

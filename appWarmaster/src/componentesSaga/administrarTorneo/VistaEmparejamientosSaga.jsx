@@ -31,6 +31,8 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [esOrganizador, setEsOrganizador] = useState(false);
     const [esParticipante, setEsParticipante] = useState(false);
+    const [mostrarSelectorEscenarios, setMostrarSelectorEscenarios] = useState(false);
+    const [asignacionesEscenarios, setAsignacionesEscenarios] = useState({});
 
     const esTorneoEquipos = () => torneo?.tipo_torneo === 'Por equipos';
 
@@ -336,6 +338,22 @@ useEffect(() => {
         }
     };
 
+    const obtenerEpocasDisponibles = () => {
+    const epocas = new Set();
+    
+    if (esTorneoEquipos()) {
+        equipos.forEach(equipo => {
+            equipo.jugadores?.forEach(jugador => {
+                if (jugador.epoca) {
+                    epocas.add(jugador.epoca);
+                }
+            });
+        });
+    }
+    
+    return Array.from(epocas).sort();
+};
+
    const guardarResultados = async () => {
         try {
             setGuardando(true);
@@ -344,6 +362,16 @@ useEffect(() => {
             if (!emparejamientos || emparejamientos.length === 0) {
                 alert('⚠️ Primero debes generar los emparejamientos');
                 return;
+            }
+
+            if (esTorneoEquipos()) {
+                const epocas = obtenerEpocasDisponibles();
+                
+                if (epocas.length > 0 && Object.keys(asignacionesEscenarios).length === 0) {
+                    setMostrarSelectorEscenarios(true);
+                    setGuardando(false);
+                    return; // Esperar a que asigne los escenarios
+                }
             }
 
             let nombreEscenario;
@@ -360,10 +388,9 @@ useEffect(() => {
                 nombreEscenario = rondas.length > 0 
                     ? rondas.join(' / ') 
                     : 'Escenarios por definir';
-            } else {
-                // Para torneos individuales, usar el escenario de la ronda actual
-                nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
-                
+           } else {
+            nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
+            
                 if (!nombreEscenario) {
                     alert(`⚠️ No se encontró el escenario configurado para la Ronda ${torneo.ronda_actual}`);
                     return;
@@ -371,11 +398,13 @@ useEffect(() => {
             }
 
             const confirmar = window.confirm(
-                `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?\n\n` +
-                `Escenario: ${nombreEscenario}`
+                `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?`
             );
             
-            if (!confirmar) return;
+            if (!confirmar) {
+                setGuardando(false);
+                return;
+            }
 
             const todasLasPartidas = [];
             let mesaCounter = 1;
@@ -384,6 +413,10 @@ useEffect(() => {
             emparejamientos.forEach((emp) => {
                 if (emp.partidas && Array.isArray(emp.partidas)) {
                     emp.partidas.forEach((partida) => {
+                        const escenarioAsignado = esEquipos && partida.epoca 
+                        ? asignacionesEscenarios[partida.epoca] 
+                        : nombreEscenario;
+
                         todasLasPartidas.push({
                             mesa: mesaCounter++,
                             jugador1_id: partida.jugador1_id,
@@ -392,7 +425,7 @@ useEffect(() => {
                             equipo2_id: emp.equipo2_id,
                             epoca: partida.epoca || null,
                             es_bye: partida.es_bye || 0,
-                            nombre_partida: nombreEscenario,
+                            nombre_partida: escenarioAsignado,
                             ronda: torneo.ronda_actual,
                         });
                     });
@@ -443,6 +476,8 @@ useEffect(() => {
             alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}\nEscenario: ${nombreEscenario}`);
 
             setEmparejamientos([]);
+            setAsignacionesEscenarios({}); // Limpiar asignaciones
+            setMostrarSelectorEscenarios(false);
 
             await cargarPartidasRonda();
             await cargarTodasLasPartidas();
@@ -498,50 +533,71 @@ useEffect(() => {
     };
 
     const puedeEditarEstaPartida = (partida) => {
-    // Si no está en curso, nadie puede editar
-    if (torneo?.estado !== 'en_curso') return false;
-    
-    // Si la partida está confirmada, solo el organizador puede desconfirmarla
-    if (partida.resultado_confirmado && !esOrganizador) return false;
-    
-    // El organizador puede editar cualquier partida
-    if (esOrganizador) return true;
-    
-    // Los participantes solo pueden editar sus propias partidas
-    if (!esParticipante || !usuarioActual) return false;
-    
-    // 🎯 CORRECCIÓN: Verificar según tipo de torneo
-    if (esTorneoEquipos()) {
-        // Buscar equipo1
-        const equipo1 = equipos.find(eq => 
-            eq.id === partida.equipo1_id || eq.equipo_id === partida.equipo1_id
-        ); 
-        // Buscar equipo2
-        const equipo2 = equipos.find(eq => 
-            eq.id === partida.equipo2_id || eq.equipo_id === partida.equipo2_id
-        );
-        // Verificar si pertenece
-        const perteneceEquipo1 = equipo1 && equipo1.jugadores?.some(j => {
-            return j.jugador_id === usuarioActual.id;
-        });
+        // Si no está en curso, nadie puede editar
+        if (torneo?.estado !== 'en_curso') return false;
         
-        const perteneceEquipo2 = equipo2 && equipo2.jugadores?.some(j => {
-            return j.jugador_id === usuarioActual.id;
-        });
+        // Si la partida está confirmada, solo el organizador puede desconfirmarla
+        if (partida.resultado_confirmado && !esOrganizador) return false;
         
-        return perteneceEquipo1 || perteneceEquipo2;
-    } else {
-        // Para torneos individuales
-        const jugador1 = jugadores.find(j => j.id === partida.jugador1_id);
-        const jugador2 = jugadores.find(j => j.id === partida.jugador2_id);
+        // El organizador puede editar cualquier partida
+        if (esOrganizador) return true;
         
-        const esJugadorDeEstaPartida = 
-            (jugador1 && jugador1.jugador_id === usuarioActual.id) ||
-            (jugador2 && jugador2.jugador_id === usuarioActual.id);
+        // Los participantes solo pueden editar sus propias partidas
+        if (!esParticipante || !usuarioActual) return false;
         
-        return esJugadorDeEstaPartida;
-    }
-};
+        // 🎯 CORRECCIÓN: Verificar según tipo de torneo
+        if (esTorneoEquipos()) {
+            // Buscar equipo1
+            const equipo1 = equipos.find(eq => 
+                eq.id === partida.equipo1_id || eq.equipo_id === partida.equipo1_id
+            ); 
+            // Buscar equipo2
+            const equipo2 = equipos.find(eq => 
+                eq.id === partida.equipo2_id || eq.equipo_id === partida.equipo2_id
+            );
+            // Verificar si pertenece
+            const perteneceEquipo1 = equipo1 && equipo1.jugadores?.some(j => {
+                return j.jugador_id === usuarioActual.id;
+            });
+            
+            const perteneceEquipo2 = equipo2 && equipo2.jugadores?.some(j => {
+                return j.jugador_id === usuarioActual.id;
+            });
+            
+            return perteneceEquipo1 || perteneceEquipo2;
+        } else {
+            // Para torneos individuales
+            const jugador1 = jugadores.find(j => j.id === partida.jugador1_id);
+            const jugador2 = jugadores.find(j => j.id === partida.jugador2_id);
+            
+            const esJugadorDeEstaPartida = 
+                (jugador1 && jugador1.jugador_id === usuarioActual.id) ||
+                (jugador2 && jugador2.jugador_id === usuarioActual.id);
+            
+            return esJugadorDeEstaPartida;
+        }
+    };
+
+    const handleAsignarEscenario = (epoca, escenario) => {
+        setAsignacionesEscenarios(prev => ({
+            ...prev,
+            [epoca]: escenario
+        }));
+    };
+
+    const todasLasEpocasAsignadas = () => {
+        const epocas = obtenerEpocasDisponibles();
+        return epocas.every(epoca => asignacionesEscenarios[epoca]);
+    };
+
+    const confirmarAsignaciones = () => {
+        if (!todasLasEpocasAsignadas()) {
+            alert('⚠️ Debes asignar un escenario a todas las épocas');
+            return;
+        }
+        setMostrarSelectorEscenarios(false);
+        guardarResultados(); // Continuar con el guardado
+    };
 
 // Función para verificar si la partida tiene datos introducidos
     const tieneDatos = (partida) => {
@@ -701,8 +757,11 @@ useEffect(() => {
                     Mesa {partida.mesa || index + 1}
                     {esBye(partida) ? ' ⭐ BYE' : ''}
                     {partida.epoca && ` - 📅 ${partida.epoca}`}
-                    {' - '}
-                    {estaConfirmado ? '✅ CONFIRMADA' : '⏳ PENDIENTE'}
+                    {partida.nombre_partida && (
+                        <div className="escenario-partida">
+                            📋 {partida.nombre_partida}
+                        </div>
+                    )}
                 </div>
 
                 <div className="enfrentamiento">
@@ -762,20 +821,6 @@ useEffect(() => {
                 renderPartidaIndividual(partida, index, esRondaActual)
             );
         }
-        
-        const rondas = [
-            torneo.partida_ronda_1,
-            torneo.partida_ronda_2,
-            torneo.partida_ronda_3,
-            torneo.partida_ronda_4 || null,
-            torneo.partida_ronda_5 || null
-        ];
-
-        const rondasValidas = rondas.filter(ronda => ronda);
-
-        const nombresPartidas = {
-            'En cada ronda se jugarán': rondasValidas.join('/')     
-        };
 
         const grupos = agruparPartidasPorEquipos(partidas);
         
@@ -791,11 +836,6 @@ useEffect(() => {
                         {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? 'partida' : 'partidas'}
                     </span>
                     {/* 🎯 MOSTRAR ESCENARIO SOLO SI EL TORNEO ESTÁ EN CURSO */}
-                    {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
-                        <div className="escenario">
-                            📋 {nombresPartidas['En cada ronda se jugarán'] || 'Escenario por definir'}
-                        </div>
-                    )}
                 </div>
 
                 {/* PARTIDAS AGRUPADAS POR ÉPOCA */}
@@ -852,6 +892,96 @@ useEffect(() => {
 
     return (
         <div className="vista-emparejamientos">
+            {/* 🎯 SELECTOR DE ESCENARIOS - DEBE IR AQUÍ AL PRINCIPIO */}
+            {mostrarSelectorEscenarios && esTorneoEquipos() && (
+                <div className="modal-overlay" onClick={() => {
+                    setMostrarSelectorEscenarios(false);
+                    setGuardando(false);
+                }}>
+                    <div className="selector-escenarios-epoca" onClick={(e) => e.stopPropagation()}>
+                        <div className="selector-header">
+                            <h3>📋 Asignar Escenarios por Época</h3>
+                            <p>Ronda {torneo.ronda_actual} - Selecciona el escenario para cada época</p>
+                        </div>
+
+                        <div className="escenarios-disponibles">
+                            <strong>Escenarios de esta ronda:</strong>
+                            <div className="badges-escenarios">
+                                {(() => {
+                                    const rondas = [
+                                        torneo.partida_ronda_1,
+                                        torneo.partida_ronda_2,
+                                        torneo.partida_ronda_3,
+                                        torneo.partida_ronda_4,
+                                        torneo.partida_ronda_5
+                                    ].filter(Boolean);
+                                    
+                                    const escenarios = rondas.flatMap(r => r.split('/')).map(e => e.trim());
+                                    
+                                    return escenarios.map((esc, idx) => (
+                                        <span key={idx} className="badge-escenario">{esc}</span>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+
+                        <div className="asignaciones-lista">
+                            {obtenerEpocasDisponibles().map(epoca => {
+                                const escenarios = (() => {
+                                    const rondas = [
+                                        torneo.partida_ronda_1,
+                                        torneo.partida_ronda_2,
+                                        torneo.partida_ronda_3,
+                                        torneo.partida_ronda_4,
+                                        torneo.partida_ronda_5
+                                    ].filter(Boolean);
+                                    
+                                    return rondas.flatMap(r => r.split('/')).map(e => e.trim());
+                                })();
+
+                                return (
+                                    <div key={epoca} className="asignacion-row">
+                                        <span className="epoca-nombre">📅 {epoca}:</span>
+                                        <select
+                                            value={asignacionesEscenarios[epoca] || ''}
+                                            onChange={(e) => handleAsignarEscenario(epoca, e.target.value)}
+                                            className={asignacionesEscenarios[epoca] ? 'seleccionado' : ''}
+                                        >
+                                            <option value="">-- Seleccionar --</option>
+                                            {escenarios.map((esc, idx) => (
+                                                <option key={idx} value={esc}>{esc}</option>
+                                            ))}
+                                        </select>
+                                        {asignacionesEscenarios[epoca] && (
+                                            <span className="check-ok">✅</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="selector-footer">
+                            <button 
+                                onClick={() => {
+                                    setMostrarSelectorEscenarios(false);
+                                    setGuardando(false);
+                                    setAsignacionesEscenarios({});
+                                }}
+                                className="btn-cancelar"
+                            >
+                                ❌ Cancelar
+                            </button>
+                            <button 
+                                onClick={confirmarAsignaciones}
+                                className="btn-confirmar-asignacion"
+                                disabled={!todasLasEpocasAsignadas()}
+                            >
+                                ✅ Confirmar y Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="section-header">
                 <div>
                     <div>
@@ -1016,7 +1146,7 @@ useEffect(() => {
                                         </div>
                                     )}
 
-                                    <div className="emparejamientos-grid">
+                                   <div className={`emparejamientos-grid ${esTorneoEquipos ? 'equipos-layout' : ''}`}>
                                         {partidasGuardadas.length > 0 ? (
                                             renderPartidas(partidasGuardadas, true)
                                         ) : (
@@ -1127,7 +1257,7 @@ useEffect(() => {
                                                 
                                                 {expandida && (
                                                     <div className="acordeon-body">
-                                                        <div className="emparejamientos-grid">
+                                                         <div className={`emparejamientos-grid ${esTorneoEquipos ? 'equipos-layout' : ''}`}>
                                                             {renderPartidas(partidasRonda, false)}
                                                         </div>
                                                     </div>

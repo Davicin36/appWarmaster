@@ -4664,35 +4664,57 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     // Calcular resultado basado en puntos de victoria
     const puntosPartidaJ1 = parseInt(puntos_partida_j1) || 0;
     const puntosPartidaJ2 = parseInt(puntos_partida_j2) || 0;
-
-    let puntosVictoriaJ1, puntosVictoriaJ2, resultado;
-    
-    if (puntosPartidaJ1 > puntosPartidaJ2) {
-      puntosVictoriaJ1 = 3;
-      puntosVictoriaJ2 = 0;
-      resultado = 'victoria_j1';
-    } else if (puntosPartidaJ2 > puntosPartidaJ1) {
-      puntosVictoriaJ1 = 0;
-      puntosVictoriaJ2 = 3;
-      resultado = 'victoria_j2';
-    } else {
-      puntosVictoriaJ1 = 1;
-      puntosVictoriaJ2 = 1;
-      resultado = 'empate';
-    }
-
     const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
     const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
 
-    let puntosTorneoJ1, puntosTorneoJ2
-    
-    if (tipoTorneo === 'Por equipos'){
-      puntosTorneoJ1 = puntosPartidaJ1
-      puntosTorneoJ2 = puntosPartidaJ2
+    let puntosVictoriaJ1, puntosVictoriaJ2, resultado, puntosTorneoJ1, puntosTorneoJ2;
 
-    } else {
+    if (tipoTorneo === 'Por equipos') {
+
+
+        //TORNEO POR EQUIPOS
+
+        const umbralDiferencia = 3
+
+        puntosTorneoJ1 = puntosPartidaJ1
+        puntosTorneoJ2 = puntosPartidaJ2
       
-      const puntosTorneo = calcularPuntosTorneo(
+        const diferencia = Math.abs(puntosTorneoJ1 - puntosTorneoJ2)
+
+        if (diferencia >= umbralDiferencia){
+          if(puntosTorneoJ1 > puntosTorneoJ2){
+            puntosVictoriaJ1 = 3
+            puntosVictoriaJ2 = 0
+            resultado = 'victoria_j1'
+          } else {
+            puntosVictoriaJ1 = 0
+            puntosVictoriaJ2 = 3
+            resultado = 'victoria_j2'
+          }
+        } else {
+          puntosVictoriaJ1 = 1
+          puntosVictoriaJ2 = 1
+          resultado = 'empate'  
+        }
+    } else {
+
+      // TORNEO INDIVIDUAL
+
+      if (puntosPartidaJ1 > puntosPartidaJ2) {
+          puntosVictoriaJ1 = 3;
+          puntosVictoriaJ2 = 0;
+          resultado = 'victoria_j1';
+        } else if (puntosPartidaJ2 > puntosPartidaJ1) {
+          puntosVictoriaJ1 = 0;
+          puntosVictoriaJ2 = 3;
+          resultado = 'victoria_j2';
+        } else {
+          puntosVictoriaJ1 = 1;
+          puntosVictoriaJ2 = 1;
+          resultado = 'empate';
+        }
+
+        const puntosTorneo = calcularPuntosTorneo(
         puntosPartidaJ1, 
         puntosPartidaJ2, 
         jts1_id, 

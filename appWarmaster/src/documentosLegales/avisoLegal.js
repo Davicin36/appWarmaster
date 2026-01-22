@@ -10,7 +10,7 @@ export const avisoLegalContent = `
 
 En cumplimiento con el deber de información recogido en el artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y del Comercio Electrónico (LSSI-CE), se informa a los usuarios de lo siguiente:
 
-**Titular de la web:** David Alvares Roca  
+**Titular de la web:** David Álvarez Roca  
 **NIF:** 46362559-X  
 **Domicilio:** Avenida Juan Gris 15, 28840 Mejorada del Campo, Madrid, España  
 **Email de contacto:** dalvroca@gmail.com  

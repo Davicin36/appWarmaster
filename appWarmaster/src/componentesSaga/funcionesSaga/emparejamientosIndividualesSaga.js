@@ -201,7 +201,7 @@ export const generarEmparejamientosIndividuales = async (torneoId, ronda) => {
         let historialArray = [];
 
         try {
-            const historial = await torneosSagaApi.obtenerPartidasTorneo(torneoId);
+            const historial = await torneosSagaApi.obtenerPartidasTorneoPublico(torneoId);
             historialArray = Array.isArray(historial) ? historial : [];
 
             // Construir set de enfrentamientos
