@@ -8,43 +8,41 @@ class TorneosWarmasterApi {
   }
 
   async request(endpoint, options = {}) {
-  const url = `${this.baseURL}${endpoint}`;
-  
-  const token = localStorage.getItem('token');
-  
-  const isFormData = options.body instanceof FormData;
-  
-  const config = {
-    headers: {
-      ...(!isFormData && { 'Content-Type': 'application/json' }),
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers,
-    },
-    credentials: 'include',
-    ...options,
-  };
-
-  if (config.body && typeof config.body === 'object' && !isFormData) {
-    config.body = JSON.stringify(config.body);
-  }
-
-  try {
-    const response = await fetch(url, config);
+    const url = `${this.baseURL}${endpoint}`;
     
-    if (!response.ok) {
-      
-      const errorData = await response.json().catch(() => ({}));
-      console.error("❌ Error del servidor:", errorData); // 👈 IMPORTANTE
-     
-      throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+    const token = localStorage.getItem('token');
+    
+    const isFormData = options.body instanceof FormData;
+    
+    const config = {
+      headers: {
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers,
+      },
+      credentials: 'include',
+      ...options,
+    };
+
+    if (config.body && typeof config.body === 'object' && !isFormData) {
+      config.body = JSON.stringify(config.body);
     }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Error del servidor:", errorData);
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
   }
-}
 
   // ====================
   // MÉTODOS DE TORNEOS 
@@ -71,14 +69,42 @@ class TorneosWarmasterApi {
       body: torneoData,
     });
   }
-  //metodo para que cambie el estado del torneo
+
+  // Obtener organizadores del torneo
+  async obtenerOrganizadores(torneoId) {
+    return this.request(`/${torneoId}/organizadores`);
+  }
+
+  // Agregar organizador
+  async agregarOrganizador(torneoId, datos) {
+    return this.request(`/${torneoId}/organizadores`, {
+      method: 'POST',
+      body: JSON.stringify(datos)
+    });
+  }
+
+  // Eliminar organizador
+  async eliminarOrganizador(torneoId, organizadorId) {
+    return this.request(
+      `/${torneoId}/organizadores/${organizadorId}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  async reenviarInvitacion(torneoId, organizadorId) {
+    return this.request(`${torneoId}/organizadores/${organizadorId}/reenviar`, {
+      method: 'POST'
+    });
+  }
+
   async cambiarEstadoTorneo(torneoId, estado) {
     return this.request(`/${torneoId}/estado`, { 
       method: 'PUT',
       body: { estado },
     });
   }
-   async eliminarTorneo(torneoId) {
+
+  async eliminarTorneo(torneoId) {
     return this.request(`/${torneoId}/eliminarTorneo`, {
       method: 'DELETE',
     });
@@ -95,33 +121,52 @@ class TorneosWarmasterApi {
     });
   }
 
-  async obtenerIncripcion (torneoId){
+  async obtenerIncripcion(torneoId) {
     return this.request(`/${torneoId}/obtenerInscripcion`);
   }
 
-async actualizarInscripcion(torneoId, datosInscripcion) {
+  async actualizarInscripcion(torneoId, datosInscripcion) {
     return this.request(`/${torneoId}/actualizarInscripcion`, {
-        method: 'PUT',
-        body: datosInscripcion
+      method: 'PUT',
+      body: datosInscripcion
     });
-}
+  }
 
-async actualizarPagoJugador (torneoId, jugadorId, pagado){
-  return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
+  async añadirJugadorIndividual(torneoId, participante) {
+    return this.request(`/${torneoId}/add-individual-participant`, {
+      method: 'POST',
+      body: { participante }
+    });
+  }
+
+  async reenviarInscripcionTodosJugadores (torneoId) {
+    return this.request (`/${torneoId}/reenviarInscripciontodosIndividual`, {
+      method: 'POST'
+    })
+  }
+
+  async reenviarInscripcionIndivivual (torneoId, jugadorId) {
+      return this.request(`/${torneoId}/jugadores/${jugadorId}/reenviarInvitacionInd`, {
+        method: 'POST'
+      })
+    }
+
+  async actualizarPagoJugador(torneoId, jugadorId, pagado) {
+    return this.request(`/${torneoId}/jugadores/${jugadorId}/pago`, {
       method: 'PATCH',
       body: { pagado }
-  })
-}
+    })
+  }
 
-async verificarPagos (torneoId){
-  return this.request (`/${torneoId}/verificarPagos`, { 
-    method : 'GET'
-  });
-}
+  async verificarPagos(torneoId) {
+    return this.request(`/${torneoId}/verificarPagos`, { 
+      method: 'GET'
+    });
+  }
 
-//====================================================
-// //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
-//====================================================
+  // ====================================================
+  // MÉTODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS
+  // ====================================================
 
   async eliminarJugadorTorneo(torneoId, jugadorId) {
     return this.request(`/${torneoId}/jugadores/${jugadorId}`, {
@@ -129,72 +174,66 @@ async verificarPagos (torneoId){
     });
   }
 
-  //jugadores que hay en cada torneo
   async obtenerJugadoresTorneo(torneoId) {
     return this.request(`/${torneoId}/jugadores`);
   }
  
-// ========================
-// // MÉTODOS DE PARTIDAS
-// ========================
+  // ========================
+  // MÉTODOS DE PARTIDAS
+  // ========================
 
-// Obtener TODAS las partidas de un torneo (con filtro opcional de ronda)
-async obtenerPartidasTorneo(torneoId, ronda) {
-  const endpoint = ronda 
-    ? `/${torneoId}/partidasTorneoSaga?ronda=${ronda}`
-    : `/${torneoId}/partidasTorneoSaga`;
-  
-  const response = await this.request(endpoint);
-  
-  // ✅ EL BACKEND DEVUELVE UN ARRAY DIRECTO
-  if (Array.isArray(response)) {
-    return response;
+  async obtenerPartidasTorneo(torneoId, ronda) {
+    const endpoint = ronda 
+      ? `/${torneoId}/partidasTorneoSaga?ronda=${ronda}`
+      : `/${torneoId}/partidasTorneoSaga`;
+    
+    const response = await this.request(endpoint);
+    
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    return response.partidas || response.data?.partidas || [];
   }
-  
-  // Si por alguna razón viene envuelto
-  return response.partidas || response.data?.partidas || [];
-}
 
-//obtener partidas de un torneo
   async obtenerPartida(torneoId, partidaId) {
-      return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`);
+    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`);
   }
 
-  //crear una partida nueva
   async registrarPartida(torneoId, partidaId, partida) {
     return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'PUT',
-      body : partida
+      body: partida
     });
   }
 
   async confirmarResultado(torneoId, partidaId, confirmar) {
-  return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmar`, {
-    method: 'PATCH',
-    body: { confirmar }
-  });
-}
+    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmar`, {
+      method: 'PATCH',
+      body: { confirmar }
+    });
+  }
 
-async obtenerEmparejamientosIndividuales(torneoId, ronda = null) {
-  const params = new URLSearchParams();
-  if (ronda) params.append('ronda', ronda);
-  
-  const queryString = params.toString() ? `?${params.toString()}` : '';
-  
-  return this.request(`/${torneoId}/obtenerEmparejamientosIndividuales${queryString}`, {
-    method: 'GET'
-  });
-}
+  async obtenerEmparejamientosIndividuales(torneoId, ronda = null) {
+    const params = new URLSearchParams();
+    if (ronda) params.append('ronda', ronda);
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    return this.request(`/${torneoId}/obtenerEmparejamientosIndividuales${queryString}`, {
+      method: 'GET'
+    });
+  }
 
-async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
-  return this.request(`/${torneoId}/guardarEmparejamientosIndividuales`, {
-    method: 'POST',
-    body: {
-      emparejamientos: emparejamientos,
-      ronda: ronda
-    }
-  });
-}
+  async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
+    return this.request(`/${torneoId}/guardarEmparejamientosIndividuales`, {
+      method: 'POST',
+      body: {
+        emparejamientos: emparejamientos,
+        ronda: ronda
+      }
+    });
+  }
 
   async actualizarPartida(partidaId, torneoId, partida) {
     return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
@@ -203,27 +242,41 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
     });
   }
 
- async eliminarPartida(partidaId, torneoId) {
+  async eliminarPartida(partidaId, torneoId) {
     return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
       method: 'DELETE',
     });
   }
 
-// ==================
-  // CLASIFICACIÓN
-  // ==================
-
-  //clasificacion de los torneos
-  async obtenerClasificacionIndividual(torneoId) {
-  return this.request(`/${torneoId}/obtenerClasificacionIndividual`, {
+    async obtenerJugadoresCorreos(torneoId) {
+  return this.request(`/${torneoId}/jugadores-correos`, {
     method: 'GET'
   });
 }
 
-//=======================================================================
-//=======================================================================
+// Enviar correos a participantes
+async enviarCorreoParticipantes(torneoId, datos) {
+  return this.request(`/${torneoId}/enviar-correo`, {
+    method: 'POST',
+    body: datos
+  });
+}
 
-  //metodo para la descarga de bases en PDF
+  // ==================
+  // CLASIFICACIÓN
+  // ==================
+
+  async obtenerClasificacionIndividual(torneoId) {
+    return this.request(`/${torneoId}/obtenerClasificacionIndividual`, {
+      method: 'GET'
+    });
+  }
+
+  // ==================
+  // ARCHIVOS PDF
+  // ==================
+
+  // Descargar bases del torneo
   async descargarBasesPDF(torneoId) {
     const token = localStorage.getItem('token');
     const url = `${this.baseURL}/${torneoId}/bases-pdf`; 
@@ -266,8 +319,51 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
     }
   }
 
-  //PARA DESCARGAR LA LISTA DE EJERCITO EN PDF
-   async descargarListaEjercito(torneoId, jugadorId) {
+  // ✅ NUEVO: Ver lista de ejército PDF en el navegador
+  async verListaPDFJugador(torneoId, jugadorId) {
+    const token = localStorage.getItem('token');
+    const url = `${this.baseURL}/${torneoId}/jugadores/${jugadorId}/lista-pdf`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Error al visualizar la lista');
+      }
+
+      // Obtener el blob del PDF
+      const blob = await response.blob();
+      
+      // Crear URL temporal para el blob
+      const pdfUrl = window.URL.createObjectURL(blob);
+      
+      // Abrir en nueva pestaña
+      const newWindow = window.open(pdfUrl, '_blank');
+      
+      if (!newWindow) {
+        throw new Error('Por favor, permite ventanas emergentes para ver el PDF');
+      }
+
+      // Limpiar URL después de 30 segundos
+      setTimeout(() => {
+        window.URL.revokeObjectURL(pdfUrl);
+      }, 30000);
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error al visualizar lista de ejército:', error);
+      throw error;
+    }
+  }
+
+  // DESCARGAR lista de ejército PDF
+  async descargarListaEjercito(torneoId, jugadorId) {
     const token = localStorage.getItem('token');
     const url = `${this.baseURL}/${torneoId}/listasEjercitos-pdf/${jugadorId}`;
     
@@ -284,10 +380,8 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
         throw new Error(errorData.message || 'Error al descargar la lista de ejército');
       }
 
-      // Obtener el blob del PDF
       const blob = await response.blob();
       
-      // Extraer nombre del archivo desde el header Content-Disposition
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = `lista_ejercito_jugador_${jugadorId}.pdf`;
       
@@ -298,7 +392,6 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
         }
       }
 
-      // Crear URL temporal y descargar
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -306,8 +399,6 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
-      // Limpiar URL temporal
       window.URL.revokeObjectURL(downloadUrl);
 
       return { success: true, filename };
@@ -317,7 +408,7 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
     }
   }
 
-  //PARA VER LAS LISTAS DE EJERCITO EN PDF
+  // VER lista de ejército PDF (método antiguo, mantener por compatibilidad)
   async verListaEjercito(torneoId, jugadorId) {
     const token = localStorage.getItem('token');
     const url = `${this.baseURL}/${torneoId}/listasEjercitos-pdf/${jugadorId}`;
@@ -335,20 +426,14 @@ async guardarEmparejamientosIndividuales(torneoId, emparejamientos, ronda) {
         throw new Error(errorData.message || 'Error al abrir la lista de ejército');
       }
 
-      // Obtener el blob del PDF
       const blob = await response.blob();
-      
-      // Crear URL temporal
       const pdfUrl = window.URL.createObjectURL(blob);
-      
-      // Abrir en nueva pestaña
       const newWindow = window.open(pdfUrl, '_blank');
       
       if (!newWindow) {
         throw new Error('Por favor, permite ventanas emergentes para ver el PDF');
       }
 
-      // Limpiar URL después de 30 segundos
       setTimeout(() => {
         window.URL.revokeObjectURL(pdfUrl);
       }, 30000);

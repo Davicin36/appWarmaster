@@ -24,10 +24,63 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     guerreros: 0,
     levas: 0,
     mercenarios: 0,
+    elefantes: 0,
   });
   const [detalleMercenarios, setDetalleMercenarios] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ==========================================
+  // ÉPOCAS QUE PERMITEN ELEFANTES
+  // ==========================================
+  const epocasConElefantes = ['Ánibal', 'Alejandro', 'Invasiones', "Alejandro/Ánibal", "Vikingos/Invasiones"  ];
+  const permiteElefantes = epocasConElefantes.includes(epocaSeleccionada);
+
+  // ==========================================
+  // PROCESAR ÉPOCAS Y BANDAS DISPONIBLES
+  // ==========================================
+  const { epocasArray, todasLasBandas, mapaBandaAEpoca } = React.useMemo(() => {
+    if (!torneo?.epocas_disponibles) {
+      return { epocasArray: [], todasLasBandas: [], mapaBandaAEpoca: {} };
+    }
+
+    const epocasString = torneo.epocas_disponibles;
+    let epocas = [];
+
+    // Detectar tipo de separador
+    if (epocasString.includes('|')) {
+      epocas = epocasString.split('|');
+    } else if (epocasString.includes(',')) {
+      epocas = epocasString.split(',');
+    } else {
+      epocas = [epocasString];
+    }
+
+    const epocasLimpias = epocas.map(e => e.trim()).filter(e => e.length > 0);
+    
+    // Obtener TODAS las bandas de TODAS las épocas
+    const bandasPorEpoca = {};
+    const mapa = {};
+    let todasBandas = [];
+
+    epocasLimpias.forEach(epoca => {
+      const bandas = obtenerBandasDisponibles(epoca);
+      bandasPorEpoca[epoca] = bandas;
+      
+      // Crear mapa de banda -> época
+      bandas.forEach(banda => {
+        mapa[banda.nombre] = epoca;
+      });
+      
+      todasBandas = [...todasBandas, ...bandas];
+    });
+
+    return {
+      epocasArray: epocasLimpias,
+      todasLasBandas: todasBandas,
+      mapaBandaAEpoca: mapa
+    };
+  }, [torneo?.epocas_disponibles]);
 
   // ==========================================
   // CARGAR INSCRIPCIÓN EXISTENTE (MODO EDICIÓN)
@@ -65,6 +118,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
             guerreros: parseFloat(composicion.guerreros || inscripcion.puntos_guerreros || 0),
             levas: parseFloat(composicion.levas || inscripcion.puntos_levas || 0),
             mercenarios: parseFloat(composicion.mercenarios || inscripcion.puntos_mercenarios || 0),
+            elefantes: parseFloat(composicion.elefantes || inscripcion.puntos_elefantes || 0),
           });
           
           setDetalleMercenarios(composicion.detalleMercenarios || inscripcion.detalle_mercenarios || "");
@@ -81,23 +135,44 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   }, [modoEdicion, torneoId]);
 
   // ==========================================
-  // AUTO-SELECCIONAR ÉPOCA ÚNICA
+  // LIMPIAR ELEFANTES SI CAMBIA LA ÉPOCA
   // ==========================================
-
   useEffect(() => {
-    if (torneo && !modoEdicion) {
-      const epocas = torneo.epocas_disponibles;
-      if (epocas) {
-        // Tomar la primera época disponible
-        const primeraEpoca = epocas.split(',')[0].trim();
-        setEpocaSeleccionada(primeraEpoca);
-      }
+    if (!permiteElefantes && puntos.elefantes > 0) {
+      setPuntos(prev => ({ ...prev, elefantes: 0 }));
     }
-  }, [torneo, modoEdicion]);
+  }, [epocaSeleccionada, permiteElefantes]);
 
   // ==========================================
   // HANDLERS
   // ==========================================
+
+  const handleBandaChange = (e) => {
+    const banda = e.target.value;
+    setBandaSeleccionada(banda);
+    
+    // ✅ Auto-detectar época según la banda seleccionada
+    if (banda && mapaBandaAEpoca[banda]) {
+      setEpocaSeleccionada(mapaBandaAEpoca[banda]);
+    } else if (!banda) {
+      // Si se deselecciona la banda, resetear puntos
+      setPuntos({
+        guardias: 0,
+        guerreros: 0,
+        levas: 0,
+        mercenarios: 0,
+        elefantes: 0,
+      });
+      setDetalleMercenarios("");
+      
+      // Si solo hay una época, mantenerla; si hay varias, resetear
+      if (epocasArray.length === 1) {
+        setEpocaSeleccionada(epocasArray[0]);
+      } else {
+        setEpocaSeleccionada("");
+      }
+    }
+  };
 
   const handlePuntosChange = (e) => {
     const { name, value } = e.target;
@@ -147,13 +222,13 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
     
     if (!epocaSeleccionada) {
-      setError("No se pudo cargar época del torneo");
+      setError("Debes seleccionar una banda (la época se detectará automáticamente)");
       return;
     }
 
     const totalPuntos = parseFloat(
-    (puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios).toFixed(2)
-  );
+      (puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios + puntos.elefantes).toFixed(2)
+    );
 
     if (totalPuntos > 0) {
       const puntosMaximos = torneo?.puntos_banda || 24;
@@ -189,14 +264,15 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       }
 
       if (totalPuntos > 0) {
-          inscripcionData.puntosGuardias = puntos.guardias,
-          inscripcionData.puntosGuerreros = puntos.guerreros,
-          inscripcionData.puntosLevas = puntos.levas,
-          inscripcionData.puntosMercenarios = puntos.mercenarios
+          inscripcionData.puntosGuardias = puntos.guardias;
+          inscripcionData.puntosGuerreros = puntos.guerreros;
+          inscripcionData.puntosLevas = puntos.levas;
+          inscripcionData.puntosMercenarios = puntos.mercenarios;
+          inscripcionData.puntosElefantes = puntos.elefantes;
         
         if (detalleMercenarios){
-          inscripcionData.detalleMercenarios =  detalleMercenarios
-        };
+          inscripcionData.detalleMercenarios = detalleMercenarios;
+        }
       }
 
       let resultado;
@@ -228,13 +304,8 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
 
 
   // CÁLCULOS Y DATOS
- 
-  const bandasDisponibles = epocaSeleccionada && epocaSeleccionada.trim() !== ' '
-    ? obtenerBandasDisponibles(epocaSeleccionada)
-    : []
-
   const puntosMaximos = torneo?.puntos_banda || 24;
-  const puntosActuales = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;
+  const puntosActuales = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios + puntos.elefantes;
   const diferencia = puntosMaximos - puntosActuales;
 
   // ==========================================
@@ -290,8 +361,9 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         <h2>Detalles del Torneo</h2>
         <div className="datos-grid">
           <div className="dato-item">
+            <label>Épocas Disponibles:</label>
             <span className="epoca-badge">
-              {torneo?.epocas_disponibles || epocaSeleccionada}
+              {epocasArray.join(', ')}
             </span>
           </div>
           
@@ -316,25 +388,29 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         
         {error && <div className="error-message">⚠️ {error}</div>}
 
-        {/* SELECTOR DE BANDA */}
-        {epocaSeleccionada && (
-            <div className="form-group">
-              <label htmlFor="banda">Banda:</label>
-              <select
-                id="banda"
-                value={bandaSeleccionada}
-                onChange={(e) => setBandaSeleccionada(e.target.value)}
-                disabled={loading}
-              >
-                <option value="">-- Completar después --</option>
-                {bandasDisponibles.map((banda, index) => (
-                  <option key={index} value={banda.nombre}>
-                    {banda.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        {/* SELECTOR DE BANDA - Ahora muestra TODAS las bandas disponibles */}
+        <div className="form-group">
+          <select
+            id="banda"
+            value={bandaSeleccionada}
+            onChange={handleBandaChange}
+            disabled={loading}
+          >
+            <option value="">-- Completar después --</option>
+            {todasLasBandas.length === 0 ? (
+              <option value="" disabled>⚠️ No hay bandas disponibles</option>
+            ) : (
+              todasLasBandas.map((banda, index) => (
+                <option key={index} value={banda.nombre}>
+                  {banda.nombre} 
+                </option>
+              ))
+            )}
+          </select>
+          <small style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem', display: 'block' }}>
+            La época se detectará automáticamente según la banda seleccionada
+          </small>
+        </div>
 
         {/* DISTRIBUCIÓN DE PUNTOS */}
         {bandaSeleccionada && (
@@ -366,6 +442,24 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                     disabled={loading}
                   />
                 </div>
+
+                 {/* ELEFANTES (solo para épocas específicas) */}
+                {permiteElefantes && (
+                  <div className="punto-item">
+                    <label htmlFor="elefantes">Elefantes</label>
+                    <input
+                      type="number"
+                      id="elefantes"
+                      name="elefantes"
+                      value={puntos.elefantes}
+                      onChange={handlePuntosChange}
+                      min="0"
+                      max={puntosMaximos}
+                      step="1"
+                      disabled={loading}
+                    />
+                  </div>
+                )}
 
                 <div className="punto-item">
                   <label htmlFor="guerreros">Guerreros</label>
@@ -440,7 +534,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                 type="submit" 
                 onClick={handleSubmit}
                 className="btn-primary" 
-                disabled={loading || !epocaSeleccionada}
+                disabled={loading || todasLasBandas.length === 0}
               >
                 {loading 
                   ? '⏳ Procesando...' 

@@ -29,7 +29,8 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
         guardias: 0,
         guerreros: 0,
         levas: 0,
-        mercenarios: 0
+        mercenarios: 0,
+        elefantes: 0 // ✅ NUEVO CAMPO
       },
       detalleMercenarios: "",
       esCapitan: true,
@@ -42,6 +43,11 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
 
   const jugadoresPorEquipo = torneo?.num_jugadores_equipo;
   const puntosMaximos = torneo?.puntos_banda || PUNTOS_BANDA_RANGO.default;
+  
+  // ==========================================
+  // ÉPOCAS QUE PERMITEN ELEFANTES
+  // ==========================================
+  const epocasConElefantes = ['Ánibal', 'Alejandro', 'Invasiones', "Alejandro/Ánibal", "Vikingos/Invasiones"  ];
   
   // ==========================================
   // PROCESAR LAS ÉPOCAS DISPONIBLES
@@ -92,7 +98,13 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                 email: m.email,
                 epoca: m.epoca,
                 banda: m.banda || "",
-                puntos: m.puntos || { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 },
+                puntos: m.puntos || { 
+                  guardias: 0, 
+                  guerreros: 0, 
+                  levas: 0, 
+                  mercenarios: 0,
+                  elefantes: 0 // ✅ CARGAR ELEFANTES
+                },
                 detalleMercenarios: m.detalle_mercenarios || "",
                 esCapitan: m.es_capitan,
                 esYo: m.usuario_id === user.id,
@@ -125,7 +137,13 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
           email: "", 
           epoca: "",
           banda: "",
-          puntos: { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 },
+          puntos: { 
+            guardias: 0, 
+            guerreros: 0, 
+            levas: 0, 
+            mercenarios: 0,
+            elefantes: 0 // ✅ INCLUIR EN NUEVO MIEMBRO
+          },
           detalleMercenarios: "",
           esCapitan: false,
           esYo: false,
@@ -184,13 +202,31 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     // Si cambia época, resetear banda Y puntos
     if (campo === 'epoca') {
       nuevosMiembros[index].banda = "";
-      nuevosMiembros[index].puntos = { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 };
+      nuevosMiembros[index].puntos = { 
+        guardias: 0, 
+        guerreros: 0, 
+        levas: 0, 
+        mercenarios: 0,
+        elefantes: 0 // ✅ RESETEAR ELEFANTES
+      };
       nuevosMiembros[index].detalleMercenarios = "";
+      
+      // ✅ Limpiar elefantes si la nueva época no los permite
+      const permiteElefantes = epocasConElefantes.includes(valor);
+      if (!permiteElefantes) {
+        nuevosMiembros[index].puntos.elefantes = 0;
+      }
     }
     
     // Si se borra la banda, resetear puntos
     if (campo === 'banda' && !valor) {
-      nuevosMiembros[index].puntos = { guardias: 0, guerreros: 0, levas: 0, mercenarios: 0 };
+      nuevosMiembros[index].puntos = { 
+        guardias: 0, 
+        guerreros: 0, 
+        levas: 0, 
+        mercenarios: 0,
+        elefantes: 0 // ✅ RESETEAR ELEFANTES
+      };
       nuevosMiembros[index].detalleMercenarios = "";
     }
     
@@ -248,7 +284,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
   };
 
   const calcularTotalPuntos = (puntos) => {
-    return puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios;
+    return puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios + puntos.elefantes; // ✅ INCLUIR ELEFANTES
   };
 
   const validarPuntosMiembro = (miembro) => {
@@ -336,7 +372,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
               email: m.email.toLowerCase().trim(),
               epoca: m.epoca,
               banda: m.banda || null,
-              puntos: m.banda ? m.puntos : null,
+              puntos: m.banda ? m.puntos : null, // ✅ Ya incluye elefantes en el objeto
               detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null,
               esCapitan: m.esCapitan
             }))
@@ -345,7 +381,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
               email: m.email.toLowerCase().trim(),
               epoca: m.epoca,
               banda: m.banda || null,
-              puntos: m.banda ? m.puntos : null,
+              puntos: m.banda ? m.puntos : null, // ✅ Ya incluye elefantes en el objeto
               detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null
             }))
       };
@@ -354,7 +390,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       if (!modoEdicion) {
         inscripcionData.miEpoca = misDatos.epoca;
         inscripcionData.miBanda = misDatos.banda || null;
-        inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null;
+        inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null; // ✅ Ya incluye elefantes
         inscripcionData.miDetalleMercenarios = (misDatos.banda && misDatos.detalleMercenarios) ? misDatos.detalleMercenarios : null;
       }
 
@@ -455,6 +491,9 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
               const bandasDisponibles = miembro.epoca 
                   ? obtenerBandasDisponibles(miembro.epoca)
                   : [];
+              
+              // ✅ Verificar si esta época permite elefantes
+              const permiteElefantes = epocasConElefantes.includes(miembro.epoca);
 
               return (
                 <div key={index} className="miembro-item">
@@ -622,6 +661,23 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                               disabled={loading}
                             />
                           </div>
+
+                           {/* ✅ NUEVO CAMPO: ELEFANTES (solo para épocas específicas) */}
+                          {permiteElefantes && (
+                            <div className="punto-item-mini">
+                              <label htmlFor={`elefantes-${index}`}>Elefantes</label>
+                              <input
+                                type="number"
+                                id={`elefantes-${index}`}
+                                value={miembro.puntos.elefantes}
+                                onChange={(e) => actualizarPuntos(index, 'elefantes', e.target.value)}
+                                min="0"
+                                max={puntosMaximos}
+                                step="1"
+                                disabled={loading}
+                              />
+                            </div>
+                          )}
 
                           <div className="punto-item-mini">
                             <label htmlFor={`guerreros-${index}`}>Guerreros</label>

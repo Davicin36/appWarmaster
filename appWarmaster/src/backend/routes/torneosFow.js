@@ -2,7 +2,10 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { pool } from '../config/bd.js';
-import { verificarToken } from '../middleware/auth.js';
+import { enviarInvitarJugador }  from '../utils/emailInvitarTorneoInd.js';
+import { enviarInvitacionOrganizadorNoRegistrado, enviarInvitacionOrganizadorRegistrado } from '../utils/emailInvitarOrganizador.js'; 
+import  { emailTorneo }  from '../utils/emailComunicaciones.js';
+import { verificarToken, verificarOrganizadorTorneo } from '../middleware/auth.js';
 import { 
   validarFecha,
   validarCamposRequeridos,
@@ -148,9 +151,7 @@ router.get('/obtenerTorneos', async (req, res) => {
   }
 });
 
-
 //=====OBTENER TORNEO ESPECIFICO=====
-
 
 router.get('/torneo/:torneoId', async (req, res) => {
   try {
@@ -266,9 +267,8 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       'rondas_max', 
       'epocas_disponibles', 
       'fecha_inicio',
-      'puntos_banda',
+      'puntos_ejercito',
       'participantes_max',
-      'equipos_max',
       'partida_ronda_1',
       'partida_ronda_2',
       'partida_ronda_3'
@@ -760,6 +760,548 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_p
     res.status(500).json(errorResponse(mensaje));
   }
 });
+
+// ===== OBTENER ORGANIZADORES DEL TORNEO =====
+
+router.get('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  try {
+    const { torneoId } = req.params;
+
+    // Verificar que el torneo existe y obtener el creador
+    const [torneo] = await pool.execute(
+      'SELECT id, created_by FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
+
+    if (torneo.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
+
+    const creadorId = torneo[0].created_by;
+
+    // Obtener TODOS los organizadores
+    const [organizadores] = await pool.execute(
+      `SELECT 
+        torg.id as organizador_id,
+        torg.torneo_id,
+        torg.usuario_id,
+        torg.fecha_asignacion,
+        u.nombre,
+        u.apellidos,
+        u.nombre_alias,
+        u.email,
+        u.estado_cuenta
+      FROM organizadores_torneos torg
+      INNER JOIN usuarios u ON torg.usuario_id = u.id
+      WHERE torg.torneo_id = ?
+      ORDER BY torg.fecha_asignacion ASC`,
+      [torneoId]
+    );
+
+    // Procesar organizadores
+    const organizadoresConInfo = organizadores.map(org => {
+      const esCreador = org.usuario_id === creadorId;
+      const esPendienteInvitacion = org.password && org.password.startsWith('TEMP_');
+      
+      let nombreCompleto;
+      if (esPendienteInvitacion) {
+        nombreCompleto = org.email; // Si es invitación, solo mostrar email
+      } else {
+        nombreCompleto = org.nombre_alias || 
+                        `${org.nombre || ''} ${org.apellidos || ''}`.trim() || 
+                        org.email;
+      }
+
+      return {
+        organizador_id: org.organizador_id,
+        usuario_id: org.usuario_id,
+        nombre_usuario: nombreCompleto,
+        email: org.email,
+        estado_cuenta: org.estado_cuenta,
+        fecha_asignacion: org.fecha_asignacion,
+        es_creador: esCreador,
+        es_invitacion_pendiente: esPendienteInvitacion,
+        rol: esCreador ? 'creador' : 'organizador'
+      };
+    });
+
+    // Separar por estado
+    const activos = organizadoresConInfo.filter(org => 
+      org.estado_cuenta === 'activo' && !org.es_invitacion_pendiente
+    );
+    
+    const pendientes = organizadoresConInfo.filter(org => 
+      org.estado_cuenta === 'pendiente_registro' || org.es_invitacion_pendiente
+    );
+
+    res.json(successResponse('Organizadores obtenidos', {
+      activos,
+      pendientes
+    }));
+
+  } catch (error) {
+    console.error('❌ Error al obtener organizadores:', error);
+    res.status(500).json(errorResponse('Error al obtener organizadores'));
+  }
+});
+
+// ===== AGREGAR ORGANIZADOR AL TORNEO =====
+
+router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorneo,async (req, res) => {
+  try {
+    const { torneoId } = req.params;
+    const { email } = req.body;
+
+    if (!email || !email.trim()) {
+      return res.status(400).json(errorResponse('El email es obligatorio'));
+    }
+
+    const emailLimpio = email.toLowerCase().trim();
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailLimpio)) {
+      return res.status(400).json(errorResponse('Email inválido'));
+    }
+
+    // Verificar que el torneo existe
+    const [torneo] = await pool.execute(
+      `SELECT 
+        id, 
+        created_by, 
+        nombre_torneo,
+        fecha_inicio,
+        fecha_fin,
+        ubicacion,
+        tipo_torneo,
+        rondas_max
+      FROM torneos_sistemas 
+      WHERE id = ?`,
+      [torneoId]
+    );
+
+    if (torneo.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
+
+    const nombreTorneo = torneo[0].nombre_torneo;
+    const creadorOriginal = torneo[0].created_by;
+
+    // VERIFICAR QUE EL USUARIO SEA ORGANIZADOR DEL TORNEO
+    const [esOrganizador] = await pool.execute(
+      'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+      [torneoId, req.usuario.userId]
+    );
+
+    // Si no es organizador Y tampoco es el creador original → DENEGAR
+    if (esOrganizador.length === 0 && creadorOriginal !== req.usuario.userId) {
+      return res.status(403).json(
+        errorResponse('Solo los organizadores del torneo pueden agregar más organizadores')
+      );
+    }
+
+    // Obtener datos del usuario que está invitando (para el email)
+    const [usuarioInvitador] = await pool.execute(
+      'SELECT nombre, apellidos, nombre_alias, email FROM usuarios WHERE id = ?',
+      [req.usuario.userId]
+    );
+
+    const nombreInvitador = usuarioInvitador[0].nombre_alias || 
+                           `${usuarioInvitador[0].nombre || ''} ${usuarioInvitador[0].apellidos || ''}`.trim() || 
+                           usuarioInvitador[0].email;
+
+    // Verificar si el usuario existe
+    const [usuarioExistente] = await pool.execute(
+      'SELECT id, email, estado_cuenta, password, nombre, apellidos, nombre_alias FROM usuarios WHERE email = ?',
+      [emailLimpio]
+    );
+
+    let usuarioId;
+    let tipoRespuesta;
+
+    if (usuarioExistente.length > 0) {
+      // Usuario existe
+      usuarioId = usuarioExistente[0].id;
+      const estadoCuenta = usuarioExistente[0].estado_cuenta;
+      const esInvitacionTemporal = usuarioExistente[0].password && 
+                                                        usuarioExistente[0].password.startsWith('TEMP_');
+
+      // Verificar estado de la cuenta
+      if (estadoCuenta === 'suspendido') {
+        return res.status(400).json(
+          errorResponse('Este usuario está suspendido y no puede ser organizador')
+        );
+      }
+
+      // Verificar si ya es organizador
+      const [yaEsOrganizador] = await pool.execute(
+        'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+        [torneoId, usuarioId]
+      );
+
+      if (yaEsOrganizador.length > 0) {
+        return res.status(400).json(
+          errorResponse('Este usuario ya es organizador del torneo')
+        );
+      }
+
+      if (estadoCuenta === 'activo' && !esInvitacionTemporal) {
+        tipoRespuesta = 'activo';
+        
+        // Agregar a torneo_organizadores
+        await pool.execute(
+          `INSERT INTO organizadores_torneos (torneo_id, usuario_id)
+           VALUES (?, ?)`,
+          [torneoId, usuarioId]
+        );
+
+        //actualizar rol a organizador si no lo es ya.
+        await pool.execute(
+          `UPDATE usuarios SET rol = 'organizador' WHERE id = ? AND rol != 'organizador'`,
+          [usuarioId]
+        );
+
+        const nombreCompleto = usuarioExistente[0].nombre_alias || 
+                              `${usuarioExistente[0].nombre || ''} ${usuarioExistente[0].apellidos || ''}`.trim() || emailLimpio;
+
+        // Enviar email a usuario YA registrado
+        try {
+          await enviarInvitacionOrganizadorRegistrado({
+              destinatario: emailLimpio,
+              nombreDestinatario: nombreCompleto, 
+              creadorNombre: nombreInvitador,
+              nombreTorneo: nombreTorneo,
+              fechaInicio: new Date(torneo[0].fecha_inicio).toLocaleDateString('es-ES'),
+              fechaFin: torneo[0].fecha_fin ? new Date(torneo[0].fecha_fin).toLocaleDateString('es-ES') : null,
+              ubicacion: torneo[0].ubicacion,
+              tipoTorneo: torneo[0].tipo_torneo,
+              rondasMax: torneo[0].rondas_max
+          });
+        } catch (emailError) {
+          console.error('⚠️ Error al enviar email:', emailError);
+          // No bloquear el proceso si falla el email
+        }
+      } else {
+        tipoRespuesta = 'pendiente_registro';
+        
+        // Agregar a torneo_organizadores
+        await pool.execute(
+          `INSERT INTO organizadores_torneos (torneo_id, usuario_id)
+           VALUES (?, ?)`,
+          [torneoId, usuarioId]
+        );
+      }
+
+    } else {
+      // Usuario NO existe - crear usuario temporal con invitación
+      const passwordTemporal = `TEMP_${crypto.randomBytes(16).toString('hex')}`;
+      
+      try {
+        const [resultado] = await pool.execute(
+          `INSERT INTO usuarios (
+              nombre, 
+              apellidos,
+              email, 
+              password,
+              estado_cuenta,
+              rol
+          ) VALUES ('pendiente', 'registro', ?, ?, 'pendiente_registro', 'organizador')`,
+          [
+            emailLimpio,
+            passwordTemporal
+          ]
+        );
+
+        usuarioId = resultado.insertId;
+        tipoRespuesta = 'invitacion_nueva';
+
+        // Agregar a torneo_organizadores
+        await pool.execute(
+          `INSERT INTO organizadores_torneos (torneo_id, usuario_id)
+           VALUES (?, ?)`,
+          [torneoId, usuarioId]
+        )
+
+        // Enviar email a usuario NO registrado
+        try {
+          await enviarInvitacionOrganizadorNoRegistrado({
+            destinatario: emailLimpio,
+            nombreTorneo: nombreTorneo,
+            creadorNombre: nombreInvitador,
+            fechaInicio: new Date(torneo[0].fecha_inicio).toLocaleDateString('es-ES'),
+            fechaFin: torneo[0].fecha_fin ? new Date(torneo[0].fecha_fin).toLocaleDateString('es-ES') : null,
+            ubicacion: torneo[0].ubicacion || 'Por confirmar',
+            tipoTorneo: torneo[0].tipo_torneo,
+            rondasMax: torneo[0].rondas_max
+          });
+          console.log(`📧 Email de invitación enviado a: ${emailLimpio}`);
+        } catch (emailError) {
+          console.error('⚠️ Error al enviar email:', emailError);
+          // No bloquear el proceso si falla el email
+        }
+
+      } catch (insertError) {
+        console.error('Error al crear usuario temporal:', insertError);
+        if (insertError.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json(
+            errorResponse('Este email ya está en uso')
+          );
+        }
+        throw insertError;
+      }
+    }
+
+    const mensajes = {
+      'activo': `✅ ${emailLimpio} agregado como organizador. Se le ha enviado una notificación.`,
+      'pendiente': `⏳ ${emailLimpio} agregado como organizador (cuenta pendiente de activación)`,
+      'invitacion_nueva': `📧 Invitación enviada a ${emailLimpio}. Debe registrarse para acceder`
+    };
+
+    return res.json(successResponse(mensajes[tipoRespuesta], {
+      tipo: tipoRespuesta,
+      email: emailLimpio,
+      usuarioId
+    }));
+
+  } catch (error) {
+    console.error('❌ Error al agregar organizador:', error);
+    
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json(
+        errorResponse('Error: duplicado detectado')
+      );
+    }
+    
+    res.status(500).json(errorResponse('Error al agregar organizador'));
+  }
+});
+
+//=====ELIMINAR ORGANIZADOR DE TORNEO=====
+
+router.delete('/:torneoId/organizadores/:organizadorId', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  try {
+    const { torneoId, organizadorId } = req.params;
+
+    // Verificar que el usuario actual es el creador del torneo
+    const [torneo] = await pool.execute(
+      'SELECT created_by FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
+
+    if (torneo.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
+    
+    const creadorOriginal = torneo[0].created_by;
+
+    // ✅ VERIFICAR QUE EL USUARIO ACTUAL SEA ORGANIZADOR DEL TORNEO
+    const [usuarioEsOrganizador] = await pool.execute(
+      'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+      [torneoId, req.usuario.userId]
+    );
+
+    // Si NO es organizador Y tampoco es el creador original → DENEGAR
+    if (usuarioEsOrganizador.length === 0 && creadorOriginal !== req.usuario.userId) {
+      return res.status(403).json(
+        errorResponse('Solo los organizadores del torneo pueden eliminar organizadores')
+      );
+    }
+
+    // Obtener información del organizador a eliminar
+    const [organizador] = await pool.execute(
+      `SELECT 
+        torg.id,
+        torg.usuario_id,
+        u.email,
+        u.password,
+        u.estado_cuenta
+      FROM organizadores_torneos torg
+      INNER JOIN usuarios u ON torg.usuario_id = u.id
+      WHERE torg.id = ? AND torg.torneo_id = ?`,
+      [organizadorId, torneoId]
+    );
+
+    if (organizador.length === 0) {
+      return res.status(404).json(errorResponse('Organizador no encontrado'));
+    }
+
+    const usuarioIdAEliminar = organizador[0].usuario_id;
+    const emailUsuario = organizador[0].email;
+    const passwordUsuario = organizador[0].password;
+    const esInvitacionTemporal = passwordUsuario && passwordUsuario.startsWith('TEMP_');
+
+    //VERIFICAMOS QUE QUEDE AL MENOS UN ORGANIZADOR
+    const [totalOrganizadores] = await pool.execute(
+      'SELECT COUNT(*) as total FROM organizadores_torneos WHERE torneo_id = ?',
+      [torneoId]
+    );
+
+    if (totalOrganizadores[0].total <= 1) {
+      return res.status(400).json(
+        errorResponse('No se puede eliminar. Debe quedar al menos un organizador en el torneo')
+      );
+    }
+
+    // ⚠️ OPCIONAL: No permitir que un organizador se elimine a sí mismo
+    // (puedes comentar esto si quieres permitirlo)
+    if (usuarioIdAEliminar === req.usuario.userId) {
+      return res.status(400).json(
+        errorResponse('No puedes eliminarte a ti mismo como organizador. Pídele a otro organizador que lo haga.')
+      );
+    }
+
+//SI SE ELIMINA AL CREADOR ORIGINAL, ASIGNAR NUEVO CREADOR
+    if (usuarioIdAEliminar === creadorOriginal) {
+      // Obtener el siguiente organizador más antiguo
+      const [nuevoCreador] = await pool.execute(
+        `SELECT usuario_id 
+         FROM organizadores_torneos 
+         WHERE torneo_id = ? AND usuario_id != ?
+         ORDER BY fecha_asignacion ASC
+         LIMIT 1`,
+        [torneoId, usuarioIdAEliminar]
+      );
+
+      if (nuevoCreador.length > 0) {
+        // Actualizar el creador del torneo
+        await pool.execute(
+          'UPDATE torneos_sistemas SET created_by = ? WHERE id = ?',
+          [nuevoCreador[0].usuario_id, torneoId]
+        );
+      }
+    }
+
+    // Eliminar de torneo_organizadores
+    const [result] = await pool.execute(
+      'DELETE FROM organizadores_torneos WHERE id = ? AND torneo_id = ?',
+      [organizadorId, torneoId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json(errorResponse('No se pudo eliminar el organizador'));
+    }
+
+    // Si era una invitación temporal, verificar si tiene otros torneos
+    if (esInvitacionTemporal) {
+      // Verificar si tiene otros torneos asignados
+      const [otrosTorneos] = await pool.execute(
+        'SELECT COUNT(*) as total FROM organizadores_torneos WHERE usuario_id = ?',
+        [usuarioIdAEliminar]
+      );
+
+      if (otrosTorneos[0].total === 0) {
+        // No tiene más torneos, eliminar usuario temporal
+        await pool.execute(
+          'DELETE FROM usuarios WHERE id = ? AND password LIKE "TEMP_%"',
+          [usuarioIdAEliminar]
+        );
+      }
+    }
+
+    res.json(successResponse('Organizador eliminado exitosamente', {
+      email: emailUsuario,
+      nuevo_creador_asignado: usuarioIdAEliminar === creadorOriginal
+    }));
+
+  } catch (error) {
+    console.error('❌ Error al eliminar organizador:', error);
+    res.status(500).json(errorResponse('Error al eliminar organizador'));
+  }
+});
+
+// ===== REENVIAR EMAIL PARA AGREGAR  ORGANIZADOR (SUPERADMIN) =====
+
+router.post('/:torneoId/organizadores/:organizadorId/reenviar', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  try {
+    const { torneoId, organizadorId } = req.params;
+
+    // Obtener información del torneo y organizador
+    const [data] = await pool.execute(
+      `SELECT 
+        ts.nombre_torneo,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.ubicacion,
+        ts.tipo_torneo,
+        ts.rondas_max,
+        u.email,
+        u.nombre,
+        u.apellidos,
+        u.nombre_alias,
+        u.estado_cuenta,
+        u.password
+      FROM organizadores_torneos ot
+      INNER JOIN torneos_sistemas ts ON ot.torneo_id = ts.id
+      INNER JOIN usuarios u ON ot.usuario_id = u.id
+      WHERE ot.id = ? AND ot.torneo_id = ?`,
+      [organizadorId, torneoId]
+    );
+
+    if (data.length === 0) {
+      return res.status(404).json(errorResponse('Organizador o torneo no encontrado'));
+    }
+
+    const info = data[0];
+    const esPendiente = info.estado_cuenta === 'pendiente_registro' || 
+                       (info.password && info.password.startsWith('TEMP_'));
+
+    if (!esPendiente) {
+      return res.status(400).json(
+        errorResponse('Solo se pueden reenviar invitaciones a usuarios pendientes')
+      );
+    }
+
+    const nombreCompleto = info.nombre_alias || 
+                          `${info.nombre || ''} ${info.apellidos || ''}`.trim() || 
+                          info.email;
+
+    // Reenviar email
+    try {
+      if (info.password && info.password.startsWith('TEMP_')) {
+        // Usuario no registrado
+        await enviarInvitacionOrganizadorNoRegistrado({
+          destinatario: info.email,
+          nombreTorneo: info.nombre_torneo,
+          creadorNombre: nombreInvitador,
+          fechaInicio: info.fecha_inicio ? new Date(info.fecha_inicio).toLocaleDateString('es-ES') : null,
+          fechaFin: info.fecha_fin ? new Date(info.fecha_fin).toLocaleDateString('es-ES') : null,
+          ubicacion: info.ubicacion || 'Por confirmar',
+          tipoTorneo: info.tipo_torneo,
+          rondasMax: info.rondas_max
+        });
+      } else {
+        // Usuario registrado pero pendiente
+        await enviarInvitacionOrganizadorRegistrado({
+          destinatario: info.email,
+          nombreDestinatario: nombreCompleto,
+          creadorNombre: nombreInvitador,
+          nombreTorneo: info.nombre_torneo,
+          fechaInicio: info.fecha_inicio ? new Date(info.fecha_inicio).toLocaleDateString('es-ES') : null,
+          fechaFin: info.fecha_fin ? new Date(info.fecha_fin).toLocaleDateString('es-ES') : null,
+          ubicacion: info.ubicacion,
+          tipoTorneo: info.tipo_torneo,
+          rondasMax: info.rondas_max
+        });
+      }
+
+      res.json(successResponse('Invitación reenviada exitosamente', {
+        email: info.email,
+        nombreTorneo: info.nombre_torneo
+      }));
+
+    } catch (emailError) {
+      console.error('❌ Error al reenviar email:', emailError);
+      return res.status(500).json(
+        errorResponse('Error al enviar el email de invitación')
+      );
+    }
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitación:', error);
+    res.status(500).json(errorResponse('Error al reenviar invitación'));
+  }
+});
+
 
 // ======INSCRIBIRSE EN TORNEO=====
 

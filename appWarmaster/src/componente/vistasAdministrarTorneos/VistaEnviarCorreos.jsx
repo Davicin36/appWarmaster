@@ -29,6 +29,7 @@ const VistaEnviarCorreos = ({ torneoId, torneo, tipoJuego }) => {
         return torneosWarmasterApi;
       case 'flames of war':
       case 'FOW':
+      case 'fow':
         return torneosFowApi;
       default:
         console.warn(`Tipo de juego no reconocido: ${tipoJuego}, usando SAGA por defecto`);

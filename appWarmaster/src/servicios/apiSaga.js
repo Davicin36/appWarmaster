@@ -94,7 +94,7 @@ class TorneosSagaApi {
   }
 
   async reenviarInvitacion(torneoId, organizadorId) {
-    return this.request(`/torneos/${torneoId}/organizadores/${organizadorId}/reenviar`, {
+    return this.request(`${torneoId}/organizadores/${organizadorId}/reenviar`, {
       method: 'POST'
     });
   }

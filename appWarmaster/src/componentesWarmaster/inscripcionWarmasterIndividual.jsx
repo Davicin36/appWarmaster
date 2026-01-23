@@ -17,12 +17,13 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
   const modoEdicion = location.pathname.includes('editar-inscripcion') || location.pathname.includes('actualizarInscripcion');
   
   // Estados
+  const [nombreEjercito, setNombreEjercito] = useState(""); // ✅ NUEVO ESTADO
   const [ejercitoSeleccionado, setEjercitoSeleccionado] = useState("");
   const [archivoPDF, setArchivoPDF] = useState(null);
   const [pdfActual, setPdfActual] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [loadingPdf, setLoadingPdf] = useState(false); // ✅ Nuevo estado
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   // ==========================================
   // CARGAR INSCRIPCIÓN EXISTENTE (MODO EDICIÓN)
@@ -39,6 +40,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
         if (dataInscripcion.success && dataInscripcion.data) {
           const inscripcion = dataInscripcion.data;
           
+          setNombreEjercito(inscripcion.nombre_ejercito || ""); // ✅ CARGAR NOMBRE
           setEjercitoSeleccionado(inscripcion.ejercito || "");
           
           // Si hay lista PDF, guardar metadata
@@ -81,7 +83,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
       return;
     }
     
-    // Validar tamaño (máximo 16MB, pero el mensaje dice 5MB)
+    // Validar tamaño (máximo 16MB)
     const maxSize = 16 * 1024 * 1024;
     if (file.size > maxSize) {
       const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
@@ -104,7 +106,6 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  // ✅ NUEVO: Handler para ver PDF
   const handleVerPDF = async () => {
     if (!user?.id) {
       setError("No se pudo obtener tu ID de usuario");
@@ -124,7 +125,6 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  // ✅ NUEVO: Handler para descargar PDF
   const handleDescargarPDF = async () => {
     if (!user?.id) {
       setError("No se pudo obtener tu ID de usuario");
@@ -180,6 +180,11 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
       return;
     }
 
+    if (!nombreEjercito.trim()) { // ✅ VALIDAR NOMBRE
+      setError("Debes indicar el nombre de tu ejército");
+      return;
+    }
+
     if (!ejercitoSeleccionado) {
       setError("Debes seleccionar un ejército");
       return;
@@ -192,10 +197,12 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
       
       if (archivoPDF) {
         inscripcionData = new FormData();
+        inscripcionData.append('nombre_ejercito', nombreEjercito.trim()); // ✅ AGREGAR NOMBRE
         inscripcionData.append('ejercito', ejercitoSeleccionado);
         inscripcionData.append('lista_ejercito', archivoPDF);
       } else {
         inscripcionData = {
+          nombre_ejercito: nombreEjercito.trim(), // ✅ AGREGAR NOMBRE
           ejercito: ejercitoSeleccionado
         };
       }
@@ -222,7 +229,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  const puntosMaximos = torneo?.puntos_Ejercito || 2000;
+  const puntosMaximos = torneo?.puntos_ejercito || 2000;
 
   // ==========================================
   // RENDER
@@ -301,10 +308,29 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
 
         {/* SELECCIÓN DE EJÉRCITO */}
         <fieldset>
-          <legend>⚔️ Selección de Ejército</legend>
+          <legend>⚔️ Datos del Ejército</legend>
           
+          {/* ✅ NUEVO CAMPO: NOMBRE DEL EJÉRCITO */}
           <div className="form-group">
-            <label htmlFor="ejercito">Ejército:*</label>
+            <label htmlFor="nombreEjercito">Nombre del Ejército:*</label>
+            <input
+              type="text"
+              id="nombreEjercito"
+              value={nombreEjercito}
+              onChange={(e) => setNombreEjercito(e.target.value)}
+              placeholder="Ej: Los Invencibles de Rohan"
+              maxLength={100}
+              required
+              disabled={loading}
+            />
+            <small className="help-text">
+              💡 Dale un nombre personalizado a tu ejército (máx. 100 caracteres)
+            </small>
+          </div>
+
+          {/* SELECCIÓN DE FACCIÓN */}
+          <div className="form-group">
+            <label htmlFor="ejercito">Facción del Ejército:*</label>
             <select
               id="ejercito"
               value={ejercitoSeleccionado}
@@ -312,7 +338,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
               required
               disabled={loading}
             >
-              <option value="">-- Selecciona un ejército --</option>
+              <option value="">-- Selecciona una facción --</option>
               {EJERCITOS_WARMASTER.map((ejercito, index) => (
                 <option key={index} value={ejercito.nombre}>
                   {ejercito.nombre}
@@ -326,7 +352,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
         <fieldset>
           <legend>📄 Lista de Ejército (Opcional)</legend>
           
-          {/* ✅ MOSTRAR PDF ACTUAL CON BOTONES */}
+          {/* MOSTRAR PDF ACTUAL CON BOTONES */}
           {pdfActual && !archivoPDF && (
             <div className="pdf-actual">
               <div className="pdf-info">
@@ -411,7 +437,7 @@ function InscripcionWarmasterIndividual({ torneoId, torneo, user }) {
           <button 
             type="submit" 
             className="btn-primary" 
-            disabled={loading || !ejercitoSeleccionado}
+            disabled={loading || !ejercitoSeleccionado || !nombreEjercito.trim()}
           >
             {loading 
               ? '⏳ Procesando...' 

@@ -427,6 +427,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                     }
                                     const totalPuntos = 
                                         (parseFloat(composicion.guardias) || 0) +
+                                        (parseFloat(composicion.elefantes) || 0) +
                                         (parseFloat(composicion.guerreros) || 0) +
                                         (parseFloat(composicion.levas) || 0) +
                                         (parseFloat(composicion.mercenarios) || 0);
@@ -563,6 +564,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                                 const comp = miembro.composicion || {};
                                                 const totalPuntos = 
                                                     (parseFloat(comp.guardias) || 0) +
+                                                    (parseFloat(comp.elefantes) || 0) + 
                                                     (parseFloat(comp.guerreros) || 0) +
                                                     (parseFloat(comp.levas) || 0) +
                                                     (parseFloat(comp.mercenarios) || 0);
@@ -586,6 +588,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                                                 </div>
                                                                 <div className="puntos-detalle-admin">
                                                                     <span>Guardias: {parseFloat(comp.guardias) || 0}</span>
+                                                                    <span>Elefantes: {parseFloat(comp.elefantes) || 0}</span>
                                                                     <span>Guerreros: {parseFloat(comp.guerreros) || 0}</span>
                                                                     <span>Levas: {parseFloat(comp.levas) || 0}</span>
                                                                     <span>Mercenarios: {parseFloat(comp.mercenarios) || 0}</span>

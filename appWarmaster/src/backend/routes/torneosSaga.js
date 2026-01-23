@@ -452,8 +452,8 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         fecha_inicio, 
         fecha_fin || null, 
         ubicacion || null,  // ✅ Asegurar que se guarde
-        0,
         puntos_banda,
+        0,
         participantes_max,
         equipos_max,
         estado || 'pendiente',
@@ -787,7 +787,6 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
     
     // ✅ IMPORTANTE: Guardar ubicacion
     if (ubicacion !== undefined) {
-      console.log('🔄 Actualizando ubicacion a:', ubicacion);
       camposActualizar.push('ubicacion = ?');
       valores.push(ubicacion || null);
     }
@@ -796,6 +795,7 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       camposActualizar.push('puntos_banda = ?');
       valores.push(puntos_banda);
     }
+
     if (participantes_max !== undefined) {
       camposActualizar.push('participantes_max = ?');
       valores.push(participantes_max);
@@ -1470,6 +1470,7 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       usuarioId,
       faccion,
       puntosGuardias,
+      puntosElefantes,
       puntosGuerreros,
       puntosLevas,
       puntosMercenarios,
@@ -1533,8 +1534,8 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
     const epocaTorneo = epocaBD[0].epoca.trim();
 
     // Validar puntos 
-    if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios){
-      const totalPuntos = (puntosGuardias || 0) + (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
+    if (puntosGuardias || puntosElefantes || puntosGuerreros || puntosLevas || puntosMercenarios){
+      const totalPuntos = (puntosGuardias || 0) +(puntosElefantes || 0) +  (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
       
       if (Math.abs(totalPuntos - torneo.puntos_banda) > 0.01) {
         return res.status(400).json(
@@ -1557,9 +1558,10 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 
     let composicionEjercito =  null
 
-    if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
+    if (puntosGuardias ||puntosElefantes || puntosGuerreros || puntosLevas || puntosMercenarios) {
        composicionEjercito = JSON.stringify({
           guardias: puntosGuardias || 0,
+          elefantes: puntosElefantes || 0,  
           guerreros: puntosGuerreros || 0,
           levas: puntosLevas || 0,
           mercenarios: puntosMercenarios || 0,
@@ -1657,6 +1659,7 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         const {
             faccion,
             puntosGuardias,
+            puntosElefantes,
             puntosGuerreros,
             puntosLevas,
             puntosMercenarios,
@@ -1684,7 +1687,7 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
             );
 
             if (torneos.length > 0) {
-                const totalPuntos = (puntosGuardias || 0) + (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
+                const totalPuntos = (puntosGuardias || 0) + (puntosElefantes || 0) (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
                 
                 if (Math.abs(totalPuntos - torneos[0].puntos_banda) > 0.01) {
                     await connection.rollback();
@@ -1701,6 +1704,7 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
             composicionEjercito = JSON.stringify({
                 guardias: puntosGuardias || 0,
+                elefantes: puntosElefantes || 0,
                 guerreros: puntosGuerreros || 0,
                 levas: puntosLevas || 0,
                 mercenarios: puntosMercenarios || 0,
@@ -2453,6 +2457,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
   //INTRODUCIR CAPITAN
     const composicionInscriptor = JSON.stringify({
       guardias: misPuntos?.guardias || 0,
+      elefantes: misPuntos?.elefantes || 0,
       guerreros: misPuntos?.guerreros || 0,
       levas: misPuntos?.levas || 0,
       mercenarios: misPuntos?.mercenarios || 0,
@@ -2492,6 +2497,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
     for (const miembro of miembrosConUsuarioId) {
           const composicionMiembro = JSON.stringify({
             guardias: miembro.puntos?.guardias || 0,
+            elefantes: miembro.puntos?.elefantes || 0,
             guerreros: miembro.puntos?.guerreros || 0,
             levas: miembro.puntos?.levas || 0,
             mercenarios: miembro.puntos?.mercenarios || 0,
@@ -2745,6 +2751,7 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
         banda: m.banda,
         puntos: {
           guardias: composicion.guardias || 0,
+          elefantes: composicion.elefantes || 0,
           guerreros: composicion.guerreros || 0,
           levas: composicion.levas || 0,
           mercenarios: composicion.mercenarios || 0
@@ -2968,6 +2975,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
       const composicion = JSON.stringify({
         guardias: miembro.puntos?.guardias || 0,
+        elefantes: miembro.puntos?.elefantes || 0,
         guerreros: miembro.puntos?.guerreros || 0,
         levas: miembro.puntos?.levas || 0,
         mercenarios: miembro.puntos?.mercenarios || 0,

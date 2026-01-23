@@ -509,3 +509,96 @@
     font-size: 0.9rem;
     margin-top: 10px;
 }
+
+/* Agregar al final de tu archivo vistaInformacion.css o el CSS correspondiente */
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border-left: 4px solid #dc3545;
+}
+
+.lista-documento {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+}
+
+.pdf-disponible {
+    margin-bottom: 10px;
+    color: #155724;
+    font-size: 0.9em;
+}
+
+.pdf-no-disponible {
+    color: #856404;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.botones-pdf {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-ver-pdf,
+.btn-descargar-pdf {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.btn-ver-pdf {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-ver-pdf:hover:not(:disabled) {
+    background: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+.btn-descargar-pdf {
+    background: #28a745;
+    color: white;
+}
+
+.btn-descargar-pdf:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-ver-pdf:disabled,
+.btn-descargar-pdf:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .botones-pdf {
+        flex-direction: column;
+    }
+    
+    .btn-ver-pdf,
+    .btn-descargar-pdf {
+        width: 100%;
+    }
+}

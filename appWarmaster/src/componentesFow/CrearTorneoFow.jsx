@@ -15,22 +15,22 @@ import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/crearTorneo.css';
 
-function CrearTorneoFow() {
+function CrearTorneofow() {
     const navigate = useNavigate();
-    const { refrescarUsuario } = useAuth(); // ✅ Corregido typo
+    const {refrescarUsusario} = useAuth()
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     
     const [nombreTorneo, setNombreTorneo] = useState("");
-    const [tipoTorneo, setTipoTorneo] = useState("Individual");
+    const tipoTorneo = "Individual";
     const [rondasMax, setRondasMax] = useState(RONDAS_DISPONIBLES[0].valor);
-    const [epocasSeleccionadas, setEpocasSeleccionadas] = useState([]); 
     const [fechaInicio, setFechaInicio] = useState("");
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
     const [puntosEjercito, setPuntosEjercito] = useState(PUNTOS_EJERCITO_FOW.default);
+    const [epocaHistorica, setEpocaHistorica] = useState("");
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
     const [archivoPDF, setArchivoPDF] = useState(null); 
     const [partidaRonda1, setPartidaRonda1] = useState("");
@@ -39,26 +39,9 @@ function CrearTorneoFow() {
     const [partidaRonda4, setPartidaRonda4] = useState("");
     const [partidaRonda5, setPartidaRonda5] = useState("");
 
-    const handleEpocaSeleccion = (epoca) => {
-        if (tipoTorneo === "Individual") {
-            // Modo individual: solo una época (radio button behavior)
-            setEpocasSeleccionadas([epoca]);
-        } else {
-            // Modo por equipos: múltiples épocas (checkboxes)
-            if (epocasSeleccionadas.includes(epoca)) {
-                setEpocasSeleccionadas(epocasSeleccionadas.filter(e => e !== epoca));
-            } else {
-                // ✅ NOTA: Asume que tienes numJugadoresEquipo definido
-                // Si no existe, comenta esta sección o define la variable
-                setEpocasSeleccionadas([...epocasSeleccionadas, epoca]);
-            }
-        }
-    };
-
-    const handleReseteaEpocas = (tipo) => {
-        setTipoTorneo(tipo);
-        setEpocasSeleccionadas([]);
-    };
+    //ESTADOS PARA LOS ORGANIZADORES DEL TORNEO
+    const [organizadorAdicional, setOrganizadorAdicional] = useState([]);
+    const [emailOrganizador, setEmailOrganizador] = useState("");
 
     // Función para manejar la selección de archivo PDF
     const handleArchivoPDF = (e) => {
@@ -79,7 +62,7 @@ function CrearTorneoFow() {
         }
         
         // Validar tamaño (máximo 16MB)
-        const maxSize = 16 * 1024 * 1024; // ✅ Corregido comentario
+        const maxSize = 16 * 1024 * 1024;
         if (file.size > maxSize) {
             const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
             setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 16MB. Por favor, comprime el PDF o sube uno más pequeño.`);
@@ -93,6 +76,39 @@ function CrearTorneoFow() {
         setError('');
     };
 
+    const handleAnadirOrganizador = () => {
+        const emailCorto = emailOrganizador.trim().toLowerCase()
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if(!emailRegex.test(emailCorto)){
+            setError("Introduce un email válido")
+            setTimeout(() => setError(""), 3000);
+            return
+        }
+
+        if (organizadorAdicional.length >= 5) {
+            setError("Solo se puede añadir un máximo de 5 organizadores adicionales por torneo")
+            setTimeout(() => setError(""), 3000);
+            return
+        }
+
+        setOrganizadorAdicional([...organizadorAdicional, emailCorto]);
+        setEmailOrganizador("");
+        setError("")
+    };
+
+    const handleEliminarOrganizador = (email) => {
+        setOrganizadorAdicional(organizadorAdicional.filter(org => org !== email));
+    };
+
+    // Manejar ENTER en el input
+    const handleKeyPressOrganizador = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAnadirOrganizador();
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -105,33 +121,26 @@ function CrearTorneoFow() {
             return;
         }
 
-        if (epocasSeleccionadas.length === 0) {
-            setError("Debes seleccionar al menos una época");
-            setLoading(false);
-            return;
-        }
-
-        if (tipoTorneo === "Individual" && epocasSeleccionadas.length !== 1) {
-            setError("Debes seleccionar exactamente una época para torneo individual");
-            setLoading(false);
-            return;
-        }
-
         if (!fechaInicio) {
             setError("La fecha de inicio es obligatoria");
             setLoading(false);
             return;
         }
 
-        // ✅ Validar fecha fin para torneos de múltiples días
-        if (duracionTorneo === "2" && !fechaFin) {
-            setError("Debes seleccionar una fecha de fin para torneos de varios días");
+        if (!epocaHistorica) {
+            setError("Debes seleccionar una época histórica");
             setLoading(false);
             return;
         }
 
-        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) {
-            setError("Debes seleccionar escenarios para las primeras 3 rondas");
+        if (!partidaRonda1 || !partidaRonda2) {
+            setError("Debes seleccionar escenarios para las primeras 2 rondas");
+            setLoading(false);
+            return;
+        }
+
+        if (rondasMax >= 3 && !partidaRonda3) {
+            setError("Debes seleccionar el escenario para la ronda 3");
             setLoading(false);
             return;
         }
@@ -157,42 +166,43 @@ function CrearTorneoFow() {
         try {
             let torneoData;
             
-            // AÑADIENDO BASES PDF AL FORMDATA
             if (archivoPDF) {
+                console.log('📤 Preparando FormData con PDF...');
                 torneoData = new FormData();
-                torneoData.append('nombre_torneo', nombreTorneo.trim());
+                torneoData.append('nombre_torneo', nombreTorneo);
                 torneoData.append('tipo_torneo', tipoTorneo);
                 torneoData.append('rondas_max', parseInt(rondasMax));
-                torneoData.append('epocas_disponibles', JSON.stringify(epocasSeleccionadas));
                 torneoData.append('fecha_inicio', fechaInicio);
                 torneoData.append('fecha_fin', fechaFin || '');
-                torneoData.append('ubicacion', ubicacion.trim() || '');
-                torneoData.append('puntos_banda', parseInt(puntosEjercito));
+                torneoData.append('ubicacion', ubicacion || '');
+                torneoData.append('puntos_ejercito', parseInt(puntosEjercito));
+                torneoData.append('epoca_historica', epocaHistorica);
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
                 torneoData.append('partida_ronda_2', partidaRonda2);
-                torneoData.append('partida_ronda_3', partidaRonda3);
+                torneoData.append('partida_ronda_3', rondasMax >= 3 ? partidaRonda3 : '');
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
                 torneoData.append('bases_pdf', archivoPDF);
+                torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional))
                 
             } else {
-                // CUANDO NO SE AÑADEN BASES PDF
                 torneoData = {
-                    nombre_torneo: nombreTorneo.trim(),
+                    nombre_torneo: nombreTorneo,
                     tipo_torneo: tipoTorneo,
                     rondas_max: parseInt(rondasMax),
-                    epocas_disponibles: epocasSeleccionadas,
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin || null,
-                    ubicacion: ubicacion.trim() || null,
-                    puntos_banda: parseInt(puntosEjercito),
+                    ubicacion: ubicacion || null,
+                    puntos_ejercito: parseInt(puntosEjercito),
+                    epoca_historica: epocaHistorica,
                     participantes_max: parseInt(participantesMax),
                     partida_ronda_1: partidaRonda1,
                     partida_ronda_2: partidaRonda2,
-                    partida_ronda_3: partidaRonda3,
+                    partida_ronda_3: rondasMax >= 3 ? partidaRonda3 : null,
                     partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
-                    partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null
+                    partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null,
+                    organizadores_emails: organizadorAdicional
                 };
             }
 
@@ -200,8 +210,9 @@ function CrearTorneoFow() {
             
             if (result.success || result.data) {
                 alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}\n🎉 Ahora eres un organizador.`);
-                await refrescarUsuario(); // ✅ Esperar primero
-                navigate("/perfil"); // ✅ Navegar después
+                navigate("/");
+                await refrescarUsusario()
+                navigate("/perfil")
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
             }
@@ -247,7 +258,7 @@ function CrearTorneoFow() {
 
     return (
         <div className="crear-torneo-container">
-            <h1>⚔️ Crear Torneo de Flames of War</h1>
+            <h1>⚔️ Crear Torneo FLAMES OF WAR</h1>
             
             {error && (
                 <div className="error-message">
@@ -267,7 +278,7 @@ function CrearTorneoFow() {
                         type="text"
                         value={nombreTorneo}
                         onChange={(e) => setNombreTorneo(e.target.value)}
-                        placeholder="Ej: Copa de Primavera FOW 2025"
+                        placeholder="Ej: Copa de Verano FOW 2025"
                         required
                         disabled={loading}
                     />
@@ -275,33 +286,29 @@ function CrearTorneoFow() {
                     <label>Tipo de Torneo:*</label>
                     <div className="tipo-torneo-container">
                         <label className="tipo-torneo-option">
-                            <input
-                                type="radio"
-                                name="tipoTorneo"
-                                value="Individual"
-                                checked={tipoTorneo === "Individual"}
-                                onChange={(e) => handleReseteaEpocas(e.target.value)}
-                                disabled={loading}
-                            />
-                            👤 Individual
+                           <span>👤 Individual</span>   
                         </label>
                     </div>
 
-                    <label>Épocas Históricas:*</label>
-                    <div className="epocas-grid">
+                    <label htmlFor="epocaHistorica">Época Histórica:*</label>
+                    <select
+                        name="epocaHistorica"
+                        id="epocaHistorica"
+                        value={epocaHistorica}
+                        onChange={(e) => setEpocaHistorica(e.target.value)}
+                        required
+                        disabled={loading}
+                    >
+                        <option value="">Selecciona una época</option>
                         {EPOCAS_HISTORICA.map((epoca) => (
-                            <label key={epoca} className="epoca-option">
-                                <input
-                                    type={tipoTorneo === "Individual" ? "radio" : "checkbox"}
-                                    name={tipoTorneo === "Individual" ? "epocaIndividual" : undefined}
-                                    checked={epocasSeleccionadas.includes(epoca)}
-                                    onChange={() => handleEpocaSeleccion(epoca)}
-                                    disabled={loading}
-                                />
+                            <option key={epoca} value={epoca}>
                                 {epoca}
-                            </label>
+                            </option>
                         ))}
-                    </div>
+                    </select>
+                    <small className="help-text">
+                        🎭 Selecciona la época histórica del torneo
+                    </small>
                     
                     <label htmlFor="rondasMax">Número de Rondas:*</label>
                     <select
@@ -319,10 +326,10 @@ function CrearTorneoFow() {
                         ))}
                     </select>
 
-                    <label htmlFor="puntosBanda">Puntos de Banda:*</label>
+                    <label htmlFor="puntosEjercito">Puntos de Ejército:*</label>
                     <input 
-                        name="puntosBanda" 
-                        id="puntosBanda" 
+                        name="puntosEjercito" 
+                        id="puntosEjercito" 
                         type="number"
                         min={PUNTOS_EJERCITO_FOW.min}
                         max={PUNTOS_EJERCITO_FOW.max}
@@ -488,6 +495,61 @@ function CrearTorneoFow() {
                     )}
                 </fieldset>
 
+                {/* SECCIÓN DE ORGANIZADORES ADICIONALES */}
+                <fieldset>
+                    <legend>👥 Organizadores Adicionales (Opcional)</legend>
+                    
+                    <label htmlFor="emailOrganizador">Añadir Organizador por Email:</label>
+                    <div className="organizador-input-container">
+                        <input 
+                            name="emailOrganizador" 
+                            id="emailOrganizador" 
+                            type="email"
+                            value={emailOrganizador}
+                            onChange={(e) => setEmailOrganizador(e.target.value)}
+                            onKeyPress={handleKeyPressOrganizador}
+                            placeholder="correo@ejemplo.com"
+                            disabled={loading}
+                        />
+                        <button
+                            type="button"
+                            onClick={handleAnadirOrganizador}
+                            className="btn-añadir-organizador"
+                            disabled={loading || !emailOrganizador.trim()}
+                        >
+                            ➕ Añadir
+                        </button>
+                    </div>
+                    <small className="help-text">
+                        Presiona Enter o haz clic en "Añadir" para agregar un organizador. Máximo 5 organizadores adicionales.
+                    </small>
+
+                    {/* LISTA DE ORGANIZADORES */}
+                    {organizadorAdicional.length > 0 && (
+                        <div className="organizadores-lista">
+                            <p className="organizadores-titulo">
+                                <strong>Organizadores añadidos ({organizadorAdicional.length}/5):</strong>
+                            </p>
+                            <ul className="organizadores-items">
+                                {organizadorAdicional.map((email, index) => (
+                                    <li key={index} className="organizador-item">
+                                        <span className="organizador-email">📧 {email}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleEliminarOrganizador(email)}
+                                            className="btn-eliminar-organizador"
+                                            disabled={loading}
+                                            title="Eliminar organizador"
+                                        >
+                                            ✖️
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </fieldset>
+
                 {/* ESCENARIOS POR RONDA */}
                 <fieldset>
                     <legend>🎲 Escenarios por Ronda</legend>
@@ -522,20 +584,24 @@ function CrearTorneoFow() {
                         ))}
                     </select>
 
-                    <label htmlFor="partidaRonda3">Ronda 3:*</label>
-                    <select
-                        name="partidaRonda3"
-                        id="partidaRonda3"
-                        value={partidaRonda3}
-                        onChange={(e) => setPartidaRonda3(e.target.value)}
-                        required
-                        disabled={loading}
-                    >
-                        <option value="">Selecciona escenario</option>
-                        {TIPOS_PARTIDA_FOW.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
-                        ))}
-                    </select>
+                    {rondasMax >= 3 && (
+                        <>
+                            <label htmlFor="partidaRonda3">Ronda 3:*</label>
+                            <select
+                                name="partidaRonda3"
+                                id="partidaRonda3"
+                                value={partidaRonda3}
+                                onChange={(e) => setPartidaRonda3(e.target.value)}
+                                required={rondasMax >= 3}
+                                disabled={loading}
+                            >
+                                <option value="">Selecciona escenario</option>
+                                {TIPOS_PARTIDA_FOW.map((tipo) => (
+                                    <option key={tipo} value={tipo}>{tipo}</option>
+                                ))}
+                            </select>
+                        </>
+                    )}
 
                     {rondasMax >= 4 && (
                         <>
@@ -586,9 +652,9 @@ function CrearTorneoFow() {
                     </button>
                 </div>
             </form>
-            <Footer />
+            <Footer/>
         </div>
     );
 }
 
-export default CrearTorneoFow;
+export default CrearTorneofow;

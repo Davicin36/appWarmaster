@@ -293,6 +293,7 @@ function VerTorneo() {
                         equipos={equipos}
                         tipoTorneo={torneo.tipo_torneo}
                         estadoTorneo={torneo.estado}
+                        torneoId={torneoId}
                     />
                 )}
 

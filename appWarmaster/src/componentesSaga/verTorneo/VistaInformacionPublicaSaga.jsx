@@ -13,6 +13,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                             const comp = inscrito.composicion_ejercito || {};
                             const totalPuntos = 
                                 (parseFloat(comp.guardias) || 0) +
+                                (parseFloat(comp.elefantes) || 0) +
                                 (parseFloat(comp.guerreros) || 0) +
                                 (parseFloat(comp.levas) || 0) +
                                 (parseFloat(comp.mercenarios) || 0);
@@ -39,6 +40,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                             <h5>📜 Composición:</h5>
                                             <ul>
                                                 <li>Guardias: {parseFloat(comp.guardias) || 0}</li>
+                                                <li>Elefantes: {parseFloat(comp.elefantes) || 0}</li>
                                                 <li>Guerreros: {parseFloat(comp.guerreros) || 0}</li>
                                                 <li>Levas: {parseFloat(comp.levas) || 0}</li>
                                                 <li>Mercenarios: {parseFloat(comp.mercenarios) || 0}</li>
@@ -86,6 +88,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                             const comp = miembro.composicion || {};
                                             const totalPuntos = 
                                                 (parseFloat(comp.guardias) || 0) +
+                                                (parseFloat(comp.elefantes) || 0) +
                                                 (parseFloat(comp.guerreros) || 0) +
                                                 (parseFloat(comp.levas) || 0) +
                                                 (parseFloat(comp.mercenarios) || 0);
@@ -110,6 +113,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                                             </div>
                                                             <div className="puntos-detalle">
                                                                 <span>Guardias: {parseFloat(comp.guardias) || 0}</span>
+                                                                <span>Elefantes: {parseFloat(comp.elefantes) || 0}</span>
                                                                 <span>Guerreros: {parseFloat(comp.guerreros) || 0}</span>
                                                                 <span>Levas: {parseFloat(comp.levas) || 0}</span>
                                                                 <span>Mercenarios: {parseFloat(comp.mercenarios) || 0}</span>

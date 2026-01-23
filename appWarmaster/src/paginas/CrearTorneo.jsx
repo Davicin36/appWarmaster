@@ -16,7 +16,7 @@ function CrearTorneoGeneral() {
         case "warmaster":
             return <CrearTorneoWarmaster />;
 
-        case "flames":
+        case "fow":
             return <CrearTorneoFow />;
 /*
         case "bolt-action":
