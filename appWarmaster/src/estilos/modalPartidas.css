@@ -365,3 +365,258 @@
         width: 100%;
     }
 }
+
+/* ==========================================
+   SECCIÓN FIN DE PARTIDA (SIN DADOS)
+   ========================================== */
+
+.seccion-sin-dados {
+    background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #E53935;
+    box-shadow: 0 2px 4px rgba(229, 57, 53, 0.2);
+}
+
+.seccion-sin-dados h4 {
+    margin: 0 0 10px 0;
+    color: #C62828;
+    font-size: 1em;
+}
+
+.botones-sin-dados {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-sin-dados {
+    flex: 1;
+    padding: 10px;
+    background: linear-gradient(135deg, #EF5350, #E53935);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(229, 57, 53, 0.3);
+}
+
+.btn-sin-dados:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(229, 57, 53, 0.4);
+    background: linear-gradient(135deg, #F44336, #D32F2F);
+}
+
+/* 🆕 ESTILO CUANDO SE SELECCIONA "SIN DADOS" - IGUAL QUE PRIMER JUGADOR */
+.info-sin-dados {
+    margin-top: 10px;
+    background: linear-gradient(135deg, #E53935, #C62828);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95em;
+    box-shadow: 0 2px 4px rgba(229, 57, 53, 0.3);
+}
+
+.info-sin-dados p {
+    margin: 0;
+    color: white;
+}
+
+/* ==========================================
+   FORMULARIO - CAMPOS DE ENTRADA
+   ========================================== */
+
+.jugador-resultado {
+    background: linear-gradient(135deg, #F5F5F5, #FFFFFF);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--color-verde-claro);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.jugador-resultado h4 {
+    text-align: center;
+    margin: 0 0 15px 0;
+    color: var(--color-verde-oscuro);
+    font-size: 1.1em;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--color-verde-claro);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-texto-principal);
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #E0E0E0;
+    border-radius: 6px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: white;
+    box-sizing: border-box;
+}
+
+.form-group input[type="number"]:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.form-group input[type="number"]:disabled {
+    background: #F5F5F5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.form-group.checkbox {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+    padding: 10px;
+    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+    border-radius: 6px;
+    border-left: 3px solid var(--color-naranja);
+}
+
+.form-group.checkbox label {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-texto-principal);
+}
+
+.form-group.checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+    accent-color: var(--color-naranja);
+}
+
+/* ==========================================
+   SECCIÓN RESULTADO PREVIEW
+   ========================================== */
+
+.resultado-preview {
+    background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    border-left: 4px solid var(--color-exito);
+    box-shadow: 0 3px 8px rgba(39, 174, 96, 0.2);
+    text-align: center;
+}
+
+.resultado-preview h4 {
+    margin: 0 0 15px 0;
+    color: #1B5E20;
+    font-size: 1.1em;
+}
+
+.resultado-badge {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #1B5E20;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
+    border: 2px solid var(--color-exito);
+}
+
+.nota-calculo {
+    margin: 10px 0 0 0;
+    font-size: 0.85em;
+    color: #2E7D32;
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+/* ==========================================
+   ERROR MESSAGE
+   ========================================== */
+
+.error-message {
+    background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+    border: 2px solid #E53935;
+    border-left: 4px solid #C62828;
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(229, 57, 53, 0.2);
+}
+
+.error-message p {
+    margin: 0;
+    color: #C62828;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+/* ==========================================
+   BOTONES DE LIMPIAR SELECCIÓN
+   ========================================== */
+
+.btn-limpiar-seleccion {
+    margin-top: 10px;
+    padding: 8px 15px;
+    background: white;
+    color: #2196F3;
+    border: 2px solid #2196F3;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85em;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.btn-limpiar-seleccion:hover {
+    background: #2196F3;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+}
+
+.btn-limpiar-sin-dados {
+    margin-top: 10px;
+    padding: 8px 15px;
+    background: white;
+    color: #E53935;
+    border: 2px solid #E53935;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85em;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.btn-limpiar-sin-dados:hover {
+    background: #E53935;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(229, 57, 53, 0.3);
+}

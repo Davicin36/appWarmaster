@@ -23,20 +23,36 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
         puntos_partida_j2: partida.puntos_partida_j2 || 0,
         puntos_masacre_j1: partida.puntos_masacre_j1 || 0,
         puntos_masacre_j2: partida.puntos_masacre_j2 || 0,
+        puntos_bonificacionj1:  0,
+        puntos_bonificacionj2:  0,
         warlord_muerto_j1: partida.warlord_muerto_j1 || false,
         warlord_muerto_j2: partida.warlord_muerto_j2 || false,
         primer_jugador: partida.primer_jugador || null
     });
+
+    const elCruce = partida.nombre_partida?.toLowerCase() === 'el cruce'
     
     const [guardando, setGuardando] = useState(false);
     const [confirmando, setConfirmando] = useState(false);
     const [error, setError] = useState(null);
+
+    const [sinDados, setSinDados] = useState({
+        activo: partida.sin_dados || false,
+        ganador: partida.ganador_sin_dados || null
+    });
 
     const handleChange = (campo, valor) => {
         setResultado(prev => ({
             ...prev,
             [campo]: valor
         }));
+    };
+
+    const meQuedoSinDados = (ganador) => {
+            setSinDados({
+            activo: true,
+            ganador
+        });
     };
 
     const handleGuardar = async () => {
@@ -48,7 +64,7 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                 throw new Error('Debes asignar quién fue el primer jugador antes de guardar');
             }
 
-            if (resultado.puntos_partida_j1 === 0 && resultado.puntos_partida_j2 === 0) {
+            if (!sinDados.activo && resultado.puntos_partida_j1 === 0 && resultado.puntos_partida_j2 === 0) {
                 throw new Error('Debes introducir al menos algunos puntos de partida');
             }
 
@@ -59,7 +75,9 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                 puntos_masacre_j2: parseInt(resultado.puntos_masacre_j2 ?? 0),
                 warlord_muerto_j1: resultado.warlord_muerto_j1,
                 warlord_muerto_j2: resultado.warlord_muerto_j2,
-                primer_jugador: resultado.primer_jugador
+                primer_jugador: resultado.primer_jugador,
+                sin_dados: sinDados.activo,
+                ganador_sin_dados: sinDados.ganador
             };
 
             const response = await torneosSagaApi.registrarPartida(
@@ -135,39 +153,57 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
     const getResultadoPreview = () => {
         const ppJ1 = parseInt(resultado.puntos_partida_j1) || 0;
         const ppJ2 = parseInt(resultado.puntos_partida_j2) || 0;
-        
-        const nombre1 = esTorneoEquipos 
-            ? partida.equipo1_nombre 
-            : (partida.jugador1_nombre || partida.jugador1?.nombre);
-        
-        const nombre2 = esTorneoEquipos 
-            ? partida.equipo2_nombre 
-            : (partida.jugador2_nombre || partida.jugador2?.nombre);
-        
-        if (esTorneoEquipos) {
-        // TORNEOS POR EQUIPOS: Victoria si diferencia >= 2
-            const diferencia = Math.abs(ppJ1 - ppJ2);
+        const pbJ1 = parseInt (resultado.puntos_bonificacionj1) || 0
+        const pbJ2 = parseInt (resultado.puntos_bonificacionj2) || 0
 
+        // 🎲 PRIORIDAD: SIN DADOS
+        if (sinDados.activo && sinDados.ganador) {
+            const nombreGanador = sinDados.ganador === 1 ? partida.jugador1_nombre : partida.jugador2_nombre;
+            return `🏆 Victoria de ${nombreGanador} (3–0, sin dados)`;
+        }
+        
+        // 📊 TORNEOS POR EQUIPOS: Victoria si diferencia >= 3
+        if (esTorneoEquipos) {
+            const diferencia = Math.abs(ppJ1 - ppJ2);
             const umbralDiferencia = 3; 
             
             if (diferencia >= umbralDiferencia) {
                 if (ppJ1 > ppJ2) {
-                    return `🏆 Victoria de ${nombre1}`;
+                    return `🏆 Victoria de ${partida.jugador1_nombre}`;
                 } else {
-                    return `🏆 Victoria de ${nombre2}`;
+                    return `🏆 Victoria de ${partida.jugador2_nombre}`;
                 }
             } else {
-                // Diferencia < 2 = EMPATE
+                if (elCruce && ppJ1 === ppJ2) {
+                    if (pbJ1 > pbJ2) {
+                        return `🏆 Victoria de ${partida.jugador1_nombre} (desempate por bonificación: ${pbJ1}-${pbJ2})`;
+                    } else if (pbJ2 > pbJ1) {
+                        return `🏆 Victoria de ${partida.jugador2_nombre} (desempate por bonificación: ${pbJ2}-${pbJ1})`;
+                    } else {
+                        return `🤝 Empate (${ppJ1}-${ppJ2}, bonificación ${pbJ1}-${pbJ2})`;
+                    }
+                }
+                // Diferencia < 3 = EMPATE
                 return `🤝 Empate (${ppJ1}-${ppJ2})`;
             }
             
         } else {
-        // TORNEOS INDIVIDUALES: Victoria por más puntos
+            // 📊 TORNEOS INDIVIDUALES: Victoria por más puntos
             if (ppJ1 > ppJ2) {
-                return `🏆 Victoria de ${nombre1}`;
+                return `🏆 Victoria de ${partida.jugador1_nombre}`;
             }
             if (ppJ2 > ppJ1) {
-                return `🏆 Victoria de ${nombre2}`;
+                return `🏆 Victoria de ${partida.jugador2_nombre}`;
+            }
+
+            if (elCruce && ppJ1 === ppJ2) {
+                if (pbJ1 > pbJ2) {
+                    return `🏆 Victoria de ${partida.jugador1_nombre} (desempate por bonificación: ${pbJ1}-${pbJ2})`;
+                } else if (pbJ2 > pbJ1) {
+                    return `🏆 Victoria de ${partida.jugador2_nombre} (desempate por bonificación: ${pbJ2}-${pbJ1})`;
+                } else {
+                    return `🤝 Empate (${ppJ1}-${ppJ2}, bonificación ${pbJ1}-${pbJ2})`;
+                }
             }
             return `🤝 Empate (${ppJ1}-${ppJ2})`;
         }
@@ -423,6 +459,14 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                 <p>
                                     ✅ <strong>{getNombreJugador(resultado.primer_jugador === partida.jugador1_id ? 1 : 2)}</strong> fue el primer jugador
                                 </p>
+                                {/* 🆕 Botón para deseleccionar */}
+                                <button
+                                    type="button"
+                                    onClick={() => setResultado(prev => ({ ...prev, primer_jugador: null }))}
+                                    className="btn-limpiar-seleccion"
+                                >
+                                    ✕ Cambiar selección
+                                </button>
                             </div>
                         ) : (
                             <>
@@ -450,7 +494,6 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                             </>
                         )}
                     </div>
-
                     <div className="formulario-grid">
                         <div className="jugador-resultado">
                             {esTorneoEquipos ? (
@@ -498,7 +541,21 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     disabled={guardando}
                                 />
                             </div>
-
+                            {elCruce && (
+                                <div className="form-group">
+                                    <label>Puntos de bonificación</label>
+                                    <input 
+                                        type="number"
+                                        min="0"
+                                        value={resultado.ountos_bonificacionj1}
+                                        onChange={(e) => handleChange('puntos_bonificacionj1', e.target.value)}
+                                        disabled={guardando}
+                                    />
+                                    <small className="nota-equipos">
+                                        Se usarán en caso de empate para desempatar.
+                                    </small>
+                                </div>
+                            )}
                             <div className="form-group checkbox">
                                 <label>
                                     <input
@@ -560,7 +617,21 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     disabled={guardando}
                                 />
                             </div>
-
+                             {elCruce && (
+                                <div className="form-group">
+                                    <label>Puntos de bonificación</label>
+                                    <input 
+                                        type="number"
+                                        min="0"
+                                        value={resultado.ountos_bonificacionj2}
+                                        onChange={(e) => handleChange('puntos_bonificacionj2', e.target.value)}
+                                        disabled={guardando}
+                                    />
+                                    <small className="nota-equipos">
+                                        Se usarán en caso de empate para desempatar.
+                                    </small>
+                                </div>
+                            )}
                             <div className="form-group checkbox">
                                 <label>
                                     <input
@@ -573,6 +644,46 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                 </label>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="seccion-sin-dados">
+                        <h4>Jugador se queda SIN DADOS</h4>
+
+                        {sinDados.activo ? (
+                            <>
+                                <div className="info-sin-dados">
+                                    <p>
+                                        🏆 Victoria 3–0 de <strong>{getNombreJugador(sinDados.ganador)}</strong> por quedarse sin dados
+                                    </p>
+                                </div>
+                                {/* 🆕 Botón para deseleccionar */}
+                                <button
+                                    type="button"
+                                    onClick={() => setSinDados({ activo: false, ganador: null })}
+                                    className="btn-limpiar-sin-dados"
+                                >
+                                    ✕ Cancelar victoria sin dados
+                                </button>
+                            </>
+                        ) : (
+                            <div className="botones-sin-dados">
+                                <button
+                                    type="button"
+                                    onClick={() => meQuedoSinDados(1)}
+                                    className="btn-sin-dados"
+                                >
+                                    🚫 {getNombreJugador(2)} sin dados
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => meQuedoSinDados(2)}
+                                    className="btn-sin-dados"
+                                >
+                                    🚫 {getNombreJugador(1)} sin dados
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="resultado-preview">

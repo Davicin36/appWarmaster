@@ -342,7 +342,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                                                         <span>Berserkers: {parseFloat(composicion.berserkers)}</span>
                                                                     )}
                                                                     {composicion.elefantes > 0 && (
-                                                                        <span>Elefantes 🐘: {parseFloat(composicion.elefantes)}</span>
+                                                                        <span>Elefantes : {parseFloat(composicion.elefantes)}</span>
                                                                     )}
                                                                     {composicion.carros > 0 && (
                                                                         <span>Carros : {parseFloat(composicion.carros)}</span>

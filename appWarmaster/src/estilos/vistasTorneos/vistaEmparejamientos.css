@@ -1161,3 +1161,113 @@
     font-size: 0.95em;
     color: #333;
 }
+
+/* ==========================================
+   BOTONES DE EMPAREJAMIENTOS - MEJORADOS
+   ========================================== */
+
+.botones-grupo {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.btn-primary,
+.btn-warning,
+.btn-success {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #7C3AED, #6D28D9);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #6D28D9, #5B21B6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #F97316, #EA580C);
+    color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background: linear-gradient(135deg, #EA580C, #C2410C);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-primary:disabled,
+.btn-warning:disabled,
+.btn-success:disabled {
+    background: linear-gradient(135deg, #9CA3AF, #6B7280);
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Animación de carga en botones */
+.btn-primary:disabled::after,
+.btn-success:disabled::after {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================
+   RESPONSIVE PARA BOTONES
+   ========================================== */
+
+@media (max-width: 768px) {
+    .botones-grupo {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+
+    .btn-primary,
+    .btn-warning,
+    .btn-success {
+        width: 100%;
+        justify-content: center;
+    }
+}

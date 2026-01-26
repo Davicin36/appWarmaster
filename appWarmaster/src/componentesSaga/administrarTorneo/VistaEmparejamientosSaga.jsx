@@ -6,6 +6,7 @@ import usuarioApi from '@/servicios/apiUsuarios';
 import { generarEmparejamientos } from '../funcionesSaga/seleccionEmparejamientos';
 
 import ModalRegistroPartida from '../ModalRegistroPartidaSaga';
+import ModalEdicionEmparejamientos from '@/componente/ModalEdicionEmparejamientos';
 
 import '@/estilos/vistasTorneos/vistaEmparejamientos.css';
 
@@ -33,6 +34,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const [esParticipante, setEsParticipante] = useState(false);
     const [mostrarSelectorEscenarios, setMostrarSelectorEscenarios] = useState(false);
     const [asignacionesEscenarios, setAsignacionesEscenarios] = useState({});
+
+    const [modoEdicion, setModoEdicion] = useState(false);
+    const [emparejamientoEditando, setEmparejamientoEditando] = useState(null);
+    const [modalEdicionAbierto, setModalEdicionAbierto] = useState(false);
 
     const esTorneoEquipos = () => torneo?.tipo_torneo === 'Por equipos';
 
@@ -599,6 +604,83 @@ useEffect(() => {
         guardarResultados(); // Continuar con el guardado
     };
 
+    /* 
+    FUNCIONES PARA EL EDICION EMPAREJAMIENTOS
+     Función para eliminar un emparejamiento
+     */
+    const eliminarEmparejamiento = (index) => {
+        if (window.confirm('¿Eliminar este emparejamiento?')) {
+            const nuevosEmp = [...emparejamientos];
+            nuevosEmp.splice(index, 1);
+            setEmparejamientos(nuevosEmp);
+            alert('✅ Emparejamiento eliminado');
+        }
+    };
+/*
+    // Función para intercambiar jugadores entre emparejamientos
+    const intercambiarJugadores = (index1, pos1, index2, pos2) => {
+        const nuevosEmp = [...emparejamientos];
+        
+        if (esTorneoEquipos()) {
+            // Para equipos: intercambiar equipos completos
+            const temp = nuevosEmp[index1][pos1 === 'equipo1' ? 'equipo1_id' : 'equipo2_id'];
+            if (pos1 === 'equipo1') {
+                nuevosEmp[index1].equipo1_id = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_id' : 'equipo2_id'];
+                nuevosEmp[index1].equipo1_nombre = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_nombre' : 'equipo2_nombre'];
+            } else {
+                nuevosEmp[index1].equipo2_id = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_id' : 'equipo2_id'];
+                nuevosEmp[index1].equipo2_nombre = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_nombre' : 'equipo2_nombre'];
+            }
+            
+            if (pos2 === 'equipo1') {
+                nuevosEmp[index2].equipo1_id = temp;
+            } else {
+                nuevosEmp[index2].equipo2_id = temp;
+            }
+        } else {
+            // Para individuales: intercambiar jugadores
+            const temp = nuevosEmp[index1][pos1 === 'j1' ? 'jugador1_id' : 'jugador2_id'];
+            const tempData = nuevosEmp[index1][pos1 === 'j1' ? 'jugador1' : 'jugador2'];
+            
+            if (pos1 === 'j1') {
+                nuevosEmp[index1].jugador1_id = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1_id' : 'jugador2_id'];
+                nuevosEmp[index1].jugador1 = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1' : 'jugador2'];
+            } else {
+                nuevosEmp[index1].jugador2_id = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1_id' : 'jugador2_id'];
+                nuevosEmp[index1].jugador2 = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1' : 'jugador2'];
+            }
+            
+            if (pos2 === 'j1') {
+                nuevosEmp[index2].jugador1_id = temp;
+                nuevosEmp[index2].jugador1 = tempData;
+            } else {
+                nuevosEmp[index2].jugador2_id = temp;
+                nuevosEmp[index2].jugador2 = tempData;
+            }
+        }
+        
+        setEmparejamientos(nuevosEmp);
+    };
+*/
+    // Abrir modal de edición
+    const abrirEdicion = (emparejamiento, index) => {
+        setEmparejamientoEditando({ ...emparejamiento, index });
+        setModalEdicionAbierto(true);
+    };
+
+    // Guardar cambios de edición
+    const guardarEdicion = (nuevosDatos) => {
+        const nuevosEmp = [...emparejamientos];
+        nuevosEmp[emparejamientoEditando.index] = {
+            ...nuevosEmp[emparejamientoEditando.index],
+            ...nuevosDatos
+        };
+        setEmparejamientos(nuevosEmp);
+        setModalEdicionAbierto(false);
+        setEmparejamientoEditando(null);
+        alert('✅ Emparejamiento actualizado');
+    };
+
 // Función para verificar si la partida tiene datos introducidos
     const tieneDatos = (partida) => {
         // Verificar si hay un resultado registrado (no pendiente)
@@ -660,10 +742,6 @@ useEffect(() => {
         }
     };
 
-    /*
-    FUNCION PARA AGRUPAR LOS EMPAREJAMIENTOS DE LOS TORNEOS POR EQUIPOS EN FUNCIONES
-    DE LA EPOCA EN LA QUE ESTA CADA MIEMBRO DEL EQUIPO.
-    */
     const agruparPartidasPorEquipos = (partidas) => {
         if (!esTorneoEquipos()) return partidas;
 
@@ -1022,37 +1100,60 @@ useEffect(() => {
                     </div>
                     
                     {!esVistaPublica && esOrganizador && (
-                        <div className="botones-grupo">
+                    <div className="botones-grupo">
+                        <button 
+                            onClick={handleGenerarEmparejamientos}
+                            className="btn-primary"
+                            disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || modoEdicion}
+                        >
+                            🎲 Generar Ronda
+                        </button>
+
+                        {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
+                            <>
+                                {!modoEdicion ? (
+                                    <>
+                                        <button 
+                                            onClick={() => setModoEdicion(true)}
+                                            className="btn-warning"
+                                        >
+                                            ✏️ Editar Emparejamientos
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={guardarResultados}
+                                            className="btn-success"
+                                            disabled={guardando}
+                                        >
+                                            {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button 
+                                        onClick={() => {
+                                            setModoEdicion(false);
+                                            alert('✅ Modo edición desactivado. Ahora puedes guardar los emparejamientos.');
+                                        }}
+                                        className="btn-success"
+                                    >
+                                        ✅ Finalizar Edición
+                                    </button>
+                                )}
+                            </>
+                        )}
+
+                        {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
                             <button 
-                                onClick={handleGenerarEmparejamientos}
-                                className="btn-primary"
-                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0}
+                                onClick={generarSiguienteRonda}
+                                disabled={torneo.ronda_actual >= torneo.rondas_max}
+                                className="btn-warning"
                             >
-                                🎲 Generar Emparejamientos
+                                ⏭️ Generar Ronda {torneo.ronda_actual + 1}
                             </button>
-
-                            {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
-                                <button 
-                                    onClick={guardarResultados}
-                                    className="btn-success"
-                                    disabled={guardando}
-                                >
-                                    {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
-                                </button>
-                            )}
-
-                            {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
-                                <button 
-                                    onClick={generarSiguienteRonda}
-                                    disabled={torneo.ronda_actual >= torneo.rondas_max}
-                                    className="btn-warning"
-                                >
-                                    ⏭️ Generar Ronda {torneo.ronda_actual + 1}
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
+            </div>
             </div>
 
           {partidasGuardadas.length > 0 && torneo?.estado === 'en_curso' && !esOrganizador && !esParticipante && (
@@ -1157,6 +1258,26 @@ useEffect(() => {
                                                 if (esEquipos && emp.jugadores_equipo1) {
                                                     return (
                                                         <div key={index} className="enfrentamiento-equipos-preview">
+                                                            {/* 🆕 BOTONES DE EDICIÓN PARA EQUIPOS */}
+                                                            {modoEdicion && (
+                                                                <div className="botones-edicion">
+                                                                    <button
+                                                                        onClick={() => abrirEdicion(emp, index)}
+                                                                        className="btn-editar-small"
+                                                                        title="Editar emparejamiento"
+                                                                    >
+                                                                        ✏️
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => eliminarEmparejamiento(index)}
+                                                                        className="btn-eliminar-small"
+                                                                        title="Eliminar emparejamiento"
+                                                                    >
+                                                                        🗑️
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                            
                                                             <div className="header-equipos-preview">
                                                                 <h4>⚔️ {emp.equipo1_nombre} {emp.equipo2_nombre ? `vs ${emp.equipo2_nombre}` : '(BYE)'}</h4>
                                                             </div>
@@ -1192,7 +1313,7 @@ useEffect(() => {
                                                     );
                                                 }
                             
-                                                // 🎯 PARA TORNEOS INDIVIDUALES (mantener código original)
+                                                // 🎯 PARA TORNEOS INDIVIDUALES
                                                 const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
                                                 const jugador1Alias = emp.jugador1?.nombre_alias;
                                                 const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
@@ -1200,6 +1321,26 @@ useEffect(() => {
 
                                                 return (
                                                     <div key={index} className="emparejamiento-card">
+                                                        {/* 🆕 BOTONES DE EDICIÓN PARA INDIVIDUALES */}
+                                                        {modoEdicion && (
+                                                            <div className="botones-edicion">
+                                                                <button
+                                                                    onClick={() => abrirEdicion(emp, index)}
+                                                                    className="btn-editar-small"
+                                                                    title="Editar emparejamiento"
+                                                                >
+                                                                    ✏️
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => eliminarEmparejamiento(index)}
+                                                                    className="btn-eliminar-small"
+                                                                    title="Eliminar emparejamiento"
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        
                                                         <div className="mesa-numero preview">
                                                             Mesa {emp.mesa || index + 1} 
                                                             {emp.es_bye === 1 && ' ⭐ BYE'}
@@ -1286,6 +1427,20 @@ useEffect(() => {
                         setModalAbierto(false);
                         setPartidaSeleccionada(null);
                     }}
+                />
+            )}
+
+            {modalEdicionAbierto && emparejamientoEditando && (
+                <ModalEdicionEmparejamientos
+                    emparejamiento={emparejamientoEditando}
+                    jugadores={jugadores}
+                    equipos={equipos}
+                    esTorneoEquipos={esTorneoEquipos()}
+                    onClose={() => {
+                        setModalEdicionAbierto(false);
+                        setEmparejamientoEditando(null);
+                    }}
+                    onGuardar={guardarEdicion}
                 />
             )}
         </div>

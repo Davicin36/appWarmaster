@@ -4469,20 +4469,24 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       puntos_masacre_j2,
       warlord_muerto_j1,
       warlord_muerto_j2,
-      primer_jugador
+      primer_jugador,
+      sin_dados,              
+      ganador_sin_dados       
     } = req.body;
     
-    // Validar campos requeridos
-    const camposFaltantes = validarCamposRequeridos(req.body, [
-      'puntos_partida_j1',
-      'puntos_partida_j2'
-    ]);
-    
-    if (camposFaltantes.length > 0) {
+   // ✅ VALIDACIÓN MANUAL que acepta 0 como valor válido
+    if (puntos_partida_j1 === undefined || puntos_partida_j1 === null || puntos_partida_j1 === '') {
       return res.status(400).json(
-        errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
+        errorResponse('El campo puntos_partida_j1 es requerido')
       );
     }
+    
+    if (puntos_partida_j2 === undefined || puntos_partida_j2 === null || puntos_partida_j2 === '') {
+      return res.status(400).json(
+        errorResponse('El campo puntos_partida_j2 es requerido')
+      );
+    }
+    
     
     // Verificar que la partida existe
     const [partida] = await pool.execute(`
@@ -4496,8 +4500,9 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         ps.torneo_id, 
         ps.ronda, 
         ps.resultado_confirmado,
+        ps.es_bye,
         t.tipo_torneo
-        FROM partidas_saga ps
+      FROM partidas_saga ps
       INNER JOIN torneos_sistemas t ON ps.torneo_id = t.id
       LEFT JOIN jugador_torneo_saga jts1 ON ps.jugador1_id = jts1.id
       LEFT JOIN usuarios u1 ON jts1.jugador_id = u1.id
@@ -4535,7 +4540,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
 
-        // Determinar quién fue el primer jugador
+    // Determinar quién fue el primer jugador
     const primerJugadorId = primer_jugador ? parseInt(primer_jugador) : null;
     
     // Validar que primer_jugador sea uno de los dos jugadores
@@ -4545,7 +4550,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
 
-    // Calcular resultado basado en puntos de victoria
+    // Valores de puntos introducidos
     const puntosPartidaJ1 = parseInt(puntos_partida_j1) || 0;
     const puntosPartidaJ2 = parseInt(puntos_partida_j2) || 0;
     const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
@@ -4553,38 +4558,80 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
 
     let puntosVictoriaJ1, puntosVictoriaJ2, resultado, puntosTorneoJ1, puntosTorneoJ2;
 
-    if (tipoTorneo === 'Por equipos') {
-
-
-        //TORNEO POR EQUIPOS
-
-        const umbralDiferencia = 3
-
-        puntosTorneoJ1 = puntosPartidaJ1
-        puntosTorneoJ2 = puntosPartidaJ2
+    // ========================================================================
+    // 🚨 PRIORIDAD ABSOLUTA: QUEDARSE SIN DADOS
+    // ========================================================================
+    
+    if (sin_dados && ganador_sin_dados) {
       
-        const diferencia = Math.abs(puntosTorneoJ1 - puntosTorneoJ2)
+      console.log('🎲 ACTIVADO: Fin de partida por quedarse sin dados');
+      console.log(`🏆 Ganador: Jugador ${ganador_sin_dados}`);
+      
+      // ✅ PUNTOS DE VICTORIA: Siempre 3-0 para el ganador
+      if (ganador_sin_dados === 1) {
+        puntosVictoriaJ1 = 3;
+        puntosVictoriaJ2 = 0;
+        resultado = 'victoria_j1';
+      } else if (ganador_sin_dados === 2) {
+        puntosVictoriaJ1 = 0;
+        puntosVictoriaJ2 = 3;
+        resultado = 'victoria_j2';
+      }
 
-        if (diferencia >= umbralDiferencia){
-          if(puntosTorneoJ1 > puntosTorneoJ2){
-            puntosVictoriaJ1 = 3
-            puntosVictoriaJ2 = 0
-            resultado = 'victoria_j1'
+      // ✅ PUNTOS DE TORNEO: Depende del tipo de torneo
+      if (tipoTorneo === 'Por equipos') {
+        // TORNEO POR EQUIPOS: usar los puntos introducidos manualmente
+        puntosTorneoJ1 = puntosPartidaJ1;
+        puntosTorneoJ2 = puntosPartidaJ2;
+        console.log(`📊 Equipos - Puntos introducidos: J1=${puntosTorneoJ1}, J2=${puntosTorneoJ2}`);
+      } else {
+        // TORNEO INDIVIDUAL: 19 para ganador, 1 para perdedor
+        if (ganador_sin_dados === 1) {
+          puntosTorneoJ1 = 19;
+          puntosTorneoJ2 = 1;
+        } else {
+          puntosTorneoJ1 = 1;
+          puntosTorneoJ2 = 19;
+        }
+        console.log(`📊 Individual - Victoria sin dados: J1=${puntosTorneoJ1}, J2=${puntosTorneoJ2}`);
+      }
+
+      console.log(`✅ Resultado final: ${resultado} | Victoria=${puntosVictoriaJ1}-${puntosVictoriaJ2} | Torneo=${puntosTorneoJ1}-${puntosTorneoJ2}`);
+
+    } 
+    // ========================================================================
+    // 📋 LÓGICA NORMAL (Solo si NO hay sin_dados)
+    // ========================================================================
+    else {
+
+      if (tipoTorneo === 'Por equipos') {
+        // TORNEO POR EQUIPOS
+        const umbralDiferencia = 3;
+
+        puntosTorneoJ1 = puntosPartidaJ1;
+        puntosTorneoJ2 = puntosPartidaJ2;
+      
+        const diferencia = Math.abs(puntosTorneoJ1 - puntosTorneoJ2);
+
+        if (diferencia >= umbralDiferencia) {
+          if (puntosTorneoJ1 > puntosTorneoJ2) {
+            puntosVictoriaJ1 = 3;
+            puntosVictoriaJ2 = 0;
+            resultado = 'victoria_j1';
           } else {
-            puntosVictoriaJ1 = 0
-            puntosVictoriaJ2 = 3
-            resultado = 'victoria_j2'
+            puntosVictoriaJ1 = 0;
+            puntosVictoriaJ2 = 3;
+            resultado = 'victoria_j2';
           }
         } else {
-          puntosVictoriaJ1 = 1
-          puntosVictoriaJ2 = 1
-          resultado = 'empate'  
+          puntosVictoriaJ1 = 1;
+          puntosVictoriaJ2 = 1;
+          resultado = 'empate';  
         }
-    } else {
 
-      // TORNEO INDIVIDUAL
-
-      if (puntosPartidaJ1 > puntosPartidaJ2) {
+      } else {
+        // TORNEO INDIVIDUAL
+        if (puntosPartidaJ1 > puntosPartidaJ2) {
           puntosVictoriaJ1 = 3;
           puntosVictoriaJ2 = 0;
           resultado = 'victoria_j1';
@@ -4599,18 +4646,18 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         }
 
         const puntosTorneo = calcularPuntosTorneo(
-        puntosPartidaJ1, 
-        puntosPartidaJ2, 
-        jts1_id, 
-        primerJugadorId
-      )
+          puntosPartidaJ1, 
+          puntosPartidaJ2, 
+          jts1_id, 
+          primerJugadorId
+        );
 
-      puntosTorneoJ1 = puntosTorneo.j1
-      puntosTorneoJ2 = puntosTorneo.j2
-
+        puntosTorneoJ1 = puntosTorneo.j1;
+        puntosTorneoJ2 = puntosTorneo.j2;
+      }
     }
     
-    // ✅ Actualizar la partida con la sintaxis SQL correcta
+    // ✅ Actualizar la partida
     await pool.execute(`
       UPDATE partidas_saga SET
         puntos_victoria_j1 = ?, 
@@ -4623,6 +4670,8 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         warlord_muerto_j2 = ?,
         resultado_ps = ?, 
         primer_jugador = ?,
+        sin_dados = ?,
+        ganador_sin_dados = ?,
         resultado_confirmado = FALSE
       WHERE id = ?
     `, [
@@ -4636,6 +4685,8 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       warlord_muerto_j2 || false,
       resultado, 
       primerJugadorId,
+      sin_dados || false,
+      ganador_sin_dados || null,
       partidaId
     ]);
     
@@ -4643,6 +4694,8 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       successResponse('Partida registrada exitosamente (pendiente de confirmación)', {
         partidaId,
         resultado,
+        sinDados: sin_dados || false,
+        ganadorSinDados: ganador_sin_dados || null,
         puntosTorneo: {
           jugador1: puntosTorneoJ1,
           jugador2: puntosTorneoJ2

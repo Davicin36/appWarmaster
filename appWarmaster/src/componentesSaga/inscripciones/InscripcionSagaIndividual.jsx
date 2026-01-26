@@ -672,9 +672,6 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                       <div key={tipo.id} className="punto-item">
                         <label htmlFor={tipo.id}>
                           {tipo.label}
-                          <small style={{ fontSize: '0.75rem', color: '#666', padding: '0.25rem'}}>
-                            ({tipo.puntos} pts c/u)
-                          </small>
                         </label>
                         <input
                           type="number"
