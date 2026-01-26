@@ -72,68 +72,93 @@ export const TIPOS_PARTIDA_SAGA = [
 /**
  * Bandas disponibles organizadas por época
  */
+
+export const TIPOS_TROPAS = {
+  GUARDIAS: 'guardias',
+  GUERREROS: 'guerreros',
+  LEVAS: 'levas',
+  MERCENARIOS: 'mercenarios',
+}
+
 export const BANDAS_POR_EPOCA = {
   "Vikingos": [
-    { nombre: "VIKINGOS" },
-    { nombre: "JOMSVIKINGS" },
-    { nombre: "GALESES" },
+    { nombre: "VIKINGOS", permiteBerserkers: true },
+    { nombre: "JOMSVIKINGS"},
+    { nombre: "GALESES"},
     { nombre: "ANGLO-DANESES" },
     { nombre: "ANGLO-SAJONES" },
     { nombre: "NORSE-GAELS" },
-    { nombre: "CAROLINGIOS" },
+    { nombre: "CAROLINGIOS -CAPETOS" },
+    { nombre: "CAROLINGIOS -MEROVINGIOS" },
     { nombre: "NORMANDOS" },
-    { nombre: "IRLANDESES" },
-    { nombre: "PAGAN RUSS" },
-    { nombre: "ESCOTOS" },
-    { nombre: "ÚLTIMOS ROMANOS" },
+    { nombre: "IRLANDESES", permiteCuraids: true, permitePerros: true },
+    { nombre: "PAGAN RUSS"},
+    { nombre: "ESCOTOS"},
+    { nombre: "ÚLTIMOS ROMANOS"},
     { nombre: "PUEBLOS GERMÁNICOS" },
-    { nombre: "LOMBARDOS" },
+    { nombre: "LOMBARDOS"},
     { nombre: "PUEBLOS DE LAS ESTEPAS" },
     { nombre: "OMEYAS" }
   ],
   "Invasiones": [
-    { nombre: "ROMANOS" },
+    { 
+      nombre: "ROMANOS",
+      unidadesEspeciales: [
+        { nombre: "manubalista", label: "Manubalista", puntos: 0.5, step: 0.5 }
+      ]
+    }, 
     { nombre: "GODOS-OSTROGODOS" },
     { nombre: "GODOS-VISIGODOS" },
-    { nombre: "GALESES" },
     { nombre: "FRANCOS" },
-    { nombre: "BRITANOS" },
+    { nombre: "BRITANOS",
+      unidadesEspeciales: [
+        { nombre: "los_compañeros", label: "Los Compañeros",  puntos: 0.5, step: 0.5 }
+      ]
+     }, 
     { nombre: "SAJONES" },
     { nombre: "PICTOS" },
-    { nombre: "HUNOS" },
-    { nombre: "SASÁNIDAS" },
-    { nombre: "ESCOTOS" },
+    { nombre: "HUNOS"}, 
+    { nombre: "SASÁNIDAS", permiteElefantes: true }, 
+    { nombre: "ESCOTOS"}, 
     { nombre: "ALT CLUT Y MANACO GODODDIN" },
     { nombre: "CYMRY" },
     { nombre: "VÁNDALOS" }
   ],
-  "Edad de la Magia": [
-    { nombre: "GRANDES REINOS" },
-    { nombre: "SEÑORES DE LA NATURALEZA" },
-    { nombre: "LEGIONES DE LOS NO MUERTOS" },
-    { nombre: "LA HORDA" },
-    { nombre: "OTROS MUNDOS" },
-    { nombre: "PUEBLOS SUBTERRÁNEOS" }
-  ],
   "Ánibal": [
     { nombre: "IBEROS" },
-    { nombre: "CARTAGINESES" },
-    { nombre: "REPÚBLICA DE ROMA" },
-    { nombre: "GALOS" },
-    { nombre: "NÚMIDAS" },
+    { nombre: "CARTAGINESES", permiteElefantes: true }, 
+    { nombre: "REPÚBLICA DE ROMA",
+      opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "consul", nombre: "Cónsul" },
+            { valor: "tribuno", nombre: "Tribuno" }
+          ],
+          valorPorDefecto: "consul"
+        }
+      ]
+    },
+    { nombre: "GALOS", permiteCarros: true },
+    { nombre: "NÚMIDAS", permiteElefantes: true,
+       tiposTropaPermitidos: ['guerreros', 'levas', 'mercenarios' ]
+     },
     { nombre: "GRAECULI-SIRACUSSA" },
-    { nombre: "GRAECULI-EPIRO" },
+    { nombre: "GRAECULI-EPIRO", permiteElefantes: true},
     { nombre: "GRAECULI-ITALIOTAS" }
   ],
   "Alejandro": [
     { nombre: "PERSAS-MEDOS" },
-    { nombre: "PERSAS-AQUEMÉNIDAS" },
+    { nombre: "PERSAS-AQUEMÉNIDAS", permiteCarros: true, permiteElefantes: true },
     { nombre: "TRACIOS" },
     { nombre: "MACEDONIOS" },
-    { nombre: "INDIOS" },
+    { nombre: "INDIOS", permiteElefantes: true }, 
     { nombre: "SUCESORES-GRECIA" },
     { nombre: "SUCESORES-EGIPTO" },
-    { nombre: "SUCESORES-ASIA" },
+    { nombre: "SUCESORES-ASIA", permiteElefantes: true, permiteCarros: true }, 
     { nombre: "CIUDADES GRIEGAS-ATENAS" },
     { nombre: "CIUDADES GRIEGAS-LACEDEMONIOS" },
     { nombre: "CIUDADES GRIEGAS-TESALIOS" },
@@ -144,20 +169,30 @@ export const BANDAS_POR_EPOCA = {
     { nombre: "CRUZADOS" },
     { nombre: "ORDENSTAAT" },
     { nombre: "MOROS" },
-    { nombre: "MILITES CHRISTI" },
-    { nombre: "MUTTATAWI'A" },
-    { nombre: "PRINCIPES DEL ESTE" },
+    { nombre: "MILITES CHRISTI",
+      tiposTropaPermitidos: ['guardias', 'guerreros', 'mercenarios' ]
+    },
+    { nombre: "MUTTATAWI'A",
+      tiposTropaPermitidos: ['guardias', 'guerreros', 'mercenarios' ]
+     },
+    { nombre: "PRINCIPES DEL ESTE", permiteCarros: true },
     { nombre: "PUEBLOS PAGANOS" },
     { nombre: "POLACOS" },
     { nombre: "SARRACERNOS" },
     { nombre: "ESPAÑOLES" },
-    { nombre: "MONGOLES" },
+    { nombre: "MONGOLES", permiteTambor: true },
     { nombre: "CUMANOS" },
-    { nombre: "INCURSORES PAGANOS" },
+    { nombre: "INCURSORES PAGANOS", 
+      tiposTropaPermitidos: ['guardias', 'guerreros', 'mercenarios' ]
+    },
     { nombre: "ARMENIOS DE CILICIA" },
     { nombre: "HÚNGAROS DE ÁRPÁD" },
-    { nombre: "CRUZADOS DE MONTFORT" },
-    { nombre: "CÁTAROS" }
+    { nombre: "CRUZADOS DE MONTFORT",
+      tiposTropaPermitidos: ['guardias', 'guerreros', 'mercenarios' ]
+     },
+    { nombre: "CÁTAROS", 
+      tiposTropaPermitidos: ['guardias', 'guerreros', 'mercenarios' ]
+     }
   ],
   "Caballeria": [
     { nombre: "INGLESES" },
@@ -167,32 +202,269 @@ export const BANDAS_POR_EPOCA = {
     { nombre: "COMPAÑIAS LIBRES" },
     { nombre: "BORGOÑESES" },
     { nombre: "BORGOÑESES-COMPAÑIA DE ORDENANZA" },
-    { nombre: "FLAMENCOS" },
+    { nombre: "FLAMENCOS",
+      unidadesEspeciales: [
+        { nombre: "carro_flamenco", label: "Carro Flamenco", puntos: 0.5, step: 0.5 }
+      ]
+     },
     { nombre: "ESCOCESES-SCHILTRONS" },
     { nombre: "ESCOCESES-COMPAÑIAS PROFESIONALES" },
-    { nombre: "SUIZOS" },
+    { nombre: "SUIZOS" ,
+      tiposTropaPermitidos: ['guerreros', 'levas', 'mercenarios' ]
+    },
     { nombre: "BRETONES" },
     { nombre: "CASTELLANOS" },
     { nombre: "GERMANOS" },
-    { nombre: "HUSITAS" },
+    { nombre: "HUSITAS",
+      unidadesEspeciales: [
+        { nombre: "carro_husita", label: "Carro Husita", puntos: 1, step: 1 }
+      ]
+     },
     { nombre: "CONDOTIEROS-FLORENCIA" },
-    { nombre: "CONDOTIEROS-ESTADOS PONTIFICIOS" },
+    { nombre: "CONDOTIEROS-ESTADOS PONTIFICIOS",
+       unidadesEspeciales: [
+        { nombre: "carrocio", label: "Carrocio", puntos: 0.5, step: 0.5 }
+      ]
+     },
     { nombre: "CONDOTIEROS-MILÁN" },
     { nombre: "CONDOTIEROS-REINO DE NÁPOLES" },
     { nombre: "CONDOTIEROS-VENECIA" },
     { nombre: "YORK" },
     { nombre: "LANCASTER" }
-  ]
+  ],
+  "Edad de la Magia": [
+    { nombre: "GRANDES REINOS",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "lugarteniente", label: "Capitán", puntos: 1, step: 1 },
+        { id: "paladin", label: "Paladín", puntos: 0.5, step: 0.5 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ]
+     },
+     { nombre: "GRANDES REINOS - LOS ELFOS ZAFIRO",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "lugarteniente", label: "Capitán", puntos: 1, step: 1 },
+        { id: "paladin", label: "Paladín", puntos: 0.5, step: 0.5 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ] 
+    },
+    { nombre: "GRANDES REINOS - LA ORDEN MILITANTE",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "lugarteniente", label: "Capitán", puntos: 1, step: 1 },
+        { id: "paladin", label: "Paladín", puntos: 0.5, step: 0.5 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+       ] ,
+      unidadesEspeciales: [ 
+        { nombre: "fanaticos_entusiastas", label: "Fanáticos Entusiastas", puntos: 1, step: 0.5 }
+      ]     
+    },
+    { nombre: "SEÑORES DE LA NATURALEZA",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "lugarteniente", label: "Ranger", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+      ]
+     },
+     { nombre: "SEÑORES DE LA NATURALEZA - MINOTAUROS DE LAS COLINAS NEGRAS",
+      tiposTropaPersonalizados: [
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+       ] 
+    },
+    { nombre: "SEÑORES DE LA NATURALEZA - LA JUNGLA DE LAS ARAÑAS",
+      tiposTropaPersonalizados: [
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+       ] ,
+      unidadesEspeciales: [ 
+        { nombre: "fanaticos_entusiastas", label: "Fanáticos Entusiastas", puntos: 1, step: 0.5 }
+      ]     
+    },
+    { nombre: "LEGIONES DE LOS NO MUERTOS",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "descerebrados", label: "Descerebrados", puntos: 1, step: 1 },
+        { id: "lugarteniente", label: "Caballero Negro", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ],
+       opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "señor", nombre: "Señor" },
+            { valor: "nigromante", nombre: "Nigromante" }
+          ],
+          valorPorDefecto: "señor"
+        }
+      ]
+     },
+     { nombre: "LEGIONES DE LOS NO MUERTOS - LA DINASTIA REAL DE NEPHREN-KA", permiteCarros: true,
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ],
+       opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "señor", nombre: "Señor" },
+            { valor: "nigromante", nombre: "Nigromante" }
+          ],
+          valorPorDefecto: "señor"
+        }
+      ]
+     },
+     { nombre: "LEGIONES DE LOS NO MUERTOS - EL REINO DE LOS NECRÓFAGOS",
+      tiposTropaPersonalizados: [
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+      ],
+       opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "señor", nombre: "Señor" },
+            { valor: "nigromante", nombre: "Nigromante" }
+          ],
+          valorPorDefecto: "señor"
+        }
+      ]
+     },
+    { nombre: "LA HORDA",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "carros_guerra", label: "Carros de Guerra", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "lugarteniente", label: "Campeón", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5},
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ]
+     },
+     { nombre: "LA HORDA - LOS RUFIANES DE RH' UM",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "carros_guerra", label: "Carros de Guerra", puntos: 1, step: 1 },
+        { id: "lugarteniente", label: "Campeón", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5},
+      ]
+     },
+     { nombre: "LA HORDA - LA ISLA DE MORROW",
+      tiposTropaPersonalizados: [
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+      ]
+     },
+    { nombre: "OTROS MUNDOS",
+      tiposTropaPersonalizados: [
+       { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "lugarteniente", label: "Conjurador", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+      ]
+     },
+      { nombre: "OTROS MUNDOS - LA MAREA DE LAS PROFUNDIDADES",
+      tiposTropaPersonalizados: [
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+      ]
+     },
+      { nombre: "OTROS MUNDOS - LA TEOCRACIA DE QWAN T 'ANG",
+      tiposTropaPersonalizados: [
+       { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "lugarteniente", label: "Conjurador", puntos: 1, step: 1 },
+      ]
+     },
+    { nombre: "PUEBLOS SUBTERRÁNEOS",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "lugartenientes", label: "Alquimista", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ]
+    },
+    { nombre: "PUEBLOS SUBTERRÁNEOS - LOS ENANOS DE LAS MONTAÑAS DE PLATA",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "guerreros", label: "Guerreros", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "lugartenientes", label: "Alquimista", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ]
+    },
+    { nombre: "PUEBLOS SUBTERRÁNEOS- LAS ALIMAÑAS",
+      tiposTropaPersonalizados: [
+        { id: "guardias", label: "Guardias", puntos: 1, step: 0.5 },
+        { id: "hechicero", label: "Hechicero", puntos: 1, step: 1 },
+        { id: "levas", label: "Levas", puntos: 1, step: 0.5 },
+        { id: "lugartenientes", label: "Alquimista", puntos: 1, step: 1 },
+        { id: "criaturas", label: "Criaturas", puntos: 1, step: 0.5 },
+        { id: "monstruo", label: "Monstruo", puntos: 1, step: 1 },
+        { id: "maquinas", label: "Máquinas de Guerra", puntos: 1, step: 1 }
+      ]
+    }
+  ],
 };
 
 /**
  * Obtiene las bandas disponibles según la época del torneo.
- * Si la época es combinada (ej: "Alejandro/Ánibal"), devuelve bandas de ambas épocas.
  */
 export const obtenerBandasDisponibles = (epocaTorneo) => {
-   if (!epocaTorneo) {
-      console.warn('⚠️ obtenerBandasDisponibles: época vacía');
-      return [];
+  if (!epocaTorneo) {
+    console.warn('⚠️ obtenerBandasDisponibles: época vacía');
+    return [];
   }
 
   // Época combinada
@@ -214,7 +486,7 @@ export const obtenerBandasDisponibles = (epocaTorneo) => {
     return bandasUnicas;
   }
 
- // ✅ Época simple
+  // Época simple
   const bandas = BANDAS_POR_EPOCA[epocaTorneo] || [];
   
   if (bandas.length === 0) {
@@ -225,12 +497,140 @@ export const obtenerBandasDisponibles = (epocaTorneo) => {
 };
 
 /**
+ * ✅ Obtiene la configuración completa de una banda específica
+ */
+export const obtenerConfiguracionBanda = (nombreBanda) => {
+  if (!nombreBanda) {
+    return {
+      nombre: '',
+      epoca: '',
+      permiteElefantes: false,
+      permiteCarros: false,
+      permiteTambor: false,
+      permiteCuraids: false,
+      permitePerros: false,
+      permiteBerserkers: false,
+      unidadesEspeciales: [],
+      tiposTropaPermitidos: null,
+      opcionesBanda: [],
+      tiposTropaPersonalizados: null
+    };
+  }
+
+  // Buscar la banda en todas las épocas
+  for (const epoca in BANDAS_POR_EPOCA) {
+    const banda = BANDAS_POR_EPOCA[epoca].find(b => b.nombre === nombreBanda);
+    if (banda) {
+      return {
+        nombre: banda.nombre,
+        epoca: epoca,
+        permiteElefantes: banda.permiteElefantes || false,
+        permiteCarros: banda.permiteCarros || false,
+        permiteTambor: banda.permiteTambor || false,
+        permiteCuraids: banda.permiteCuraids || false,
+        permitePerros: banda.permitePerros || false,
+        permiteBerserkers: banda.permiteBerserkers || false,
+        unidadesEspeciales: banda.unidadesEspeciales || [],
+        tiposTropaPermitidos: banda.tiposTropaPermitidos || null,
+        opcionesBanda: banda.opcionesBanda || [],
+        tiposTropaPersonalizados: banda.tiposTropaPersonalizados || null
+      };
+    }
+  }
+
+  // Si no se encuentra, devolver configuración por defecto
+  console.warn(`⚠️ No se encontró configuración para la banda: "${nombreBanda}"`);
+  return {
+    nombre: nombreBanda,
+    permiteElefantes: false,
+    permiteCarros: false,
+    permiteTambor: false,
+    permiteCuraids: false,
+    permitePerros: false,
+    permiteBerserkers: false,
+    unidadesEspeciales: [],
+    tiposTropaPermitidos: null,
+    opcionesBanda: [],
+    tiposTropaPersonalizados: null
+  };
+};
+
+/**
+ * ✅ Procesa las épocas disponibles del torneo
+ */
+export const procesarEpocasYBandas = (epocasDisponibles) => {
+  if (!epocasDisponibles) {
+    return {
+      epocasArray: [],
+      todasLasBandas: [],
+      mapaBandaAEpoca: {},
+      mapaBandaAConfig: {}
+    };
+  }
+
+  let epocas = [];
+
+  // Detectar tipo de separador
+  if (epocasDisponibles.includes('|')) {
+    epocas = epocasDisponibles.split('|');
+  } else if (epocasDisponibles.includes(',')) {
+    epocas = epocasDisponibles.split(',');
+  } else {
+    epocas = [epocasDisponibles];
+  }
+
+  const epocasLimpias = epocas.map(e => e.trim()).filter(e => e.length > 0);
+  
+  const mapaBandaAEpoca = {};
+  const mapaBandaAConfig = {};
+  let todasLasBandas = [];
+
+  epocasLimpias.forEach(epoca => {
+    const bandas = obtenerBandasDisponibles(epoca);
+    
+    bandas.forEach(banda => {
+      const nombreBanda = banda.nombre;
+      const config = obtenerConfiguracionBanda(nombreBanda);
+      
+      mapaBandaAEpoca[nombreBanda] = epoca;
+      mapaBandaAConfig[nombreBanda] = config;
+      
+      todasLasBandas.push(config);
+    });
+  });
+
+  return {
+    epocasArray: epocasLimpias,
+    todasLasBandas,
+    mapaBandaAEpoca,
+    mapaBandaAConfig
+  };
+};
+
+/**
+ * ✅ Verifica si un tipo de tropa está permitido para una banda
+ */
+export const permiteTipoTropa = (configuracionBanda, tipoTropa) => {
+  // Si tiene tipos de tropa personalizados, todo está permitido según su configuración
+  if (configuracionBanda.tiposTropaPersonalizados) {
+    return true;
+  }
+  
+  // Si no hay restricciones, permite todo
+  if (!configuracionBanda.tiposTropaPermitidos) {
+    return true;
+  }
+  
+  // Si hay restricciones, verificar si está en la lista
+  return configuracionBanda.tiposTropaPermitidos.includes(tipoTropa);
+};
+
+/**
  * Verifica si una época es válida
  */
 export const esEpocaValida = (epoca) => {
   if (!epoca) return false;
   
-  // Época combinada
   if (epoca.includes('/')) {
     const epocas = epoca.split('/').map(e => e.trim());
     return epocas.every(e => BANDAS_POR_EPOCA[e] !== undefined);

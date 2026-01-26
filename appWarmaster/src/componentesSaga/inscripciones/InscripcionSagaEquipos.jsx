@@ -5,11 +5,13 @@ import { torneosSagaApi } from '@/servicios/apiSaga';
 import { usuarioApi } from '@/servicios/apiUsuarios';
 import { 
   PUNTOS_BANDA_RANGO,
-  obtenerBandasDisponibles
+  procesarEpocasYBandas,
+  obtenerConfiguracionBanda,
+  permiteTipoTropa
 } from '../funcionesSaga/constantesFuncionesSaga';
 import Footer from '@/paginas/Footer.jsx'
 
-import '../../estilos/inscripcionesEquipo.css';
+import '@/estilos/inscripcionesEquipo.css';
 
 function InscripcionSagaEquipos({ torneoId, torneo, user }) {
   const navigate = useNavigate();
@@ -25,13 +27,23 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       email: user?.email,
       epoca: "",
       banda: "",
+      // ✅ Puntos estándar
       puntos: {
         guardias: 0,
         guerreros: 0,
         levas: 0,
         mercenarios: 0,
-        elefantes: 0 // ✅ NUEVO CAMPO
+        elefantes: 0,
+        carros: 0,
+        tambor: 0,
+        curaids: 0,
+        perros: 0,
+        berserkers: 0,
       },
+      // ✅ Sistemas especiales
+      unidadesEspeciales: {},
+      opcionesBanda: {},
+      tiposTropaPersonalizados: {},
       detalleMercenarios: "",
       esCapitan: true,
       esYo: true,
@@ -45,35 +57,12 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
   const puntosMaximos = torneo?.puntos_banda || PUNTOS_BANDA_RANGO.default;
   
   // ==========================================
-  // ÉPOCAS QUE PERMITEN ELEFANTES
+  // PROCESAR LAS ÉPOCAS Y BANDAS DISPONIBLES
   // ==========================================
-  const epocasConElefantes = ['Ánibal', 'Alejandro', 'Invasiones', "Alejandro/Ánibal", "Vikingos/Invasiones"  ];
-  
-  // ==========================================
-  // PROCESAR LAS ÉPOCAS DISPONIBLES
-  // ==========================================
-  const epocasArray = React.useMemo(() => {
-    if (!torneo?.epocas_disponibles) {
-      console.warn('⚠️ No hay épocas disponibles definidas en el torneo');  
-      return [];
-    }
-
-    const epocasString = torneo.epocas_disponibles;
-    
-    let epocas = [];
-
-    // DETECTAR TIPO DE SEPARADOR
-    if (epocasString.includes('|')) {
-      epocas = epocasString.split('|');
-    } else if (epocasString.includes(',')) {
-      epocas = epocasString.split(',');
-    } else {
-      epocas = [epocasString];
-    }
-
-    const epocasLimpias = epocas.map(e => e.trim()).filter(e => e.length > 0);
-    return epocasLimpias;
-  }, [torneo?.epocas_disponibles]);
+  const { epocasArray, todasLasBandas, mapaBandaAEpoca } = React.useMemo(
+    () => procesarEpocasYBandas(torneo?.epocas_disponibles),
+    [torneo?.epocas_disponibles]
+  );
 
   // ==========================================
   // CARGAR EQUIPO EXISTENTE
@@ -93,24 +82,46 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
           setEquipoId(equipo.id);
           
           if (equipo.miembros && Array.isArray(equipo.miembros)) {
-            setMiembrosEquipo(equipo.miembros.map(m => ({
+            setMiembrosEquipo(equipo.miembros.map(m => {
+              // Parsear composición si existe
+              let composicion = {};
+              if (m.composicion_ejercito) {
+                try {
+                  composicion = typeof m.composicion_ejercito === 'string'
+                    ? JSON.parse(m.composicion_ejercito)
+                    : m.composicion_ejercito;
+                } catch (e) {
+                  console.error('Error parseando composicion:', e);
+                }
+              }
+
+              return {
                 nombre: m.nombre,
                 email: m.email,
                 epoca: m.epoca,
                 banda: m.banda || "",
-                puntos: m.puntos || { 
-                  guardias: 0, 
-                  guerreros: 0, 
-                  levas: 0, 
-                  mercenarios: 0,
-                  elefantes: 0 // ✅ CARGAR ELEFANTES
+                puntos: {
+                  guardias: parseFloat(composicion.guardias || 0),
+                  guerreros: parseFloat(composicion.guerreros || 0),
+                  levas: parseFloat(composicion.levas || 0),
+                  mercenarios: parseFloat(composicion.mercenarios || 0),
+                  elefantes: parseFloat(composicion.elefantes || 0),
+                  carros: parseFloat(composicion.carros || 0),
+                  tambor: parseFloat(composicion.tambor || 0),
+                  curaids: parseFloat(composicion.curaids || 0),
+                  perros: parseFloat(composicion.perros || 0),
+                  berserkers: parseFloat(composicion.berserkers || 0),
                 },
-                detalleMercenarios: m.detalle_mercenarios || "",
+                unidadesEspeciales: composicion.unidadesEspeciales || {},
+                opcionesBanda: composicion.opcionesBanda || {},
+                tiposTropaPersonalizados: composicion.tiposTropaPersonalizados || {},
+                detalleMercenarios: composicion.detalleMercenarios || "",
                 esCapitan: m.es_capitan,
                 esYo: m.usuario_id === user.id,
-                usuarioValido: m.estado_cuenta === 'activo', 
-                estadoCuenta: m.estado_cuenta 
-            })));
+                usuarioValido: m.estado_cuenta === 'activo',
+                estadoCuenta: m.estado_cuenta
+              };
+            }));
           }
         }
       } catch (err) {
@@ -137,13 +148,21 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
           email: "", 
           epoca: "",
           banda: "",
-          puntos: { 
-            guardias: 0, 
-            guerreros: 0, 
-            levas: 0, 
+          puntos: {
+            guardias: 0,
+            guerreros: 0,
+            levas: 0,
             mercenarios: 0,
-            elefantes: 0 // ✅ INCLUIR EN NUEVO MIEMBRO
+            elefantes: 0,
+            carros: 0,
+            tambor: 0,
+            curaids: 0,
+            perros: 0,
+            berserkers: 0,
           },
+          unidadesEspeciales: {},
+          opcionesBanda: {},
+          tiposTropaPersonalizados: {},
           detalleMercenarios: "",
           esCapitan: false,
           esYo: false,
@@ -170,30 +189,30 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
   };
 
   const eliminarInscripcionEquipo = async () => {
-      if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar la inscripción de tu equipo?')) {
-        return;
+    if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar la inscripción de tu equipo?')) {
+      return;
+    }
+
+    if (!equipoId) {
+      setError("No se pudo obtener el ID del equipo");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const resultado = await torneosSagaApi.eliminarEquipoTorneo(torneoId, equipoId);
+
+      if (resultado.success) {
+        alert("✅ Inscripción del Equipo eliminada correctamente");
+        navigate('/');
       }
-  
-      if (!equipoId) {
-        setError("No se pudo obtener el ID del equipo");
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        const resultado = await torneosSagaApi.eliminarEquipoTorneo(torneoId, equipoId);
-  
-        if (resultado.success) {
-          alert("✅ Inscripción del Equipo eliminada correctamente");
-          navigate('/');
-        }
-      } catch (error) {
-        console.error("❌ Error al eliminar inscripción:", error);
-        setError(error.message || "Error al eliminar la inscripción");
-      } finally {
-        setLoading(false);
-      }
-    };
+    } catch (error) {
+      console.error("❌ Error al eliminar inscripción:", error);
+      setError(error.message || "Error al eliminar la inscripción");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const actualizarMiembro = (index, campo, valor) => {
     const nuevosMiembros = [...miembrosEquipo];
@@ -202,32 +221,85 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     // Si cambia época, resetear banda Y puntos
     if (campo === 'epoca') {
       nuevosMiembros[index].banda = "";
-      nuevosMiembros[index].puntos = { 
-        guardias: 0, 
-        guerreros: 0, 
-        levas: 0, 
+      nuevosMiembros[index].puntos = {
+        guardias: 0,
+        guerreros: 0,
+        levas: 0,
         mercenarios: 0,
-        elefantes: 0 // ✅ RESETEAR ELEFANTES
+        elefantes: 0,
+        carros: 0,
+        tambor: 0,
+        curaids: 0,
+        perros: 0,
+        berserkers: 0,
       };
+      nuevosMiembros[index].unidadesEspeciales = {};
+      nuevosMiembros[index].opcionesBanda = {};
+      nuevosMiembros[index].tiposTropaPersonalizados = {};
       nuevosMiembros[index].detalleMercenarios = "";
-      
-      // ✅ Limpiar elefantes si la nueva época no los permite
-      const permiteElefantes = epocasConElefantes.includes(valor);
-      if (!permiteElefantes) {
-        nuevosMiembros[index].puntos.elefantes = 0;
-      }
     }
     
-    // Si se borra la banda, resetear puntos
-    if (campo === 'banda' && !valor) {
-      nuevosMiembros[index].puntos = { 
-        guardias: 0, 
-        guerreros: 0, 
-        levas: 0, 
-        mercenarios: 0,
-        elefantes: 0 // ✅ RESETEAR ELEFANTES
-      };
-      nuevosMiembros[index].detalleMercenarios = "";
+    // Si cambia banda, resetear puntos y sistemas especiales
+    if (campo === 'banda') {
+      if (!valor) {
+        // Si se borra la banda, resetear todo
+        nuevosMiembros[index].puntos = {
+          guardias: 0,
+          guerreros: 0,
+          levas: 0,
+          mercenarios: 0,
+          elefantes: 0,
+          carros: 0,
+          tambor: 0,
+          curaids: 0,
+          perros: 0,
+          berserkers: 0,
+        };
+        nuevosMiembros[index].unidadesEspeciales = {};
+        nuevosMiembros[index].opcionesBanda = {};
+        nuevosMiembros[index].tiposTropaPersonalizados = {};
+        nuevosMiembros[index].detalleMercenarios = "";
+      } else {
+        // Si cambia a otra banda, limpiar solo lo que no aplique
+        const config = obtenerConfiguracionBanda(valor);
+        
+        // Limpiar campos que no están permitidos
+        const nuevosPuntos = { ...nuevosMiembros[index].puntos };
+        if (!config.permiteElefantes) nuevosPuntos.elefantes = 0;
+        if (!config.permiteCarros) nuevosPuntos.carros = 0;
+        if (!config.permiteTambor) nuevosPuntos.tambor = 0;
+        if (!config.permiteCuraids) nuevosPuntos.curaids = 0;
+        if (!config.permitePerros) nuevosPuntos.perros = 0;
+        if (!config.permiteBerserkers) nuevosPuntos.berserkers = 0;
+        if (!permiteTipoTropa(config, 'guardias')) nuevosPuntos.guardias = 0;
+        if (!permiteTipoTropa(config, 'guerreros')) nuevosPuntos.guerreros = 0;
+        if (!permiteTipoTropa(config, 'levas')) nuevosPuntos.levas = 0;
+        if (!permiteTipoTropa(config, 'mercenarios')) {
+          nuevosPuntos.mercenarios = 0;
+          nuevosMiembros[index].detalleMercenarios = "";
+        }
+        
+        nuevosMiembros[index].puntos = nuevosPuntos;
+        
+        // Resetear sistemas especiales si cambia de banda
+        if (!config.unidadesEspeciales || config.unidadesEspeciales.length === 0) {
+          nuevosMiembros[index].unidadesEspeciales = {};
+        }
+        if (!config.tiposTropaPersonalizados) {
+          nuevosMiembros[index].tiposTropaPersonalizados = {};
+        }
+        
+        // Inicializar opciones de banda con valores por defecto
+        if (config.opcionesBanda && config.opcionesBanda.length > 0) {
+          const opcionesPorDefecto = {};
+          config.opcionesBanda.forEach(opcion => {
+            opcionesPorDefecto[opcion.id] = opcion.porDefecto || '';
+          });
+          nuevosMiembros[index].opcionesBanda = opcionesPorDefecto;
+        } else {
+          nuevosMiembros[index].opcionesBanda = {};
+        }
+      }
     }
     
     // Si cambia email, resetear validación
@@ -247,6 +319,24 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       nuevosMiembros[index].detalleMercenarios = "";
     }
     
+    setMiembrosEquipo(nuevosMiembros);
+  };
+
+  const actualizarUnidadEspecial = (index, nombreUnidad, valor) => {
+    const nuevosMiembros = [...miembrosEquipo];
+    nuevosMiembros[index].unidadesEspeciales[nombreUnidad] = parseFloat(valor) || 0;
+    setMiembrosEquipo(nuevosMiembros);
+  };
+
+  const actualizarOpcionBanda = (index, idOpcion, valor) => {
+    const nuevosMiembros = [...miembrosEquipo];
+    nuevosMiembros[index].opcionesBanda[idOpcion] = valor;
+    setMiembrosEquipo(nuevosMiembros);
+  };
+
+  const actualizarTropaPersonalizada = (index, idTropa, valor) => {
+    const nuevosMiembros = [...miembrosEquipo];
+    nuevosMiembros[index].tiposTropaPersonalizados[idTropa] = parseFloat(valor) || 0;
     setMiembrosEquipo(nuevosMiembros);
   };
 
@@ -283,12 +373,33 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     }
   };
 
-  const calcularTotalPuntos = (puntos) => {
-    return puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios + puntos.elefantes; // ✅ INCLUIR ELEFANTES
+  const calcularTotalPuntos = (miembro) => {
+    const config = miembro.banda ? obtenerConfiguracionBanda(miembro.banda) : null;
+    
+    // Si usa tipos personalizados (Edad de la Magia)
+    if (config && config.tiposTropaPersonalizados) {
+      let total = 0;
+      Object.keys(miembro.tiposTropaPersonalizados).forEach(idTropa => {
+        const cantidad = miembro.tiposTropaPersonalizados[idTropa];
+        const tipoConfig = config.tiposTropaPersonalizados.find(t => t.id === idTropa);
+        if (tipoConfig) {
+          total += cantidad * tipoConfig.puntos;
+        }
+      });
+      return total;
+    }
+    
+    // Bandas normales
+    const totalUnidadesEspeciales = Object.values(miembro.unidadesEspeciales || {}).reduce((acc, val) => acc + val, 0);
+    
+    return miembro.puntos.guardias + miembro.puntos.guerreros + miembro.puntos.levas + 
+           miembro.puntos.mercenarios + miembro.puntos.elefantes + miembro.puntos.carros + 
+           miembro.puntos.tambor + miembro.puntos.curaids + miembro.puntos.perros + 
+           miembro.puntos.berserkers + totalUnidadesEspeciales;
   };
 
   const validarPuntosMiembro = (miembro) => {
-    const total = calcularTotalPuntos(miembro.puntos);
+    const total = calcularTotalPuntos(miembro);
     return Math.abs(total - puntosMaximos) < 0.01;
   };
 
@@ -301,7 +412,6 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       return;
     }
 
-    // Validar que el torneo tiene configuración
     if (!jugadoresPorEquipo) {
       setError("Error: El torneo no tiene configurado el número de jugadores por equipo");
       return;
@@ -324,6 +434,19 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
     if (miembrosSinPuntosCorrectos.length > 0) {
       setError(`Los jugadores con banda seleccionada deben tener exactamente ${puntosMaximos} puntos distribuidos`);
       return;
+    }
+
+    // Validar opciones de banda obligatorias
+    for (const miembro of miembrosConBanda) {
+      const config = obtenerConfiguracionBanda(miembro.banda);
+      if (config.opcionesBanda && config.opcionesBanda.length > 0) {
+        for (const opcion of config.opcionesBanda) {
+          if (opcion.obligatorio && !miembro.opcionesBanda[opcion.id]) {
+            setError(`${miembro.nombre} debe seleccionar: ${opcion.label}`);
+            return;
+          }
+        }
+      }
     }
 
     // Solo validar mercenarios si hay banda
@@ -361,37 +484,90 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
       const otrosMiembros = miembrosValidos.filter(m => !m.esYo);
       
       const usuariosConEmail = otrosMiembros.filter(
-        m => m.email && m.email.trim() !== ' '
-      )
+        m => m.email && m.email.trim() !== ''
+      );
+
+      // ✅ Construir datos de inscripción dinámicamente
+      const construirDatosMiembro = (m) => {
+        const datos = {
+          nombre: m.nombre.trim(),
+          email: m.email.toLowerCase().trim(),
+          epoca: m.epoca,
+          banda: m.banda || null,
+          esCapitan: m.esCapitan
+        };
+
+        // Solo incluir composición si hay banda
+        if (m.banda) {
+          const config = obtenerConfiguracionBanda(m.banda);
+          
+          if (config.tiposTropaPersonalizados) {
+            // Edad de la Magia
+            datos.tiposTropaPersonalizados = m.tiposTropaPersonalizados;
+          } else {
+            // Bandas normales
+            datos.puntos = {};
+            if (m.puntos.guardias > 0) datos.puntos.guardias = m.puntos.guardias;
+            if (m.puntos.guerreros > 0) datos.puntos.guerreros = m.puntos.guerreros;
+            if (m.puntos.levas > 0) datos.puntos.levas = m.puntos.levas;
+            if (m.puntos.mercenarios > 0) datos.puntos.mercenarios = m.puntos.mercenarios;
+            if (m.puntos.elefantes > 0) datos.puntos.elefantes = m.puntos.elefantes;
+            if (m.puntos.carros > 0) datos.puntos.carros = m.puntos.carros;
+            if (m.puntos.tambor > 0) datos.puntos.tambor = m.puntos.tambor;
+            if (m.puntos.curaids > 0) datos.puntos.curaids = m.puntos.curaids;
+            if (m.puntos.perros > 0) datos.puntos.perros = m.puntos.perros;
+            if (m.puntos.berserkers > 0) datos.puntos.berserkers = m.puntos.berserkers;
+            
+            if (Object.keys(m.unidadesEspeciales || {}).length > 0) {
+              datos.unidadesEspeciales = m.unidadesEspeciales;
+            }
+          }
+
+          if (Object.keys(m.opcionesBanda || {}).length > 0) {
+            datos.opcionesBanda = m.opcionesBanda;
+          }
+
+          if (m.detalleMercenarios && m.detalleMercenarios.trim()) {
+            datos.detalleMercenarios = m.detalleMercenarios;
+          }
+        }
+
+        return datos;
+      };
 
       const inscripcionData = {
         nombreEquipo: nombreEquipo.trim(),
         miembros: modoEdicion 
-          ? miembrosValidos.map(m => ({
-              nombre: m.nombre.trim(),
-              email: m.email.toLowerCase().trim(),
-              epoca: m.epoca,
-              banda: m.banda || null,
-              puntos: m.banda ? m.puntos : null, // ✅ Ya incluye elefantes en el objeto
-              detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null,
-              esCapitan: m.esCapitan
-            }))
-          : otrosMiembros.map(m => ({
-              nombre: m.nombre.trim(),
-              email: m.email.toLowerCase().trim(),
-              epoca: m.epoca,
-              banda: m.banda || null,
-              puntos: m.banda ? m.puntos : null, // ✅ Ya incluye elefantes en el objeto
-              detalleMercenarios: (m.banda && m.detalleMercenarios) ? m.detalleMercenarios : null
-            }))
+          ? miembrosValidos.map(construirDatosMiembro)
+          : otrosMiembros.map(construirDatosMiembro)
       };
 
       // En modo creación, añadir mis propios datos
       if (!modoEdicion) {
+        const misDatosEnviar = construirDatosMiembro(misDatos);
         inscripcionData.miEpoca = misDatos.epoca;
         inscripcionData.miBanda = misDatos.banda || null;
-        inscripcionData.misPuntos = misDatos.banda ? misDatos.puntos : null; // ✅ Ya incluye elefantes
-        inscripcionData.miDetalleMercenarios = (misDatos.banda && misDatos.detalleMercenarios) ? misDatos.detalleMercenarios : null;
+        
+        if (misDatos.banda) {
+          const config = obtenerConfiguracionBanda(misDatos.banda);
+          
+          if (config.tiposTropaPersonalizados) {
+            inscripcionData.misTiposTropaPersonalizados = misDatos.tiposTropaPersonalizados;
+          } else {
+            inscripcionData.misPuntos = misDatosEnviar.puntos;
+            if (misDatosEnviar.unidadesEspeciales) {
+              inscripcionData.misUnidadesEspeciales = misDatosEnviar.unidadesEspeciales;
+            }
+          }
+          
+          if (misDatosEnviar.opcionesBanda) {
+            inscripcionData.misOpcionesBanda = misDatosEnviar.opcionesBanda;
+          }
+          
+          if (misDatosEnviar.detalleMercenarios) {
+            inscripcionData.miDetalleMercenarios = misDatosEnviar.detalleMercenarios;
+          }
+        }
       }
 
       let resultado;
@@ -486,14 +662,34 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
 
           <div className="miembros-lista">
             {miembrosEquipo.map((miembro, index) => {
-              const totalPuntos = calcularTotalPuntos(miembro.puntos);
+              const totalPuntos = calcularTotalPuntos(miembro);
               const puntosCorrectos = Math.abs(totalPuntos - puntosMaximos) < 0.01;
-              const bandasDisponibles = miembro.epoca 
-                  ? obtenerBandasDisponibles(miembro.epoca)
-                  : [];
               
-              // ✅ Verificar si esta época permite elefantes
-              const permiteElefantes = epocasConElefantes.includes(miembro.epoca);
+              // ✅ Obtener configuración de la banda seleccionada
+              const configuracionBanda = miembro.banda 
+                ? obtenerConfiguracionBanda(miembro.banda)
+                : null;
+              
+              // ✅ Bandas disponibles para su época
+              const bandasDisponibles = miembro.epoca 
+                ? todasLasBandas.filter(b => mapaBandaAEpoca[b.nombre] === miembro.epoca)
+                : [];
+
+              // ✅ Permisos
+              const permiteElefantes = configuracionBanda?.permiteElefantes || false;
+              const permiteCarros = configuracionBanda?.permiteCarros || false;
+              const permiteTambor = configuracionBanda?.permiteTambor || false;
+              const permiteCuraids = configuracionBanda?.permiteCuraids || false;
+              const permitePerros = configuracionBanda?.permitePerros || false;
+              const permiteBerserkers = configuracionBanda?.permiteBerserkers || false;
+              const tieneUnidadesEspeciales = configuracionBanda?.unidadesEspeciales?.length > 0;
+              const tieneOpcionesBanda = configuracionBanda?.opcionesBanda?.length > 0;
+              const usaTiposTropaPersonalizados = configuracionBanda?.tiposTropaPersonalizados !== null;
+              
+              const permiteGuardias = permiteTipoTropa(configuracionBanda || {}, 'guardias');
+              const permiteGuerreros = permiteTipoTropa(configuracionBanda || {}, 'guerreros');
+              const permiteLevas = permiteTipoTropa(configuracionBanda || {}, 'levas');
+              const permiteMercenarios = permiteTipoTropa(configuracionBanda || {}, 'mercenarios');
 
               return (
                 <div key={index} className="miembro-item">
@@ -630,6 +826,37 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       </div>
                     )}
 
+                    {/* ✅ OPCIONES DE BANDA (ej: Tipo de Warlord) */}
+                    {miembro.banda && tieneOpcionesBanda && (
+                      <div className="opciones-banda-mini">
+                        <h4>Configuración de la Banda</h4>
+                        {configuracionBanda.opcionesBanda.map((opcion) => (
+                          <div key={opcion.id} className="form-group">
+                            <label htmlFor={`${opcion.id}-${index}`}>
+                              {opcion.label}
+                              {opcion.obligatorio && <span style={{ color: 'red' }}> *</span>}
+                            </label>
+                            {opcion.tipo === 'select' && (
+                              <select
+                                id={`${opcion.id}-${index}`}
+                                value={miembro.opcionesBanda[opcion.id] || ''}
+                                onChange={(e) => actualizarOpcionBanda(index, opcion.id, e.target.value)}
+                                disabled={loading}
+                                required={opcion.obligatorio}
+                              >
+                                <option value="">-- Seleccionar --</option>
+                                {opcion.opciones.map((opt) => (
+                                  <option key={opt.valor} value={opt.valor}>
+                                    {opt.nombre}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* DISTRIBUCIÓN DE PUNTOS - Solo si hay BANDA */}
                     {miembro.banda && (
                       <div className="puntos-banda-section">
@@ -648,81 +875,235 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                         </p>
 
                         <div className="puntos-grid-mini">
-                          <div className="punto-item-mini">
-                            <label htmlFor={`guardias-${index}`}>Guardias</label>
-                            <input
-                              type="number"
-                              id={`guardias-${index}`}
-                              value={miembro.puntos.guardias}
-                              onChange={(e) => actualizarPuntos(index, 'guardias', e.target.value)}
-                              min="0"
-                              max={puntosMaximos}
-                              step="0.5"
-                              disabled={loading}
-                            />
-                          </div>
+                          {/* ========================================
+                              EDAD DE LA MAGIA - TIPOS PERSONALIZADOS
+                              ======================================== */}
+                          {usaTiposTropaPersonalizados ? (
+                            <>
+                              {configuracionBanda.tiposTropaPersonalizados.map((tipo) => (
+                                <div key={tipo.id} className="punto-item-mini">
+                                  <label htmlFor={`${tipo.id}-${index}`}>
+                                    {tipo.label}
+                                    <small style={{ fontSize: '0.75rem', color: '#666', padding: '0.25rem' }}>
+                                      ({tipo.puntos} pts c/u)
+                                    </small>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    id={`${tipo.id}-${index}`}
+                                    value={miembro.tiposTropaPersonalizados[tipo.id] || 0}
+                                    onChange={(e) => actualizarTropaPersonalizada(index, tipo.id, e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step={tipo.step || 0.5}
+                                    disabled={loading}
+                                  />
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <>
+                              {/* ========================================
+                                  BANDAS NORMALES - TIPOS ESTÁNDAR
+                                  ======================================== */}
+                              
+                              {/* GUARDIAS */}
+                              {permiteGuardias && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`guardias-${index}`}>Guardias</label>
+                                  <input
+                                    type="number"
+                                    id={`guardias-${index}`}
+                                    value={miembro.puntos.guardias}
+                                    onChange={(e) => actualizarPuntos(index, 'guardias', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="0.5"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
 
-                           {/* ✅ NUEVO CAMPO: ELEFANTES (solo para épocas específicas) */}
-                          {permiteElefantes && (
-                            <div className="punto-item-mini">
-                              <label htmlFor={`elefantes-${index}`}>Elefantes</label>
-                              <input
-                                type="number"
-                                id={`elefantes-${index}`}
-                                value={miembro.puntos.elefantes}
-                                onChange={(e) => actualizarPuntos(index, 'elefantes', e.target.value)}
-                                min="0"
-                                max={puntosMaximos}
-                                step="1"
-                                disabled={loading}
-                              />
-                            </div>
+                              {/* BERSERKERS */}
+                              {permiteBerserkers && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`berserkers-${index}`}>Berserkers</label>
+                                  <input
+                                    type="number"
+                                    id={`berserkers-${index}`}
+                                    value={miembro.puntos.berserkers}
+                                    onChange={(e) => actualizarPuntos(index, 'berserkers', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="1"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* ELEFANTES */}
+                              {permiteElefantes && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`elefantes-${index}`}>Elefantes </label>
+                                  <input
+                                    type="number"
+                                    id={`elefantes-${index}`}
+                                    value={miembro.puntos.elefantes}
+                                    onChange={(e) => actualizarPuntos(index, 'elefantes', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="1"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* CARROS */}
+                              {permiteCarros && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`carros-${index}`}>Carros </label>
+                                  <input
+                                    type="number"
+                                    id={`carros-${index}`}
+                                    value={miembro.puntos.carros}
+                                    onChange={(e) => actualizarPuntos(index, 'carros', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="1"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* TAMBOR */}
+                              {permiteTambor && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`tambor-${index}`}>Tambor </label>
+                                  <input
+                                    type="number"
+                                    id={`tambor-${index}`}
+                                    value={miembro.puntos.tambor}
+                                    onChange={(e) => actualizarPuntos(index, 'tambor', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="1"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* CURAIDS */}
+                              {permiteCuraids && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`curaids-${index}`}>Curaids </label>
+                                  <input
+                                    type="number"
+                                    id={`curaids-${index}`}
+                                    value={miembro.puntos.curaids}
+                                    onChange={(e) => actualizarPuntos(index, 'curaids', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="0.5"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* PERROS */}
+                              {permitePerros && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`perros-${index}`}>Perros de Guerra</label>
+                                  <input
+                                    type="number"
+                                    id={`perros-${index}`}
+                                    value={miembro.puntos.perros}
+                                    onChange={(e) => actualizarPuntos(index, 'perros', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="0.5"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* ✅ UNIDADES ESPECIALES DINÁMICAS */}
+                              {tieneUnidadesEspeciales && configuracionBanda.unidadesEspeciales.map((unidad) => (
+                                <div key={unidad.nombre} className="punto-item-mini">
+                                  <label htmlFor={`${unidad.nombre}-${index}`}>
+                                    {unidad.label}
+                                    <small style={{ fontSize: '0.75rem', color: '#666', padding: '0.25rem' }}>
+                                      ({unidad.puntos} pts c/u)
+                                    </small>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    id={`${unidad.nombre}-${index}`}
+                                    value={miembro.unidadesEspeciales[unidad.nombre] || 0}
+                                    onChange={(e) => actualizarUnidadEspecial(index, unidad.nombre, e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step={unidad.step || 0.5}
+                                    disabled={loading}
+                                  />
+                                </div>
+                              ))}
+
+                              {/* GUERREROS */}
+                              {permiteGuerreros && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`guerreros-${index}`}>Guerreros</label>
+                                  <input
+                                    type="number"
+                                    id={`guerreros-${index}`}
+                                    value={miembro.puntos.guerreros}
+                                    onChange={(e) => actualizarPuntos(index, 'guerreros', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="0.5"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* LEVAS */}
+                              {permiteLevas && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`levas-${index}`}>Levas</label>
+                                  <input
+                                    type="number"
+                                    id={`levas-${index}`}
+                                    value={miembro.puntos.levas}
+                                    onChange={(e) => actualizarPuntos(index, 'levas', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="0.5"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+
+                              {/* MERCENARIOS */}
+                              {permiteMercenarios && (
+                                <div className="punto-item-mini">
+                                  <label htmlFor={`mercenarios-${index}`}>Mercenarios</label>
+                                  <input
+                                    type="number"
+                                    id={`mercenarios-${index}`}
+                                    value={miembro.puntos.mercenarios}
+                                    onChange={(e) => actualizarPuntos(index, 'mercenarios', e.target.value)}
+                                    min="0"
+                                    max={puntosMaximos}
+                                    step="0.5"
+                                    disabled={loading}
+                                  />
+                                </div>
+                              )}
+                            </>
                           )}
-
-                          <div className="punto-item-mini">
-                            <label htmlFor={`guerreros-${index}`}>Guerreros</label>
-                            <input
-                              type="number"
-                              id={`guerreros-${index}`}
-                              value={miembro.puntos.guerreros}
-                              onChange={(e) => actualizarPuntos(index, 'guerreros', e.target.value)}
-                              min="0"
-                              max={puntosMaximos}
-                              step="0.5"
-                              disabled={loading}
-                            />
-                          </div>
-
-                          <div className="punto-item-mini">
-                            <label htmlFor={`levas-${index}`}>Levas</label>
-                            <input
-                              type="number"
-                              id={`levas-${index}`}
-                              value={miembro.puntos.levas}
-                              onChange={(e) => actualizarPuntos(index, 'levas', e.target.value)}
-                              min="0"
-                              max={puntosMaximos}
-                              step="0.5"
-                              disabled={loading}
-                            />
-                          </div>
-
-                          <div className="punto-item-mini">
-                            <label htmlFor={`mercenarios-${index}`}>Mercenarios</label>
-                            <input
-                              type="number"
-                              id={`mercenarios-${index}`}
-                              value={miembro.puntos.mercenarios}
-                              onChange={(e) => actualizarPuntos(index, 'mercenarios', e.target.value)}
-                              min="0"
-                              max={puntosMaximos}
-                              step="0.5"
-                              disabled={loading}
-                            />
-                          </div>
                         </div>
 
-                        {miembro.puntos.mercenarios > 0 && (
+                        {/* DETALLE MERCENARIOS */}
+                        {miembro.puntos.mercenarios > 0 && permiteMercenarios && !usaTiposTropaPersonalizados && (
                           <div className="form-group">
                             <label htmlFor={`detalle-merc-${index}`}>Detalle Mercenarios *</label>
                             <textarea
@@ -739,6 +1120,8 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                       </div>
                     )}
                   </div>
+                  
+                  {!miembro.esYo && (
                     <button
                       type="button"
                       onClick={() => eliminarMiembro(index)}
@@ -748,6 +1131,7 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
                     >
                       🗑️ 
                     </button>
+                  )}
                 </div>
               );
             })}
@@ -759,16 +1143,16 @@ function InscripcionSagaEquipos({ torneoId, torneo, user }) {
             {loading ? '⏳ Procesando...' : (modoEdicion ? '✅ Guardar Cambios' : '✅ Inscribir Equipo')}
           </button>
 
-           {modoEdicion && (
-                <button 
-                  type="button" 
-                  className="btn-danger" 
-                  onClick={eliminarInscripcionEquipo}
-                  disabled={loading}
-                >
-                  🗑️ Eliminar Inscripción
-                </button>
-              )}
+          {modoEdicion && (
+            <button 
+              type="button" 
+              className="btn-danger" 
+              onClick={eliminarInscripcionEquipo}
+              disabled={loading}
+            >
+              🗑️ Eliminar Inscripción
+            </button>
+          )}
           
           <button 
             type="button" 

@@ -1469,12 +1469,7 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
     const { 
       usuarioId,
       faccion,
-      puntosGuardias,
-      puntosElefantes,
-      puntosGuerreros,
-      puntosLevas,
-      puntosMercenarios,
-      detalleMercenarios
+     ...restoDatos
     } = req.body;
 
     // Validar que el torneo existe y obtener su época
@@ -1533,17 +1528,6 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 
     const epocaTorneo = epocaBD[0].epoca.trim();
 
-    // Validar puntos 
-    if (puntosGuardias || puntosElefantes || puntosGuerreros || puntosLevas || puntosMercenarios){
-      const totalPuntos = (puntosGuardias || 0) +(puntosElefantes || 0) +  (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
-      
-      if (Math.abs(totalPuntos - torneo.puntos_banda) > 0.01) {
-        return res.status(400).json(
-          errorResponse(`Los puntos deben sumar ${torneo.puntos_banda}`)
-        );
-      }
-    }
-
     // Verificar si ya está inscrito
     const [inscripcionExistente] = await pool.execute(
       'SELECT id FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
@@ -1557,18 +1541,109 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
     }
 
     let composicionEjercito =  null
+    let totalPuntos = 0
 
-    if (puntosGuardias ||puntosElefantes || puntosGuerreros || puntosLevas || puntosMercenarios) {
-       composicionEjercito = JSON.stringify({
-          guardias: puntosGuardias || 0,
-          elefantes: puntosElefantes || 0,  
-          guerreros: puntosGuerreros || 0,
-          levas: puntosLevas || 0,
-          mercenarios: puntosMercenarios || 0,
-          detalleMercenarios: detalleMercenarios || null
-      });
+   if (restoDatos.tiposTropaPersonalizados && Object.keys(restoDatos.tiposTropaPersonalizados).length > 0) {
+      // Para Edad de la Magia, necesitamos calcular puntos según configuración
+      // Por ahora, guardamos tal cual y validamos en frontend
+      composicionEjercito = {
+        tiposTropaPersonalizados: restoDatos.tiposTropaPersonalizados
+      };
+
+      // Si hay opciones de banda, agregarlas
+      if (restoDatos.opcionesBanda) {
+        composicionEjercito.opcionesBanda = restoDatos.opcionesBanda;
+      }
+
+      // Calcular total (esto debería venir calculado del frontend)
+      // O podríamos recibir el total como parámetro
+      
+    } else {
+      // ✅ BANDAS NORMALES: Solo incluir campos que existen
+      const composicion = {};
+      
+      // Tipos de tropa estándar
+      if (restoDatos.puntosGuardias > 0) {
+        composicion.guardias = parseFloat(restoDatos.puntosGuardias);
+        totalPuntos += composicion.guardias;
+      }
+      if (restoDatos.puntosGuerreros > 0) {
+        composicion.guerreros = parseFloat(restoDatos.puntosGuerreros);
+        totalPuntos += composicion.guerreros;
+      }
+      if (restoDatos.puntosLevas > 0) {
+        composicion.levas = parseFloat(restoDatos.puntosLevas);
+        totalPuntos += composicion.levas;
+      }
+      if (restoDatos.puntosMercenarios > 0) {
+        composicion.mercenarios = parseFloat(restoDatos.puntosMercenarios);
+        totalPuntos += composicion.mercenarios;
+        
+        if (restoDatos.detalleMercenarios) {
+          composicion.detalleMercenarios = restoDatos.detalleMercenarios;
+        }
+      }
+
+      // Características especiales
+      if (restoDatos.puntosElefantes > 0) {
+        composicion.elefantes = parseFloat(restoDatos.puntosElefantes);
+        totalPuntos += composicion.elefantes;
+      }
+      if (restoDatos.puntosCarros > 0) {
+        composicion.carros = parseFloat(restoDatos.puntosCarros);
+        totalPuntos += composicion.carros;
+      }
+      if (restoDatos.puntosTambor > 0) {
+        composicion.tambor = parseFloat(restoDatos.puntosTambor);
+        totalPuntos += composicion.tambor;
+      }
+      if (restoDatos.puntosCuraids > 0) {
+        composicion.curaids = parseFloat(restoDatos.puntosCuraids);
+        totalPuntos += composicion.curaids;
+      }
+      if (restoDatos.puntosPerros > 0) {
+        composicion.perros = parseFloat(restoDatos.puntosPerros);
+        totalPuntos += composicion.perros;
+      }
+      if (restoDatos.puntosBerserkers > 0) {
+        composicion.berserkers = parseFloat(restoDatos.puntosBerserkers);
+        totalPuntos += composicion.berserkers;
+      }
+
+      // ✅ Unidades especiales (manubalista, los compañeros, etc.)
+      if (restoDatos.unidadesEspeciales && Object.keys(restoDatos.unidadesEspeciales).length > 0) {
+        composicion.unidadesEspeciales = {};
+        Object.entries(restoDatos.unidadesEspeciales).forEach(([key, value]) => {
+          if (value > 0) {
+            composicion.unidadesEspeciales[key] = parseFloat(value);
+            totalPuntos += parseFloat(value);
+          }
+        });
+      }
+
+      // ✅ Opciones de banda (tipo de Warlord, etc.)
+      if (restoDatos.opcionesBanda && Object.keys(restoDatos.opcionesBanda).length > 0) {
+        composicion.opcionesBanda = restoDatos.opcionesBanda;
+      }
+
+      // Solo crear composición si hay datos
+      if (Object.keys(composicion).length > 0) {
+        composicionEjercito = composicion;
+      }
     }
-    
+
+    // ✅ VALIDAR PUNTOS (solo si hay composición)
+    if (composicionEjercito && totalPuntos > 0) {
+      if (Math.abs(totalPuntos - torneo.puntos_banda) > 0.01) {
+        return res.status(400).json(
+          errorResponse(`Los puntos deben sumar ${torneo.puntos_banda}. Total actual: ${totalPuntos}`)
+        );
+      }
+    }
+
+    // ✅ Convertir a JSON solo si hay datos
+    const composicionJSON = composicionEjercito ? JSON.stringify(composicionEjercito) : null;
+
     // Insertar inscripción
     const [resultado] = await pool.execute(
       `INSERT INTO jugador_torneo_saga (
@@ -1588,12 +1663,12 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         usuarioId,
         epocaTorneo,
         faccion || 'sin definir',
-        composicionEjercito,
-        0,      // pagado por defecto 0 = pendiente
-        0,      // puntos_victoria por defecto 0
-        0,      // puntos_torneo por defecto 0
-        0,      // puntos_masacre por defecto 0
-        0       // warlord_muerto por defecto 0
+        composicionJSON,
+        0, // pagado
+        0, // puntos_victoria
+        0, // puntos_torneo
+        0, // puntos_masacre
+        0  // warlord_muerto
       ]
     );
 
@@ -1604,7 +1679,7 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         usuarioId,
         epoca: epocaTorneo,
         faccion: faccion || null,
-        composicionEjercito: composicionEjercito ?JSON.parse(composicionEjercito) :  null
+        composicionEjercito: composicionEjercito
       })
     );
 
@@ -1650,319 +1725,177 @@ router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => 
 // =====ACTUALIZAR INSCRIPCIÓN=====
 
 router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) => {
-    const connection = await pool.getConnection();
-    
-    try {
-        const { torneoId } = req.params;
-        const jugadorId = req.usuario.userId;
-
-        const {
-            faccion,
-            puntosGuardias,
-            puntosElefantes,
-            puntosGuerreros,
-            puntosLevas,
-            puntosMercenarios,
-            detalleMercenarios
-        } = req.body;
-
-        await connection.beginTransaction();
-
-        // Verificar que está inscrito
-        const [inscripcion] = await connection.execute(
-            'SELECT id, epoca FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
-            [torneoId, jugadorId]
-        );
-
-        if (inscripcion.length === 0) {
-            await connection.rollback();
-            return res.status(404).json(errorResponse('No estás inscrito en este torneo'));
-        }
-
-        // Validar puntos SOLO si se proporcionan
-        if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
-            const [torneos] = await connection.execute(
-                'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
-                [torneoId]
-            );
-
-            if (torneos.length > 0) {
-                const totalPuntos = (puntosGuardias || 0) + (puntosElefantes || 0) (puntosGuerreros || 0) + (puntosLevas || 0) + (puntosMercenarios || 0);
-                
-                if (Math.abs(totalPuntos - torneos[0].puntos_banda) > 0.01) {
-                    await connection.rollback();
-                    return res.status(400).json(
-                        errorResponse(`Los puntos deben sumar ${torneos[0].puntos_banda}`)
-                    );
-                }
-            }
-        }
-
-        // Crear composición SOLO si hay puntos
-        let composicionEjercito = null;
-        
-        if (puntosGuardias || puntosGuerreros || puntosLevas || puntosMercenarios) {
-            composicionEjercito = JSON.stringify({
-                guardias: puntosGuardias || 0,
-                elefantes: puntosElefantes || 0,
-                guerreros: puntosGuerreros || 0,
-                levas: puntosLevas || 0,
-                mercenarios: puntosMercenarios || 0,
-                detalleMercenarios: detalleMercenarios || null
-            });
-        }
-
-        // Actualizar inscripción
-        await connection.execute(`
-            UPDATE jugador_torneo_saga 
-            SET faccion = ?,
-                composicion_ejercito = ?
-            WHERE torneo_id = ? AND jugador_id = ?
-        `, [
-            faccion || null,           // CRÍTICO: || null en lugar de undefined
-            composicionEjercito,       // Ya es null si no hay puntos
-            torneoId,
-            jugadorId
-        ]);
-
-        await connection.commit();
-
-        // Obtener inscripción actualizada
-        const [inscripcionActualizada] = await connection.execute(`
-            SELECT * FROM jugador_torneo_saga 
-            WHERE torneo_id = ? AND jugador_id = ?
-        `, [torneoId, jugadorId]);
-
-        if (inscripcionActualizada.length > 0 && inscripcionActualizada[0].composicion_ejercito) {
-            try {
-                inscripcionActualizada[0].composicion_ejercito = JSON.parse(inscripcionActualizada[0].composicion_ejercito);
-            } catch {
-                inscripcionActualizada[0].composicion_ejercito = null;
-            }
-        }
-
-        console.log(`✅ Inscripción actualizada para usuario ${jugadorId} en torneo ${torneoId}`);
-
-        res.json(successResponse(inscripcionActualizada[0], 'Inscripción actualizada correctamente'));
-
-    } catch (error) {
-        await connection.rollback();
-        console.error('❌ Error al actualizar inscripción:', error);
-        res.status(500).json(errorResponse('Error al actualizar inscripción'));
-    } finally {
-        connection.release();
-    }
-});
-
-// =====AÑADIR JUGADOR INDIVIDUAL MANUALMENTE (ADMIN)=====
-
-router.post('/:torneoId/add-individual-participant', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     const { torneoId } = req.params;
-    const { participante } = req.body;
-    const usuarioOrganizadorId = req.usuario.userId;
-
- console.log('🔍 DEBUG - Usuario autenticado:', {
-      id: usuarioOrganizadorId,
-      usuario: req.usuario
-    });
-
-    // ✅ VALIDAR SOLO NOMBRE (sin apellidos)
-    if (!participante.nombre) {
-      return res.status(400).json({
-        success: false,
-        message: 'El nombre es obligatorio'
-      });
-    }
+    const jugadorId = req.usuario.userId;
+    const { faccion, ...restoDatos } = req.body;
 
     await connection.beginTransaction();
 
-    // Verificar que el usuario es organizador del torneo y obtener datos completos
-    const [torneoCheck] = await connection.query(
-        `SELECT 
-          t.*, 
-          u.nombre as organizador_nombre, 
-          u.email as organizador_email,
-          GROUP_CONCAT(e.epoca_nombre SEPARATOR '|') as epocas_disponibles
-        FROM torneos_sistemas t 
-        LEFT JOIN usuarios u ON t.created_by = u.id 
-        LEFT JOIN epocas_torneo_saga e ON t.id = e.torneo_id
-        WHERE t.id = ?
-        GROUP BY t.id`,
-        [torneoId]
+    // Verificar que está inscrito
+    const [inscripcion] = await connection.execute(
+      'SELECT id, epoca FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
+      [torneoId, jugadorId]
     );
 
-    if (torneoCheck.length === 0) {
+    if (inscripcion.length === 0) {
       await connection.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Torneo no encontrado'
-      });
+      return res.status(404).json(errorResponse('No estás inscrito en este torneo'));
     }
 
-    if (torneoCheck[0].created_by !== usuarioOrganizadorId) {
-      await connection.rollback();
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para añadir participantes a este torneo'
-      });
-    }
+    // Obtener puntos del torneo
+    const [torneos] = await connection.execute(
+      'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
 
-    if (torneoCheck[0].estado !== 'pendiente') {
-      await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'Solo se pueden añadir participantes a torneos en estado PENDIENTE'
-      });
-    }
+    const puntosBandaTorneo = torneos.length > 0 ? torneos[0].puntos_banda : 24;
 
-    const torneo = torneoCheck[0];
+    // ✅ CONSTRUIR COMPOSICIÓN DINÁMICAMENTE
+    let composicionEjercito = null;
+    let totalPuntos = 0;
 
-    let epocaTorneo = null;
-    if (torneo.tipo_torneo === 'Individual' && torneo.epocas_disponibles) {
-      // Si hay múltiples épocas separadas por '|', tomar la primera
-      const epocasArray = torneo.epocas_disponibles.split('|');
-      epocaTorneo = epocasArray[0].trim();
-    }
+    // ✅ Detectar si usa tipos de tropa personalizados (Edad de la Magia)
+    if (restoDatos.tiposTropaPersonalizados && Object.keys(restoDatos.tiposTropaPersonalizados).length > 0) {
+      composicionEjercito = {
+        tiposTropaPersonalizados: restoDatos.tiposTropaPersonalizados
+      };
 
-    let usuarioId;
-    let esNuevoUsuario = false;
+      // Si hay opciones de banda, agregarlas
+      if (restoDatos.opcionesBanda) {
+        composicionEjercito.opcionesBanda = restoDatos.opcionesBanda;
+      }
 
-    // Verificar si el usuario existe por email
-    if (participante.email) {
-      const [usuarioExistente] = await connection.query(
-        'SELECT id, estado_cuenta FROM usuarios WHERE email = ?',
-        [participante.email.toLowerCase()]
-      );
+      // El cálculo de puntos para Edad de Magia debe venir del frontend
+      // ya que necesitamos la configuración de cada banda
+      
+    } else {
+      // ✅ BANDAS NORMALES: Solo incluir campos que existen
+      const composicion = {};
 
-      if (usuarioExistente.length > 0) {
-        usuarioId = usuarioExistente[0].id;
+      // Tipos de tropa estándar
+      if (restoDatos.puntosGuardias > 0) {
+        composicion.guardias = parseFloat(restoDatos.puntosGuardias);
+        totalPuntos += composicion.guardias;
+      }
+      if (restoDatos.puntosGuerreros > 0) {
+        composicion.guerreros = parseFloat(restoDatos.puntosGuerreros);
+        totalPuntos += composicion.guerreros;
+      }
+      if (restoDatos.puntosLevas > 0) {
+        composicion.levas = parseFloat(restoDatos.puntosLevas);
+        totalPuntos += composicion.levas;
+      }
+      if (restoDatos.puntosMercenarios > 0) {
+        composicion.mercenarios = parseFloat(restoDatos.puntosMercenarios);
+        totalPuntos += composicion.mercenarios;
 
-        // Verificar que no esté ya inscrito
-        const [yaInscrito] = await connection.query(
-          'SELECT id FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
-          [torneoId, usuarioId]
-        );
-
-        if (yaInscrito.length > 0) {
-          await connection.rollback();
-          return res.status(400).json({
-            success: false,
-            message: 'Este usuario ya está inscrito en el torneo'
-          });
+        if (restoDatos.detalleMercenarios) {
+          composicion.detalleMercenarios = restoDatos.detalleMercenarios;
         }
+      }
+
+      // Características especiales
+      if (restoDatos.puntosElefantes > 0) {
+        composicion.elefantes = parseFloat(restoDatos.puntosElefantes);
+        totalPuntos += composicion.elefantes;
+      }
+      if (restoDatos.puntosCarros > 0) {
+        composicion.carros = parseFloat(restoDatos.puntosCarros);
+        totalPuntos += composicion.carros;
+      }
+      if (restoDatos.puntosTambor > 0) {
+        composicion.tambor = parseFloat(restoDatos.puntosTambor);
+        totalPuntos += composicion.tambor;
+      }
+      if (restoDatos.puntosCuraids > 0) {
+        composicion.curaids = parseFloat(restoDatos.puntosCuraids);
+        totalPuntos += composicion.curaids;
+      }
+      if (restoDatos.puntosPerros > 0) {
+        composicion.perros = parseFloat(restoDatos.puntosPerros);
+        totalPuntos += composicion.perros;
+      }
+      if (restoDatos.puntosBerserkers > 0) {
+        composicion.berserkers = parseFloat(restoDatos.puntosBerserkers);
+        totalPuntos += composicion.berserkers;
+      }
+
+      // ✅ Unidades especiales
+      if (restoDatos.unidadesEspeciales && Object.keys(restoDatos.unidadesEspeciales).length > 0) {
+        composicion.unidadesEspeciales = {};
+        Object.entries(restoDatos.unidadesEspeciales).forEach(([key, value]) => {
+          if (value > 0) {
+            composicion.unidadesEspeciales[key] = parseFloat(value);
+            totalPuntos += parseFloat(value);
+          }
+        });
+      }
+
+      // ✅ Opciones de banda
+      if (restoDatos.opcionesBanda && Object.keys(restoDatos.opcionesBanda).length > 0) {
+        composicion.opcionesBanda = restoDatos.opcionesBanda;
+      }
+
+      // Solo crear composición si hay datos
+      if (Object.keys(composicion).length > 0) {
+        composicionEjercito = composicion;
       }
     }
 
-    // Si no existe, crear nuevo usuario (SOLO con nombre, sin apellidos)
-    if (!usuarioId) {
-
-      const passwordTemporal = Math.random().toString(36).slice(-12);
-      const passwordHash = await bcrypt.hash(passwordTemporal, 10);
-
-      const [nuevoUsuario] = await connection.query(
-        `INSERT INTO usuarios (nombre, apellidos, email, password, estado_cuenta, created_at) 
-         VALUES (?, 'Pendiente', ?, ?, 'pendiente_registro', NOW())`,
-        [
-          participante.nombre,
-          participante.email || null,
-          passwordHash
-        ]
-      );
-      usuarioId = nuevoUsuario.insertId;
-      esNuevoUsuario = true;
+    // ✅ VALIDAR PUNTOS (solo si hay composición)
+    if (composicionEjercito && totalPuntos > 0) {
+      if (Math.abs(totalPuntos - puntosBandaTorneo) > 0.01) {
+        await connection.rollback();
+        return res.status(400).json(
+          errorResponse(`Los puntos deben sumar ${puntosBandaTorneo}. Total actual: ${totalPuntos}`)
+        );
+      }
     }
 
-    // Insertar en jugador_torneo_saga (SIN nombre_alias)
-    const [jugadorInsertado] = await connection.query(
-      `INSERT INTO jugador_torneo_saga (torneo_id, jugador_id, epoca, faccion, composicion_ejercito, puntos_victoria, puntos_torneo, puntos_masacre, warlord_muerto, created_at, pagado)
-       VALUES (?, ?, ?, NULL, NULL, 0, 0, 0, 0, NOW(), 0)`,
-      [torneoId, usuarioId, torneo.epocaTorneo]
-    );
+    // ✅ Convertir a JSON solo si hay datos
+    const composicionJSON = composicionEjercito ? JSON.stringify(composicionEjercito) : null;
 
-    const jugadorTorneoId = jugadorInsertado.insertId;
-
-    // Insertar en clasificacion_jugadores_saga
-    await connection.query(
-      `INSERT INTO clasificacion_jugadores_saga 
-       (torneo_id, 
-        jugador_id, 
-        partidas_jugadas, 
-        partidas_ganadas, 
-        partidas_empatadas, 
-        partidas_perdidas, 
-        puntos_victoria_totales, 
-        puntos_torneo_totales, 
-        puntos_masacre_totales,
-        warlord_muerto_totales)
-       VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0)`,
-      [torneoId, usuarioId]
+    // Actualizar inscripción
+    await connection.execute(
+      `UPDATE jugador_torneo_saga 
+       SET faccion = ?, composicion_ejercito = ?
+       WHERE torneo_id = ? AND jugador_id = ?`,
+      [
+        faccion || null,
+        composicionJSON,
+        torneoId,
+        jugadorId
+      ]
     );
 
     await connection.commit();
 
-    // ✅ ENVIAR EMAIL SI HAY CORREO
-    let emailEnviado = false;
-    if (participante.email) {
+    // Obtener inscripción actualizada
+    const [inscripcionActualizada] = await connection.execute(
+      `SELECT * FROM jugador_torneo_saga 
+       WHERE torneo_id = ? AND jugador_id = ?`,
+      [torneoId, jugadorId]
+    );
+
+    if (inscripcionActualizada.length > 0 && inscripcionActualizada[0].composicion_ejercito) {
       try {
-        const destinatario = {
-          nombre: participante.nombre,
-          email: participante.email,
-          esNuevo: esNuevoUsuario,
-          epoca: 'Por definir',
-          banda: null
-        };
-
-        const torneoInfo = {
-          nombre_torneo: torneo.nombre_torneo,
-          sistema: torneo.sistema,
-          tipo_torneo: 'Individual',
-          ubicacion: torneo.ubicacion,
-          fecha_inicio: torneo.fecha_inicio,
-          fecha_fin: torneo.fecha_fin,
-          puntos_banda: torneo.puntos_banda,
-          organizador: {
-            nombre: torneo.organizador_nombre,
-            email: torneo.organizador_email
-          }
-        };
-
-        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
-        
-        if (resultado.success) {
-          emailEnviado = true;
-         }
-        
-        console.log('✅ Email preparado para:', participante.email);
-        emailEnviado = true; // Simular éxito por ahora
-      } catch (emailError) {
-        console.error('❌ Error al enviar email:', emailError);
+        inscripcionActualizada[0].composicion_ejercito = JSON.parse(inscripcionActualizada[0].composicion_ejercito);
+      } catch {
+        inscripcionActualizada[0].composicion_ejercito = null;
       }
     }
 
-    res.json({
-      success: true,
-      message: emailEnviado
-        ? 'Jugador añadido correctamente. Se ha enviado un email de invitación.'
-        : 'Jugador añadido correctamente.',
-      data: {
-        jugadorTorneoId,
-        usuarioId,
-        esNuevoUsuario,
-        emailEnviado
-      }
-    });
+    console.log(`✅ Inscripción actualizada para usuario ${jugadorId} en torneo ${torneoId}`);
+
+    res.json(successResponse('Inscripción actualizada correctamente', inscripcionActualizada[0]));
 
   } catch (error) {
     await connection.rollback();
-    console.error('Error al añadir jugador individual:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al añadir jugador',
-      error: error.message
-    });
+    console.error('❌ Error al actualizar inscripción:', error);
+    res.status(500).json(errorResponse('Error al actualizar inscripción'));
   } finally {
     connection.release();
   }
@@ -2225,7 +2158,11 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       miembros,
       miEpoca,
       miBanda,
+      // ✅ Campos dinámicos del capitán
       misPuntos,
+      misUnidadesEspeciales,
+      misOpcionesBanda,
+      misTiposTropaPersonalizados,
       miDetalleMercenarios
     } = req.body;
     
@@ -2235,21 +2172,10 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 
     const [torneos] = await connection.execute(
       `SELECT 
-        id, 
-        tipo_torneo, 
-        num_jugadores_equipo,
-        participantes_max,
-        equipos_max,
-        puntos_banda,
-        estado,
-        nombre_torneo,
-        created_by,
-        sistema,
-        ubicacion,
-        fecha_inicio,
-        fecha_fin
-      FROM torneos_sistemas 
-      WHERE id = ?`,
+        id, tipo_torneo, num_jugadores_equipo, participantes_max,
+        equipos_max, puntos_banda, estado, nombre_torneo, created_by,
+        sistema, ubicacion, fecha_inicio, fecha_fin
+      FROM torneos_sistemas WHERE id = ?`,
       [torneoId]
     );
 
@@ -2274,7 +2200,6 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       );
     }
 
-    // ✅ SIN VALORES POR DEFECTO - Validar que existe
     if (!torneo.num_jugadores_equipo) {
       await connection.rollback();
       return res.status(400).json(
@@ -2296,7 +2221,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
 
     const equiposActuales = conteoEquipos[0].total;
 
-     if (equiposActuales >= torneo.equipos_max) {
+    if (equiposActuales >= torneo.equipos_max) {
       await connection.rollback();
       return res.status(400).json(
         errorResponse(
@@ -2308,9 +2233,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
     const jugadoresRequeridos = torneo.num_jugadores_equipo;
 
     const [yaInscrito] = await connection.execute(
-      `SELECT 
-        e.id, 
-        e.nombre_equipo
+      `SELECT e.id, e.nombre_equipo
        FROM torneo_saga_equipo e
        INNER JOIN equipo_miembros em ON e.id = em.equipo_id
        INNER JOIN jugador_torneo_saga j ON em.jugador_eq_id = j.id
@@ -2325,7 +2248,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       );
     }
 
-    // Validar número total de miembros (inscriptor + otros)
+    // Validar número total de miembros
     const totalMiembros = miembros.length + 1;
     
     if (totalMiembros !== jugadoresRequeridos) {
@@ -2335,19 +2258,20 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       );
     }
 
-    //PROCESAMIENTO DE JUGADORES DEL TORNEO
-
-    const miembrosConUsuarioId = []
-    const miembrosInvitar = []
+    // ==========================================
+    // PROCESAMIENTO DE JUGADORES
+    // ==========================================
+    const miembrosConUsuarioId = [];
+    const miembrosInvitar = [];
 
     if (miembros.length > 0) {
       const emails = miembros.map(m => m.email.toLowerCase().trim());
 
-      if(new Set(emails).size !== emails.length){
-        await connection.rollback()
+      if (new Set(emails).size !== emails.length) {
+        await connection.rollback();
         return res.status(400).json(
           errorResponse('No puede haber emails duplicados en el equipo')
-        )
+        );
       }
 
       const [inscriptorEmailResult] = await connection.execute(
@@ -2367,58 +2291,53 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       const placeholders = emails.map(() => '?').join(',');
       const [yaEnOtroEquipo] = await connection.execute(
         `SELECT u.email, e.nombre_equipo
-            FROM jugador_torneo_saga jts
-            INNER JOIN usuarios u ON jts.jugador_id = u.id
-            INNER JOIN torneo_saga_equipo e ON jts.equipo_id = e.id
-            WHERE jts.torneo_id = ? AND u.email IN (${placeholders})`,
-          [torneoId, ...emails]
-      )
+         FROM jugador_torneo_saga jts
+         INNER JOIN usuarios u ON jts.jugador_id = u.id
+         INNER JOIN torneo_saga_equipo e ON jts.equipo_id = e.id
+         WHERE jts.torneo_id = ? AND u.email IN (${placeholders})`,
+        [torneoId, ...emails]
+      );
 
       if (yaEnOtroEquipo.length > 0) {
-        const detalles = yaEnOtroEquipo.map (u =>`${u.email} (en "${u.nombre_equipo}")`).join(', ')
-        await connection.rollback()
+        const detalles = yaEnOtroEquipo.map(u => `${u.email} (en "${u.nombre_equipo}")`).join(', ');
+        await connection.rollback();
         return res.status(400).json(
           errorResponse(`Usuarios ya inscritos en otros Equipos: ${detalles}`)
-        )
+        );
       }
 
       const [usuariosExistentes] = await connection.execute(
         `SELECT id, email, nombre, apellidos, estado_cuenta 
-            FROM usuarios 
-            WHERE email IN (${placeholders})`,
+         FROM usuarios 
+         WHERE email IN (${placeholders})`,
         emails
       );
 
-      const usuariosMap = new Map (
-        usuariosExistentes.map (usu => [usu.email.toLowerCase(), usu])
-      )
+      const usuariosMap = new Map(
+        usuariosExistentes.map(usu => [usu.email.toLowerCase(), usu])
+      );
 
       for (const miembro of miembros) {
-        const emailLower = miembro.email.toLowerCase().trim()
-        const usuarioExistente = usuariosMap.get(emailLower)
+        const emailLower = miembro.email.toLowerCase().trim();
+        const usuarioExistente = usuariosMap.get(emailLower);
 
-        if (usuarioExistente){
-          miembrosConUsuarioId.push ({
+        if (usuarioExistente) {
+          miembrosConUsuarioId.push({
             ...miembro,
             usuarioId: usuarioExistente.id,
             nombre: miembro.nombre || `${usuarioExistente.nombre} ${usuarioExistente.apellidos}`.trim(),
             esNuevo: false
-          })
+          });
         } else {
-          //CREAMOS CUENTA PENDIENTE
+          // Crear cuenta pendiente
           const [nuevoUsuario] = await connection.execute(
-            `INSERT INTO usuarios (
-              email,
-              nombre,
-              apellidos,
-              password,
-              estado_cuenta
-            ) VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO usuarios (email, nombre, apellidos, password, estado_cuenta)
+             VALUES (?, ?, ?, ?, ?)`,
             [
               emailLower,
               miembro.nombre || emailLower.split('@')[0],
               'Pendiente',
-              crypto.randomBytes(20).toString('hex'), // Password temporal
+              crypto.randomBytes(20).toString('hex'),
               'pendiente_registro'
             ]
           );
@@ -2432,7 +2351,6 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
             esNuevo: true
           });
 
-          // Marcar para enviar email
           miembrosInvitar.push({
             ...miembro,
             usuarioId: nuevoUserId,
@@ -2442,36 +2360,84 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       }
     }
   
+    // Crear equipo
     const [resultadoEquipo] = await connection.execute(
-      `INSERT INTO torneo_saga_equipo (
-        torneo_id, 
-        nombre_equipo, 
-        capitan_id,
-        pagado
-      ) VALUES (?, ?, ?, ?)`,
-      [torneoId, nombreEquipo, inscriptorId, 'pendiente'] 
+      `INSERT INTO torneo_saga_equipo (torneo_id, nombre_equipo, capitan_id, pagado)
+       VALUES (?, ?, ?, ?)`,
+      [torneoId, nombreEquipo, inscriptorId, 'pendiente']
     );
 
     const equipoId = resultadoEquipo.insertId;
 
-  //INTRODUCIR CAPITAN
-    const composicionInscriptor = JSON.stringify({
-      guardias: misPuntos?.guardias || 0,
-      elefantes: misPuntos?.elefantes || 0,
-      guerreros: misPuntos?.guerreros || 0,
-      levas: misPuntos?.levas || 0,
-      mercenarios: misPuntos?.mercenarios || 0,
-      detalleMercenarios: miDetalleMercenarios || null
+    // ==========================================
+    // ✅ FUNCIÓN HELPER: CONSTRUIR COMPOSICIÓN
+    // ==========================================
+    const construirComposicion = (datosJugador) => {
+      // Si usa tipos personalizados (Edad de la Magia)
+      if (datosJugador.tiposTropaPersonalizados && Object.keys(datosJugador.tiposTropaPersonalizados).length > 0) {
+        const composicion = {
+          tiposTropaPersonalizados: datosJugador.tiposTropaPersonalizados
+        };
+
+        if (datosJugador.opcionesBanda && Object.keys(datosJugador.opcionesBanda).length > 0) {
+          composicion.opcionesBanda = datosJugador.opcionesBanda;
+        }
+
+        return composicion;
+      }
+
+      // Bandas normales: construir dinámicamente
+      const composicion = {};
+      const puntos = datosJugador.puntos || {};
+
+      if (puntos.guardias > 0) composicion.guardias = parseFloat(puntos.guardias);
+      if (puntos.guerreros > 0) composicion.guerreros = parseFloat(puntos.guerreros);
+      if (puntos.levas > 0) composicion.levas = parseFloat(puntos.levas);
+      if (puntos.mercenarios > 0) {
+        composicion.mercenarios = parseFloat(puntos.mercenarios);
+        if (datosJugador.detalleMercenarios) {
+          composicion.detalleMercenarios = datosJugador.detalleMercenarios;
+        }
+      }
+      if (puntos.elefantes > 0) composicion.elefantes = parseFloat(puntos.elefantes);
+      if (puntos.carros > 0) composicion.carros = parseFloat(puntos.carros);
+      if (puntos.tambor > 0) composicion.tambor = parseFloat(puntos.tambor);
+      if (puntos.curaids > 0) composicion.curaids = parseFloat(puntos.curaids);
+      if (puntos.perros > 0) composicion.perros = parseFloat(puntos.perros);
+      if (puntos.berserkers > 0) composicion.berserkers = parseFloat(puntos.berserkers);
+
+      // Unidades especiales
+      if (datosJugador.unidadesEspeciales && Object.keys(datosJugador.unidadesEspeciales).length > 0) {
+        composicion.unidadesEspeciales = {};
+        Object.entries(datosJugador.unidadesEspeciales).forEach(([key, value]) => {
+          if (value > 0) {
+            composicion.unidadesEspeciales[key] = parseFloat(value);
+          }
+        });
+      }
+
+      // Opciones de banda
+      if (datosJugador.opcionesBanda && Object.keys(datosJugador.opcionesBanda).length > 0) {
+        composicion.opcionesBanda = datosJugador.opcionesBanda;
+      }
+
+      return Object.keys(composicion).length > 0 ? composicion : null;
+    };
+
+    // ==========================================
+    // INSCRIBIR CAPITÁN
+    // ==========================================
+    const composicionInscriptor = construirComposicion({
+      puntos: misPuntos,
+      unidadesEspeciales: misUnidadesEspeciales,
+      opcionesBanda: misOpcionesBanda,
+      tiposTropaPersonalizados: misTiposTropaPersonalizados,
+      detalleMercenarios: miDetalleMercenarios
     });
 
     const [resultadoInscriptor] = await connection.execute(
       `INSERT INTO jugador_torneo_saga (
-        torneo_id,
-        jugador_id,
-        equipo_id,
-        epoca,
-        faccion,
-        composicion_ejercito
+        torneo_id, jugador_id, equipo_id, epoca, faccion, composicion_ejercito
       ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         torneoId,
@@ -2479,39 +2445,33 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         equipoId,
         miEpoca || null,
         miBanda || null,
-        miBanda ? composicionInscriptor :  null
+        composicionInscriptor ? JSON.stringify(composicionInscriptor) : null
       ]
     );
 
     const inscriptorJugadorId = resultadoInscriptor.insertId;
 
     await connection.execute(
-      `INSERT INTO equipo_miembros (
-        equipo_id,
-        usuario_id,
-        jugador_eq_id
-      ) VALUES (?, ?, ?)`,
+      `INSERT INTO equipo_miembros (equipo_id, usuario_id, jugador_eq_id)
+       VALUES (?, ?, ?)`,
       [equipoId, inscriptorId, inscriptorJugadorId]
     );
 
+    // ==========================================
+    // INSCRIBIR OTROS MIEMBROS
+    // ==========================================
     for (const miembro of miembrosConUsuarioId) {
-          const composicionMiembro = JSON.stringify({
-            guardias: miembro.puntos?.guardias || 0,
-            elefantes: miembro.puntos?.elefantes || 0,
-            guerreros: miembro.puntos?.guerreros || 0,
-            levas: miembro.puntos?.levas || 0,
-            mercenarios: miembro.puntos?.mercenarios || 0,
-            detalleMercenarios: miembro.detalleMercenarios || null
-          });
+      const composicionMiembro = construirComposicion({
+        puntos: miembro.puntos,
+        unidadesEspeciales: miembro.unidadesEspeciales,
+        opcionesBanda: miembro.opcionesBanda,
+        tiposTropaPersonalizados: miembro.tiposTropaPersonalizados,
+        detalleMercenarios: miembro.detalleMercenarios
+      });
 
       const [resultadoJugador] = await connection.execute(
         `INSERT INTO jugador_torneo_saga (
-          torneo_id,
-          jugador_id,
-          equipo_id,
-          epoca,
-          faccion,
-          composicion_ejercito
+          torneo_id, jugador_id, equipo_id, epoca, faccion, composicion_ejercito
         ) VALUES (?, ?, ?, ?, ?, ?)`,
         [
           torneoId,
@@ -2519,80 +2479,53 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
           equipoId,
           miembro.epoca || null,
           miembro.banda || null,
-          miembro.banda ? composicionMiembro : null
+          composicionMiembro ? JSON.stringify(composicionMiembro) : null
         ]
       );
 
       const jugadorId = resultadoJugador.insertId;
 
       await connection.execute(
-        `INSERT INTO equipo_miembros (
-          equipo_id,
-          usuario_id,
-          jugador_eq_id
-        ) VALUES (?, ?, ?)`,
+        `INSERT INTO equipo_miembros (equipo_id, usuario_id, jugador_eq_id)
+         VALUES (?, ?, ?)`,
         [equipoId, miembro.usuarioId, jugadorId]
       );
     }
 
-    //INICIALIZAR CLASIFICACIONES
+    // Inicializar clasificaciones
     await connection.execute(`
       INSERT INTO clasificacion_equipos_saga (
-          torneo_id,
-          equipo_id,
-          partidas_jugadas,
-          partidas_ganadas,
-          partidas_empatadas,
-          partidas_perdidas,
-          puntos_victoria_eq_totales,
-          puntos_torneo_eq_totales,
-          puntos_masacre_eq_totales,
-          warlord_muerto
+        torneo_id, equipo_id, partidas_jugadas, partidas_ganadas,
+        partidas_empatadas, partidas_perdidas, puntos_victoria_eq_totales,
+        puntos_torneo_eq_totales, puntos_masacre_eq_totales, warlord_muerto
       ) VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
-          ON DUPLICATE KEY UPDATE equipo_id = equipo_id
-        `, [torneoId, equipoId])
+      ON DUPLICATE KEY UPDATE equipo_id = equipo_id
+    `, [torneoId, equipoId]);
 
+    await connection.execute(`
+      INSERT INTO clasificacion_jugadores_saga (
+        torneo_id, jugador_id, equipo_id, partidas_jugadas, partidas_ganadas,
+        partidas_empatadas, partidas_perdidas, puntos_victoria_totales,
+        puntos_torneo_totales, puntos_masacre_totales, warlord_muerto_totales
+      ) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
+      ON DUPLICATE KEY UPDATE jugador_id = jugador_id
+    `, [torneoId, inscriptorId, equipoId]);
+
+    for (const miembro of miembrosConUsuarioId) {
       await connection.execute(`
-          INSERT INTO clasificacion_jugadores_saga (
-            torneo_id,
-            jugador_id,
-            equipo_id,
-            partidas_jugadas,
-            partidas_ganadas,
-            partidas_empatadas,
-            partidas_perdidas,
-            puntos_victoria_totales,
-            puntos_torneo_totales,
-            puntos_masacre_totales,
-            warlord_muerto_totales
-          ) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
-          ON DUPLICATE KEY UPDATE jugador_id = jugador_id
-        `, [torneoId, inscriptorId, equipoId]);
+        INSERT INTO clasificacion_jugadores_saga (
+          torneo_id, jugador_id, equipo_id, partidas_jugadas, partidas_ganadas,
+          partidas_empatadas, partidas_perdidas, puntos_victoria_totales,
+          puntos_torneo_totales, puntos_masacre_totales, warlord_muerto_totales
+        ) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
+        ON DUPLICATE KEY UPDATE jugador_id = jugador_id
+      `, [torneoId, miembro.usuarioId, equipoId]);
+    }
 
-        for (const miembro of miembrosConUsuarioId) {         
-          await connection.execute(`
-              INSERT INTO clasificacion_jugadores_saga (
-                torneo_id,
-                jugador_id,
-                equipo_id,
-                partidas_jugadas,
-                partidas_ganadas,
-                partidas_empatadas,
-                partidas_perdidas,
-                puntos_victoria_totales,
-                puntos_torneo_totales,
-                puntos_masacre_totales,
-                warlord_muerto_totales
-              ) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
-              ON DUPLICATE KEY UPDATE jugador_id = jugador_id
-            `, [torneoId, miembro.usuarioId, equipoId]);
-        }
+    await connection.commit();
 
-      await connection.commit();
-
-      if (miembrosConUsuarioId.length > 0) {
-       
-      // Obtener info del capitán
+    // Enviar emails (igual que antes)
+    if (miembrosConUsuarioId.length > 0) {
       const [inscriptorInfo] = await connection.execute(
         'SELECT nombre, apellidos, email FROM usuarios WHERE id = ?',
         [inscriptorId]
@@ -2613,13 +2546,6 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
         email: organizadorInfo[0].email
       };
 
-      console.log('📧 Correos a enviar:', miembrosConUsuarioId.map(m => ({
-        email: m.email,
-        esNuevo: m.esNuevo,
-        usuarioId: m.usuarioId
-    })));
-
-      // Enviar correos en segundo plano (no bloquear la respuesta)
       setImmediate(async () => {
         for (const miembro of miembrosConUsuarioId) {
           try {
@@ -2631,10 +2557,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
                 banda: miembro.banda,
                 esNuevo: miembro.esNuevo
               },
-              {
-                nombreEquipo,
-                capitan
-              },
+              { nombreEquipo, capitan },
               {
                 nombre_torneo: torneo.nombre_torneo,
                 sistema: torneo.sistema,
@@ -2645,32 +2568,30 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
                 fecha_fin: torneo.fecha_fin,
                 puntos_banda: torneo.puntos_banda
               },
-              null // Ya no usamos token
+              null
             );
           } catch (emailError) {
-            console.error(`  ❌ Error enviando email a ${miembro.email}:`, emailError.message);
+            console.error(`❌ Error enviando email a ${miembro.email}:`, emailError.message);
           }
         }
       });
     }
     
-        res.json(
-          successResponse('Equipo inscrito exitosamente', {
-            equipoId,
-            torneoId,
-            nombreEquipo,
-            totalMiembros,
-            miembrosNuevos: miembrosInvitar.length,
-            correosProgramados: miembrosConUsuarioId.map(m => m.email)
-          })
-        );
+    res.json(
+      successResponse('Equipo inscrito exitosamente', {
+        equipoId,
+        torneoId,
+        nombreEquipo,
+        totalMiembros,
+        miembrosNuevos: miembrosInvitar.length,
+        correosProgramados: miembrosConUsuarioId.map(m => m.email)
+      })
+    );
 
   } catch (error) {
     await connection.rollback();
     console.error('❌ ERROR EN INSCRIPCIÓN:', error);
-    console.error('Stack:', error.stack);
-
-     return res.status(500).json(
+    return res.status(500).json(
       errorResponse('Error interno del servidor', error.message)
     );
   } finally {
@@ -2684,8 +2605,6 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
   try {
     const { torneoId } = req.params;
     const userId = req.usuario.userId;
-    
-    console.log(`📖 GET /${torneoId}/obtenerInscripcionEquipo - User: ${userId}`);
     
     // Buscar equipo del usuario
     const [equipos] = await pool.execute(`
@@ -2705,7 +2624,7 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
 
     const equipo = equipos[0];
 
-    // ✅ OBTENER TODOS LOS MIEMBROS (ACTIVOS Y PENDIENTES)
+    // Obtener todos los miembros
     const [miembros] = await pool.execute(`
       SELECT 
         j.id as jugador_id,
@@ -2725,10 +2644,8 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
       WHERE em.equipo_id = ?
       ORDER BY (e.capitan_id = j.jugador_id) DESC, u.nombre
     `, [equipo.id]);
-
-    console.log(`📋 Miembros encontrados: ${miembros.length}`);
     
-    // ✅ PROCESAR MIEMBROS (INCLUYENDO PENDIENTES)
+    // Procesar miembros
     const miembrosProcesados = miembros.map(m => {
       let composicion = {};
       try {
@@ -2739,9 +2656,6 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
         console.error('Error al parsear composición:', e);
       }
 
-      // ✅ LOG para debugging
-      console.log(`  - ${m.nombre} ${m.apellidos} (${m.email}): ${m.estado_cuenta}`);
-
       return {
         jugador_id: m.jugador_id,
         usuario_id: m.usuario_id,
@@ -2749,16 +2663,10 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
         email: m.email,
         epoca: m.epoca,
         banda: m.banda,
-        puntos: {
-          guardias: composicion.guardias || 0,
-          elefantes: composicion.elefantes || 0,
-          guerreros: composicion.guerreros || 0,
-          levas: composicion.levas || 0,
-          mercenarios: composicion.mercenarios || 0
-        },
-        detalle_mercenarios: composicion.detalleMercenarios || '',
+        // ✅ Devolver composición completa
+        composicion_ejercito: composicion,
         es_capitan: Boolean(m.es_capitan),
-        estado_cuenta: m.estado_cuenta 
+        estado_cuenta: m.estado_cuenta
       };
     });
 
@@ -2766,7 +2674,6 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
       ...equipo,
       esCapitan: equipo.capitan_id === userId,
       miembros: miembrosProcesados,
-      // ✅ NUEVO: Estadísticas del equipo
       estadisticas: {
         total: miembrosProcesados.length,
         activos: miembrosProcesados.filter(m => m.estado_cuenta === 'activo').length,
@@ -2774,15 +2681,10 @@ router.get('/:torneoId/obtenerInscripcionEquipo', verificarToken, async (req, re
       }
     };
     
-    console.log(`✅ Equipo encontrado: ${equipo.nombre_equipo}`);
-    console.log(`   - Miembros activos: ${respuesta.estadisticas.activos}`);
-    console.log(`   - Miembros pendientes: ${respuesta.estadisticas.pendientes}`);
-    
     res.json(successResponse('Equipo encontrado', respuesta));
     
   } catch (error) {
     console.error('❌ Error al obtener equipo:', error);
-    console.error('Stack:', error.stack);
     res.status(500).json(errorResponse('Error al obtener equipo'));
   }
 });
@@ -2796,8 +2698,6 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
     const { torneoId } = req.params;
     const userId = req.usuario?.userId || req.userId;
     const { nombreEquipo, miembros } = req.body;
-
-    console.log('📝 Actualizando inscripción equipo:', { torneoId, userId, nombreEquipo, numMiembros: miembros?.length });
 
     await connection.beginTransaction();
 
@@ -2813,34 +2713,22 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
     if (equipos.length === 0) {
       await connection.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'No eres miembro de ningún equipo'
-      });
+      return res.status(404).json(errorResponse('No eres miembro de ningún equipo'));
     }
 
     const equipoId = equipos[0].id;
-    const esCapitan = equipos[0].capitan_id === userId;
-
-    console.log('📊 Info:', { equipoId, esCapitan, userId });
 
     // Validar miembros
     if (!miembros || miembros.length < 2 || miembros.length > 6) {
       await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'El equipo debe tener entre 2 y 6 miembros'
-      });
+      return res.status(400).json(errorResponse('El equipo debe tener entre 2 y 6 miembros'));
     }
 
-    // Buscar capitán en los datos enviados
+    // Buscar capitán
     const capitan = miembros.find(m => m.esCapitan);
     if (!capitan) {
       await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'Debe haber un capitán'
-      });
+      return res.status(400).json(errorResponse('Debe haber un capitán'));
     }
 
     // Validar emails únicos
@@ -2850,21 +2738,14 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       
       if (emailsUnicos.has(emailLower)) {
         await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          message: `Email duplicado: ${miembro.email}`
-        });
+        return res.status(400).json(errorResponse(`Email duplicado: ${miembro.email}`));
       }
       emailsUnicos.add(emailLower);
     }
 
-    // ✅ OBTENER INFORMACIÓN DEL TORNEO PARA EMAILS
+    // Obtener información del torneo
     const [torneoInfo] = await connection.execute(
-      `SELECT 
-        t.*,
-        u.nombre as organizador_nombre,
-        u.apellidos as organizador_apellidos,
-        u.email as organizador_email
+      `SELECT t.*, u.nombre as organizador_nombre, u.apellidos as organizador_apellidos, u.email as organizador_email
        FROM torneos_sistemas t
        LEFT JOIN usuarios u ON t.created_by = u.id
        WHERE t.id = ?`,
@@ -2873,15 +2754,12 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
     if (torneoInfo.length === 0) {
       await connection.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Torneo no encontrado'
-      });
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
     }
 
     const torneo = torneoInfo[0];
 
-    // Verificar que todos los usuarios existen y crear mapa
+    // Verificar que todos los usuarios existen
     const usuariosMap = new Map();
     
     for (const miembro of miembros) {
@@ -2894,10 +2772,9 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
       if (usuario.length === 0) {
         await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          message: `El usuario ${miembro.email} no existe en el sistema. Debe estar registrado o haber sido invitado previamente.`
-        });
+        return res.status(400).json(
+          errorResponse(`El usuario ${miembro.email} no existe en el sistema.`)
+        );
       }
       
       usuariosMap.set(emailLower, usuario[0]);
@@ -2907,7 +2784,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
     const emailCapitan = capitan.email.toLowerCase().trim();
     const nuevoCapitanId = usuariosMap.get(emailCapitan).id;
 
-    // ✅ OBTENER DATOS DEL CAPITÁN PARA EMAILS
+    // Obtener datos del capitán
     const [datosCapitan] = await connection.execute(
       'SELECT nombre, apellidos, email FROM usuarios WHERE id = ?',
       [nuevoCapitanId]
@@ -2921,15 +2798,9 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       [nombreEquipo, nuevoCapitanId, equipoId]
     );
 
-    console.log('✓ Equipo actualizado:', { nombreEquipo, nuevoCapitanId });
-
-    // ✅ OBTENER MIEMBROS ACTUALES DEL EQUIPO
+    // Obtener miembros actuales
     const [miembrosActuales] = await connection.execute(
-      `SELECT 
-        em.usuario_id,
-        em.jugador_eq_id,
-        jts.id as jugador_torneo_id,
-        u.email
+      `SELECT em.usuario_id, em.jugador_eq_id, jts.id as jugador_torneo_id, u.email
        FROM equipo_miembros em
        INNER JOIN jugador_torneo_saga jts ON em.jugador_eq_id = jts.id
        INNER JOIN usuarios u ON em.usuario_id = u.id
@@ -2937,132 +2808,143 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       [equipoId]
     );
 
-    console.log(`📋 Miembros actuales: ${miembrosActuales.length}`);
-
     // Crear mapas para comparación
     const emailsNuevos = new Set(miembros.map(m => m.email.toLowerCase().trim()));
 
-    // ✅ 1. ELIMINAR miembros que ya no están
+    // Eliminar miembros que ya no están
     const miembrosAEliminar = miembrosActuales.filter(m => 
       !emailsNuevos.has(m.email.toLowerCase())
     );
 
     for (const miembro of miembrosAEliminar) {
-      // Primero eliminar de equipo_miembros
       await connection.execute(
         'DELETE FROM equipo_miembros WHERE jugador_eq_id = ?',
         [miembro.jugador_eq_id]
       );
 
-      // Luego eliminar de jugador_torneo_saga
       await connection.execute(
         'DELETE FROM jugador_torneo_saga WHERE id = ?',
         [miembro.jugador_torneo_id]
       );
-
-      console.log(`  🗑️ Eliminado miembro: ${miembro.email}`);
     }
 
-    // ✅ 2. ACTUALIZAR o INSERTAR cada miembro
+    // ==========================================
+    // ✅ FUNCIÓN HELPER: CONSTRUIR COMPOSICIÓN
+    // ==========================================
+    const construirComposicion = (miembro) => {
+      // Si usa tipos personalizados
+      if (miembro.tiposTropaPersonalizados && Object.keys(miembro.tiposTropaPersonalizados).length > 0) {
+        const composicion = {
+          tiposTropaPersonalizados: miembro.tiposTropaPersonalizados
+        };
+
+        if (miembro.opcionesBanda && Object.keys(miembro.opcionesBanda).length > 0) {
+          composicion.opcionesBanda = miembro.opcionesBanda;
+        }
+
+        return composicion;
+      }
+
+      // Bandas normales
+      const composicion = {};
+      const puntos = miembro.puntos || {};
+
+      if (puntos.guardias > 0) composicion.guardias = parseFloat(puntos.guardias);
+      if (puntos.guerreros > 0) composicion.guerreros = parseFloat(puntos.guerreros);
+      if (puntos.levas > 0) composicion.levas = parseFloat(puntos.levas);
+      if (puntos.mercenarios > 0) {
+        composicion.mercenarios = parseFloat(puntos.mercenarios);
+        if (miembro.detalleMercenarios) {
+          composicion.detalleMercenarios = miembro.detalleMercenarios;
+        }
+      }
+      if (puntos.elefantes > 0) composicion.elefantes = parseFloat(puntos.elefantes);
+      if (puntos.carros > 0) composicion.carros = parseFloat(puntos.carros);
+      if (puntos.tambor > 0) composicion.tambor = parseFloat(puntos.tambor);
+      if (puntos.curaids > 0) composicion.curaids = parseFloat(puntos.curaids);
+      if (puntos.perros > 0) composicion.perros = parseFloat(puntos.perros);
+      if (puntos.berserkers > 0) composicion.berserkers = parseFloat(puntos.berserkers);
+
+      if (miembro.unidadesEspeciales && Object.keys(miembro.unidadesEspeciales).length > 0) {
+        composicion.unidadesEspeciales = {};
+        Object.entries(miembro.unidadesEspeciales).forEach(([key, value]) => {
+          if (value > 0) {
+            composicion.unidadesEspeciales[key] = parseFloat(value);
+          }
+        });
+      }
+
+      if (miembro.opcionesBanda && Object.keys(miembro.opcionesBanda).length > 0) {
+        composicion.opcionesBanda = miembro.opcionesBanda;
+      }
+
+      return Object.keys(composicion).length > 0 ? composicion : null;
+    };
+
+    // Actualizar o insertar cada miembro
     let actualizados = 0;
     let insertados = 0;
-    const nuevosUsuariosParaEmail = []; // ✅ Para rastrear a quién enviar emails
+    const nuevosUsuariosParaEmail = [];
 
     for (const miembro of miembros) {
       const emailLower = miembro.email.toLowerCase().trim();
       const usuario = usuariosMap.get(emailLower);
       const usuarioId = usuario.id;
 
-      const composicion = JSON.stringify({
-        guardias: miembro.puntos?.guardias || 0,
-        elefantes: miembro.puntos?.elefantes || 0,
-        guerreros: miembro.puntos?.guerreros || 0,
-        levas: miembro.puntos?.levas || 0,
-        mercenarios: miembro.puntos?.mercenarios || 0,
-        detalleMercenarios: miembro.detalleMercenarios || null
-      });
+      const composicion = construirComposicion(miembro);
+      const composicionJSON = composicion ? JSON.stringify(composicion) : null;
 
       // Verificar si el miembro ya existe
-      const miembroExistente = miembrosActuales.find(m => 
-        m.usuario_id === usuarioId
-      );
+      const miembroExistente = miembrosActuales.find(m => m.usuario_id === usuarioId);
 
       if (miembroExistente) {
-        // ✅ ACTUALIZAR miembro existente
+        // Actualizar
         await connection.execute(
           `UPDATE jugador_torneo_saga 
-           SET 
-             epoca = ?,
-             faccion = ?,
-             composicion_ejercito = ?
+           SET epoca = ?, faccion = ?, composicion_ejercito = ?
            WHERE id = ?`,
-          [
-            miembro.epoca,
-            miembro.banda || null,
-            composicion,
-            miembroExistente.jugador_torneo_id
-          ]
+          [miembro.epoca, miembro.banda || null, composicionJSON, miembroExistente.jugador_torneo_id]
         );
 
         actualizados++;
-        console.log(`  ✏️ Actualizado: ${miembro.email} (epoca: ${miembro.epoca}, banda: ${miembro.banda})`);
-
       } else {
-        // ✅ INSERTAR nuevo miembro
+        // Insertar
         const [resultadoJugador] = await connection.execute(
           `INSERT INTO jugador_torneo_saga (
-            torneo_id,
-            jugador_id,
-            equipo_id,
-            epoca,
-            faccion,
-            composicion_ejercito,
-            puntos_victoria,
-            puntos_torneo,
-            puntos_masacre,
-            warlord_muerto
+            torneo_id, jugador_id, equipo_id, epoca, faccion, composicion_ejercito,
+            puntos_victoria, puntos_torneo, puntos_masacre, warlord_muerto
           ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0)`,
-          [torneoId, usuarioId, equipoId, miembro.epoca, miembro.banda || null, composicion]
+          [torneoId, usuarioId, equipoId, miembro.epoca, miembro.banda || null, composicionJSON]
         );
 
         const jugadorEqId = resultadoJugador.insertId;
 
-        // Insertar en equipo_miembros
         await connection.execute(
-          `INSERT INTO equipo_miembros (
-            equipo_id,
-            usuario_id,
-            jugador_eq_id
-          ) VALUES (?, ?, ?)`,
+          `INSERT INTO equipo_miembros (equipo_id, usuario_id, jugador_eq_id)
+           VALUES (?, ?, ?)`,
           [equipoId, usuarioId, jugadorEqId]
         );
 
         insertados++;
-        console.log(`  ➕ Insertado nuevo: ${miembro.email} (epoca: ${miembro.epoca}, banda: ${miembro.banda})`);
 
-        // ✅ AÑADIR A LISTA DE EMAILS (TANTO REGISTRADOS COMO NO REGISTRADOS)
         const esPendiente = usuario.estado_cuenta === 'pendiente_registro';
         nuevosUsuariosParaEmail.push({
           nombre: usuario.nombre,
           email: emailLower,
           epoca: miembro.epoca,
           banda: miembro.banda,
-          esNuevo: esPendiente  // true si está pendiente de registro
+          esNuevo: esPendiente
         });
-        console.log(`  📧 Usuario añadido a lista de emails: ${emailLower} (${esPendiente ? 'No registrado' : 'Registrado'})`);
       }
     }
 
     await connection.commit();
-    console.log(`✅ Transacción completada: ${actualizados} actualizados, ${insertados} insertados, ${miembrosAEliminar.length} eliminados`);
 
-    // ✅ ENVIAR EMAILS A TODOS LOS NUEVOS MIEMBROS (REGISTRADOS Y NO REGISTRADOS)
+    // Enviar emails a nuevos miembros
     const emailsEnviados = [];
     const emailsFallidos = [];
 
     if (nuevosUsuariosParaEmail.length > 0) {
-      console.log(`📧 Enviando emails a ${nuevosUsuariosParaEmail.length} nuevos miembros del equipo...`);
-
       const torneoInfoEmail = {
         nombre_torneo: torneo.nombre_torneo,
         sistema: torneo.sistema,
@@ -3087,26 +2969,21 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
       for (const usuario of nuevosUsuariosParaEmail) {
         try {
-          const destinatario = {
-            nombre: usuario.nombre,
-            email: usuario.email,
-            esNuevo: usuario.esNuevo, // ✅ true si es pendiente, false si ya está registrado
-            epoca: usuario.epoca,
-            banda: usuario.banda
-          };
-
-          const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfoEmail);
+          const resultado = await enviarInvitacionEquipo(
+            usuario,
+            datosEquipo,
+            torneoInfoEmail,
+            null
+          );
           
           if (resultado.success) {
             emailsEnviados.push(usuario.email);
-            console.log(`  ✅ Email enviado a: ${usuario.email} (${usuario.esNuevo ? 'nuevo usuario' : 'usuario registrado'})`);
           } else {
             emailsFallidos.push(usuario.email);
-            console.error(`  ❌ Error enviando email a: ${usuario.email}`);
           }
         } catch (emailError) {
           emailsFallidos.push(usuario.email);
-          console.error(`  ❌ Error al enviar email a ${usuario.email}:`, emailError.message);
+          console.error(`❌ Error al enviar email a ${usuario.email}:`, emailError.message);
         }
       }
     }
@@ -3137,7 +3014,6 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
   } catch (error) {
     await connection.rollback();
     console.error('❌ Error al actualizar equipo:', error);
-    console.error('Stack:', error.stack);
     
     res.status(500).json({
       success: false,
