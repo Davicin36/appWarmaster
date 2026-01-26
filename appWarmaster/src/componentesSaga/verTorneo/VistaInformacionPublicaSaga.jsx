@@ -119,19 +119,19 @@ const MostrarComposicion = ({ composicion, banda }) => {
                 
                 {/* Características especiales */}
                 {composicion.elefantes > 0 && (
-                    <li>Elefantes 🐘: {parseFloat(composicion.elefantes)}</li>
+                    <li>Elefantes : {parseFloat(composicion.elefantes)}</li>
                 )}
                 {composicion.carros > 0 && (
-                    <li>Carros 🏇: {parseFloat(composicion.carros)}</li>
+                    <li>Carros : {parseFloat(composicion.carros)}</li>
                 )}
                 {composicion.tambor > 0 && (
-                    <li>Tambor 🥁: {parseFloat(composicion.tambor)}</li>
+                    <li>Tambor : {parseFloat(composicion.tambor)}</li>
                 )}
                 {composicion.curaids > 0 && (
-                    <li>Curaids ⚔️: {parseFloat(composicion.curaids)}</li>
+                    <li>Curaids : {parseFloat(composicion.curaids)}</li>
                 )}
                 {composicion.perros > 0 && (
-                    <li>Perros 🐕: {parseFloat(composicion.perros)}</li>
+                    <li>Perros de Guerra: {parseFloat(composicion.perros)}</li>
                 )}
                 
                 {/* Unidades especiales */}
@@ -345,16 +345,16 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                                                         <span>Elefantes 🐘: {parseFloat(composicion.elefantes)}</span>
                                                                     )}
                                                                     {composicion.carros > 0 && (
-                                                                        <span>Carros 🏇: {parseFloat(composicion.carros)}</span>
+                                                                        <span>Carros : {parseFloat(composicion.carros)}</span>
                                                                     )}
                                                                     {composicion.tambor > 0 && (
-                                                                        <span>Tambor 🥁: {parseFloat(composicion.tambor)}</span>
+                                                                        <span>Tambor : {parseFloat(composicion.tambor)}</span>
                                                                     )}
                                                                     {composicion.curaids > 0 && (
-                                                                        <span>Curaids ⚔️: {parseFloat(composicion.curaids)}</span>
+                                                                        <span>Curaids : {parseFloat(composicion.curaids)}</span>
                                                                     )}
                                                                     {composicion.perros > 0 && (
-                                                                        <span>Perros 🐕: {parseFloat(composicion.perros)}</span>
+                                                                        <span>Perros de Guerra: {parseFloat(composicion.perros)}</span>
                                                                     )}
                                                                     
                                                                     {/* Unidades especiales */}

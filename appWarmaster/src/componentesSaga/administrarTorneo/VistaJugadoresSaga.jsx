@@ -111,11 +111,11 @@ const MostrarComposicion = ({ composicion, banda }) => {
                 {composicion.berserkers > 0 && <span>Berserkers: {parseFloat(composicion.berserkers)}</span>}
                 
                 {/* Características especiales */}
-                {composicion.elefantes > 0 && <span>Elefantes 🐘: {parseFloat(composicion.elefantes)}</span>}
-                {composicion.carros > 0 && <span>Carros 🏇: {parseFloat(composicion.carros)}</span>}
-                {composicion.tambor > 0 && <span>Tambor 🥁: {parseFloat(composicion.tambor)}</span>}
-                {composicion.curaids > 0 && <span>Curaids ⚔️: {parseFloat(composicion.curaids)}</span>}
-                {composicion.perros > 0 && <span>Perros 🐕: {parseFloat(composicion.perros)}</span>}
+                {composicion.elefantes > 0 && <span>Elefantes : {parseFloat(composicion.elefantes)}</span>}
+                {composicion.carros > 0 && <span>Carros : {parseFloat(composicion.carros)}</span>}
+                {composicion.tambor > 0 && <span>Tambor : {parseFloat(composicion.tambor)}</span>}
+                {composicion.curaids > 0 && <span>Curaids : {parseFloat(composicion.curaids)}</span>}
+                {composicion.perros > 0 && <span>Perros de Guerra: {parseFloat(composicion.perros)}</span>}
                 
                 {/* Unidades especiales */}
                 {composicion.unidadesEspeciales && Object.entries(composicion.unidadesEspeciales).map(([key, value]) => {
