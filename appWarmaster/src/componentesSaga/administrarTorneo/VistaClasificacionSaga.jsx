@@ -121,7 +121,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
     };
 
     const compartirClasificacion = async () => {
-        let texto = `🏆 CLASIFICACIÓN - ${torneo.nombre}\n`;
+        let texto = `🏆 CLASIFICACIÓN - ${torneo.nombre_torneo}\n`;
         texto += `📅 ${new Date().toLocaleDateString()}\n`;
         texto += `\n`;
 
