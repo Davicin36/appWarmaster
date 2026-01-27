@@ -270,7 +270,8 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                             <div className="equipo-header">
                                 <h3>🏆 {equipo.nombre_equipo || 'Sin nombre'}</h3>
                                 <span className="badge-capitan">
-                                    👑 Capitán: {equipo.capitan_nombre || 'Sin capitán'} {equipo.capitan_apellidos || ''}
+                                    👑 Capitán: <br />
+                                        {equipo.capitan_nombre} {equipo.capitan_apellidos} -  {equipo.capitan_alias && `(${equipo.capitan_alias})`}
                                 </span>
                             </div>
 
@@ -297,9 +298,8 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo }) {
                                                 <li key={idx} className="miembro-item">
                                                     <div className="miembro-header">
                                                         <span className="miembro-nombre">
-                                                            {miembro.es_capitan && '👑 '}
-                                                            {miembro.nombre || 'Sin nombre'}
-                                                            {miembro.nombre_alias && ` "${miembro.nombre_alias}"`}
+                                                           {miembro.es_capitan && '👑 '}
+                                                            {miembro.nombre} - {miembro.alias && `(${miembro.alias})`}
                                                         </span>
                                                         <span className="miembro-epoca-banda">
                                                             {miembro.epoca || 'Sin época'} - {miembro.faccion || 'Sin banda'}
