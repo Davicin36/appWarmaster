@@ -616,52 +616,7 @@ useEffect(() => {
             alert('✅ Emparejamiento eliminado');
         }
     };
-/*
-    // Función para intercambiar jugadores entre emparejamientos
-    const intercambiarJugadores = (index1, pos1, index2, pos2) => {
-        const nuevosEmp = [...emparejamientos];
-        
-        if (esTorneoEquipos()) {
-            // Para equipos: intercambiar equipos completos
-            const temp = nuevosEmp[index1][pos1 === 'equipo1' ? 'equipo1_id' : 'equipo2_id'];
-            if (pos1 === 'equipo1') {
-                nuevosEmp[index1].equipo1_id = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_id' : 'equipo2_id'];
-                nuevosEmp[index1].equipo1_nombre = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_nombre' : 'equipo2_nombre'];
-            } else {
-                nuevosEmp[index1].equipo2_id = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_id' : 'equipo2_id'];
-                nuevosEmp[index1].equipo2_nombre = nuevosEmp[index2][pos2 === 'equipo1' ? 'equipo1_nombre' : 'equipo2_nombre'];
-            }
-            
-            if (pos2 === 'equipo1') {
-                nuevosEmp[index2].equipo1_id = temp;
-            } else {
-                nuevosEmp[index2].equipo2_id = temp;
-            }
-        } else {
-            // Para individuales: intercambiar jugadores
-            const temp = nuevosEmp[index1][pos1 === 'j1' ? 'jugador1_id' : 'jugador2_id'];
-            const tempData = nuevosEmp[index1][pos1 === 'j1' ? 'jugador1' : 'jugador2'];
-            
-            if (pos1 === 'j1') {
-                nuevosEmp[index1].jugador1_id = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1_id' : 'jugador2_id'];
-                nuevosEmp[index1].jugador1 = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1' : 'jugador2'];
-            } else {
-                nuevosEmp[index1].jugador2_id = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1_id' : 'jugador2_id'];
-                nuevosEmp[index1].jugador2 = nuevosEmp[index2][pos2 === 'j1' ? 'jugador1' : 'jugador2'];
-            }
-            
-            if (pos2 === 'j1') {
-                nuevosEmp[index2].jugador1_id = temp;
-                nuevosEmp[index2].jugador1 = tempData;
-            } else {
-                nuevosEmp[index2].jugador2_id = temp;
-                nuevosEmp[index2].jugador2 = tempData;
-            }
-        }
-        
-        setEmparejamientos(nuevosEmp);
-    };
-*/
+
     // Abrir modal de edición
     const abrirEdicion = (emparejamiento, index) => {
         setEmparejamientoEditando({ ...emparejamiento, index });
@@ -681,6 +636,138 @@ useEffect(() => {
         alert('✅ Emparejamiento actualizado');
     };
 
+   const compartirEmparejamientos = async () => {
+        // 🎯 Determinar qué emparejamientos compartir
+        const emparejamientosParaCompartir = partidasGuardadas.length > 0 
+            ? partidasGuardadas 
+            : emparejamientos;
+        
+        if (emparejamientosParaCompartir.length === 0) {
+            alert('⚠️ No hay emparejamientos para compartir');
+            return;
+        }
+
+        let texto = `🎮 EMPAREJAMIENTOS - RONDA ${torneo.ronda_actual}\n`;
+        texto += `📅 Torneo: ${torneo.nombre_torneo}\n`;
+        texto += `📍 Fecha: ${new Date().toLocaleDateString()}\n`;
+        texto += `\n`;
+
+        // 🎯 Si son partidas guardadas (con toda la info)
+        if (partidasGuardadas.length > 0) {
+            partidasGuardadas.forEach((partida, index) => {
+                texto += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                texto += `🎲 MESA ${partida.mesa || index + 1}\n`;
+                
+                if (esTorneoEquipos()) {
+                    texto += `🔵 ${partida.equipo1_nombre || 'Equipo 1'}\n`;
+                    texto += `   👤 ${partida.jugador1_nombre || 'Jugador 1'}\n`;
+                    if (partida.jugador1_faccion) {
+                        texto += `   ⚔️ ${partida.jugador1_faccion}\n`;
+                    }
+                    texto += `\n         VS\n\n`;
+                    
+                    if (partida.es_bye || !partida.jugador2_nombre) {
+                        texto += `🔴 BYE (Victoria automática)\n`;
+                    } else {
+                        texto += `🔴 ${partida.equipo2_nombre || 'Equipo 2'}\n`;
+                        texto += `   👤 ${partida.jugador2_nombre || 'Jugador 2'}\n`;
+                        if (partida.jugador2_faccion) {
+                            texto += `   ⚔️ ${partida.jugador2_faccion}\n`;
+                        }
+                    }
+                } else {
+                    texto += `🔵 ${partida.jugador1_nombre || 'Jugador 1'}\n`;
+                    if (partida.jugador1_faccion) {
+                        texto += `   ⚔️ ${partida.jugador1_faccion}\n`;
+                    }
+                    texto += `\n         VS\n\n`;
+                    
+                    if (partida.es_bye || !partida.jugador2_nombre) {
+                        texto += `🔴 BYE (Victoria automática)\n`;
+                    } else {
+                        texto += `🔴 ${partida.jugador2_nombre || 'Jugador 2'}\n`;
+                        if (partida.jugador2_faccion) {
+                            texto += `   ⚔️ ${partida.jugador2_faccion}\n`;
+                        }
+                    }
+                }
+                
+                if (partida.nombre_partida) {
+                    texto += `\n📋 Escenario: ${partida.nombre_partida}\n`;
+                }
+                if (partida.epoca) {
+                    texto += `📅 Época: ${partida.epoca}\n`;
+                }
+                texto += `\n`;
+            });
+        } 
+        // 🎯 Si son emparejamientos preview (antes de guardar)
+        else {
+            emparejamientos.forEach((emp, index) => {
+                texto += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                texto += `🎲 MESA ${emp.mesa || index + 1}\n`;
+                
+                if (esTorneoEquipos()) {
+                    texto += `🔵 ${emp.equipo1_nombre || 'Equipo 1'}\n`;
+                    if (emp.partidas && emp.partidas.length > 0) {
+                        emp.partidas.forEach(partida => {
+                            texto += `   👤 ${partida.jugador1_nombre}\n`;
+                            if (partida.epoca) texto += `   📅 ${partida.epoca}\n`;
+                        });
+                    }
+                    texto += `\n         VS\n\n`;
+                    
+                    if (emp.es_bye) {
+                        texto += `🔴 BYE (Victoria automática)\n`;
+                    } else {
+                        texto += `🔴 ${emp.equipo2_nombre || 'Equipo 2'}\n`;
+                        if (emp.partidas && emp.partidas.length > 0) {
+                            emp.partidas.forEach(partida => {
+                                if (partida.jugador2_nombre) {
+                                    texto += `   👤 ${partida.jugador2_nombre}\n`;
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
+                    const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
+                    
+                    texto += `🔵 ${jugador1Nombre || 'Jugador 1'}\n`;
+                    texto += `\n         VS\n\n`;
+                    
+                    if (emp.es_bye) {
+                        texto += `🔴 BYE (Victoria automática)\n`;
+                    } else {
+                        texto += `🔴 ${jugador2Nombre || 'Jugador 2'}\n`;
+                    }
+                }
+                texto += `\n`;
+            });
+        }
+
+        // 🔥 API Web Share
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Emparejamientos - Ronda ${torneo.ronda_actual}`,
+                    text: texto
+                });
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Usuario canceló compartir');
+                }
+            }
+        } else {
+            // ❌ Fallback para ordenadores
+            try {
+                await navigator.clipboard.writeText(texto);
+                alert('✅ ¡Emparejamientos copiados al portapapeles!\n\nPega el texto en WhatsApp, Telegram, etc.');
+            } catch (err) {
+                alert('❌ No se pudo copiar. Por favor, selecciona y copia manualmente.', err);
+            }
+        }
+    };
 // Función para verificar si la partida tiene datos introducidos
     const tieneDatos = (partida) => {
         // Verificar si hay un resultado registrado (no pendiente)
@@ -1153,7 +1240,20 @@ useEffect(() => {
                         )}
                     </div>
                 )}
-            </div>
+                {/* 🆕 BOTÓN COMPARTIR - PARA TODOS */}
+                {(emparejamientos.length > 0 || partidasGuardadas.length > 0) && (
+                    <div className="botones-grupo" style={{ marginTop: esOrganizador ? '0' : '20px' }}>
+                        <button
+                            onClick={compartirEmparejamientos}
+                            className="btn-success"
+                            title="Compartir emparejamientos en WhatsApp, Telegram, etc."
+                            disabled={guardando}
+                        >
+                            📤 Compartir Emparejamientos
+                        </button>
+                    </div>
+                )}
+                </div>
             </div>
 
           {partidasGuardadas.length > 0 && torneo?.estado === 'en_curso' && !esOrganizador && !esParticipante && (
