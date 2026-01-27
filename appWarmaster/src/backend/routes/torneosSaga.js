@@ -4185,7 +4185,8 @@ router.get('/:torneoId/equipos', async (req, res) => {
         e.capitan_id,
         e.pagado,
         u.nombre as capitan_nombre,
-        u.apellidos as capitan_apellidos
+        u.apellidos as capitan_apellidos,
+        u.nombre_alias as capitan_alias
       FROM torneo_saga_equipo e
       INNER JOIN usuarios u ON e.capitan_id = u.id
       WHERE e.torneo_id = ?
@@ -4202,6 +4203,7 @@ router.get('/:torneoId/equipos', async (req, res) => {
           j.composicion_ejercito,
           u.nombre,
           u.apellidos,
+          u.nombre_alias,
           CASE WHEN e.capitan_id = j.jugador_id THEN 1 ELSE 0 END as es_capitan
         FROM jugador_torneo_saga j
         INNER JOIN usuarios u ON j.jugador_id = u.id
@@ -4224,6 +4226,7 @@ router.get('/:torneoId/equipos', async (req, res) => {
 
         return {
           nombre: `${m.nombre} ${m.apellidos}`,
+          alias: m.nombre_alias,
           epoca: m.epoca,
           faccion: m.faccion,
           es_capitan: Boolean(m.es_capitan),
@@ -4236,6 +4239,7 @@ router.get('/:torneoId/equipos', async (req, res) => {
         jugador_id: m.jugador_id,
         nombre: m.nombre,
         apellidos: m.apellidos,
+        alias: m.nombre_alias,
         epoca: m.epoca,
         faccion: m.faccion,
         es_capitan: Boolean(m.es_capitan)

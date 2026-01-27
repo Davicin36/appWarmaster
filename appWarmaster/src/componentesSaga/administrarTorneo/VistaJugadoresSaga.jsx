@@ -613,7 +613,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                 <div className="equipo-header-admin">
                                     <h3>🏆 {equipo.nombre_equipo}</h3>
                                     <span className="badge-capitan-admin">
-                                        👑 {equipo.capitan_nombre} {equipo.capitan_apellidos}
+                                        👑 {equipo.capitan_nombre} {equipo.capitan_apellidos} -  {equipo.capitan_alias && `(${equipo.capitan_alias})`}
                                     </span>
                                 </div>
 
@@ -626,7 +626,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                                     <div className="miembro-header-admin">
                                                         <span className="miembro-nombre-admin">
                                                             {miembro.es_capitan && '👑 '}
-                                                            {miembro.nombre}
+                                                            {miembro.nombre} - {miembro.alias && `(${miembro.alias})`}
                                                         </span>
                                                         <span className="miembro-epoca-banda-admin">
                                                             {miembro.epoca} - {miembro.faccion}

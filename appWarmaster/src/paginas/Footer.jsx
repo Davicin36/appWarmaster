@@ -13,7 +13,7 @@ export default function Footer() {
           <Link to="/politica-cookies">Política de Cokies</Link>
         </nav>
         <div className="footer-divider"></div>
-        <p className="copyright">© 2026 Gestiona Tus Torneos - David Alvares Roca</p>
+        <p className="copyright">© 2026 Gestiona Tus Torneos - David Álvarez Roca</p>
       </div>
     </footer>
   );
