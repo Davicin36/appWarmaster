@@ -4467,6 +4467,8 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       puntos_partida_j2,
       puntos_masacre_j1,
       puntos_masacre_j2,
+      puntos_bonificacion_j1,
+      puntos_bonificacion_j2,
       warlord_muerto_j1,
       warlord_muerto_j2,
       primer_jugador,
@@ -4487,7 +4489,6 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
     
-    
     // Verificar que la partida existe
     const [partida] = await pool.execute(`
       SELECT 
@@ -4501,6 +4502,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         ps.ronda, 
         ps.resultado_confirmado,
         ps.es_bye,
+        ps.nombre_partida,
         t.tipo_torneo
       FROM partidas_saga ps
       INNER JOIN torneos_sistemas t ON ps.torneo_id = t.id
@@ -4521,6 +4523,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     const jts1_id = partida[0].jts1_id;
     const jts2_id = partida[0].jts2_id;
     const tipoTorneo = partida[0].tipo_torneo;
+    const nombrePartidaBD = partida[0].nombre_partida; 
     
     const esBYE = partida[0].es_bye || 
                   !jts2_id || 
@@ -4555,7 +4558,9 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     const puntosPartidaJ2 = parseInt(puntos_partida_j2) || 0;
     const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
     const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
-
+    const puntosBonificacionJ1 = parseInt(puntos_bonificacion_j1) || 0;
+    const puntosBonificacionJ2 = parseInt(puntos_bonificacion_j2) || 0;
+ 
     let puntosVictoriaJ1, puntosVictoriaJ2, resultado, puntosTorneoJ1, puntosTorneoJ2;
 
     // ========================================================================
@@ -4563,9 +4568,6 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     // ========================================================================
     
     if (sin_dados && ganador_sin_dados) {
-      
-      console.log('🎲 ACTIVADO: Fin de partida por quedarse sin dados');
-      console.log(`🏆 Ganador: Jugador ${ganador_sin_dados}`);
       
       // ✅ PUNTOS DE VICTORIA: Siempre 3-0 para el ganador
       if (ganador_sin_dados === 1) {
@@ -4583,7 +4585,6 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
         // TORNEO POR EQUIPOS: usar los puntos introducidos manualmente
         puntosTorneoJ1 = puntosPartidaJ1;
         puntosTorneoJ2 = puntosPartidaJ2;
-        console.log(`📊 Equipos - Puntos introducidos: J1=${puntosTorneoJ1}, J2=${puntosTorneoJ2}`);
       } else {
         // TORNEO INDIVIDUAL: 19 para ganador, 1 para perdedor
         if (ganador_sin_dados === 1) {
@@ -4593,16 +4594,16 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
           puntosTorneoJ1 = 1;
           puntosTorneoJ2 = 19;
         }
-        console.log(`📊 Individual - Victoria sin dados: J1=${puntosTorneoJ1}, J2=${puntosTorneoJ2}`);
       }
-
-      console.log(`✅ Resultado final: ${resultado} | Victoria=${puntosVictoriaJ1}-${puntosVictoriaJ2} | Torneo=${puntosTorneoJ1}-${puntosTorneoJ2}`);
 
     } 
     // ========================================================================
     // 📋 LÓGICA NORMAL (Solo si NO hay sin_dados)
     // ========================================================================
     else {
+
+      // 👈 USAR nombrePartidaBD en lugar de nombre_partida del body
+      const esElCruce = nombrePartidaBD?.toLowerCase().includes('el cruce') || false;
 
       if (tipoTorneo === 'Por equipos') {
         // TORNEO POR EQUIPOS
@@ -4624,9 +4625,26 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
             resultado = 'victoria_j2';
           }
         } else {
-          puntosVictoriaJ1 = 1;
-          puntosVictoriaJ2 = 1;
-          resultado = 'empate';  
+           if (esElCruce) {
+         
+            if (puntosBonificacionJ1 > puntosBonificacionJ2) {
+              puntosVictoriaJ1 = 3;
+              puntosVictoriaJ2 = 0;
+              resultado = 'victoria_j1';
+            } else if (puntosBonificacionJ2 > puntosBonificacionJ1) {
+              puntosVictoriaJ1 = 0;
+              puntosVictoriaJ2 = 3;
+              resultado = 'victoria_j2';
+            } else {
+              puntosVictoriaJ1 = 1;
+              puntosVictoriaJ2 = 1;
+              resultado = 'empate';
+            }
+          } else {
+            puntosVictoriaJ1 = 1;
+            puntosVictoriaJ2 = 1;
+            resultado = 'empate';
+          }
         }
 
       } else {
@@ -4640,9 +4658,28 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
           puntosVictoriaJ2 = 3;
           resultado = 'victoria_j2';
         } else {
-          puntosVictoriaJ1 = 1;
-          puntosVictoriaJ2 = 1;
-          resultado = 'empate';
+          // ⚖️ EMPATE EN PUNTOS DE PARTIDA
+          
+          if (esElCruce) {
+
+            if (puntosBonificacionJ1 > puntosBonificacionJ2) {
+              puntosVictoriaJ1 = 3;
+              puntosVictoriaJ2 = 0;
+              resultado = 'victoria_j1';
+            } else if (puntosBonificacionJ2 > puntosBonificacionJ1) {
+              puntosVictoriaJ1 = 0;
+              puntosVictoriaJ2 = 3;
+              resultado = 'victoria_j2';
+            } else {
+              puntosVictoriaJ1 = 1;
+              puntosVictoriaJ2 = 1;
+              resultado = 'empate';
+            }
+          } else {
+            puntosVictoriaJ1 = 1;
+            puntosVictoriaJ2 = 1;
+            resultado = 'empate';
+          }
         }
 
         const puntosTorneo = calcularPuntosTorneo(
@@ -4657,7 +4694,7 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       }
     }
     
-    // ✅ Actualizar la partida
+    // ✅ Actualizar la partida (AHORA CON BONIFICACIONES)
     await pool.execute(`
       UPDATE partidas_saga SET
         puntos_victoria_j1 = ?, 

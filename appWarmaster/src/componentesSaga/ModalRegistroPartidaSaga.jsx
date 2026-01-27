@@ -23,8 +23,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
         puntos_partida_j2: partida.puntos_partida_j2 || 0,
         puntos_masacre_j1: partida.puntos_masacre_j1 || 0,
         puntos_masacre_j2: partida.puntos_masacre_j2 || 0,
-        puntos_bonificacionj1:  0,
-        puntos_bonificacionj2:  0,
+        puntos_bonificacion_j1:  partida.puntos_bonificacion_j1 || 0,
+        puntos_bonificacion_j2:  partida.puntos_bonificacion_j2 || 0,
         warlord_muerto_j1: partida.warlord_muerto_j1 || false,
         warlord_muerto_j2: partida.warlord_muerto_j2 || false,
         primer_jugador: partida.primer_jugador || null
@@ -73,6 +73,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                 puntos_partida_j2: parseInt(resultado.puntos_partida_j2) || 0,
                 puntos_masacre_j1: parseInt(resultado.puntos_masacre_j1 ?? 0),
                 puntos_masacre_j2: parseInt(resultado.puntos_masacre_j2 ?? 0),
+                puntos_bonificacion_j1: parseInt(resultado.puntos_bonificacion_j1 ?? 0),
+                puntos_bonificacion_j2: parseInt(resultado.puntos_bonificacion_j2 ?? 0),
                 warlord_muerto_j1: resultado.warlord_muerto_j1,
                 warlord_muerto_j2: resultado.warlord_muerto_j2,
                 primer_jugador: resultado.primer_jugador,
@@ -153,8 +155,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
     const getResultadoPreview = () => {
         const ppJ1 = parseInt(resultado.puntos_partida_j1) || 0;
         const ppJ2 = parseInt(resultado.puntos_partida_j2) || 0;
-        const pbJ1 = parseInt (resultado.puntos_bonificacionj1) || 0
-        const pbJ2 = parseInt (resultado.puntos_bonificacionj2) || 0
+        const pbJ1 = parseInt (resultado.puntos_bonificacion_j1) || 0
+        const pbJ2 = parseInt (resultado.puntos_bonificacion_j2) || 0
 
         // 🎲 PRIORIDAD: SIN DADOS
         if (sinDados.activo && sinDados.ganador) {
@@ -547,8 +549,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     <input 
                                         type="number"
                                         min="0"
-                                        value={resultado.ountos_bonificacionj1}
-                                        onChange={(e) => handleChange('puntos_bonificacionj1', e.target.value)}
+                                        value={resultado.puntos_bonificacion_j1}
+                                        onChange={(e) => handleChange('puntos_bonificacion_j1', e.target.value)}
                                         disabled={guardando}
                                     />
                                     <small className="nota-equipos">
@@ -623,8 +625,8 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     <input 
                                         type="number"
                                         min="0"
-                                        value={resultado.ountos_bonificacionj2}
-                                        onChange={(e) => handleChange('puntos_bonificacionj2', e.target.value)}
+                                        value={resultado.puntos_bonificacion_j2}
+                                        onChange={(e) => handleChange('puntos_bonificacion_j2', e.target.value)}
                                         disabled={guardando}
                                     />
                                     <small className="nota-equipos">
@@ -647,7 +649,15 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                     </div>
 
                     <div className="seccion-sin-dados">
-                        <h4>Jugador se queda SIN DADOS</h4>
+                        <h4>
+                            {sinDados.activo && sinDados.ganador ? (
+                                <>
+                                    {getNombreJugador(sinDados.ganador === 1 ? 2 : 1)} se QUEDO SIN DADOS
+                                </>
+                            ) : (
+                                'El jugador se quedo sin DADOS'
+                            )}
+                        </h4>
 
                         {sinDados.activo ? (
                             <>
