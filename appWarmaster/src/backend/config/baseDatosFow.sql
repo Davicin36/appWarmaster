@@ -19,7 +19,6 @@ CREATE TABLE jugador_torneo_fow (
     lista_tamaño INT,      
     pagado INT DEFAULT 0,
     puntos_victoria INT DEFAULT 0,
-    puntos_torneo INT DEFAULT 0,
     puntos_masacre INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,

@@ -1,65 +1,81 @@
+// config/database.js
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    // ⭐ PARÁMETROS CRÍTICOS PARA EVITAR ECONNRESET
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
-    connectTimeout: 20000, // 60 segundos para establecer conexión
-    acquireTimeout: 20000, // 60 segundos para obtener una conexión del pool
-    timeout: 20000, // 60 segundos timeout general de query
-    idleTimeout: 20000, // 60 segundos antes de cerrar conexión inactiva
-    // ⭐ PREVENIR PROBLEMAS DE CHARSET
-    charset: 'utf8mb4',
-    // ⭐ MANEJO DE ERRORES DE CONEXIÓN
-    maxIdle: 5, // Máximo de conexiones inactivas
-    idleTimeout: 60000
-})
+// Configuración base compartida
+const baseConfig = {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  connectTimeout: 20000,
+  acquireTimeout: 20000,
+  timeout: 20000,
+  idleTimeout: 20000,
+  charset: 'utf8mb4',
+  maxIdle: 5
+};
 
-/** SOLO PARA CUANDO NECESITEMOS DEBUG DE LA BASE DE DATOS
-// Manejo de errores del pool
-pool.on('connection', (connection) => {
-  console.log('🔌 Nueva conexión establecida al pool');
+// Pool para la base de datos principal 'torneos'
+const poolTorneos = mysql.createPool({
+  ...baseConfig,
+  database: process.env.DB_NAME || 'torneos'
 });
 
-pool.on('acquire', (connection) => {
-  console.log('📤 Conexión adquirida del pool');
+// Pool para la base de datos 'rankingTorneos'
+const poolRanking = mysql.createPool({
+  ...baseConfig,
+  database: process.env.DB_RANKING_NAME || 'rankingTorneos'
 });
 
-pool.on('release', (connection) => {
-  console.log('📥 Conexión liberada al pool');
+// Pool general sin base de datos específica (para queries cross-database)
+const poolGeneral = mysql.createPool({
+  ...baseConfig
+  // Sin especificar database
 });
 
-pool.on('enqueue', () => {
-  console.log('⏳ Esperando por conexión disponible...');
-});
-*/
+// Pool principal (mantiene compatibilidad con código existente)
+const pool = poolTorneos;
 
-// Función para probar la conexión
+// ============================================
+// FUNCIONES DE TESTING
+// ============================================
+
 const testConnection = async () => {
   try {
-    const connection = await pool.getConnection();
+    // Test base de datos torneos
+    const connTorneos = await poolTorneos.getConnection();
     console.log('✅  Conexión a MySQL establecida correctamente');
-    console.log(`📊  Base de datos: ${process.env.DB_NAME}`);
+    console.log(`📊  Base de datos principal: ${process.env.DB_NAME || 'torneos'}`);
+    
+    const [rows1] = await connTorneos.execute('SELECT 1 as test');
+    console.log('✅  Query de prueba exitosa en BD torneos');
+    connTorneos.release();
+    
+    // Test base de datos ranking
+    try {
+      const connRanking = await poolRanking.getConnection();
+      console.log(`📊  Base de datos ranking: ${process.env.DB_RANKING_NAME || 'rankingTorneos'}`);
+      
+      const [rows2] = await connRanking.execute('SELECT 1 as test');
+      console.log('✅  Query de prueba exitosa en BD rankingTorneos');
+      connRanking.release();
+    } catch (rankingError) {
+      console.warn('⚠️  BD rankingTorneos no disponible (se creará después)');
+      console.warn('   Esto es normal si aún no has ejecutado el script de creación');
+    }
+    
     console.log(`👤  Usuario: ${process.env.DB_USER}`);
     console.log(`🌐  Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
-    console.log(`🛠️   Entorno: ${process.env.NODE_ENV || 'development'}`)
+    console.log(`🛠️   Entorno: ${process.env.NODE_ENV || 'development'}`);
     
-    // Test adicional: ejecutar una query simple
-    const [rows] = await connection.execute('SELECT 1 as test');
-    console.log('✅  Query de prueba exitosa');
-    
-    connection.release();
     return true;
   } catch (error) {
     console.error('❌ Error conectando a MySQL:', error.message);
@@ -67,7 +83,7 @@ const testConnection = async () => {
     console.error('🔧 Credenciales intentadas:');
     console.error(`   Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
     console.error(`   Usuario: ${process.env.DB_USER}`);
-    console.error(`   Base de datos: ${process.env.DB_NAME}`);
+    console.error(`   Base de datos: ${process.env.DB_NAME || 'torneos'}`);
     console.error('\n🔍 Detalles del error:');
     console.error(`   Code: ${error.code}`);
     console.error(`   Errno: ${error.errno}`);
@@ -75,11 +91,15 @@ const testConnection = async () => {
   }
 };
 
-// Función helper para ejecutar transacciones de forma segura
+// ============================================
+// FUNCIONES DE TRANSACCIONES
+// ============================================
+
+// Función helper para transacciones en la BD de torneos (mantiene compatibilidad)
 const executeTransaction = async (callback) => {
   let connection;
   try {
-    connection = await pool.getConnection();
+    connection = await poolTorneos.getConnection();
     await connection.beginTransaction();
     
     const result = await callback(connection);
@@ -108,28 +128,149 @@ const executeTransaction = async (callback) => {
   }
 };
 
-// Función para verificar el estado del pool
+// Función para transacciones en la BD de ranking
+const executeRankingTransaction = async (callback) => {
+  let connection;
+  try {
+    connection = await poolRanking.getConnection();
+    await connection.beginTransaction();
+    
+    const result = await callback(connection);
+    
+    await connection.commit();
+    return result;
+    
+  } catch (error) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('⚠️ Error en rollback (conexión cerrada):', rollbackError.message);
+      }
+    }
+    throw error;
+    
+  } finally {
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('⚠️ Error al liberar conexión:', releaseError.message);
+      }
+    }
+  }
+};
+
+// Función para transacciones que afectan AMBAS bases de datos
+const executeCrossTransaction = async (callback) => {
+  let connTorneos, connRanking;
+  try {
+    connTorneos = await poolTorneos.getConnection();
+    connRanking = await poolRanking.getConnection();
+    
+    await connTorneos.beginTransaction();
+    await connRanking.beginTransaction();
+    
+    const result = await callback(connTorneos, connRanking);
+    
+    await connTorneos.commit();
+    await connRanking.commit();
+    
+    return result;
+    
+  } catch (error) {
+    // Rollback en ambas bases de datos
+    if (connTorneos) {
+      try {
+        await connTorneos.rollback();
+      } catch (rollbackError) {
+        console.error('⚠️ Error en rollback torneos:', rollbackError.message);
+      }
+    }
+    if (connRanking) {
+      try {
+        await connRanking.rollback();
+      } catch (rollbackError) {
+        console.error('⚠️ Error en rollback ranking:', rollbackError.message);
+      }
+    }
+    throw error;
+    
+  } finally {
+    if (connTorneos) {
+      try {
+        connTorneos.release();
+      } catch (releaseError) {
+        console.error('⚠️ Error al liberar conexión torneos:', releaseError.message);
+      }
+    }
+    if (connRanking) {
+      try {
+        connRanking.release();
+      } catch (releaseError) {
+        console.error('⚠️ Error al liberar conexión ranking:', releaseError.message);
+      }
+    }
+  }
+};
+
+// ============================================
+// FUNCIONES DE ESTADO
+// ============================================
+
 const getPoolStatus = () => {
   return {
-    totalConnections: pool.pool._allConnections.length,
-    freeConnections: pool.pool._freeConnections.length,
-    queuedRequests: pool.pool._connectionQueue.length
+    torneos: {
+      totalConnections: poolTorneos.pool._allConnections.length,
+      freeConnections: poolTorneos.pool._freeConnections.length,
+      queuedRequests: poolTorneos.pool._connectionQueue.length
+    },
+    ranking: {
+      totalConnections: poolRanking.pool._allConnections.length,
+      freeConnections: poolRanking.pool._freeConnections.length,
+      queuedRequests: poolRanking.pool._connectionQueue.length
+    }
   };
 };
 
-const closePool =  async () => {
+const closePool = async () => {
   try {
-    await pool.end()
-    console.log(' Pool de conexiones cerrado correctamente')
-  }catch (error){
-    console.log('Error al cerrar el poll: ', error,message)
+    await poolTorneos.end();
+    console.log('✅ Pool de torneos cerrado correctamente');
+    
+    await poolRanking.end();
+    console.log('✅ Pool de ranking cerrado correctamente');
+    
+    await poolGeneral.end();
+    console.log('✅ Pool general cerrado correctamente');
+    
+  } catch (error) {
+    console.error('❌ Error al cerrar los pools:', error.message);
   }
-}
+};
+
+// ============================================
+// EXPORTS
+// ============================================
 
 export {
+  // Pools individuales
+  poolTorneos,
+  poolRanking,
+  poolGeneral,
+  
+  // Pool principal (compatibilidad con código existente)
   pool,
+  
+  // Funciones de testing
   testConnection,
-  executeTransaction,
+  
+  // Funciones de transacciones
+  executeTransaction,           // Solo para torneos (mantiene compatibilidad)
+  executeRankingTransaction,    // Solo para ranking
+  executeCrossTransaction,      // Para operaciones en ambas BDs
+  
+  // Funciones de utilidad
   getPoolStatus,
   closePool
 };

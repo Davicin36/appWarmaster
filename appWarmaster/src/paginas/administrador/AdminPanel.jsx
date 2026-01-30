@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import TorneosAdmin from './TorneosAdmin';
 import UsuariosAdmin from './UsuariosAdmin';
 import EstadisticasAdmin from './EstadisticasAdmin';
+import ActualizarRanking from './ActualizarRanking';
 
 import './estilosAdmin/adminPanel.css';
 
@@ -35,12 +36,19 @@ const AdminPanel = () => {
         >
           👥 Usuarios
         </button>
+        <button 
+          className={`admin-tab ${activeTab === 'ranking' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ranking')}
+        >
+          ⚡ Actualizar Ranking
+        </button>
       </div>
 
       <div className="admin-content">
         {activeTab === 'estadisticas' && <EstadisticasAdmin />}
         {activeTab === 'torneos' && <TorneosAdmin />}
         {activeTab === 'usuarios' && <UsuariosAdmin />}
+        {activeTab === 'ranking' && <ActualizarRanking />}
       </div>
     </div>
   );

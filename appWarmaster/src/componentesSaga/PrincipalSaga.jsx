@@ -74,6 +74,15 @@ function PrincipalSaga({ onOpenLogin }) {
         navigate(`/inscripcion/${torneoId}`);
     };
 
+     const obtenerTextoEstado = (estado) => {
+        const estados = {
+            'pendiente': 'Pendiente',
+            'en_curso': 'En curso',
+            'finalizado': 'Finalizado'
+        };
+        return estados[estado] || estado;
+    };
+
     return (
         <div>      
             {error && (
@@ -111,6 +120,7 @@ function PrincipalSaga({ onOpenLogin }) {
                                     <th>Ubicación</th>
                                     <th>Organizador</th>
                                     <th>Participantes/Equipos</th>
+                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -158,6 +168,11 @@ function PrincipalSaga({ onOpenLogin }) {
                                                     ? (torneo.total_equipos_inscritos || 0)
                                                     : (torneo.total_participantes || 0)
                                                 }
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className="estado-torneos">
+                                                {obtenerTextoEstado(torneo.estado)}
                                             </span>
                                         </td>
                                         <td className="acciones-cell">

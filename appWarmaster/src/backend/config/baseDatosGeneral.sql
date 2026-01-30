@@ -41,6 +41,7 @@ CREATE TABLE torneos_sistemas (
   equipos_max INT NOT NULL,
   ronda_actual INT DEFAULT 1,
   estado ENUM('pendiente', 'en_curso', 'finalizado') DEFAULT 'pendiente',
+  elo_procesado BOOLEAN DEFAULT FALSE,
   partida_ronda_1 VARCHAR(100) NOT NULL,
   partida_ronda_2 VARCHAR(100) NOT NULL,
   partida_ronda_3 VARCHAR(100) NOT NULL,
@@ -52,6 +53,8 @@ CREATE TABLE torneos_sistemas (
   created_by INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES usuarios(id)
+
+  INDEX idx_elo_procesado (elo_procesado)
 );
 
 CREATE TABLE organizadores_torneos (

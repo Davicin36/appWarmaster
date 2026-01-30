@@ -156,9 +156,54 @@ export const BANDAS_POR_EPOCA = {
     { nombre: "TRACIOS" },
     { nombre: "MACEDONIOS" },
     { nombre: "INDIOS", permiteElefantes: true }, 
-    { nombre: "SUCESORES-GRECIA" },
-    { nombre: "SUCESORES-EGIPTO" },
-    { nombre: "SUCESORES-ASIA", permiteElefantes: true, permiteCarros: true }, 
+    { nombre: "SUCESORES-GRECIA",
+      opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "legatum", nombre: "Legatum" },
+            { valor: "hubris", nombre: "Hubris" },
+            { valor: "divitiae", nombre: "Divitiae"}
+          ],
+          valorPorDefecto: "legatum"
+        }
+      ]
+     },
+    { nombre: "SUCESORES-EGIPTO",
+      opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "legatum", nombre: "Legatum" },
+            { valor: "hubris", nombre: "Hubris" },
+            { valor: "divitiae", nombre: "Divitiae"}
+          ],
+          valorPorDefecto: "legatum"
+        }
+      ]
+     },
+    { nombre: "SUCESORES-ASIA", permiteElefantes: true, permiteCarros: true,
+      opcionesBanda: [
+        {
+          id:"tipoWarlord",
+          label:"tipo de Warlord",
+          tipo: "select",
+          obligatorio: true,
+          opciones:[
+            { valor: "legatum", nombre: "Legatum" },
+            { valor: "hubris", nombre: "Hubris" },
+            { valor: "divitiae", nombre: "Divitiae"}
+          ],
+          valorPorDefecto: "legatum"
+        }
+      ]
+     }, 
     { nombre: "CIUDADES GRIEGAS-ATENAS" },
     { nombre: "CIUDADES GRIEGAS-LACEDEMONIOS" },
     { nombre: "CIUDADES GRIEGAS-TESALIOS" },

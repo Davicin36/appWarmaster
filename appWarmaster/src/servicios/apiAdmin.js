@@ -92,11 +92,28 @@ class AdminApi {
     });
   }
 
+  async actualizarInscripcionUsuario(usuarioId, inscripcionId, sistema, datos) {
+  return this.request(`/usuarios/${usuarioId}/inscripciones/${inscripcionId}/${sistema}`, {
+    method: 'PUT',
+    body: datos
+  });
+}
+
   async eliminarUsuario(usuarioId) {
     return this.request(`/usuarios/${usuarioId}`, {
       method: 'DELETE',
     });
   }
+
+  async obtenerTorneosUsuario(usuarioId) {
+  return this.request(`/usuarios/${usuarioId}/torneos`);
+}
+
+async eliminarInscripcionUsuario(usuarioId, inscripcionId, sistema) {
+  return this.request(`/usuarios/${usuarioId}/inscripciones/${inscripcionId}/${sistema}`, {
+    method: 'DELETE'
+  });
+}
 
   async obtenerOrganizadores(torneoId) {
     return this.request(`/torneos/${torneoId}/organizadores`);
@@ -120,6 +137,18 @@ class AdminApi {
       method: 'POST'
     });
   }
+
+  //======ACTUALIZAR RANKING TORNEOS=====
+
+  async obtenerTorneosFinalizadosSinElo() {
+    return this.request('/torneos/finalizados-sin-elo');
+  }
+
+  async actualizarRankingTorneo(torneoId) {
+  return this.request(`/torneos/${torneoId}/actualizar-ranking`, {
+    method: 'POST'
+  });
+}
 
   // ========================
   // MÉTODOS DE UTILIDAD

@@ -11,6 +11,7 @@ import { testConnection } from './config/bd.js';
 
 // Importar rutas
 import rutasAdministrador  from './routes/rutasAdmin.js'
+import RankingRoutes from './routes/rutasRanking.js'
 import torneosSagaRoutes from './routes/torneosSaga.js';
 import torneosWarmasterRoutes from './routes/torneosWarmaster.js';
 import torneosFowRoutes from './routes/torneosFow.js';
@@ -92,7 +93,8 @@ app.get('/', (req, res) => {
       test: '/api/test',
       torneos: '/api/torneosSaga',
       usuarios: '/api/usuarios',
-      administrador: '/api/administrador'
+      administrador: '/api/administrador',
+      ranking: '/api/ranking'
     }
   });
 });
@@ -119,6 +121,7 @@ app.get('/api/test', (req, res) => {
 
 // Rutas principales
 app.use('/api/administrador', rutasAdministrador)
+app.use('/api/ranking', RankingRoutes)
 app.use('/api/torneosSaga', torneosSagaRoutes)
 app.use('/api/torneosWarmaster', torneosWarmasterRoutes)
 app.use('/api/torneosFow', torneosFowRoutes)

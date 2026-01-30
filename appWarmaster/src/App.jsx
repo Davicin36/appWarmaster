@@ -14,6 +14,7 @@ import VerTorneos from './paginas/VerTorneos.jsx';
 import Inscripcion from './paginas/Inscripcion.jsx';
 import SeleccionJuego from './paginas/SeleccionJuego.jsx';
 import ResetPassword from './paginas/loginRecuperacion/ResetPassword.jsx'
+import Ranking from './paginas/Ranking.jsx'
 
 import AvisoLegal from './paginas/documentosLegales/AvisoLegal.jsx';
 import PoliticaCokies from './paginas/documentosLegales/PoliticaCokies.jsx';
@@ -61,6 +62,10 @@ function App() {
         <Route
             path='/torneosWarmaster/:torneoId/detalles'
             element={<VerTorneos />}
+        />
+         <Route
+            path='/ranking'
+            element={<Ranking />}
         />
         <Route
             path='/aviso-legal'

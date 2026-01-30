@@ -30,7 +30,13 @@ const router = express.Router();
 // OBTERNER TODOS LOS USUARIOS
 
 router.get('/usuarios', verificarToken, verificarSuperAdmin, async (req, res) => {
+  console.log('🔍 DEBUG - Iniciando obtención de usuarios');
+  console.log('🔍 Usuario autenticado:', req.userId);
+  console.log('🔍 Rol del usuario:', req.userRole);
+  
   try {
+    console.log('🔍 Ejecutando query de usuarios...');
+    
     const [usuarios] = await pool.query(`
       SELECT 
         id, 
@@ -41,6 +47,7 @@ router.get('/usuarios', verificarToken, verificarSuperAdmin, async (req, res) =>
         email, 
         rol, 
         estado_cuenta,
+        codigo_postal,
         localidad,
         pais,
         created_at
@@ -48,19 +55,26 @@ router.get('/usuarios', verificarToken, verificarSuperAdmin, async (req, res) =>
       ORDER BY created_at DESC
     `);
     
-    res.json({
+    console.log(`✅ Query ejecutada exitosamente. Usuarios encontrados: ${usuarios.length}`);
+    console.log('📊 Primeros 3 usuarios:', usuarios.slice(0, 3));
+    
+    const respuesta = {
       success: true,
       usuarios
-    });
+    };
+    
+    console.log('📤 Enviando respuesta al frontend');
+    res.json(respuesta);
+    
   } catch (error) {
     console.error('❌ Error al obtener usuarios:', error);
+    console.error('❌ Stack completo:', error.stack);
     res.status(500).json({
       success: false,
       error: 'Error al obtener usuarios'
     });
   }
 });
-
 // ACTUALIZAR USUARIOS
 
 router.put('/usuarios/:id', verificarToken, verificarSuperAdmin, async (req, res) => {
@@ -119,6 +133,232 @@ router.delete('/usuarios/:id', verificarToken, verificarSuperAdmin, async (req, 
     res.status(500).json({
       success: false,
       error: 'Error al eliminar usuario'
+    });
+  }
+});
+
+//======= OBTENER TORNEOS DE UN USUARIO=======
+
+router.get('/usuarios/:id/torneos', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Obtener torneos donde es organizador
+    const [torneosOrganizador] = await pool.query(`
+      SELECT 
+        ts.id,
+        ts.nombre_torneo,
+        ts.sistema,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.estado,
+        'organizador' as tipo_participacion,
+        ts.created_by = ot.usuario_id as es_creador
+      FROM organizadores_torneos ot
+      INNER JOIN torneos_sistemas ts ON ot.torneo_id = ts.id
+      WHERE ot.usuario_id = ?
+      ORDER BY ts.fecha_inicio DESC
+    `, [id]);
+    
+    // Obtener torneos donde está inscrito como jugador (SAGA)
+    const [torneosSaga] = await pool.query(`
+    SELECT 
+      ts.id,
+      ts.nombre_torneo,
+      ts.sistema,
+      ts.fecha_inicio,
+      ts.fecha_fin,
+      ts.estado,
+      ts.puntos_banda,
+      'jugador' as tipo_participacion,
+      jts.faccion,
+      jts.epoca,
+      jts.composicion_ejercito,
+      jts.puntos_victoria,
+      jts.puntos_torneo,
+      jts.puntos_masacre,
+      jts.id as inscripcion_id
+    FROM jugador_torneo_saga jts
+    INNER JOIN torneos_sistemas ts ON jts.torneo_id = ts.id
+    WHERE jts.jugador_id = ?
+    ORDER BY ts.fecha_inicio DESC
+  `, [id]);
+
+      // Después de obtener torneos SAGA, añadir épocas
+    for (const torneo of torneosSaga) {
+      const [epocas] = await pool.query(
+        'SELECT epoca FROM torneo_saga_epocas WHERE torneo_id = ?',
+        [torneo.id]
+      );
+      torneo.epocas_disponibles = epocas.map(e => e.epoca);
+    }
+    
+    // Obtener torneos donde está inscrito (WARMASTER)
+    const [torneosWarmaster] = await pool.query(`
+      SELECT 
+        ts.id,
+        ts.nombre_torneo,
+        ts.sistema,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.estado,
+        'jugador' as tipo_participacion,
+        jtw.ejercito,
+        jtw.puntos_victoria,
+        jtw.puntos_masacre,
+        jtw.id as inscripcion_id
+      FROM jugador_torneo_warmaster jtw
+      INNER JOIN torneos_sistemas ts ON jtw.torneo_id = ts.id
+      WHERE jtw.jugador_id = ?
+      ORDER BY ts.fecha_inicio DESC
+    `, [id]);
+    
+    // Obtener torneos donde está inscrito (FOW)
+    const [torneosFow] = await pool.query(`
+      SELECT 
+        ts.id,
+        ts.nombre_torneo,
+        ts.sistema,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.estado,
+        'jugador' as tipo_participacion,
+        jtf.ejercito,
+        jtf.bandos_2gm,
+        jtf.puntos_victoria,
+        jtf.puntos_masacre,
+        jtf.id as inscripcion_id
+      FROM jugador_torneo_fow jtf
+      INNER JOIN torneos_sistemas ts ON jtf.torneo_id = ts.id
+      WHERE jtf.jugador_id = ?
+      ORDER BY ts.fecha_inicio DESC
+    `, [id]);
+    
+    res.json({
+      success: true,
+      torneos: {
+        organizador: torneosOrganizador,
+        jugador_saga: torneosSaga,
+        jugador_warmaster: torneosWarmaster,
+        jugador_fow: torneosFow
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error al obtener torneos del usuario:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener torneos del usuario'
+    });
+  }
+});
+
+// ===== ACTUALIZAR INSCRIPCIÓN DE UN USUARIO =====
+
+router.put('/usuarios/:userId/inscripciones/:inscripcionId/:sistema', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const { userId, inscripcionId, sistema } = req.params;
+    const datosActualizacion = req.body;
+    
+    let tabla;
+    let camposPermitidos = [];
+    
+    switch(sistema.toUpperCase()) {
+      case 'SAGA':
+        tabla = 'jugador_torneo_saga';
+        camposPermitidos = ['faccion', 'epoca', 'composicion_ejercito'];
+        break;
+      case 'WARMASTER':
+        tabla = 'jugador_torneo_warmaster';
+        camposPermitidos = ['ejercito'];
+        break;
+      case 'FOW':
+        tabla = 'jugador_torneo_fow';
+        camposPermitidos = ['ejercito', 'bandos_2gm'];
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Sistema no válido'
+        });
+    }
+    
+    // Construir UPDATE dinámico solo con campos permitidos
+    const camposActualizar = [];
+    const valores = [];
+    
+    camposPermitidos.forEach(campo => {
+      if (datosActualizacion[campo] !== undefined) {
+        camposActualizar.push(`${campo} = ?`);
+        valores.push(datosActualizacion[campo]);
+      }
+    });
+    
+    if (camposActualizar.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No hay campos para actualizar'
+      });
+    }
+    
+    valores.push(inscripcionId);
+    valores.push(userId);
+    
+    await pool.query(
+      `UPDATE ${tabla} SET ${camposActualizar.join(', ')} WHERE id = ? AND jugador_id = ?`,
+      valores
+    );
+    
+    res.json({
+      success: true,
+      message: 'Inscripción actualizada correctamente'
+    });
+  } catch (error) {
+    console.error('❌ Error al actualizar inscripción:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al actualizar inscripción'
+    });
+  }
+});
+
+// ======ELIMINAR INSCRIPCIÓN DE UN USUARIO======
+
+router.delete('/usuarios/:userId/inscripciones/:inscripcionId/:sistema', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const { userId, inscripcionId, sistema } = req.params;
+    
+    let tabla;
+    switch(sistema.toUpperCase()) {
+      case 'SAGA':
+        tabla = 'jugador_torneo_saga';
+        break;
+      case 'WARMASTER':
+        tabla = 'jugador_torneo_warmaster';
+        break;
+      case 'FOW':
+        tabla = 'jugador_torneo_fow';
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Sistema no válido'
+        });
+    }
+    
+    await pool.query(
+      `DELETE FROM ${tabla} WHERE id = ? AND jugador_id = ?`,
+      [inscripcionId, userId]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Inscripción eliminada correctamente'
+    });
+  } catch (error) {
+    console.error('❌ Error al eliminar inscripción:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al eliminar inscripción'
     });
   }
 });
@@ -1297,6 +1537,397 @@ router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verifica
   } catch (error) {
     console.error('❌ Error al reenviar invitación:', error);
     res.status(500).json(errorResponse('Error al reenviar invitación'));
+  }
+});
+
+//========OBTENER TORNEOS SIN RANQUEAR====
+
+router.get('/torneos/finalizados-sin-elo', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const [torneos] = await pool.query(`
+      SELECT 
+        t.id,
+        t.nombre_torneo,
+        t.sistema,
+        t.fecha_inicio,
+        t.fecha_fin,
+        t.estado,
+        t.elo_procesado,
+        (SELECT COUNT(*) 
+         FROM jugador_torneo_saga j 
+         WHERE j.torneo_id = t.id) as num_participantes
+      FROM torneos_sistemas t
+      WHERE t.estado = 'finalizado' 
+        AND (t.elo_procesado = 0 OR t.elo_procesado IS NULL)
+      GROUP BY t.id
+      ORDER BY t.fecha_inicio DESC
+    `);
+    
+    res.json(torneos);
+    console.log(torneos)
+  } catch (error) {
+    console.error('Error obteniendo torneos finalizados:', error);
+    res.status(500).json({ error: 'Error al obtener torneos finalizados' });
+  }
+});
+
+//=======ACTUALIZAR RANKING DE TODOS LOS TORNEOS PENDIENTES=======
+
+router.post('/torneos/:torneoId/actualizar-ranking', verificarToken, verificarSuperAdmin, async (req, res) => {
+  const { torneoId } = req.params;
+  const conexion = await pool.getConnection();
+  
+  try {
+    await conexion.beginTransaction();
+
+    // ========== 1. VERIFICAR TORNEO ==========
+    const [torneo] = await conexion.query(
+      `SELECT 
+        t.sistema, 
+        t.estado, 
+        t.nombre_torneo,
+        t.fecha_inicio,
+        t.elo_procesado
+      FROM torneos.torneos_sistemas t 
+      WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneo.length === 0) {
+      await conexion.rollback();
+      return res.status(404).json({ error: 'Torneo no encontrado' });
+    }
+
+    if (torneo[0].estado !== 'finalizado') {
+      await conexion.rollback();
+      return res.status(400).json({ error: 'El torneo debe estar finalizado' });
+    }
+
+    if (torneo[0].elo_procesado === 1) {
+      await conexion.rollback();
+      return res.status(400).json({ error: 'Este torneo ya fue procesado' });
+    }
+
+    const sistema = torneo[0].sistema;
+    const fechaTorneo = torneo[0].fecha_inicio;
+
+    // ========== 2. OBTENER O CREAR TEMPORADA ACTIVA ==========
+    const añoTorneo = new Date(fechaTorneo).getFullYear();
+    
+    const [temporadaExistente] = await conexion.query(
+      `SELECT id, elo_inicial 
+       FROM rankingTorneos.temporadas 
+       WHERE año = ? AND sistema_juego = ? AND activa = 1`,
+      [añoTorneo, sistema]
+    );
+
+    let temporadaId;
+    let eloInicial = 1500;
+
+    if (temporadaExistente.length === 0) {
+      // Crear nueva temporada
+      const [nuevaTemporada] = await conexion.query(
+        `INSERT INTO rankingTorneos.temporadas (
+          nombre, 
+          año, 
+          fecha_inicio, 
+          fecha_fin, 
+          activa, 
+          elo_inicial, 
+          sistema_juego
+        ) VALUES (?, ?, ?, ?, 1, 1500, ?)`,
+        [
+          `Temporada ${añoTorneo}`,
+          añoTorneo,
+          `${añoTorneo}-01-01`,
+          `${añoTorneo}-12-31`,
+          sistema
+        ]
+      );
+      temporadaId = nuevaTemporada.insertId;
+      console.log(`✅ Nueva temporada ${añoTorneo} creada para ${sistema}`);
+    } else {
+      temporadaId = temporadaExistente[0].id;
+      eloInicial = temporadaExistente[0].elo_inicial;
+      console.log(`✅ Usando temporada existente ${añoTorneo} para ${sistema}`);
+    }
+
+    // ========== 3. OBTENER TODAS LAS PARTIDAS DEL TORNEO ==========
+    const [partidas] = await conexion.query(`
+      SELECT 
+        p.id as partida_id,
+        p.jugador1_id,
+        p.jugador2_id,
+        p.resultado_ps,
+        p.es_bye,
+        p.ronda,
+        p.warlord_muerto_j1,
+        p.warlord_muerto_j2,
+        j1.jugador_id as usuario1_id,
+        j1.epoca as epoca1,
+        j1.faccion as faccion1,
+        j2.jugador_id as usuario2_id,
+        j2.epoca as epoca2,
+        j2.faccion as faccion2
+      FROM torneos.partidas_saga p
+      INNER JOIN torneos.jugador_torneo_saga j1 ON p.jugador1_id = j1.id
+      INNER JOIN torneos.jugador_torneo_saga j2 ON p.jugador2_id = j2.id
+      WHERE p.torneo_id = ? 
+        AND p.resultado_confirmado = 1
+        AND p.resultado_ps != 'pendiente'
+      ORDER BY p.ronda ASC, p.id ASC
+    `, [torneoId]);
+
+    if (partidas.length === 0) {
+      await conexion.rollback();
+      return res.status(400).json({ 
+        error: 'No hay partidas confirmadas para procesar' 
+      });
+    }
+
+    console.log(`📊 Procesando ${partidas.length} partidas del torneo ${torneoId}`);
+
+    // ========== 4. CREAR MAPEO DE PARTICIPACIONES ==========
+    const jugadoresUnicos = new Set();
+    partidas.forEach(p => {
+      jugadoresUnicos.add(p.usuario1_id);
+      jugadoresUnicos.add(p.usuario2_id);
+    });
+
+    for (const jugadorId of jugadoresUnicos) {
+      const [participacion] = await conexion.query(
+        `SELECT id FROM torneos.jugador_torneo_saga 
+         WHERE torneo_id = ? AND jugador_id = ?`,
+        [torneoId, jugadorId]
+      );
+
+      if (participacion.length > 0) {
+        await conexion.query(
+          `INSERT IGNORE INTO rankingTorneos.mapeo_participaciones 
+           (sistema_juego, participacion_id, jugador_id, torneo_id)
+           VALUES (?, ?, ?, ?)`,
+          [sistema, participacion[0].id, jugadorId, torneoId]
+        );
+      }
+    }
+
+    // ========== 5. INICIALIZAR ELO DE JUGADORES ==========
+    const eloJugadores = new Map();
+
+    for (const jugadorId of jugadoresUnicos) {
+      const [eloExistente] = await conexion.query(
+        `SELECT elo_actual 
+         FROM rankingTorneos.elo_jugadores 
+         WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
+        [jugadorId, temporadaId, sistema]
+      );
+
+      if (eloExistente.length === 0) {
+        await conexion.query(
+          `INSERT INTO rankingTorneos.elo_jugadores (
+            jugador_id, 
+            temporada_id, 
+            sistema_juego, 
+            elo_actual, 
+            elo_maximo, 
+            elo_minimo
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
+          [jugadorId, temporadaId, sistema, eloInicial, eloInicial, eloInicial]
+        );
+        eloJugadores.set(jugadorId, eloInicial);
+      } else {
+        eloJugadores.set(jugadorId, eloExistente[0].elo_actual);
+      }
+    }
+
+    // ========== 6. FUNCIÓN PARA CALCULAR ELO ==========
+    const calcularNuevoElo = (eloJugador, eloOponente, resultado, K = 32) => {
+      const probabilidadEsperada = 1 / (1 + Math.pow(10, (eloOponente - eloJugador) / 400));
+      const cambio = Math.round(K * (resultado - probabilidadEsperada));
+      
+      return {
+        nuevoElo: eloJugador + cambio,
+        cambio: cambio
+      };
+    };
+
+    // ========== 7. PROCESAR CADA PARTIDA ==========
+    let partidasProcesadas = 0;
+
+    for (const partida of partidas) {
+      if (partida.es_bye) {
+        console.log(`⏭️ Saltando partida BYE en ronda ${partida.ronda}`);
+        continue;
+      }
+
+      const jugador1Id = partida.usuario1_id;
+      const jugador2Id = partida.usuario2_id;
+      
+      const elo1Anterior = eloJugadores.get(jugador1Id);
+      const elo2Anterior = eloJugadores.get(jugador2Id);
+
+      let resultado1, resultado2, resultadoTexto1, resultadoTexto2;
+
+      switch (partida.resultado_ps) {
+        case 'victoria_j1':
+          resultado1 = 1;
+          resultado2 = 0;
+          resultadoTexto1 = 'victoria';
+          resultadoTexto2 = 'derrota';
+          break;
+        case 'victoria_j2':
+          resultado1 = 0;
+          resultado2 = 1;
+          resultadoTexto1 = 'derrota';
+          resultadoTexto2 = 'victoria';
+          break;
+        case 'empate':
+          resultado1 = 0.5;
+          resultado2 = 0.5;
+          resultadoTexto1 = 'empate';
+          resultadoTexto2 = 'empate';
+          break;
+        default:
+          console.warn(`⚠️ Resultado desconocido en partida ${partida.partida_id}`);
+          continue;
+      }
+
+      const cambio1 = calcularNuevoElo(elo1Anterior, elo2Anterior, resultado1);
+      const cambio2 = calcularNuevoElo(elo2Anterior, elo1Anterior, resultado2);
+
+      eloJugadores.set(jugador1Id, cambio1.nuevoElo);
+      eloJugadores.set(jugador2Id, cambio2.nuevoElo);
+
+      // Guardar en historial
+      await conexion.query(
+        `INSERT INTO rankingTorneos.elo_historial (
+          jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, 
+          elo_anterior, elo_nuevo, cambio, oponente_id, oponente_elo, resultado,
+          epoca, faccion, warlord_muerto
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          jugador1Id, temporadaId, sistema, partida.partida_id, torneoId,
+          elo1Anterior, cambio1.nuevoElo, cambio1.cambio,
+          jugador2Id, elo2Anterior, resultadoTexto1,
+          partida.epoca1, partida.faccion1, partida.warlord_muerto_j1
+        ]
+      );
+
+      await conexion.query(
+        `INSERT INTO rankingTorneos.elo_historial (
+          jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, 
+          elo_anterior, elo_nuevo, cambio, oponente_id, oponente_elo, resultado,
+          epoca, faccion, warlord_muerto
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          jugador2Id, temporadaId, sistema, partida.partida_id, torneoId,
+          elo2Anterior, cambio2.nuevoElo, cambio2.cambio,
+          jugador1Id, elo1Anterior, resultadoTexto2,
+          partida.epoca2, partida.faccion2, partida.warlord_muerto_j2
+        ]
+      );
+
+      partidasProcesadas++;
+      console.log(`✅ Partida ${partida.partida_id}: J1(${elo1Anterior}→${cambio1.nuevoElo}) vs J2(${elo2Anterior}→${cambio2.nuevoElo})`);
+    }
+
+    // ========== 8. ACTUALIZAR ELO FINAL DE CADA JUGADOR ==========
+    for (const [jugadorId, eloFinal] of eloJugadores) {
+      const [stats] = await conexion.query(
+        `SELECT partidas_jugadas, victorias, derrotas, empates, 
+                elo_maximo, elo_minimo, warlords_muertos
+         FROM rankingTorneos.elo_jugadores 
+         WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
+        [jugadorId, temporadaId, sistema]
+      );
+
+      const partidasDelJugador = partidas.filter(p => 
+        (p.usuario1_id === jugadorId || p.usuario2_id === jugadorId) && !p.es_bye
+      );
+
+      const victorias = partidasDelJugador.filter(p => 
+        (p.usuario1_id === jugadorId && p.resultado_ps === 'victoria_j1') ||
+        (p.usuario2_id === jugadorId && p.resultado_ps === 'victoria_j2')
+      ).length;
+
+      const derrotas = partidasDelJugador.filter(p => 
+        (p.usuario1_id === jugadorId && p.resultado_ps === 'victoria_j2') ||
+        (p.usuario2_id === jugadorId && p.resultado_ps === 'victoria_j1')
+      ).length;
+
+      const empates = partidasDelJugador.filter(p => 
+        p.resultado_ps === 'empate'
+      ).length;
+
+      const warlordsMuertos = partidasDelJugador.filter(p =>
+        (p.usuario1_id === jugadorId && p.warlord_muerto_j1) ||
+        (p.usuario2_id === jugadorId && p.warlord_muerto_j2)
+      ).length;
+
+      const statsActuales = stats[0];
+      const nuevoEloMaximo = Math.max(eloFinal, statsActuales.elo_maximo);
+      const nuevoEloMinimo = Math.min(eloFinal, statsActuales.elo_minimo);
+
+      await conexion.query(
+        `UPDATE rankingTorneos.elo_jugadores 
+         SET 
+           elo_actual = ?,
+           elo_maximo = ?,
+           elo_minimo = ?,
+           partidas_jugadas = partidas_jugadas + ?,
+           victorias = victorias + ?,
+           derrotas = derrotas + ?,
+           empates = empates + ?,
+           warlords_muertos = warlords_muertos + ?
+         WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
+        [
+          eloFinal, nuevoEloMaximo, nuevoEloMinimo,
+          partidasDelJugador.length, victorias, derrotas, empates, warlordsMuertos,
+          jugadorId, temporadaId, sistema
+        ]
+      );
+    }
+
+    // ========== 9. ACTUALIZAR ESTADÍSTICAS DE TEMPORADA ==========
+    for (const jugadorId of jugadoresUnicos) {
+      await conexion.query(
+        `INSERT INTO rankingTorneos.estadisticas_temporada 
+         (jugador_id, temporada_id, torneos_participados)
+         VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE 
+           torneos_participados = torneos_participados + 1`,
+        [jugadorId, temporadaId]
+      );
+    }
+
+    // ========== 10. MARCAR TORNEO COMO PROCESADO ==========
+    await conexion.query(
+      'UPDATE torneos.torneos_sistemas SET elo_procesado = 1 WHERE id = ?',
+      [torneoId]
+    );
+
+    await conexion.commit();
+
+    console.log(`✅ Ranking actualizado: ${partidasProcesadas} partidas procesadas`);
+
+    res.json({
+      success: true,
+      partidasProcesadas,
+      sistemaJuego: sistema.toUpperCase(),
+      temporada: `Temporada ${añoTorneo}`,
+      jugadoresProcesados: jugadoresUnicos.size,
+      mensaje: 'Ranking ELO actualizado correctamente'
+    });
+
+  } catch (error) {
+    await conexion.rollback();
+    console.error('❌ Error actualizando ranking:', error);
+    res.status(500).json({ 
+      error: 'Error al actualizar ranking del torneo',
+      detalles: error.message 
+    });
+  } finally {
+    conexion.release();
   }
 });
 

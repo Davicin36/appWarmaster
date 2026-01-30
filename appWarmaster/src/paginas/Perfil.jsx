@@ -4,14 +4,23 @@ import { useAuth } from "../servicios/AuthContext";
 import { validarCodigoPostal } from '../servicios/validaciones';
 
 import Footer from '@/paginas/Footer.jsx'
+import EstadisticasDetalladas from "../componente/rankings/EstadisticasDetalladas.jsx";
+import { obtenerCategoria, formatearSistemaJuego } from "../funciones/rankingHelper.js";
 
 import usuarioApi from "../servicios/apiUsuarios.js";
+import apiRanking from "../servicios/apiRanking.js";
 
 import '../estilos/perfil.css'
 
 function Perfil() {
     const { user, logout, cambiarPassword, convertirOrganizador, actualizarUsuario } = useAuth();
     const navigate = useNavigate();
+
+    //ESTADOS PARA RANKING
+    const [rankingData, setRankingData] = useState([]);
+    const [loadingRanking, setLoadingRanking] = useState(true);
+    const [errorRanking, setErrorRanking] = useState("");
+    const [sistemaRankingActivo, setSistemaRankingActivo] = useState(null);
     
     // Estados para edicion de perfil
     const [modoEdicion, setModoEdicion] = useState(false);
@@ -116,6 +125,35 @@ function Perfil() {
         };
 
         cargarTorneosUsuario();
+    }, [user]);
+
+    //  useEffect para cargar datos de ranking
+    useEffect(() => {
+        const cargarRankingJugador = async () => {
+            if (!user?.id) return;
+
+            try {
+                setLoadingRanking(true);
+                setErrorRanking("");
+
+                // Obtener el perfil del jugador en todos los sistemas
+                const data = await apiRanking.obtenerPerfilJugador(user.id);
+                
+                if (data && data.length > 0) {
+                    setRankingData(data);
+                    setSistemaRankingActivo(data[0].sistema_juego); // Seleccionar el primer sistema por defecto
+                } else {
+                    setRankingData([]);
+                }
+            } catch (error) {
+                console.error("❌ Error al cargar ranking:", error);
+                setErrorRanking("No se pudieron cargar tus estadísticas de ranking");
+            } finally {
+                setLoadingRanking(false);
+            }
+        };
+
+        cargarRankingJugador();
     }, [user]);
 
     // Buscar localidad por código postal
@@ -463,6 +501,7 @@ function Perfil() {
             <h1>👤 Mi Perfil</h1>
             
             <div className="perfil-card">
+
                 {/* SECCIÓN COMBINADA: Info Personal y Seguridad */}
                 <section className="info-security-combined">
                     {/* Headers en la misma fila */}
@@ -828,6 +867,138 @@ function Perfil() {
                                 </button>
                             </div>
                         </form>
+                    )}
+                </section>
+
+                 {/* NUEVA SECCIÓN: ESTADÍSTICAS DE RANKING */}
+                <section className="ranking-section">
+                    <div className="section-header">
+                        <h2>🏆 Mis Estadísticas de Ranking</h2>
+                        <Link to="/ranking" className="btn-secondary">
+                            Ver Ranking Completo
+                        </Link>
+                    </div>
+
+                    {loadingRanking ? (
+                        <div className="loading-message">⏳ Cargando estadísticas...</div>
+                    ) : errorRanking ? (
+                        <div className="info-message">
+                            <p>📊 Aún no tienes estadísticas de ranking</p>
+                            <small>Participa en torneos para aparecer en el ranking</small>
+                        </div>
+                    ) : rankingData.length === 0 ? (
+                        <div className="info-message">
+                            <p>📊 Aún no tienes estadísticas de ranking</p>
+                            <small>Participa en torneos para aparecer en el ranking</small>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Tabs de Sistemas */}
+                            {rankingData.length > 1 && (
+                                <div className="ranking-tabs">
+                                    {rankingData.map(sistema => {
+                                        const categoria = obtenerCategoria(sistema.elo_actual);
+                                        return (
+                                            <button
+                                                key={sistema.sistema_juego}
+                                                className={`ranking-tab ${sistemaRankingActivo === sistema.sistema_juego ? 'active' : ''}`}
+                                                onClick={() => setSistemaRankingActivo(sistema.sistema_juego)}
+                                            >
+                                                <span className="tab-sistema">{formatearSistemaJuego(sistema.sistema_juego)}</span>
+                                                <span className="tab-elo">{sistema.elo_actual} ELO</span>
+                                                <span className="tab-categoria">{categoria.icono} {categoria.nombre}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Contenido del Sistema Activo */}
+                            {rankingData.map(sistema => {
+                                if (sistema.sistema_juego !== sistemaRankingActivo) return null;
+                                
+                                const categoria = obtenerCategoria(sistema.elo_actual);
+                                const porcentajeVictorias = sistema.partidas_jugadas > 0 
+                                    ? ((sistema.victorias / sistema.partidas_jugadas) * 100).toFixed(1) 
+                                    : 0;
+
+                                return (
+                                    <div key={sistema.sistema_juego} className="ranking-content">
+                                        {/* Resumen Principal */}
+                                        <div className="ranking-resumen">
+                                            <div className="ranking-principal">
+                                                <div className="elo-display">
+                                                    <span className="elo-numero">{sistema.elo_actual}</span>
+                                                    <span className="elo-label">ELO Rating</span>
+                                                </div>
+                                                
+                                                <div className="ranking-info">
+                                                    <div className="categoria-display">
+                                                        <span className={`categoria-icono ${categoria.clase}`}>
+                                                            {categoria.icono}
+                                                        </span>
+                                                        <div>
+                                                            <span className="categoria-nombre">{categoria.nombre}</span>
+                                                            <span className="sistema-nombre">{formatearSistemaJuego(sistema.sistema_juego)}</span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="posicion-ranking">
+                                                        <span className="posicion-numero">#{sistema.posicion_ranking || '?'}</span>
+                                                        <span className="posicion-label">en el ranking</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Stats Grid */}
+                                            <div className="stats-grid">
+                                                <div className="stat-box">
+                                                    <span className="stat-icono">🎮</span>
+                                                    <span className="stat-valor">{sistema.partidas_jugadas}</span>
+                                                    <span className="stat-label">Partidas Jugadas</span>
+                                                </div>
+                                                
+                                                <div className="stat-box victoria">
+                                                    <span className="stat-icono">✅</span>
+                                                    <span className="stat-valor">{sistema.victorias}</span>
+                                                    <span className="stat-label">Victorias</span>
+                                                </div>
+                                                
+                                                <div className="stat-box derrota">
+                                                    <span className="stat-icono">❌</span>
+                                                    <span className="stat-valor">{sistema.derrotas}</span>
+                                                    <span className="stat-label">Derrotas</span>
+                                                </div>
+                                                
+                                                <div className="stat-box empate">
+                                                    <span className="stat-icono">🤝</span>
+                                                    <span className="stat-valor">{sistema.empates}</span>
+                                                    <span className="stat-label">Empates</span>
+                                                </div>
+                                                
+                                                <div className="stat-box destacado">
+                                                    <span className="stat-icono">📈</span>
+                                                    <span className="stat-valor">{porcentajeVictorias}%</span>
+                                                    <span className="stat-label">% Victoria</span>
+                                                </div>
+                                                
+                                                <div className="stat-box">
+                                                    <span className="stat-icono">🏆</span>
+                                                    <span className="stat-valor">{sistema.elo_maximo}</span>
+                                                    <span className="stat-label">ELO Máximo</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Estadísticas Detalladas */}
+                                        <EstadisticasDetalladas 
+                                            jugadorId={user.id} 
+                                            sistemaJuego={sistema.sistema_juego} 
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </>
                     )}
                 </section>
 

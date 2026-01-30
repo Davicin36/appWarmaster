@@ -1,10 +1,11 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
-import { pool } from '../config/bd.js';
+import { pool, executeCrossTransaction } from '../config/bd.js';
 import { enviarInvitarJugador }  from '../utils/emailInvitarTorneoInd.js';
 import { enviarInvitacionOrganizadorNoRegistrado, enviarInvitacionOrganizadorRegistrado } from '../utils/emailInvitarOrganizador.js'; 
 import  { emailTorneo }  from '../utils/emailComunicaciones.js';
+import { actualizarEloAutomatico } from '../utilsRanking/calculoAutoRanking.js';
 import { verificarToken, verificarOrganizadorTorneo } from '../middleware/auth.js';
 import { 
   validarFecha,
@@ -2364,16 +2365,14 @@ router.get('/:torneoId/jugadores/:jugadorId/lista-pdf', verificarToken, async (r
     }
 });
 
-// =====CAMBIAR ESTADO DEL TORNEO=====
+// =====CAMBIAR ESTADO DEL TORNEO WARMASTER=====
 
-router.put('/:torneoId/estado', verificarToken, async (req, res) => {
-  const connection = await pool.getConnection();
+router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const { torneoId } = req.params;
+  const { estado } = req.body;
+  const userId = req.usuario.userId;
   
   try {
-    const { torneoId } = req.params;
-    const { estado } = req.body;
-    const userId = req.usuario.userId;
-    
     // Validar que se envió el estado
     if (!estado) {
       return res.status(400).json(errorResponse('El estado es requerido'));
@@ -2387,69 +2386,136 @@ router.put('/:torneoId/estado', verificarToken, async (req, res) => {
       );
     }
     
-    await connection.beginTransaction();
-    
-    // Verificar que el torneo existe y que el usuario es el creador
-    const [torneo] = await connection.execute(
-      'SELECT id, created_by, estado, nombre_torneo FROM torneos_sistemas WHERE id = ?',
-      [torneoId]
-    );
-    
-    if (torneo.length === 0) {
-      await connection.rollback();
-      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    // Si el estado es "finalizado", usar transacción cross-database
+    if (estado === 'finalizado') {
+      const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
+        // Verificar que el torneo existe y es Warmaster
+        const [torneo] = await connTorneos.execute(
+          'SELECT id, created_by, estado, nombre_torneo, sistema FROM torneos_sistemas WHERE id = ? AND sistema = ?',
+          [torneoId, 'WARMASTER']
+        );
+        
+        if (torneo.length === 0) {
+          throw new Error('Torneo WARMASTER no encontrado');
+        }
+        
+        const estadoActual = torneo[0].estado;
+        
+        // Validaciones
+        if (estadoActual === 'cancelado') {
+          throw new Error('No se puede cambiar el estado de un torneo cancelado');
+        }
+        
+        if (estadoActual === 'finalizado') {
+          throw new Error('El torneo ya está finalizado');
+        }
+        
+        // Actualizar el estado a finalizado
+        await connTorneos.execute(
+          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
+          [estado, torneoId]
+        );
+        
+        console.log(`✅ Torneo WARMASTER ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
+        
+        // Calcular ELO automáticamente
+        let resultadoElo = null;
+        let errorElo = null;
+        
+        try {
+          resultadoElo = await actualizarEloAutomatico(connTorneos, connRanking, torneoId);
+          console.log(`✅ ELO calculado: ${resultadoElo.partidasProcesadas} partidas`);
+        } catch (eloError) {
+          console.error('⚠️ Error calculando ELO:', eloError.message);
+          errorElo = eloError.message;
+        }
+        
+        return {
+          id: parseInt(torneoId),
+          nombre_torneo: torneo[0].nombre_torneo,
+          sistema: torneo[0].sistema,
+          estado_anterior: estadoActual,
+          estado_nuevo: estado,
+          elo: resultadoElo,
+          errorElo: errorElo
+        };
+      });
+      
+      // Construir respuesta
+      let mensaje = `Torneo finalizado correctamente`;
+      
+      if (resultado.elo) {
+        mensaje += ` - ELO calculado: ${resultado.elo.partidasProcesadas} partidas procesadas en ${resultado.elo.sistemaJuego}`;
+      }
+      
+      if (resultado.errorElo) {
+        mensaje += ` - Advertencia: ${resultado.errorElo}`;
+      }
+      
+      return res.json(successResponse(mensaje, resultado));
+      
+    } else {
+      // Para otros estados (pendiente, en_curso)
+      const connection = await pool.getConnection();
+      
+      try {
+        await connection.beginTransaction();
+        
+        const [torneo] = await connection.execute(
+          'SELECT id, created_by, estado, nombre_torneo FROM torneos_sistemas WHERE id = ? AND sistema = ?',
+          [torneoId, 'WARMASTER']
+        );
+        
+        if (torneo.length === 0) {
+          await connection.rollback();
+          return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+        
+        const estadoActual = torneo[0].estado;
+        
+        if (estadoActual === 'cancelado') {
+          await connection.rollback();
+          return res.status(400).json(
+            errorResponse('No se puede cambiar el estado de un torneo cancelado')
+          );
+        }
+        
+        if (estadoActual === 'finalizado' && estado !== 'finalizado') {
+          await connection.rollback();
+          return res.status(400).json(
+            errorResponse('No se puede cambiar el estado de un torneo finalizado')
+          );
+        }
+        
+        await connection.execute(
+          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
+          [estado, torneoId]
+        );
+        
+        await connection.commit();
+        
+        console.log(`✅ Estado del torneo ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
+        
+        res.json(
+          successResponse(`Estado del torneo actualizado a "${estado}"`, {
+            id: parseInt(torneoId),
+            nombre_torneo: torneo[0].nombre_torneo,
+            estado_anterior: estadoActual,
+            estado_nuevo: estado
+          })
+        );
+        
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     }
-    
-    // Verificar que el usuario es el creador del torneo
-    if (torneo[0].created_by !== userId) {
-      await connection.rollback();
-      return res.status(403).json(
-        errorResponse('No tienes permiso para cambiar el estado de este torneo')
-      );
-    }
-    
-    const estadoActual = torneo[0].estado;
-    
-    // Validaciones de transiciones de estado
-    if (estadoActual === 'cancelado') {
-      await connection.rollback();
-      return res.status(400).json(
-        errorResponse('No se puede cambiar el estado de un torneo cancelado')
-      );
-    }
-    
-    if (estadoActual === 'finalizado' && estado !== 'finalizado') {
-      await connection.rollback();
-      return res.status(400).json(
-        errorResponse('No se puede cambiar el estado de un torneo finalizado')
-      );
-    }
-    
-    // Actualizar el estado
-    await connection.execute(
-      'UPDATE torneos_sistemas SET estado = ?  WHERE id = ?',
-      [estado, torneoId]
-    );
-    
-    await connection.commit();
-    
-    console.log(`✅ Estado del torneo ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
-    
-    res.json(
-      successResponse(`Estado del torneo actualizado a "${estado}"`, {
-        id: parseInt(torneoId),
-        nombre_torneo: torneo[0].nombre_torneo,
-        estado_anterior: estadoActual,
-        estado_nuevo: estado
-      })
-    );
     
   } catch (error) {
-    await connection.rollback();
-    console.error('❌ Error al cambiar estado del torneo:', error);
-    res.status(500).json(errorResponse('Error al cambiar el estado del torneo'));
-  } finally {
-    connection.release();
+    console.error('❌ Error al cambiar estado del torneo Warmaster:', error);
+    res.status(500).json(errorResponse(error.message || 'Error al cambiar el estado del torneo'));
   }
 });
 
