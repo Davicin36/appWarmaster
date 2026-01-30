@@ -35,12 +35,13 @@ router.get('/sistemas-juego', async (req, res) => {
     
     const sistemasConStats = await Promise.all(
       sistemas.map(async (sistema) => {
-        const [stats] = await poolGeneral.query(`
+        // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
+        const [stats] = await poolRanking.query(`
           SELECT 
             COUNT(DISTINCT e.jugador_id) as total_jugadores,
             SUM(e.partidas_jugadas) as total_partidas
-          FROM rankingTorneos.elo_jugadores e
-          JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+          FROM elo_jugadores e
+          JOIN temporadas t ON e.temporada_id = t.id
           WHERE t.año = ? AND e.sistema_juego = ?
         `, [añoActual, sistema]);
         
@@ -139,6 +140,7 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
+    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
     const [ranking] = await poolGeneral.query(`
       SELECT 
         e.jugador_id,
@@ -201,6 +203,7 @@ router.get('/ranking-global', async (req, res) => {
     const { limit = 100, minPartidas = 0 } = req.query;
     const añoActual = new Date().getFullYear();
     
+    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
     const [ranking] = await poolGeneral.query(`
       SELECT 
         e.jugador_id,
@@ -262,6 +265,7 @@ router.get('/jugador/:jugadorId', async (req, res) => {
     const { jugadorId } = req.params;
     const añoActual = new Date().getFullYear();
     
+    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
     const [datos] = await poolGeneral.query(`
       SELECT 
         e.*,
@@ -313,6 +317,7 @@ router.get('/jugador/:jugadorId/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
+    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
     const [datos] = await poolGeneral.query(`
       SELECT 
         e.*,
@@ -366,6 +371,7 @@ router.get('/jugador/:jugadorId/:sistemaJuego/historial', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
+    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
     const [historial] = await poolGeneral.query(`
       SELECT 
         h.*,
@@ -625,7 +631,8 @@ router.get('/estadisticas/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    const [stats] = await poolGeneral.query(`
+    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
+    const [stats] = await poolRanking.query(`
       SELECT 
         COUNT(DISTINCT e.jugador_id) as total_jugadores,
         SUM(e.partidas_jugadas) as total_partidas,
@@ -633,8 +640,8 @@ router.get('/estadisticas/:sistemaJuego', async (req, res) => {
         MAX(e.elo_actual) as elo_maximo,
         MIN(e.elo_actual) as elo_minimo,
         e.sistema_juego
-      FROM rankingTorneos.elo_jugadores e
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM elo_jugadores e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE t.año = ? AND e.sistema_juego = ?
       GROUP BY e.sistema_juego
     `, [añoActual, sistemaJuego]);
@@ -650,15 +657,16 @@ router.get('/estadisticas-globales', async (req, res) => {
   try {
     const añoActual = new Date().getFullYear();
     
-    const [stats] = await poolGeneral.query(`
+    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
+    const [stats] = await poolRanking.query(`
       SELECT 
         e.sistema_juego,
         COUNT(DISTINCT e.jugador_id) as total_jugadores,
         SUM(e.partidas_jugadas) as total_partidas,
         ROUND(AVG(e.elo_actual), 2) as elo_promedio,
         MAX(e.elo_actual) as elo_maximo
-      FROM rankingTorneos.elo_jugadores e
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM elo_jugadores e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE t.año = ?
       GROUP BY e.sistema_juego
       ORDER BY total_jugadores DESC
@@ -686,6 +694,7 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
+    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
     const [estadisticas] = await poolGeneral.query(`
       SELECT 
         e.*,
@@ -780,13 +789,14 @@ router.get('/estadisticas/:sistemaJuego/epocas-populares', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    const [estadisticas] = await poolGeneral.query(`
+    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
+    const [estadisticas] = await poolRanking.query(`
       SELECT 
         e.epoca_favorita,
         COUNT(*) as jugadores_usando,
         e.epocas_jugadas
-      FROM rankingTorneos.estadisticas_jugador e
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM estadisticas_jugador e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE t.año = ? AND e.sistema_juego = ? AND e.epoca_favorita IS NOT NULL
       GROUP BY e.epoca_favorita
       ORDER BY jugadores_usando DESC
@@ -812,13 +822,14 @@ router.get('/estadisticas/:sistemaJuego/facciones-populares', async (req, res) =
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    const [estadisticas] = await poolGeneral.query(`
+    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
+    const [estadisticas] = await poolRanking.query(`
       SELECT 
         e.faccion_favorita,
         COUNT(*) as jugadores_usando,
         e.facciones_jugadas
-      FROM rankingTorneos.estadisticas_jugador e
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM estadisticas_jugador e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE t.año = ? AND e.sistema_juego = ? AND e.faccion_favorita IS NOT NULL
       GROUP BY e.faccion_favorita
       ORDER BY jugadores_usando DESC
