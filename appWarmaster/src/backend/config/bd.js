@@ -25,10 +25,10 @@ const baseConfigTorneos = {
 
 // ✅ Configuración base para ranking (NUEVO)
 const baseConfigRanking = {
-  host: process.env.DB_RANKING_HOST,
-  port: process.env.DB_RANKING_PORT ||3306,
-  user: process.env.DB_RANKING_USER,
-  password: process.env.DB_RANKING_PASSWORD,
+  host: process.env.DB_RANKING_HOST || process.env.DB_HOST,  // ✅ Fallback
+  port: process.env.DB_RANKING_PORT || process.env.DB_PORT || 3306,  // ✅ Fallback
+  user: process.env.DB_RANKING_USER || process.env.DB_USER,  // ✅ Fallback
+  password: process.env.DB_RANKING_PASSWORD || process.env.DB_PASSWORD,  // ✅ Fallback
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

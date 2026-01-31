@@ -1,6 +1,6 @@
-// routes/elo.routes.js
+// routes/rutasRanking.js
 import express from 'express';
-import { pool, poolRanking, poolGeneral, executeCrossTransaction } from '../config/bd.js';
+import { pool, poolRanking, executeCrossTransaction } from '../config/bd.js';
 import { verificarToken, verificarSuperAdmin } from '../middleware/auth.js';
 import { 
     obtenerTablas, 
@@ -9,7 +9,7 @@ import {
     obtenerJugadorIdDesdeParticipacion 
 } from '../utilsRanking/tablasJuegos.js';
 
-import  { actualizarEloAutomatico }  from '../utilsRanking/calculoAutoRanking.js';
+import { actualizarEloAutomatico } from '../utilsRanking/calculoAutoRanking.js';
 
 const router = express.Router();
 
@@ -35,7 +35,6 @@ router.get('/sistemas-juego', async (req, res) => {
     
     const sistemasConStats = await Promise.all(
       sistemas.map(async (sistema) => {
-        // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
         const [stats] = await poolRanking.query(`
           SELECT 
             COUNT(DISTINCT e.jugador_id) as total_jugadores,
@@ -140,7 +139,7 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ PASO 1: Obtener datos de ranking (sin JOIN a usuarios)
+    // PASO 1: Obtener datos de ranking
     const [rankingData] = await poolRanking.query(`
       SELECT 
         e.jugador_id,
@@ -177,14 +176,12 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       LIMIT ?
     `, [parseInt(añoActual), sistemaJuego, parseInt(minPartidas), parseInt(limit)]);
     
-    // ✅ PASO 2: Obtener IDs de jugadores
-    const jugadorIds = rankingData.map(r => r.jugador_id);
-    
-    if (jugadorIds.length === 0) {
+    if (rankingData.length === 0) {
       return res.json([]);
     }
     
-    // ✅ PASO 3: Obtener datos de usuarios
+    // PASO 2: Obtener datos de usuarios
+    const jugadorIds = rankingData.map(r => r.jugador_id);
     const placeholders = jugadorIds.map(() => '?').join(',');
     const [usuarios] = await pool.query(
       `SELECT id, nombre, apellidos, nombre_alias, email, club 
@@ -193,13 +190,12 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       jugadorIds
     );
     
-    // ✅ PASO 4: Crear un mapa de usuarios para búsqueda rápida
+    // PASO 3: Combinar datos
     const usuariosMap = {};
     usuarios.forEach(u => {
       usuariosMap[u.id] = u;
     });
     
-    // ✅ PASO 5: Combinar los datos
     const ranking = rankingData.map(jugador => {
       const usuario = usuariosMap[jugador.jugador_id] || {};
       return {
@@ -213,7 +209,6 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       };
     });
     
-    console.log(ranking);
     res.json(ranking);
   } catch (error) {
     console.error('Error obteniendo ranking:', error);
@@ -221,22 +216,19 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
   }
 });
 
-//======RANKING GLOBAL======
+// ============================================
+// RANKING GLOBAL
+// ============================================
 
 router.get('/ranking-global', async (req, res) => {
   try {
     const { limit = 100, minPartidas = 0 } = req.query;
     const añoActual = new Date().getFullYear();
     
-    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
-    const [ranking] = await poolGeneral.query(`
+    // PASO 1: Obtener datos de ranking
+    const [rankingData] = await poolRanking.query(`
       SELECT 
         e.jugador_id,
-        u.nombre,
-        u.apellidos,
-        u.nombre_alias,
-        u.email,
-        u.club,
         e.sistema_juego,
         e.elo_actual,
         e.partidas_jugadas,
@@ -257,9 +249,8 @@ router.get('/ranking-global', async (req, res) => {
             ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) DESC,
             e.elo_actual DESC
         ) as posicion_global
-      FROM rankingTorneos.elo_jugadores e
-      JOIN torneos.usuarios u ON e.jugador_id = u.id
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM elo_jugadores e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE t.año = ? AND e.partidas_jugadas >= ?
       ORDER BY 
         e.partidas_jugadas DESC,
@@ -268,13 +259,40 @@ router.get('/ranking-global', async (req, res) => {
       LIMIT ?
     `, [añoActual, parseInt(minPartidas), parseInt(limit)]);
     
-    const rankingConCategoria = ranking.map(jugador => ({
-      ...jugador,
-      categoria: obtenerCategoria(jugador.elo_actual)
-    }));
+    if (rankingData.length === 0) {
+      return res.json([]);
+    }
     
-    res.json(rankingConCategoria);
-    console.log(rankingConCategoria);
+    // PASO 2: Obtener datos de usuarios
+    const jugadorIds = rankingData.map(r => r.jugador_id);
+    const placeholders = jugadorIds.map(() => '?').join(',');
+    const [usuarios] = await pool.query(
+      `SELECT id, nombre, apellidos, nombre_alias, email, club 
+       FROM usuarios 
+       WHERE id IN (${placeholders})`,
+      jugadorIds
+    );
+    
+    // PASO 3: Combinar datos
+    const usuariosMap = {};
+    usuarios.forEach(u => {
+      usuariosMap[u.id] = u;
+    });
+    
+    const ranking = rankingData.map(jugador => {
+      const usuario = usuariosMap[jugador.jugador_id] || {};
+      return {
+        ...jugador,
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        nombre_alias: usuario.nombre_alias,
+        email: usuario.email,
+        club: usuario.club,
+        categoria: obtenerCategoria(jugador.elo_actual)
+      };
+    });
+    
+    res.json(ranking);
   } catch (error) {
     console.error('Error obteniendo ranking global:', error);
     res.status(500).json({ error: 'Error al obtener ranking global' });
@@ -290,43 +308,51 @@ router.get('/jugador/:jugadorId', async (req, res) => {
     const { jugadorId } = req.params;
     const añoActual = new Date().getFullYear();
     
-    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
-    const [datos] = await poolGeneral.query(`
+    // PASO 1: Obtener datos de ELO
+    const [datosElo] = await poolRanking.query(`
       SELECT 
         e.*,
-        u.nombre,
-        u.apellidos,
-        u.nombre_alias,
-        u.email,
-        u.club,
         t.nombre as temporada_nombre,
         t.año as temporada_año,
         ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) as porcentaje_victorias,
         (SELECT COUNT(*) + 1 
-         FROM rankingTorneos.elo_jugadores e2 
+         FROM elo_jugadores e2 
          WHERE e2.temporada_id = e.temporada_id 
          AND e2.sistema_juego = e.sistema_juego
          AND e2.elo_actual > e.elo_actual) as posicion_ranking
-      FROM rankingTorneos.elo_jugadores e
-      JOIN torneos.usuarios u ON e.jugador_id = u.id
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM elo_jugadores e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE e.jugador_id = ? AND t.año = ?
       ORDER BY e.sistema_juego
     `, [jugadorId, añoActual]);
     
-    if (datos.length === 0) {
+    if (datosElo.length === 0) {
       return res.status(404).json({ 
         mensaje: 'Jugador no tiene datos de ELO en la temporada actual',
         jugadorId
       });
     }
     
-    const datosConCategoria = datos.map(d => ({
+    // PASO 2: Obtener datos del usuario
+    const [usuarios] = await pool.query(
+      'SELECT nombre, apellidos, nombre_alias, email, club FROM usuarios WHERE id = ?',
+      [jugadorId]
+    );
+    
+    const usuario = usuarios[0] || {};
+    
+    // PASO 3: Combinar datos
+    const datos = datosElo.map(d => ({
       ...d,
+      nombre: usuario.nombre,
+      apellidos: usuario.apellidos,
+      nombre_alias: usuario.nombre_alias,
+      email: usuario.email,
+      club: usuario.club,
       categoria: obtenerCategoria(d.elo_actual)
     }));
     
-    res.json(datosConCategoria);
+    res.json(datos);
   } catch (error) {
     console.error('Error obteniendo datos del jugador:', error);
     res.status(500).json({ error: 'Error al obtener datos del jugador' });
@@ -342,31 +368,25 @@ router.get('/jugador/:jugadorId/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
-    const [datos] = await poolGeneral.query(`
+    // PASO 1: Obtener datos de ELO
+    const [datosElo] = await poolRanking.query(`
       SELECT 
         e.*,
-        u.nombre,
-        u.apellidos,
-        u.nombre_alias,
-        u.email,
-        u.club,
         t.nombre as temporada_nombre,
         t.año as temporada_año,
         ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) as porcentaje_victorias,
         (SELECT COUNT(*) + 1 
-         FROM rankingTorneos.elo_jugadores e2 
+         FROM elo_jugadores e2 
          WHERE e2.temporada_id = e.temporada_id 
          AND e2.sistema_juego = e.sistema_juego
          AND e2.elo_actual > e.elo_actual) as posicion_ranking
-      FROM rankingTorneos.elo_jugadores e
-      JOIN torneos.usuarios u ON e.jugador_id = u.id
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
+      FROM elo_jugadores e
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE e.jugador_id = ? AND t.año = ? AND e.sistema_juego = ?
       LIMIT 1
     `, [jugadorId, añoActual, sistemaJuego]);
     
-    if (datos.length === 0) {
+    if (datosElo.length === 0) {
       return res.status(404).json({ 
         mensaje: 'Jugador no tiene datos de ELO en este sistema',
         elo_inicial: 1500,
@@ -374,12 +394,26 @@ router.get('/jugador/:jugadorId/:sistemaJuego', async (req, res) => {
       });
     }
     
-    const datosConCategoria = {
-      ...datos[0],
-      categoria: obtenerCategoria(datos[0].elo_actual)
+    // PASO 2: Obtener datos del usuario
+    const [usuarios] = await pool.query(
+      'SELECT nombre, apellidos, nombre_alias, email, club FROM usuarios WHERE id = ?',
+      [jugadorId]
+    );
+    
+    const usuario = usuarios[0] || {};
+    
+    // PASO 3: Combinar datos
+    const datos = {
+      ...datosElo[0],
+      nombre: usuario.nombre,
+      apellidos: usuario.apellidos,
+      nombre_alias: usuario.nombre_alias,
+      email: usuario.email,
+      club: usuario.club,
+      categoria: obtenerCategoria(datosElo[0].elo_actual)
     };
     
-    res.json(datosConCategoria);
+    res.json(datos);
   } catch (error) {
     console.error('Error obteniendo datos del jugador:', error);
     res.status(500).json({ error: 'Error al obtener datos del jugador' });
@@ -396,24 +430,68 @@ router.get('/jugador/:jugadorId/:sistemaJuego/historial', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
-    const [historial] = await poolGeneral.query(`
+    // PASO 1: Obtener historial de ELO
+    const [historialElo] = await poolRanking.query(`
       SELECT 
-        h.*,
-        u.nombre as oponente_nombre,
-        u.apellidos as oponente_apellidos,
-        u.nombre_alias as oponente_alias,
-        t.nombre_torneo as torneo_nombre,
-        t.fecha_inicio as torneo_fecha,
-        t.sistema as torneo_sistema
-      FROM rankingTorneos.elo_historial h
-      JOIN torneos.usuarios u ON h.oponente_id = u.id
-      JOIN torneos.torneos_sistemas t ON h.torneo_id = t.id
-      JOIN rankingTorneos.temporadas temp ON h.temporada_id = temp.id
+        h.*
+      FROM elo_historial h
+      JOIN temporadas temp ON h.temporada_id = temp.id
       WHERE h.jugador_id = ? AND temp.año = ? AND h.sistema_juego = ?
       ORDER BY h.fecha DESC
       LIMIT ?
     `, [jugadorId, añoActual, sistemaJuego, parseInt(limit)]);
+    
+    if (historialElo.length === 0) {
+      return res.json([]);
+    }
+    
+    // PASO 2: Obtener IDs únicos de oponentes y torneos
+    const oponenteIds = [...new Set(historialElo.map(h => h.oponente_id))];
+    const torneoIds = [...new Set(historialElo.map(h => h.torneo_id))];
+    
+    // PASO 3: Obtener datos de oponentes
+    const placeholdersOponentes = oponenteIds.map(() => '?').join(',');
+    const [oponentes] = await pool.query(
+      `SELECT id, nombre, apellidos, nombre_alias 
+       FROM usuarios 
+       WHERE id IN (${placeholdersOponentes})`,
+      oponenteIds
+    );
+    
+    const oponentesMap = {};
+    oponentes.forEach(o => {
+      oponentesMap[o.id] = o;
+    });
+    
+    // PASO 4: Obtener datos de torneos
+    const placeholdersTorneos = torneoIds.map(() => '?').join(',');
+    const [torneos] = await pool.query(
+      `SELECT id, nombre_torneo, fecha_inicio, sistema 
+       FROM torneos_sistemas 
+       WHERE id IN (${placeholdersTorneos})`,
+      torneoIds
+    );
+    
+    const torneosMap = {};
+    torneos.forEach(t => {
+      torneosMap[t.id] = t;
+    });
+    
+    // PASO 5: Combinar datos
+    const historial = historialElo.map(h => {
+      const oponente = oponentesMap[h.oponente_id] || {};
+      const torneo = torneosMap[h.torneo_id] || {};
+      
+      return {
+        ...h,
+        oponente_nombre: oponente.nombre,
+        oponente_apellidos: oponente.apellidos,
+        oponente_alias: oponente.nombre_alias,
+        torneo_nombre: torneo.nombre_torneo,
+        torneo_fecha: torneo.fecha_inicio,
+        torneo_sistema: torneo.sistema
+      };
+    });
     
     res.json(historial);
   } catch (error) {
@@ -431,7 +509,7 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
   
   try {
     const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
-      // 1. Obtener información del torneo
+      // Obtener información del torneo
       const [torneo] = await connTorneos.query(
         'SELECT * FROM torneos_sistemas WHERE id = ?',
         [torneoId]
@@ -459,176 +537,17 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
         throw new Error(`Sistema de juego "${sistemaJuego}" no es válido`);
       }
       
-      // Obtener nombres de tablas dinámicamente
-      const tablas = obtenerTablas(sistemaJuego);
-      console.log(`📋 Procesando torneo ${torneoId} - Sistema: ${sistemaJuego.toUpperCase()}`);
-      console.log(`📋 Usando tablas: ${tablas.partidas}, ${tablas.jugadorTorneo}`);
-      
-      // 2. Obtener o crear temporada
-      const añoActual = new Date().getFullYear();
-      let [temporada] = await connRanking.query(
-        'SELECT id, elo_inicial FROM temporadas WHERE año = ? AND sistema_juego = ? LIMIT 1',
-        [añoActual, sistemaJuego]
+      // Llamar a la función de actualización automática
+      const resultadoElo = await actualizarEloAutomatico(
+        connTorneos,
+        connRanking,
+        torneoId
       );
       
-      if (temporada.length === 0) {
-        const [result] = await connRanking.query(
-          `INSERT INTO temporadas (nombre, año, sistema_juego, fecha_inicio, fecha_fin, activa, elo_inicial)
-           VALUES (?, ?, ?, ?, ?, TRUE, 1500)`,
-          [
-            `${sistemaJuego.toUpperCase()} - Temporada ${añoActual}`,
-            añoActual,
-            sistemaJuego,
-            `${añoActual}-01-01`,
-            `${añoActual}-12-31`
-          ]
-        );
-        
-        [temporada] = await connRanking.query(
-          'SELECT id, elo_inicial FROM temporadas WHERE id = ?',
-          [result.insertId]
-        );
-      }
-      
-      const temporadaId = temporada[0].id;
-      const eloInicial = temporada[0].elo_inicial;
-      
-      // 3. Obtener partidas finalizadas usando la tabla dinámica
-      const [partidas] = await connTorneos.query(
-        `SELECT 
-          id,
-          jugador1_id,
-          jugador2_id,
-          resultado_ps
-         FROM ${tablas.partidas}
-         WHERE torneo_id = ? 
-         AND resultado_confirmado = TRUE 
-         AND es_bye = FALSE
-         ORDER BY ronda, mesa`,
-        [torneoId]
-      );
-      
-      if (partidas.length === 0) {
-        throw new Error('No hay partidas confirmadas en este torneo');
-      }
-      
-      console.log(`📊 Procesando ${partidas.length} partidas confirmadas`);
-      
-      // 4. Procesar cada partida
-      let partidasProcesadas = 0;
-      
-      for (const partida of partidas) {
-        // Obtener jugador_id real desde jugador_torneo_X
-        const jugador1Id = await obtenerJugadorIdDesdeParticipacion(
-          connTorneos,
-          partida.jugador1_id,
-          sistemaJuego
-        );
-        
-        const jugador2Id = await obtenerJugadorIdDesdeParticipacion(
-          connTorneos,
-          partida.jugador2_id,
-          sistemaJuego
-        );
-        
-        if (!jugador1Id || !jugador2Id) {
-          console.warn(`⚠️  Partida ${partida.id}: No se pudieron obtener los IDs de jugadores`);
-          continue;
-        }
-        
-        // Obtener o crear ELO
-        const jugador1 = await obtenerOCrearElo(
-          connRanking,
-          jugador1Id,
-          temporadaId,
-          sistemaJuego,
-          eloInicial
-        );
-        
-        const jugador2 = await obtenerOCrearElo(
-          connRanking,
-          jugador2Id,
-          temporadaId,
-          sistemaJuego,
-          eloInicial
-        );
-        
-        // Determinar ganador según resultado_ps
-        let ganador;
-        if (partida.resultado_ps === 'victoria_j1') {
-          ganador = 1;
-        } else if (partida.resultado_ps === 'victoria_j2') {
-          ganador = 2;
-        } else if (partida.resultado_ps === 'empate') {
-          ganador = 0;
-        } else {
-          console.warn(`⚠️  Partida ${partida.id}: resultado pendiente`);
-          continue;
-        }
-        
-        // Calcular nuevos ELOs
-        const cambios = eloSystem.procesarPartida(
-          { elo: jugador1.elo_actual, partidasJugadas: jugador1.partidas_jugadas },
-          { elo: jugador2.elo_actual, partidasJugadas: jugador2.partidas_jugadas },
-          ganador
-        );
-        
-        // Actualizar ELOs
-        await actualizarEloJugador(
-          connRanking,
-          jugador1Id,
-          temporadaId,
-          sistemaJuego,
-          cambios.jugador1.eloNuevo,
-          cambios.jugador1.resultado
-        );
-        
-        await actualizarEloJugador(
-          connRanking,
-          jugador2Id,
-          temporadaId,
-          sistemaJuego,
-          cambios.jugador2.eloNuevo,
-          cambios.jugador2.resultado
-        );
-        
-        // Guardar en historial
-        await connRanking.query(
-          `INSERT INTO elo_historial 
-           (jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, elo_anterior, elo_nuevo, 
-            cambio, oponente_id, oponente_elo, resultado)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            jugador1Id, temporadaId, sistemaJuego, partida.id, torneoId,
-            cambios.jugador1.eloAnterior, cambios.jugador1.eloNuevo, cambios.jugador1.cambio,
-            jugador2Id, jugador2.elo_actual, cambios.jugador1.resultado
-          ]
-        );
-        
-        await connRanking.query(
-          `INSERT INTO elo_historial 
-           (jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, elo_anterior, elo_nuevo, 
-            cambio, oponente_id, oponente_elo, resultado)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            jugador2Id, temporadaId, sistemaJuego, partida.id, torneoId,
-            cambios.jugador2.eloAnterior, cambios.jugador2.eloNuevo, cambios.jugador2.cambio,
-            jugador1Id, jugador1.elo_actual, cambios.jugador2.resultado
-          ]
-        );
-        
-        partidasProcesadas++;
-      }
-      
-      // 5. Marcar torneo como procesado
-      await connTorneos.query(
-        'UPDATE torneos_sistemas SET elo_procesado = TRUE WHERE id = ?',
-        [torneoId]
-      );
-      
-      console.log(`✅ Torneo ${torneoId} (${sistemaJuego.toUpperCase()}) procesado: ${partidasProcesadas} partidas`);
-      
-      return { partidasProcesadas, sistemaJuego };
+      return {
+        partidasProcesadas: resultadoElo.partidasProcesadas,
+        sistemaJuego: sistemaJuego
+      };
     });
     
     res.json({ 
@@ -656,7 +575,6 @@ router.get('/estadisticas/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
     const [stats] = await poolRanking.query(`
       SELECT 
         COUNT(DISTINCT e.jugador_id) as total_jugadores,
@@ -682,7 +600,6 @@ router.get('/estadisticas-globales', async (req, res) => {
   try {
     const añoActual = new Date().getFullYear();
     
-    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
     const [stats] = await poolRanking.query(`
       SELECT 
         e.sistema_juego,
@@ -708,8 +625,6 @@ router.get('/estadisticas-globales', async (req, res) => {
 // ENDPOINTS - ESTADÍSTICAS DETALLADAS
 // ============================================
 
-// ===== OBTENER ESTADISTICAS DE CADA JUGADOR========
-
 router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (req, res) => {
   try {
     const { jugadorId, sistemaJuego } = req.params;
@@ -719,8 +634,8 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
-    const [estadisticas] = await poolGeneral.query(`
+    // PASO 1: Obtener estadísticas
+    const [estadisticas] = await poolRanking.query(`
       SELECT 
         e.*,
         ej.elo_actual,
@@ -728,17 +643,12 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
         ej.partidas_jugadas,
         ej.victorias,
         ej.derrotas,
-        ej.empates,
-        u.nombre,
-        u.apellidos,
-        u.nombre_alias,
-        u.club
-      FROM rankingTorneos.estadisticas_jugador e
-      JOIN rankingTorneos.elo_jugadores ej ON e.jugador_id = ej.jugador_id 
+        ej.empates
+      FROM estadisticas_jugador e
+      JOIN elo_jugadores ej ON e.jugador_id = ej.jugador_id 
         AND e.temporada_id = ej.temporada_id 
         AND e.sistema_juego = ej.sistema_juego
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
-      JOIN torneos.usuarios u ON e.jugador_id = u.id
+      JOIN temporadas t ON e.temporada_id = t.id
       WHERE e.jugador_id = ? AND t.año = ? AND e.sistema_juego = ?
       LIMIT 1
     `, [jugadorId, añoActual, sistemaJuego]);
@@ -751,6 +661,13 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
       });
     }
     
+    // PASO 2: Obtener datos del usuario
+    const [usuarios] = await pool.query(
+      'SELECT nombre, apellidos, nombre_alias, club FROM usuarios WHERE id = ?',
+      [jugadorId]
+    );
+    
+    const usuario = usuarios[0] || {};
     const stat = estadisticas[0];
     
     // Parsear JSON
@@ -767,10 +684,10 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
     res.json({
       jugador: {
         id: stat.jugador_id,
-        nombre: stat.nombre,
-        apellidos: stat.apellidos,
-        alias: stat.nombre_alias,
-        club: stat.club
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        alias: usuario.nombre_alias,
+        club: usuario.club
       },
       sistema: sistemaJuego,
       elo: {
@@ -803,8 +720,6 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
   }
 });
 
-// ===== OBTENER EPOCAS MAS USADAS (SAGA)========
-
 router.get('/estadisticas/:sistemaJuego/epocas-populares', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
@@ -814,7 +729,6 @@ router.get('/estadisticas/:sistemaJuego/epocas-populares', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
     const [estadisticas] = await poolRanking.query(`
       SELECT 
         e.epoca_favorita,
@@ -836,8 +750,6 @@ router.get('/estadisticas/:sistemaJuego/epocas-populares', async (req, res) => {
   }
 });
 
-// ===== OBTENER FACCIONES MAS USADAS (SAGA)========
-
 router.get('/estadisticas/:sistemaJuego/facciones-populares', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
@@ -847,7 +759,6 @@ router.get('/estadisticas/:sistemaJuego/facciones-populares', async (req, res) =
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORREGIDO: Solo usa rankingTorneos → poolRanking sin prefijos
     const [estadisticas] = await poolRanking.query(`
       SELECT 
         e.faccion_favorita,
@@ -869,14 +780,15 @@ router.get('/estadisticas/:sistemaJuego/facciones-populares', async (req, res) =
   }
 });
 
-//=======ACTUALIZAR RANKING AUTO=======
+// ============================================
+// FINALIZAR TORNEO CON ELO AUTOMÁTICO
+// ============================================
 
 router.post('/:torneoId/finalizar', verificarToken, async (req, res) => {
   const { torneoId } = req.params;
   
   try {
     const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
-      // 1. Verificar que el torneo existe
       const [torneo] = await connTorneos.query(
         'SELECT * FROM torneos_sistemas WHERE id = ?',
         [torneoId]
@@ -890,7 +802,7 @@ router.post('/:torneoId/finalizar', verificarToken, async (req, res) => {
         throw new Error('El torneo ya está finalizado');
       }
       
-      // 2. Finalizar el torneo
+      // Finalizar el torneo
       await connTorneos.query(
         'UPDATE torneos_sistemas SET estado = "finalizado" WHERE id = ?',
         [torneoId]
@@ -898,7 +810,7 @@ router.post('/:torneoId/finalizar', verificarToken, async (req, res) => {
       
       console.log(`✅ Torneo ${torneoId} finalizado`);
       
-      // 3. Calcular ELO automáticamente
+      // Calcular ELO automáticamente
       try {
         const resultadoElo = await actualizarEloAutomatico(
           connTorneos, 
@@ -914,10 +826,8 @@ router.post('/:torneoId/finalizar', verificarToken, async (req, res) => {
           elo: resultadoElo
         };
       } catch (eloError) {
-        console.error('⚠️ Error calculando ELO (torneo ya finalizado):', eloError.message);
+        console.error('⚠️ Error calculando ELO:', eloError.message);
         
-        // El torneo se finalizó pero hubo error en ELO
-        // Esto no es crítico, se puede recalcular después
         return {
           mensaje: 'Torneo finalizado correctamente',
           torneoId,

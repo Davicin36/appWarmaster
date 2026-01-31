@@ -2760,11 +2760,20 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
 
     const torneo = torneoInfo[0];
 
-    // Verificar que todos los usuarios existen
+    // ✅ MEJORADO: Verificar usuarios existentes O crearlos si no existen
     const usuariosMap = new Map();
     
     for (const miembro of miembros) {
       const emailLower = miembro.email.toLowerCase().trim();
+      
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailLower)) {
+        await connection.rollback();
+        return res.status(400).json(
+          errorResponse(`El email "${miembro.email}" no es válido`)
+        );
+      }
       
       const [usuario] = await connection.execute(
         'SELECT id, nombre, apellidos, estado_cuenta FROM usuarios WHERE email = ?',
@@ -2772,13 +2781,43 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       );
 
       if (usuario.length === 0) {
-        await connection.rollback();
-        return res.status(400).json(
-          errorResponse(`El usuario ${miembro.email} no existe en el sistema.`)
+        // ✅ CREAR USUARIO CON ESTADO PENDIENTE
+        console.log(`📝 Creando usuario pendiente para: ${emailLower}`);
+        
+        // Extraer nombre del email (parte antes del @)
+        const nombreTemp = emailLower.split('@')[0].replace(/[._-]/g, ' ');
+        const nombreCapitalizado = nombreTemp
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        
+        const [resultado] = await connection.execute(
+          `INSERT INTO usuarios (
+            email, 
+            nombre, 
+            apellidos, 
+            estado_cuenta,
+            password,
+            created_at
+          ) VALUES (?, ?, ?, 'pendiente_registro', '', NOW())`,
+          [emailLower, nombreCapitalizado, '']
         );
+        
+        const nuevoUsuarioId = resultado.insertId;
+        
+        usuariosMap.set(emailLower, {
+          id: nuevoUsuarioId,
+          nombre: nombreCapitalizado,
+          apellidos: '',
+          estado_cuenta: 'pendiente_registro'
+        });
+        
+        console.log(`✅ Usuario pendiente creado con ID: ${nuevoUsuarioId}`);
+        
+      } else {
+        // Usuario ya existe
+        usuariosMap.set(emailLower, usuario[0]);
       }
-      
-      usuariosMap.set(emailLower, usuario[0]);
     }
 
     // Obtener ID del nuevo capitán
@@ -2786,12 +2825,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
     const nuevoCapitanId = usuariosMap.get(emailCapitan).id;
 
     // Obtener datos del capitán
-    const [datosCapitan] = await connection.execute(
-      'SELECT nombre, apellidos, email FROM usuarios WHERE id = ?',
-      [nuevoCapitanId]
-    );
-
-    const capitanInfo = datosCapitan[0];
+    const capitanData = usuariosMap.get(emailCapitan);
 
     // Actualizar nombre del equipo y capitán
     await connection.execute(
@@ -2963,8 +2997,8 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       const datosEquipo = {
         nombreEquipo: nombreEquipo.trim(),
         capitan: {
-          nombre: `${capitanInfo.nombre} ${capitanInfo.apellidos}`.trim(),
-          email: capitanInfo.email
+          nombre: `${capitanData.nombre} ${capitanData.apellidos}`.trim(),
+          email: emailCapitan
         }
       };
 
@@ -3025,7 +3059,6 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
     connection.release();
   }
 });
-
 // ===== AÑADIR EQUIPO COMPLETO MANUALMENTE (ORGANIZADOR) =====
 
 router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
@@ -4272,7 +4305,7 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
     
     const estadosPermitidos = ['pendiente', 'en_curso', 'finalizado'];
     if (!estadosPermitidos.includes(estado)) {
-      return res.status(400).json({ error: `Estado no válido` });
+      return res.status(400).json({ error: `Estado no válido. Estados permitidos: ${estadosPermitidos.join(', ')}` });
     }
     
     // Si el estado es "finalizado"
@@ -4353,16 +4386,87 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
       return res.json({ success: true, mensaje, data: resultado });
       
     } else {
-      // Para otros estados
-      console.log(`\n📝 Cambiando estado sin calcular ELO...`);
-      // ... resto del código para otros estados
+      // ✅ PARA OTROS ESTADOS (pendiente, en_curso)
+      console.log(`\n📝 Cambiando estado a: ${estado}`);
+      
+      const connection = await pool.getConnection();
+      
+      try {
+        await connection.beginTransaction();
+        
+        // Verificar torneo
+        const [torneo] = await connection.query(
+          'SELECT id, created_by, estado, nombre_torneo, sistema FROM torneos_sistemas WHERE id = ? AND sistema = ?',
+          [torneoId, 'SAGA']
+        );
+        
+        if (torneo.length === 0) {
+          throw new Error('Torneo SAGA no encontrado');
+        }
+        
+        const estadoActual = torneo[0].estado;
+        
+        console.log(`📊 Estado actual: ${estadoActual} → Nuevo: ${estado}`);
+        
+        // Validaciones específicas
+        if (estadoActual === 'cancelado') {
+          throw new Error('No se puede cambiar el estado de un torneo cancelado');
+        }
+        
+        // ⚠️ Permitir revertir de finalizado SOLO si no se ha procesado ELO
+        if (estadoActual === 'finalizado') {
+          const [eloCheck] = await connection.query(
+            'SELECT elo_procesado FROM torneos_sistemas WHERE id = ?',
+            [torneoId]
+          );
+          
+          if (eloCheck[0]?.elo_procesado) {
+            throw new Error('No se puede revertir el estado de un torneo con ELO ya procesado. Contacta con el administrador.');
+          }
+          
+          console.log(`⚠️ Revirtiendo torneo finalizado (ELO no procesado)`);
+        }
+        
+        // Actualizar estado
+        await connection.query(
+          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
+          [estado, torneoId]
+        );
+        
+        await connection.commit();
+        
+        console.log(`✅ Estado actualizado exitosamente`);
+        
+        const resultado = {
+          id: parseInt(torneoId),
+          nombre_torneo: torneo[0].nombre_torneo,
+          sistema: torneo[0].sistema,
+          estado_anterior: estadoActual,
+          estado_nuevo: estado
+        };
+        
+        return res.json({ 
+          success: true, 
+          mensaje: `Estado del torneo cambiado de "${estadoActual}" a "${estado}"`,
+          data: resultado 
+        });
+        
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     }
     
   } catch (error) {
     console.error('\n❌ ===== ERROR GENERAL =====');
-    console.error('Error:', error);
+    console.error('Error:', error.message);
     console.error('Stack:', error.stack);
-    res.status(500).json({ error: error.message || 'Error al cambiar el estado del torneo' });
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Error al cambiar el estado del torneo' 
+    });
   }
 });
 
