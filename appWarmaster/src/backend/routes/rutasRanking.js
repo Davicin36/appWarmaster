@@ -140,15 +140,10 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
     
-    // ✅ CORRECTO: Cruza ambas BDs → poolGeneral con prefijos
-    const [ranking] = await poolGeneral.query(`
+    // ✅ PASO 1: Obtener datos de ranking (sin JOIN a usuarios)
+    const [rankingData] = await poolRanking.query(`
       SELECT 
         e.jugador_id,
-        u.nombre,
-        u.apellidos,
-        u.nombre_alias,
-        u.email,
-        u.club,
         e.elo_actual,
         e.elo_maximo,
         e.elo_minimo,
@@ -169,10 +164,9 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
         ) as posicion,
         est.epoca_favorita,
         est.faccion_favorita
-      FROM rankingTorneos.elo_jugadores e
-      JOIN torneos.usuarios u ON e.jugador_id = u.id
-      JOIN rankingTorneos.temporadas t ON e.temporada_id = t.id
-      LEFT JOIN rankingTorneos.estadisticas_jugador est ON e.jugador_id = est.jugador_id 
+      FROM elo_jugadores e
+      JOIN temporadas t ON e.temporada_id = t.id
+      LEFT JOIN estadisticas_jugador est ON e.jugador_id = est.jugador_id 
         AND e.temporada_id = est.temporada_id 
         AND e.sistema_juego = est.sistema_juego
       WHERE t.año = ? AND e.sistema_juego = ? AND e.partidas_jugadas >= ?
@@ -183,13 +177,44 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
       LIMIT ?
     `, [parseInt(añoActual), sistemaJuego, parseInt(minPartidas), parseInt(limit)]);
     
-    const rankingConCategoria = ranking.map(jugador => ({
-      ...jugador,
-      categoria: obtenerCategoria(jugador.elo_actual)
-    }));
+    // ✅ PASO 2: Obtener IDs de jugadores
+    const jugadorIds = rankingData.map(r => r.jugador_id);
     
-    console.log(rankingConCategoria);
-    res.json(rankingConCategoria);
+    if (jugadorIds.length === 0) {
+      return res.json([]);
+    }
+    
+    // ✅ PASO 3: Obtener datos de usuarios
+    const placeholders = jugadorIds.map(() => '?').join(',');
+    const [usuarios] = await pool.query(
+      `SELECT id, nombre, apellidos, nombre_alias, email, club 
+       FROM usuarios 
+       WHERE id IN (${placeholders})`,
+      jugadorIds
+    );
+    
+    // ✅ PASO 4: Crear un mapa de usuarios para búsqueda rápida
+    const usuariosMap = {};
+    usuarios.forEach(u => {
+      usuariosMap[u.id] = u;
+    });
+    
+    // ✅ PASO 5: Combinar los datos
+    const ranking = rankingData.map(jugador => {
+      const usuario = usuariosMap[jugador.jugador_id] || {};
+      return {
+        ...jugador,
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        nombre_alias: usuario.nombre_alias,
+        email: usuario.email,
+        club: usuario.club,
+        categoria: obtenerCategoria(jugador.elo_actual)
+      };
+    });
+    
+    console.log(ranking);
+    res.json(ranking);
   } catch (error) {
     console.error('Error obteniendo ranking:', error);
     res.status(500).json({ error: 'Error al obtener ranking' });
