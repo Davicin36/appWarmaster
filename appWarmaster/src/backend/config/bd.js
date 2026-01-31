@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configuración base compartida
-const baseConfig = {
+// Configuración base para torneos
+const baseConfigTorneos = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER,
@@ -23,21 +23,40 @@ const baseConfig = {
   maxIdle: 5
 };
 
+// ✅ Configuración base para ranking (NUEVO)
+const baseConfigRanking = {
+  host: process.env.DB_RANKING_HOST,
+  port: process.env.DB_RANKING_PORT ||3306,
+  user: process.env.DB_RANKING_USER,
+  password: process.env.DB_RANKING_PASSWORD,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  connectTimeout: 20000,
+  acquireTimeout: 20000,
+  timeout: 20000,
+  idleTimeout: 20000,
+  charset: 'utf8mb4',
+  maxIdle: 5
+};
+
 // Pool para la base de datos principal 'torneos'
 const poolTorneos = mysql.createPool({
-  ...baseConfig,
-  database: process.env.DB_NAME || 'torneos'
+  ...baseConfigTorneos,
+  database: process.env.DB_NAME || 'railway'
 });
 
 // Pool para la base de datos 'rankingTorneos'
 const poolRanking = mysql.createPool({
-  ...baseConfig,
-  database: process.env.DB_RANKING_NAME || 'rankingTorneos'
+  ...baseConfigRanking,  // ✅ Usa configuración separada
+  database: process.env.DB_RANKING_NAME || 'railway'
 });
 
 // Pool general sin base de datos específica (para queries cross-database)
 const poolGeneral = mysql.createPool({
-  ...baseConfig
+  ...baseConfigTorneos  // Usa las credenciales de torneos
   // Sin especificar database
 });
 
@@ -53,7 +72,7 @@ const testConnection = async () => {
     // Test base de datos torneos
     const connTorneos = await poolTorneos.getConnection();
     console.log('✅  Conexión a MySQL establecida correctamente');
-    console.log(`📊  Base de datos principal: ${process.env.DB_NAME || 'torneos'}`);
+    console.log(`📊  Base de datos principal: ${process.env.DB_NAME || 'railway'}`);
     
     const [rows1] = await connTorneos.execute('SELECT 1 as test');
     console.log('✅  Query de prueba exitosa en BD torneos');
@@ -62,18 +81,19 @@ const testConnection = async () => {
     // Test base de datos ranking
     try {
       const connRanking = await poolRanking.getConnection();
-      console.log(`📊  Base de datos ranking: ${process.env.DB_RANKING_NAME || 'rankingTorneos'}`);
+      console.log(`📊  Base de datos ranking: ${process.env.DB_RANKING_NAME || 'railway'}`);
       
       const [rows2] = await connRanking.execute('SELECT 1 as test');
       console.log('✅  Query de prueba exitosa en BD rankingTorneos');
       connRanking.release();
     } catch (rankingError) {
-      console.warn('⚠️  BD rankingTorneos no disponible (se creará después)');
-      console.warn('   Esto es normal si aún no has ejecutado el script de creación');
+      console.warn('⚠️  BD rankingTorneos no disponible');
+      console.warn('   Error:', rankingError.message);
     }
     
     console.log(`👤  Usuario: ${process.env.DB_USER}`);
-    console.log(`🌐  Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
+    console.log(`🌐  Host Torneos: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
+    console.log(`🌐  Host Ranking: ${process.env.DB_RANKING_HOST || process.env.DB_HOST}:${process.env.DB_RANKING_PORT || process.env.DB_PORT || 3306}`);
     console.log(`🛠️   Entorno: ${process.env.NODE_ENV || 'development'}`);
     
     return true;
@@ -83,7 +103,7 @@ const testConnection = async () => {
     console.error('🔧 Credenciales intentadas:');
     console.error(`   Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
     console.error(`   Usuario: ${process.env.DB_USER}`);
-    console.error(`   Base de datos: ${process.env.DB_NAME || 'torneos'}`);
+    console.error(`   Base de datos: ${process.env.DB_NAME || 'railway'}`);
     console.error('\n🔍 Detalles del error:');
     console.error(`   Code: ${error.code}`);
     console.error(`   Errno: ${error.errno}`);
