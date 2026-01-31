@@ -1575,359 +1575,74 @@ router.get('/torneos/finalizados-sin-elo', verificarToken, verificarSuperAdmin, 
 
 router.post('/torneos/:torneoId/actualizar-ranking', verificarToken, verificarSuperAdmin, async (req, res) => {
   const { torneoId } = req.params;
-  const conexion = await pool.getConnection();
   
   try {
-    await conexion.beginTransaction();
-
-    // ========== 1. VERIFICAR TORNEO ==========
-    const [torneo] = await conexion.query(
-      `SELECT 
-        t.sistema, 
-        t.estado, 
-        t.nombre_torneo,
-        t.fecha_inicio,
-        t.elo_procesado
-      FROM torneos.torneos_sistemas t 
-      WHERE t.id = ?`,
-      [torneoId]
-    );
-
-    if (torneo.length === 0) {
-      await conexion.rollback();
-      return res.status(404).json({ error: 'Torneo no encontrado' });
-    }
-
-    if (torneo[0].estado !== 'finalizado') {
-      await conexion.rollback();
-      return res.status(400).json({ error: 'El torneo debe estar finalizado' });
-    }
-
-    if (torneo[0].elo_procesado === 1) {
-      await conexion.rollback();
-      return res.status(400).json({ error: 'Este torneo ya fue procesado' });
-    }
-
-    const sistema = torneo[0].sistema;
-    const fechaTorneo = torneo[0].fecha_inicio;
-
-    // ========== 2. OBTENER O CREAR TEMPORADA ACTIVA ==========
-    const añoTorneo = new Date(fechaTorneo).getFullYear();
+    console.log(`📍 POST /torneos/${torneoId}/actualizar-ranking`);
     
-    const [temporadaExistente] = await conexion.query(
-      `SELECT id, elo_inicial 
-       FROM rankingTorneos.temporadas 
-       WHERE año = ? AND sistema_juego = ? AND activa = 1`,
-      [añoTorneo, sistema]
-    );
-
-    let temporadaId;
-    let eloInicial = 1500;
-
-    if (temporadaExistente.length === 0) {
-      // Crear nueva temporada
-      const [nuevaTemporada] = await conexion.query(
-        `INSERT INTO rankingTorneos.temporadas (
-          nombre, 
-          año, 
-          fecha_inicio, 
-          fecha_fin, 
-          activa, 
-          elo_inicial, 
-          sistema_juego
-        ) VALUES (?, ?, ?, ?, 1, 1500, ?)`,
-        [
-          `Temporada ${añoTorneo}`,
-          añoTorneo,
-          `${añoTorneo}-01-01`,
-          `${añoTorneo}-12-31`,
-          sistema
-        ]
+    const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
+      // ✅ Usar connTorneos SIN prefijos
+      const [torneo] = await connTorneos.query(
+        `SELECT 
+          sistema, 
+          estado, 
+          nombre_torneo,
+          fecha_inicio,
+          elo_procesado
+        FROM torneos_sistemas 
+        WHERE id = ?`,
+        [torneoId]
       );
-      temporadaId = nuevaTemporada.insertId;
-      console.log(`✅ Nueva temporada ${añoTorneo} creada para ${sistema}`);
-    } else {
-      temporadaId = temporadaExistente[0].id;
-      eloInicial = temporadaExistente[0].elo_inicial;
-      console.log(`✅ Usando temporada existente ${añoTorneo} para ${sistema}`);
-    }
-
-    // ========== 3. OBTENER TODAS LAS PARTIDAS DEL TORNEO ==========
-    const [partidas] = await conexion.query(`
-      SELECT 
-        p.id as partida_id,
-        p.jugador1_id,
-        p.jugador2_id,
-        p.resultado_ps,
-        p.es_bye,
-        p.ronda,
-        p.warlord_muerto_j1,
-        p.warlord_muerto_j2,
-        j1.jugador_id as usuario1_id,
-        j1.epoca as epoca1,
-        j1.faccion as faccion1,
-        j2.jugador_id as usuario2_id,
-        j2.epoca as epoca2,
-        j2.faccion as faccion2
-      FROM torneos.partidas_saga p
-      INNER JOIN torneos.jugador_torneo_saga j1 ON p.jugador1_id = j1.id
-      INNER JOIN torneos.jugador_torneo_saga j2 ON p.jugador2_id = j2.id
-      WHERE p.torneo_id = ? 
-        AND p.resultado_confirmado = 1
-        AND p.resultado_ps != 'pendiente'
-      ORDER BY p.ronda ASC, p.id ASC
-    `, [torneoId]);
-
-    if (partidas.length === 0) {
-      await conexion.rollback();
-      return res.status(400).json({ 
-        error: 'No hay partidas confirmadas para procesar' 
-      });
-    }
-
-    console.log(`📊 Procesando ${partidas.length} partidas del torneo ${torneoId}`);
-
-    // ========== 4. CREAR MAPEO DE PARTICIPACIONES ==========
-    const jugadoresUnicos = new Set();
-    partidas.forEach(p => {
-      jugadoresUnicos.add(p.usuario1_id);
-      jugadoresUnicos.add(p.usuario2_id);
-    });
-
-    for (const jugadorId of jugadoresUnicos) {
-      const [participacion] = await conexion.query(
-        `SELECT id FROM torneos.jugador_torneo_saga 
-         WHERE torneo_id = ? AND jugador_id = ?`,
-        [torneoId, jugadorId]
-      );
-
-      if (participacion.length > 0) {
-        await conexion.query(
-          `INSERT IGNORE INTO rankingTorneos.mapeo_participaciones 
-           (sistema_juego, participacion_id, jugador_id, torneo_id)
-           VALUES (?, ?, ?, ?)`,
-          [sistema, participacion[0].id, jugadorId, torneoId]
-        );
+      
+      console.log(`📊 Torneo encontrado:`, torneo[0]);
+      
+      if (torneo.length === 0) {
+        throw new Error('Torneo no encontrado');
       }
-    }
-
-    // ========== 5. INICIALIZAR ELO DE JUGADORES ==========
-    const eloJugadores = new Map();
-
-    for (const jugadorId of jugadoresUnicos) {
-      const [eloExistente] = await conexion.query(
-        `SELECT elo_actual 
-         FROM rankingTorneos.elo_jugadores 
-         WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
-        [jugadorId, temporadaId, sistema]
-      );
-
-      if (eloExistente.length === 0) {
-        await conexion.query(
-          `INSERT INTO rankingTorneos.elo_jugadores (
-            jugador_id, 
-            temporada_id, 
-            sistema_juego, 
-            elo_actual, 
-            elo_maximo, 
-            elo_minimo
-          ) VALUES (?, ?, ?, ?, ?, ?)`,
-          [jugadorId, temporadaId, sistema, eloInicial, eloInicial, eloInicial]
-        );
-        eloJugadores.set(jugadorId, eloInicial);
-      } else {
-        eloJugadores.set(jugadorId, eloExistente[0].elo_actual);
+      
+      if (torneo[0].estado !== 'finalizado') {
+        throw new Error('El torneo debe estar finalizado para calcular ELO');
       }
-    }
-
-    // ========== 6. FUNCIÓN PARA CALCULAR ELO ==========
-    const calcularNuevoElo = (eloJugador, eloOponente, resultado, K = 32) => {
-      const probabilidadEsperada = 1 / (1 + Math.pow(10, (eloOponente - eloJugador) / 400));
-      const cambio = Math.round(K * (resultado - probabilidadEsperada));
+      
+      if (torneo[0].elo_procesado) {
+        throw new Error('El ELO de este torneo ya fue procesado');
+      }
+      
+      const sistemaJuego = torneo[0].sistema.toLowerCase();
+      
+      if (!validarSistemaJuego(sistemaJuego)) {
+        throw new Error(`Sistema de juego "${sistemaJuego}" no es válido`);
+      }
+      
+      console.log(`🎮 Calculando ELO para sistema: ${sistemaJuego}`);
+      
+      // Llamar a la función de actualización de ELO
+      const resultadoElo = await actualizarEloAutomatico(
+        connTorneos, 
+        connRanking, 
+        torneoId
+      );
+      
+      console.log(`✅ ELO calculado: ${resultadoElo.partidasProcesadas} partidas`);
       
       return {
-        nuevoElo: eloJugador + cambio,
-        cambio: cambio
+        mensaje: 'Ranking actualizado correctamente',
+        partidasProcesadas: resultadoElo.partidasProcesadas,
+        sistemaJuego: sistemaJuego.toUpperCase(),
+        torneo: {
+          id: torneoId,
+          nombre: torneo[0].nombre_torneo,
+          fecha: torneo[0].fecha_inicio
+        }
       };
-    };
-
-    // ========== 7. PROCESAR CADA PARTIDA ==========
-    let partidasProcesadas = 0;
-
-    for (const partida of partidas) {
-      if (partida.es_bye) {
-        console.log(`⏭️ Saltando partida BYE en ronda ${partida.ronda}`);
-        continue;
-      }
-
-      const jugador1Id = partida.usuario1_id;
-      const jugador2Id = partida.usuario2_id;
-      
-      const elo1Anterior = eloJugadores.get(jugador1Id);
-      const elo2Anterior = eloJugadores.get(jugador2Id);
-
-      let resultado1, resultado2, resultadoTexto1, resultadoTexto2;
-
-      switch (partida.resultado_ps) {
-        case 'victoria_j1':
-          resultado1 = 1;
-          resultado2 = 0;
-          resultadoTexto1 = 'victoria';
-          resultadoTexto2 = 'derrota';
-          break;
-        case 'victoria_j2':
-          resultado1 = 0;
-          resultado2 = 1;
-          resultadoTexto1 = 'derrota';
-          resultadoTexto2 = 'victoria';
-          break;
-        case 'empate':
-          resultado1 = 0.5;
-          resultado2 = 0.5;
-          resultadoTexto1 = 'empate';
-          resultadoTexto2 = 'empate';
-          break;
-        default:
-          console.warn(`⚠️ Resultado desconocido en partida ${partida.partida_id}`);
-          continue;
-      }
-
-      const cambio1 = calcularNuevoElo(elo1Anterior, elo2Anterior, resultado1);
-      const cambio2 = calcularNuevoElo(elo2Anterior, elo1Anterior, resultado2);
-
-      eloJugadores.set(jugador1Id, cambio1.nuevoElo);
-      eloJugadores.set(jugador2Id, cambio2.nuevoElo);
-
-      // Guardar en historial
-      await conexion.query(
-        `INSERT INTO rankingTorneos.elo_historial (
-          jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, 
-          elo_anterior, elo_nuevo, cambio, oponente_id, oponente_elo, resultado,
-          epoca, faccion, warlord_muerto
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          jugador1Id, temporadaId, sistema, partida.partida_id, torneoId,
-          elo1Anterior, cambio1.nuevoElo, cambio1.cambio,
-          jugador2Id, elo2Anterior, resultadoTexto1,
-          partida.epoca1, partida.faccion1, partida.warlord_muerto_j1
-        ]
-      );
-
-      await conexion.query(
-        `INSERT INTO rankingTorneos.elo_historial (
-          jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, 
-          elo_anterior, elo_nuevo, cambio, oponente_id, oponente_elo, resultado,
-          epoca, faccion, warlord_muerto
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          jugador2Id, temporadaId, sistema, partida.partida_id, torneoId,
-          elo2Anterior, cambio2.nuevoElo, cambio2.cambio,
-          jugador1Id, elo1Anterior, resultadoTexto2,
-          partida.epoca2, partida.faccion2, partida.warlord_muerto_j2
-        ]
-      );
-
-      partidasProcesadas++;
-      console.log(`✅ Partida ${partida.partida_id}: J1(${elo1Anterior}→${cambio1.nuevoElo}) vs J2(${elo2Anterior}→${cambio2.nuevoElo})`);
-    }
-
-    // ========== 8. ACTUALIZAR ELO FINAL DE CADA JUGADOR ==========
-    for (const [jugadorId, eloFinal] of eloJugadores) {
-      const [stats] = await conexion.query(
-        `SELECT partidas_jugadas, victorias, derrotas, empates, 
-                elo_maximo, elo_minimo, warlords_muertos
-         FROM rankingTorneos.elo_jugadores 
-         WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
-        [jugadorId, temporadaId, sistema]
-      );
-
-      const partidasDelJugador = partidas.filter(p => 
-        (p.usuario1_id === jugadorId || p.usuario2_id === jugadorId) && !p.es_bye
-      );
-
-      const victorias = partidasDelJugador.filter(p => 
-        (p.usuario1_id === jugadorId && p.resultado_ps === 'victoria_j1') ||
-        (p.usuario2_id === jugadorId && p.resultado_ps === 'victoria_j2')
-      ).length;
-
-      const derrotas = partidasDelJugador.filter(p => 
-        (p.usuario1_id === jugadorId && p.resultado_ps === 'victoria_j2') ||
-        (p.usuario2_id === jugadorId && p.resultado_ps === 'victoria_j1')
-      ).length;
-
-      const empates = partidasDelJugador.filter(p => 
-        p.resultado_ps === 'empate'
-      ).length;
-
-      const warlordsMuertos = partidasDelJugador.filter(p =>
-        (p.usuario1_id === jugadorId && p.warlord_muerto_j1) ||
-        (p.usuario2_id === jugadorId && p.warlord_muerto_j2)
-      ).length;
-
-      const statsActuales = stats[0];
-      const nuevoEloMaximo = Math.max(eloFinal, statsActuales.elo_maximo);
-      const nuevoEloMinimo = Math.min(eloFinal, statsActuales.elo_minimo);
-
-      await conexion.query(
-        `UPDATE rankingTorneos.elo_jugadores 
-         SET 
-           elo_actual = ?,
-           elo_maximo = ?,
-           elo_minimo = ?,
-           partidas_jugadas = partidas_jugadas + ?,
-           victorias = victorias + ?,
-           derrotas = derrotas + ?,
-           empates = empates + ?,
-           warlords_muertos = warlords_muertos + ?
-         WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
-        [
-          eloFinal, nuevoEloMaximo, nuevoEloMinimo,
-          partidasDelJugador.length, victorias, derrotas, empates, warlordsMuertos,
-          jugadorId, temporadaId, sistema
-        ]
-      );
-    }
-
-    // ========== 9. ACTUALIZAR ESTADÍSTICAS DE TEMPORADA ==========
-    for (const jugadorId of jugadoresUnicos) {
-      await conexion.query(
-        `INSERT INTO rankingTorneos.estadisticas_temporada 
-         (jugador_id, temporada_id, torneos_participados)
-         VALUES (?, ?, 1)
-         ON DUPLICATE KEY UPDATE 
-           torneos_participados = torneos_participados + 1`,
-        [jugadorId, temporadaId]
-      );
-    }
-
-    // ========== 10. MARCAR TORNEO COMO PROCESADO ==========
-    await conexion.query(
-      'UPDATE torneos.torneos_sistemas SET elo_procesado = 1 WHERE id = ?',
-      [torneoId]
-    );
-
-    await conexion.commit();
-
-    console.log(`✅ Ranking actualizado: ${partidasProcesadas} partidas procesadas`);
-
-    res.json({
-      success: true,
-      partidasProcesadas,
-      sistemaJuego: sistema.toUpperCase(),
-      temporada: `Temporada ${añoTorneo}`,
-      jugadoresProcesados: jugadoresUnicos.size,
-      mensaje: 'Ranking ELO actualizado correctamente'
     });
-
+    
+    res.json(resultado);
+    
   } catch (error) {
-    await conexion.rollback();
     console.error('❌ Error actualizando ranking:', error);
     res.status(500).json({ 
-      error: 'Error al actualizar ranking del torneo',
-      detalles: error.message 
+      error: error.message || 'Error al actualizar ranking' 
     });
-  } finally {
-    conexion.release();
   }
 });
 
