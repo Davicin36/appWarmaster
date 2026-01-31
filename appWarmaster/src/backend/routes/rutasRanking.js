@@ -504,15 +504,29 @@ router.get('/jugador/:jugadorId/:sistemaJuego/historial', async (req, res) => {
 // ENDPOINTS - ACTUALIZACIÓN DE ELO
 // ============================================
 
-router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin, async (req, res) => {
+// routes/rutasAdmin.js
+
+router.post('/torneos/:torneoId/actualizar-ranking', verificarToken, verificarSuperAdmin, async (req, res) => {
   const { torneoId } = req.params;
   
   try {
+    console.log(`📍 POST /torneos/${torneoId}/actualizar-ranking`);
+    
     const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
+      // ✅ Usar connTorneos SIN prefijos
       const [torneo] = await connTorneos.query(
-        'SELECT * FROM torneos_sistemas WHERE id = ?',
+        `SELECT 
+          sistema, 
+          estado, 
+          nombre_torneo,
+          fecha_inicio,
+          elo_procesado
+        FROM torneos_sistemas 
+        WHERE id = ?`,
         [torneoId]
       );
+      
+      console.log(`📊 Torneo encontrado:`, torneo[0]);
       
       if (torneo.length === 0) {
         throw new Error('Torneo no encontrado');
@@ -528,36 +542,40 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
       
       const sistemaJuego = torneo[0].sistema.toLowerCase();
       
-      if (!sistemaJuego) {
-        throw new Error('El torneo no tiene un sistema de juego definido');
-      }
-      
       if (!validarSistemaJuego(sistemaJuego)) {
         throw new Error(`Sistema de juego "${sistemaJuego}" no es válido`);
       }
       
-      // Llamar a función de actualización automática
+      console.log(`🎮 Calculando ELO para sistema: ${sistemaJuego}`);
+      
+      // Llamar a la función de actualización de ELO
       const resultadoElo = await actualizarEloAutomatico(
-        connTorneos,
-        connRanking,
+        connTorneos, 
+        connRanking, 
         torneoId
       );
       
+      console.log(`✅ ELO calculado: ${resultadoElo.partidasProcesadas} partidas`);
+      
       return {
+        mensaje: 'Ranking actualizado correctamente',
         partidasProcesadas: resultadoElo.partidasProcesadas,
-        sistemaJuego: sistemaJuego
+        sistemaJuego: sistemaJuego.toUpperCase(),
+        torneo: {
+          id: torneoId,
+          nombre: torneo[0].nombre_torneo,
+          fecha: torneo[0].fecha_inicio
+        }
       };
     });
     
-    res.json({ 
-      mensaje: 'ELO actualizado correctamente',
-      partidasProcesadas: resultado.partidasProcesadas,
-      sistemaJuego: resultado.sistemaJuego.toUpperCase()
-    });
+    res.json(resultado);
     
   } catch (error) {
-    console.error('Error actualizando ELO:', error);
-    res.status(500).json({ error: error.message || 'Error al actualizar ELO' });
+    console.error('❌ Error actualizando ranking:', error);
+    res.status(500).json({ 
+      error: error.message || 'Error al actualizar ranking' 
+    });
   }
 });
 
