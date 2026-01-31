@@ -1,6 +1,9 @@
 import express from 'express';
 import { pool } from '../config/bd.js';
 import { verificarToken, verificarSuperAdmin } from '../middleware/auth.js';
+import { executeCrossTransaction } from '../config/bd.js';
+import { validarSistemaJuego } from '../utilsRanking/tablasJuegos.js';
+import { actualizarEloAutomatico } from '../utilsRanking/calculoAutoRanking.js';
 import multer from 'multer';
 import { 
   validarFecha, 
