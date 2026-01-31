@@ -445,7 +445,7 @@ router.get('/jugador/:jugadorId/:sistemaJuego/historial', async (req, res) => {
       return res.json([]);
     }
     
-    // PASO 2: Obtener IDs únicos de oponentes y torneos
+    // PASO 2: Obtener IDs únicos
     const oponenteIds = [...new Set(historialElo.map(h => h.oponente_id))];
     const torneoIds = [...new Set(historialElo.map(h => h.torneo_id))];
     
@@ -509,7 +509,6 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
   
   try {
     const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
-      // Obtener información del torneo
       const [torneo] = await connTorneos.query(
         'SELECT * FROM torneos_sistemas WHERE id = ?',
         [torneoId]
@@ -537,7 +536,7 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
         throw new Error(`Sistema de juego "${sistemaJuego}" no es válido`);
       }
       
-      // Llamar a la función de actualización automática
+      // Llamar a función de actualización automática
       const resultadoElo = await actualizarEloAutomatico(
         connTorneos,
         connRanking,
