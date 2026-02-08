@@ -37,6 +37,7 @@ CREATE TABLE torneos_sistemas (
   ubicacion VARCHAR(200),
   puntos_banda INT NOT NULL,
   puntos_ejercito INT NOT NULL, /*PARA  FOW Y BOLT*/
+  unidades_legendarias TINYINT (1) DEFAULT 0,
   participantes_max INT NOT NULL,
   equipos_max INT NOT NULL,
   ronda_actual INT DEFAULT 1,

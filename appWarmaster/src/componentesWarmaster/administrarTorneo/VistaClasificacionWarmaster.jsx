@@ -85,6 +85,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                     <th>PE</th>
                      <th>PP</th>
                     <th>Pts Masacre</th>
+                    <th>Generales Muertos</th>
                     <th>Pts Victoria</th>
                 </tr>
             </thead>
@@ -108,6 +109,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                         <td>{jugador.partidas_empatadas || 0}</td>
                         <td>{jugador.partidas_perdidas || 0}</td>
                         <td>{jugador.puntos_masacre_totales || 0}</td>
+                        <td>{jugador.general_muerto_total || 0}</td>
                         <td className="puntos-destacado">{jugador.puntos_victoria_totales || 0}</td>
                     </tr>
                 ))}

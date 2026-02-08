@@ -1617,7 +1617,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
         `SELECT 
           t.*, 
           u.nombre as organizador_nombre, 
-          u.email as organizador_email,
+          u.email as organizador_email
         FROM torneos_sistemas t 
         LEFT JOIN usuarios u ON t.created_by = u.id 
         WHERE t.id = ?
@@ -1682,7 +1682,6 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
 
     // Si no existe, crear nuevo usuario (SOLO con nombre, sin apellidos)
     if (!usuarioId) {
-
       const passwordTemporal = Math.random().toString(36).slice(-12);
       const passwordHash = await bcrypt.hash(passwordTemporal, 10);
 
@@ -1699,28 +1698,49 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
       esNuevoUsuario = true;
     }
 
-    // Insertar en jugador_torneo_saga (SIN nombre_alias)
+    // ✅ Insertar en jugador_torneo_warmaster
     const [jugadorInsertado] = await connection.query(
-      `INSERT INTO jugador_torneo_warmaster (torneo_id, jugador_id, ejercito, nombre_ejercito, lista_ejercito, lista_nombre, lista_tamaño, pagado  puntos_victoria, puntos_masacre, created_at)
-       VALUES (?, ?, ?, NULL, NULL, 0, 0, 0, 0, NOW(), 0)`,
-      [torneoId, usuarioId, 'pendiente', 'pendiente', null, null, null, 0, 0, 0, NOW()]
+      `INSERT INTO jugador_torneo_warmaster (
+        torneo_id, 
+        jugador_id, 
+        ejercito, 
+        lista_ejercito, 
+        lista_nombre, 
+        lista_tamaño, 
+        pagado, 
+        puntos_victoria, 
+        puntos_masacre, 
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        torneoId, 
+        usuarioId, 
+        participante.ejercito || 'Por definir', 
+        null,
+        null, 
+        null, 
+        null, 
+        0, 
+        0, 
+        0
+      ]
     );
 
     const jugadorTorneoId = jugadorInsertado.insertId;
 
-    // Insertar en clasificacion_jugadores_warmaster
+    // ✅ Insertar en clasificacion_jugadores_warmaster
     await connection.query(
-      `INSERT INTO clasificacion_jugadores_warmaster 
-       (torneo_id, 
+      `INSERT INTO clasificacion_jugadores_warmaster (
+        torneo_id, 
         jugador_id, 
         partidas_jugadas, 
         partidas_ganadas, 
         partidas_empatadas, 
         partidas_perdidas, 
         puntos_victoria_totales, 
-        puntos_masacre_totales)
-       VALUES (?, ?, 0, 0, 0, 0, 0, 0)`,
-      [torneoId, usuarioId]
+        puntos_masacre_totales
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [torneoId, usuarioId, 0, 0, 0, 0, 0, 0]
     );
 
     await connection.commit();
@@ -1733,8 +1753,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
           nombre: participante.nombre,
           email: participante.email,
           esNuevo: esNuevoUsuario,
-          epoca: 'Por definir',
-          banda: null
+          ejercito: participante.ejercito || 'Por definir'
         };
 
         const torneoInfo = {
@@ -1755,10 +1774,9 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
         
         if (resultado.success) {
           emailEnviado = true;
-         }
+        }
         
-        console.log('✅ Email preparado para:', participante.email);
-        emailEnviado = true; // Simular éxito por ahora
+        console.log('✅ Email enviado a:', participante.email);
       } catch (emailError) {
         console.error('❌ Error al enviar email:', emailError);
       }
@@ -1779,7 +1797,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
 
   } catch (error) {
     await connection.rollback();
-    console.error('Error al añadir jugador individual:', error);
+    console.error('❌ Error al añadir jugador individual:', error);
     res.status(500).json({
       success: false,
       message: 'Error al añadir jugador',
@@ -2285,8 +2303,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
 });
 
  //====================================================
-  //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
-//====================================================
+  //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS WARMASTER//====================================================
 
 // =======OBTENER JUGADORES DE UN TORNEO=======
 
@@ -2365,12 +2382,15 @@ router.get('/:torneoId/jugadores/:jugadorId/lista-pdf', verificarToken, async (r
     }
 });
 
-// =====CAMBIAR ESTADO DEL TORNEO WARMASTER=====
+/// =====CAMBIAR ESTADO DEL TORNEO WARMASTER=====
 
 router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   const { torneoId } = req.params;
   const { estado } = req.body;
-  const userId = req.usuario.userId;
+  
+  console.log(`\n🎯 ===== INICIANDO CAMBIO DE ESTADO WARMASTER =====`);
+  console.log(`📋 Torneo ID: ${torneoId}`);
+  console.log(`📋 Estado solicitado: ${estado}`);
   
   try {
     // Validar que se envió el estado
@@ -2388,12 +2408,18 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
     
     // Si el estado es "finalizado", usar transacción cross-database
     if (estado === 'finalizado') {
+      console.log(`\n🏁 Estado es FINALIZADO - Iniciando transacción cross-database...`);
+      
       const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
+        console.log(`✅ Conexiones obtenidas`);
+        
         // Verificar que el torneo existe y es Warmaster
-        const [torneo] = await connTorneos.execute(
+        const [torneo] = await connTorneos.query(
           'SELECT id, created_by, estado, nombre_torneo, sistema FROM torneos_sistemas WHERE id = ? AND sistema = ?',
           [torneoId, 'WARMASTER']
         );
+        
+        console.log(`📊 Torneo encontrado:`, torneo[0]);
         
         if (torneo.length === 0) {
           throw new Error('Torneo WARMASTER no encontrado');
@@ -2411,22 +2437,24 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
         }
         
         // Actualizar el estado a finalizado
-        await connTorneos.execute(
+        console.log(`\n📝 Actualizando estado de torneo...`);
+        await connTorneos.query(
           'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
           [estado, torneoId]
         );
-        
-        console.log(`✅ Torneo WARMASTER ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
+        console.log(`✅ Estado actualizado a: ${estado}`);
         
         // Calcular ELO automáticamente
+        console.log(`\n🎲 Llamando a actualizarEloAutomatico para WARMASTER...`);
         let resultadoElo = null;
         let errorElo = null;
         
         try {
           resultadoElo = await actualizarEloAutomatico(connTorneos, connRanking, torneoId);
-          console.log(`✅ ELO calculado: ${resultadoElo.partidasProcesadas} partidas`);
+          console.log(`✅ ELO calculado exitosamente:`, resultadoElo);
         } catch (eloError) {
-          console.error('⚠️ Error calculando ELO:', eloError.message);
+          console.error('❌ ERROR en actualizarEloAutomatico:', eloError);
+          console.error('Stack:', eloError.stack);
           errorElo = eloError.message;
         }
         
@@ -2440,6 +2468,9 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
           errorElo: errorElo
         };
       });
+      
+      console.log(`\n✅ Transacción completada`);
+      console.log(`📊 Resultado final:`, resultado);
       
       // Construir respuesta
       let mensaje = `Torneo finalizado correctamente`;
@@ -2456,12 +2487,14 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
       
     } else {
       // Para otros estados (pendiente, en_curso)
+      console.log(`\n📝 Cambiando estado a: ${estado}`);
+      
       const connection = await pool.getConnection();
       
       try {
         await connection.beginTransaction();
         
-        const [torneo] = await connection.execute(
+        const [torneo] = await connection.query(
           'SELECT id, created_by, estado, nombre_torneo FROM torneos_sistemas WHERE id = ? AND sistema = ?',
           [torneoId, 'WARMASTER']
         );
@@ -2473,6 +2506,8 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
         
         const estadoActual = torneo[0].estado;
         
+        console.log(`📊 Estado actual: ${estadoActual} → Nuevo: ${estado}`);
+        
         if (estadoActual === 'cancelado') {
           await connection.rollback();
           return res.status(400).json(
@@ -2480,14 +2515,24 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
           );
         }
         
-        if (estadoActual === 'finalizado' && estado !== 'finalizado') {
-          await connection.rollback();
-          return res.status(400).json(
-            errorResponse('No se puede cambiar el estado de un torneo finalizado')
+        // ⚠️ Permitir revertir de finalizado SOLO si no se ha procesado ELO
+        if (estadoActual === 'finalizado') {
+          const [eloCheck] = await connection.query(
+            'SELECT elo_procesado FROM torneos_sistemas WHERE id = ?',
+            [torneoId]
           );
+          
+          if (eloCheck[0]?.elo_procesado) {
+            await connection.rollback();
+            return res.status(400).json(
+              errorResponse('No se puede revertir el estado de un torneo con ELO ya procesado. Contacta con el administrador.')
+            );
+          }
+          
+          console.log(`⚠️ Revirtiendo torneo finalizado (ELO no procesado)`);
         }
         
-        await connection.execute(
+        await connection.query(
           'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
           [estado, torneoId]
         );
@@ -2514,7 +2559,9 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
     }
     
   } catch (error) {
-    console.error('❌ Error al cambiar estado del torneo Warmaster:', error);
+    console.error('\n❌ ===== ERROR GENERAL WARMASTER =====');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json(errorResponse(error.message || 'Error al cambiar el estado del torneo'));
   }
 });
@@ -2523,33 +2570,53 @@ router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, asyn
   // MÉTODOS DE PARTIDAS
   // ==========================================
 
-// =======OBTENER PARTIDAS DE UN TORNEO=========
+// ======= OBTENER PARTIDAS DE UN TORNEO =========
 
 router.get('/:torneoId/partidasTorneoWarmaster', async (req, res) => {
   try {
     const { torneoId } = req.params;
     const { ronda } = req.query;
     
-    let whereClause = 'WHERE ps.torneo_id = ?';
+    let whereClause = 'WHERE pw.torneo_id = ?';
     let params = [torneoId];
     
     if (ronda) {
-      whereClause += ' AND ps.ronda = ?';
+      whereClause += ' AND pw.ronda = ?';
       params.push(ronda);
     }
     
     const [partidas] = await pool.execute(`
       SELECT 
-        pw.*,
+        pw.id,
+        pw.torneo_id,
+        pw.ronda,
+        pw.mesa,
         pw.nombre_partida,
+        pw.es_bye,
+        pw.resultado_pw,
+        pw.resultado_confirmado,
+        pw.puntos_victoria_j1,
+        pw.puntos_victoria_j2,
+        pw.puntos_masacre_j1,
+        pw.puntos_masacre_j2,
+        pw.general_muerto_j1,
+        pw.general_muerto_j2,
+        pw.created_at,
+        pw.fecha_partida,
+        
+        -- IDs de participación (ya son jugador_torneo_warmaster.id)
+        pw.jugador1_id,
+        pw.jugador2_id,
 
-        -- Jugador 1
+        -- Info Jugador 1
+        jt1.jugador_id as jugador1_usuario_id,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
         u1.nombre_alias as jugador1_alias,
-        jtw1.ejercito as jugador1_ejercito
+        jt1.ejercito as jugador1_ejercito,
         
-        -- Jugador 2
+        -- Info Jugador 2
+        jt2.jugador_id as jugador2_usuario_id,
         CASE 
           WHEN pw.es_bye = TRUE THEN NULL
           ELSE u2.nombre
@@ -2564,30 +2631,64 @@ router.get('/:torneoId/partidasTorneoWarmaster', async (req, res) => {
         END as jugador2_alias,
         CASE 
           WHEN pw.es_bye = TRUE THEN NULL
-          ELSE jtw2.ejercito
-        END as jugador2_ejercito,
+          ELSE jt2.ejercito
+        END as jugador2_ejercito
         
       FROM partidas_warmaster pw
       
-      -- JOIN Jugador 1
-      LEFT JOIN usuarios u1 ON pw.jugador1_id = u1.id
-      LEFT JOIN jugador_torneo_warmaster jtw1 ON (jtw1.jugador_id = pw.jugador1_id AND jtw1.torneo_id = pw.torneo_id)
+      -- JOINs: pw.jugador1_id = jugador_torneo_warmaster.id (gracias a FK)
+      INNER JOIN jugador_torneo_warmaster jt1 ON pw.jugador1_id = jt1.id
+      INNER JOIN usuarios u1 ON jt1.jugador_id = u1.id
       
-      -- JOIN Jugador 2
-      LEFT JOIN usuarios u2 ON pw.jugador2_id = u2.id AND pw.es_bye = FALSE
-      LEFT JOIN jugador_torneo_warmaster jtw2 ON (jtw2.jugador_id = pw.jugador2_id AND jtw2.torneo_id = pw.torneo_id)
+      LEFT JOIN jugador_torneo_warmaster jt2 ON pw.jugador2_id = jt2.id AND pw.es_bye = FALSE
+      LEFT JOIN usuarios u2 ON jt2.jugador_id = u2.id
       
       ${whereClause}
-      ORDER BY pw.mesa, pw.id
+      ORDER BY pw.ronda, pw.mesa, pw.id
     `, params);
 
     console.log(`📊 Partidas obtenidas: ${partidas.length}`);
     
-    // Formatear con objetos anidados para jugador1 y jugador2
     const partidasFormateadas = partidas.map(p => ({
-      ...p,
-      jugador1: { ejercito: p.jugador1_ejercito || null },
-      jugador2: p.jugador2_id ? { ejercito: p.jugador2_ejercito || null } : null
+      id: p.id,
+      torneo_id: p.torneo_id,
+      ronda: p.ronda,
+      mesa: p.mesa,
+      nombre_partida: p.nombre_partida,
+      es_bye: p.es_bye,
+      resultado_pw: p.resultado_pw,
+      resultado_confirmado: p.resultado_confirmado,
+      puntos_victoria_j1: p.puntos_victoria_j1,
+      puntos_victoria_j2: p.puntos_victoria_j2,
+      puntos_masacre_j1: p.puntos_masacre_j1,
+      puntos_masacre_j2: p.puntos_masacre_j2,
+      general_muerto_j1: p.general_muerto_j1,
+      general_muerto_j2: p.general_muerto_j2,
+      created_at: p.created_at,
+      fecha_partida: p.fecha_partida,
+      
+      // IDs de participación (jugador_torneo_warmaster.id)
+      jugador1_id: p.jugador1_id,
+      jugador2_id: p.jugador2_id,
+      
+      // IDs de usuario (usuarios.id) - por si el frontend los necesita
+      jugador1_usuario_id: p.jugador1_usuario_id,
+      jugador2_usuario_id: p.jugador2_usuario_id,
+      
+      // Info adicional
+      jugador1_nombre: p.jugador1_nombre,
+      jugador1_apellidos: p.jugador1_apellidos,
+      jugador1_alias: p.jugador1_alias,
+      jugador2_nombre: p.jugador2_nombre,
+      jugador2_apellidos: p.jugador2_apellidos,
+      jugador2_alias: p.jugador2_alias,
+      
+      jugador1: { 
+        ejercito: p.jugador1_ejercito || null 
+      },
+      jugador2: p.jugador2_id ? { 
+        ejercito: p.jugador2_ejercito || null 
+      } : null
     }));
     
     res.json(partidasFormateadas);
@@ -2655,9 +2756,12 @@ router.put('/:torneoId/partidasTorneoWarmaster/:partidaId', verificarToken, asyn
     const { 
       puntos_masacre_j1,
       puntos_masacre_j2,
+      puntos_torneo_j1,
+      puntos_torneo_j2,
+      general_muerto_j1, 
+      general_muerto_j2  
     } = req.body;
     
-    // Validar campos requeridos
     const camposFaltantes = validarCamposRequeridos(req.body, [
       'puntos_masacre_j1',
       'puntos_masacre_j2'
@@ -2673,16 +2777,18 @@ router.put('/:torneoId/partidasTorneoWarmaster/:partidaId', verificarToken, asyn
     const [partida] = await pool.execute(`
       SELECT 
         pw.id,
-        pw.jugador1_id, 
-        pw.jugador2_id, 
+        pw.jugador1_id,                         -- Ya es jugador_torneo_warmaster.id
+        pw.jugador2_id,                         -- Ya es jugador_torneo_warmaster.id
         pw.resultado_pw, 
         pw.torneo_id, 
         pw.ronda, 
         pw.resultado_confirmado,
+        pw.nombre_partida,
+        pw.es_bye,
         ts.tipo_torneo
-        FROM partidas_warmaster pw
-      INNER JOIN torneos_sistemas ts ON pw.torneo_id = t.id
-      WHERE pw.id = ? AND torneo_id = ?
+      FROM partidas_warmaster pw
+      INNER JOIN torneos_sistemas ts ON pw.torneo_id = ts.id
+      WHERE pw.id = ? AND pw.torneo_id = ?
     `, [partidaId, torneoId]);
     
     if (partida.length === 0) {
@@ -2691,52 +2797,101 @@ router.put('/:torneoId/partidasTorneoWarmaster/:partidaId', verificarToken, asyn
       );
     }
     
-    // ✅ Extraer los IDs de jugadores
-    const jugador1_id = partida[0].jugador1_id;
-    const jugador2_id = partida[0].jugador2_id;
-    const tipoTorneo = partida[0].tipo_torneo
+    const jugador1_id = partida[0].jugador1_id;  // jugador_torneo_warmaster.id
+    const jugador2_id = partida[0].jugador2_id;  // jugador_torneo_warmaster.id
+    const nombrePartida = partida[0].nombre_partida || '';
+    const esBatallaCampal = nombrePartida.toLowerCase().includes('batalla campal');
+    const esBye = !jugador2_id || partida[0].es_bye;
     
-    // ✅ Verificar que no sea una partida BYE
-    if (!jugador2_id || partida[0].resultado_ps === 'victoria_j1') {
+    if (esBye) {
       return res.status(400).json(
         errorResponse('No se puede actualizar una partida BYE. La victoria automática ya está registrada.')
       );
     }
 
-    // Verificar que el resultado no esté confirmado
     if (partida[0].resultado_confirmado) {
       return res.status(400).json(
         errorResponse('No se puede actualizar una partida con resultado confirmado. El organizador debe desconfirmar el resultado primero.')
       );
     }
 
-    // Calcular resultado basado en puntos de victoria
     const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
     const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
 
     let puntosVictoriaJ1, puntosVictoriaJ2, resultado;
     
-    if (puntosMasacreJ1 > puntosMasacreJ2) {
-      puntosVictoriaJ1 = 3;
-      puntosVictoriaJ2 = 0;
-      resultado = 'victoria_j1';
-    } else if (puntosMasacreJ2 > puntosMasacreJ1) {
-      puntosVictoriaJ1 = 0;
-      puntosVictoriaJ2 = 3;
-      resultado = 'victoria_j2';
+    if (esBatallaCampal) {
+      const diferencia = Math.abs(puntosMasacreJ1 - puntosMasacreJ2);
+      const diferenciaEmpate = 150;
+      
+      if (diferencia <= diferenciaEmpate) {
+        puntosVictoriaJ1 = 1;
+        puntosVictoriaJ2 = 1;
+        resultado = 'empate';
+      } else if (puntosMasacreJ1 > puntosMasacreJ2) {
+        puntosVictoriaJ1 = 3;
+        puntosVictoriaJ2 = 0;
+        resultado = 'victoria_j1';
+      } else {
+        puntosVictoriaJ1 = 0;
+        puntosVictoriaJ2 = 3;
+        resultado = 'victoria_j2';
+      }
     } else {
-      puntosVictoriaJ1 = 1;
-      puntosVictoriaJ2 = 1;
-      resultado = 'empate';
+      if (puntos_torneo_j1 !== undefined && puntos_torneo_j2 !== undefined) {
+        const puntosPartidaJ1 = parseInt(puntos_torneo_j1) || 0;
+        const puntosPartidaJ2 = parseInt(puntos_torneo_j2) || 0;
+        
+        if (puntosPartidaJ1 > puntosPartidaJ2) {
+          puntosVictoriaJ1 = 3;
+          puntosVictoriaJ2 = 0;
+          resultado = 'victoria_j1';
+        } else if (puntosPartidaJ2 > puntosPartidaJ1) {
+          puntosVictoriaJ1 = 0;
+          puntosVictoriaJ2 = 3;
+          resultado = 'victoria_j2';
+        } else {
+          puntosVictoriaJ1 = 1;
+          puntosVictoriaJ2 = 1;
+          resultado = 'empate';
+        }
+      } else {
+        if (puntosMasacreJ1 > puntosMasacreJ2) {
+          puntosVictoriaJ1 = 3;
+          puntosVictoriaJ2 = 0;
+          resultado = 'victoria_j1';
+        } else if (puntosMasacreJ2 > puntosMasacreJ1) {
+          puntosVictoriaJ1 = 0;
+          puntosVictoriaJ2 = 3;
+          resultado = 'victoria_j2';
+        } else {
+          puntosVictoriaJ1 = 1;
+          puntosVictoriaJ2 = 1;
+          resultado = 'empate';
+        }
+      }
     }
 
-    // ✅ Actualizar la partida con la sintaxis SQL correcta
+    // Bonus por general muerto
+    if (general_muerto_j1) {
+      puntosVictoriaJ1 += 1;
+    }
+    
+    if (general_muerto_j2) {
+      puntosVictoriaJ2 += 1;
+    }
+
+    const valorGeneralJ1 = general_muerto_j1 ? 1 : 0;
+    const valorGeneralJ2 = general_muerto_j2 ? 1 : 0;
+
     await pool.execute(`
       UPDATE partidas_warmaster SET
         puntos_victoria_j1 = ?, 
         puntos_victoria_j2 = ?,
         puntos_masacre_j1 = ?, 
         puntos_masacre_j2 = ?,
+        general_muerto_j1 = ?,
+        general_muerto_j2 = ?,
         resultado_pw = ?, 
         resultado_confirmado = FALSE
       WHERE id = ?
@@ -2745,6 +2900,8 @@ router.put('/:torneoId/partidasTorneoWarmaster/:partidaId', verificarToken, asyn
       puntosVictoriaJ2,
       puntosMasacreJ1, 
       puntosMasacreJ2,
+      valorGeneralJ1,
+      valorGeneralJ2,
       resultado,
       partidaId
     ]);
@@ -2753,6 +2910,7 @@ router.put('/:torneoId/partidasTorneoWarmaster/:partidaId', verificarToken, asyn
       successResponse('Partida registrada exitosamente (pendiente de confirmación)', {
         partidaId,
         resultado,
+        esBatallaCampal,
         puntosVictoria: {
           jugador1: puntosVictoriaJ1,
           jugador2: puntosVictoriaJ2
@@ -2760,21 +2918,24 @@ router.put('/:torneoId/partidasTorneoWarmaster/:partidaId', verificarToken, asyn
         puntosMasacre: {
           jugador1: puntosMasacreJ1,
           jugador2: puntosMasacreJ2
+        },
+        generalesMuertos: {
+          jugador1MataGeneral: general_muerto_j1 ? true : false,
+          jugador2MataGeneral: general_muerto_j2 ? true : false
         }
       })
     );
     
   } catch (error) {
-    console.error('Error al registrar partida:', error);
+    console.error('❌ Error al registrar partida:', error);
     const mensaje = manejarErrorDB(error);
     res.status(500).json(errorResponse(mensaje));
   }
 });
 
-// ====== CONFIRMAR RESULTADO  INDIVIDUAL POR ORGANIZADOR ========
+// ====== CONFIRMAR RESULTADO INDIVIDUAL POR ORGANIZADOR ========
 
 router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verificarToken, async (req, res) => {
-
   let connection;
   
   try {
@@ -2784,22 +2945,28 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
     
     await connection.beginTransaction();
     
-    // Verificar organizador y obtener partida
+    // Traer ambos IDs: participación y usuario
     const [verificacion] = await connection.execute(
       `SELECT 
         ts.created_by,
         pw.id, 
-        pw.jugador1_id, 
-        pw.jugador2_id,
+        pw.jugador1_id as participacion_j1_id,     -- jugador_torneo_warmaster.id
+        pw.jugador2_id as participacion_j2_id,     -- jugador_torneo_warmaster.id
+        jt1.jugador_id as jugador1_id,             -- usuarios.id
+        jt2.jugador_id as jugador2_id,             -- usuarios.id
         pw.puntos_victoria_j1, 
         pw.puntos_victoria_j2,
         pw.puntos_masacre_j1, 
         pw.puntos_masacre_j2,
+        COALESCE(pw.general_muerto_j1, 0) as general_muerto_j1,
+        COALESCE(pw.general_muerto_j2, 0) as general_muerto_j2,
         pw.resultado_confirmado,
         pw.resultado_pw,
         pw.es_bye
       FROM torneos_sistemas ts
       INNER JOIN partidas_warmaster pw ON pw.torneo_id = ts.id
+      LEFT JOIN jugador_torneo_warmaster jt1 ON pw.jugador1_id = jt1.id
+      LEFT JOIN jugador_torneo_warmaster jt2 ON pw.jugador2_id = jt2.id
       WHERE ts.id = ? AND pw.id = ?`,
       [torneoId, partidaId]
     );
@@ -2818,7 +2985,7 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
       return res.status(403).json(errorResponse('Solo el organizador puede confirmar resultados'));
     }
     
-    const esBye = !partidaData.jugador2_id || partidaData.es_bye;
+    const esBye = !partidaData.participacion_j2_id || partidaData.es_bye;
     
     if (confirmar && partidaData.resultado_confirmado) {
       await connection.rollback();
@@ -2832,8 +2999,8 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
       return res.status(400).json(errorResponse('Esta partida no está confirmada'));
     }
 
-    let j1Gana, j1Empata, j1Pierde = 0;
-    let j2Gana, j2Empata, j2Pierde = 0;
+    let j1Gana = 0, j1Empata = 0, j1Pierde = 0;
+    let j2Gana = 0, j2Empata = 0, j2Pierde = 0;
 
     if (esBye) {
       j1Gana = 1;
@@ -2855,26 +3022,29 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
     }
     
     if (confirmar) {
-      // Actualizar jugador_torneo_warmaster J1
+      // Actualizar jugador_torneo_warmaster (usa participacion_id)
       await connection.execute(`
         UPDATE jugador_torneo_warmaster 
         SET puntos_victoria = puntos_victoria + ?,
             puntos_masacre = puntos_masacre + ?,
-        WHERE jugador_id = ? AND torneo_id = ?
+            general_muerto = general_muerto + ?
+        WHERE id = ? AND torneo_id = ?
       `, [
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_masacre_j1 || 0,
-        partidaData.jugador1_id,
+        partidaData.general_muerto_j1 ? 1 : 0,
+        partidaData.participacion_j1_id,
         torneoId
       ]);
       
+      // INSERT clasificacion (usa jugador_id = usuarios.id)
       await connection.execute(`
         INSERT INTO clasificacion_jugadores_warmaster (
             torneo_id, jugador_id, partidas_jugadas, partidas_ganadas, 
             partidas_empatadas, partidas_perdidas, puntos_victoria_totales, 
-            puntos_masacre_totales
+            puntos_masacre_totales, general_muerto_total
           )
-        VALUES (?, ?, 1, ?, ?, ?, ?, ?)
+        VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           partidas_jugadas = partidas_jugadas + 1,
           partidas_ganadas = partidas_ganadas + VALUES(partidas_ganadas),       
@@ -2882,10 +3052,16 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
           partidas_perdidas = partidas_perdidas + VALUES(partidas_perdidas),
           puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
           puntos_masacre_totales = puntos_masacre_totales + VALUES(puntos_masacre_totales),
+          general_muerto_total = general_muerto_total + VALUES(general_muerto_total)
       `, [
-        torneoId, partidaData.jugador1_id, j1Gana, j1Empata, j1Pierde,
+        torneoId, 
+        partidaData.jugador1_id,
+        j1Gana,
+        j1Empata,
+        j1Pierde,
         partidaData.puntos_victoria_j1 || 0,
-        partidaData.puntos_masacre_j1 || 0,     
+        partidaData.puntos_masacre_j1 || 0,
+        partidaData.general_muerto_j1 ? 1 : 0
       ]);
       
       if (!esBye) {
@@ -2893,11 +3069,13 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
           UPDATE jugador_torneo_warmaster
           SET puntos_victoria = puntos_victoria + ?,
               puntos_masacre = puntos_masacre + ?,
-          WHERE jugador_id = ? AND torneo_id = ?
+              general_muerto = general_muerto + ?
+          WHERE id = ? AND torneo_id = ?
         `, [
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_masacre_j2 || 0,
-          partidaData.jugador2_id,
+          partidaData.general_muerto_j2 ? 1 : 0,
+          partidaData.participacion_j2_id,
           torneoId
         ]);
 
@@ -2905,9 +3083,9 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
           INSERT INTO clasificacion_jugadores_warmaster (
              torneo_id, jugador_id, partidas_jugadas, partidas_ganadas, 
              partidas_empatadas, partidas_perdidas, puntos_victoria_totales, 
-             puntos_masacre_totales
+             puntos_masacre_totales, general_muerto_total
           )
-          VALUES (?, ?, 1, ?, ?, ?, ?, ?)
+          VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             partidas_jugadas = partidas_jugadas + 1,
             partidas_ganadas = partidas_ganadas + VALUES(partidas_ganadas),       
@@ -2915,10 +3093,16 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
             partidas_perdidas = partidas_perdidas + VALUES(partidas_perdidas),
             puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
             puntos_masacre_totales = puntos_masacre_totales + VALUES(puntos_masacre_totales),
+            general_muerto_total = general_muerto_total + VALUES(general_muerto_total)
         `, [
-          torneoId, partidaData.jugador2_id, j2Gana, j2Empata, j2Pierde,
+          torneoId, 
+          partidaData.jugador2_id,
+          j2Gana,
+          j2Empata,
+          j2Pierde,
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_masacre_j2 || 0,
+          partidaData.general_muerto_j2 ? 1 : 0
         ]);
       }
       
@@ -2928,11 +3112,13 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
         UPDATE jugador_torneo_warmaster
         SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
             puntos_masacre = GREATEST(0, puntos_masacre - ?),
-        WHERE jugador_id = ? AND torneo_id = ?
+            general_muerto = GREATEST(0, general_muerto - ?)
+        WHERE id = ? AND torneo_id = ?
       `, [
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_masacre_j1 || 0,
-        partidaData.jugador1_id,
+        partidaData.general_muerto_j1 ? 1 : 0,
+        partidaData.participacion_j1_id,
         torneoId
       ]);
       
@@ -2943,13 +3129,17 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
           partidas_ganadas = GREATEST(0, partidas_ganadas - ?),
           partidas_empatadas = GREATEST(0, partidas_empatadas - ?),
           partidas_perdidas = GREATEST(0, partidas_perdidas - ?),
-          puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?)
+          puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
           puntos_masacre_totales = GREATEST(0, puntos_masacre_totales - ?),
+          general_muerto_total = GREATEST(0, general_muerto_total - ?)
         WHERE torneo_id = ? AND jugador_id = ?
       `, [
-        j1Gana, j1Empata, j1Pierde,
+        j1Gana,
+        j1Empata,
+        j1Pierde,
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_masacre_j1 || 0,
+        partidaData.general_muerto_j1 ? 1 : 0,
         torneoId,
         partidaData.jugador1_id
       ]);
@@ -2959,11 +3149,13 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
           UPDATE jugador_torneo_warmaster
           SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
               puntos_masacre = GREATEST(0, puntos_masacre - ?),
-          WHERE jugador_id = ? AND torneo_id = ?
+              general_muerto = GREATEST(0, general_muerto - ?)
+          WHERE id = ? AND torneo_id = ?
         `, [
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_masacre_j2 || 0,
-          partidaData.jugador2_id,
+          partidaData.general_muerto_j2 ? 1 : 0,
+          partidaData.participacion_j2_id,
           torneoId
         ]);
         
@@ -2976,11 +3168,15 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
             partidas_perdidas = GREATEST(0, partidas_perdidas - ?),
             puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
             puntos_masacre_totales = GREATEST(0, puntos_masacre_totales - ?),
+            general_muerto_total = GREATEST(0, general_muerto_total - ?)
           WHERE torneo_id = ? AND jugador_id = ?
         `, [    
-          j2Gana, j2Empata, j2Pierde,
+          j2Gana,
+          j2Empata,
+          j2Pierde,
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_masacre_j2 || 0,
+          partidaData.general_muerto_j2 ? 1 : 0,
           torneoId,
           partidaData.jugador2_id
         ]);
@@ -3023,7 +3219,7 @@ router.patch('/:torneoId/partidasTorneoWarmaster/:partidaId/confirmar', verifica
     
     res.status(500).json(errorResponse('Error al confirmar resultado'));
   }
-});;
+});
 
 // ======= OBTENER EMPAREJAMIENTOS DE RONDA INDIVIDUALES (GET) =======
 
@@ -3043,13 +3239,17 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, asyn
     const queryConJoins = `
       SELECT 
         pw.*,
+        jt1.jugador_id as jugador1_usuario_id,
+        jt2.jugador_id as jugador2_usuario_id,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
         u2.nombre as jugador2_nombre,
         u2.apellidos as jugador2_apellidos
       FROM partidas_warmaster pw
-      LEFT JOIN usuarios u1 ON pw.jugador1_id = u1.id
-      LEFT JOIN usuarios u2 ON pw.jugador2_id = u2.id AND pw.es_bye = FALSE
+      INNER JOIN jugador_torneo_warmaster jt1 ON pw.jugador1_id = jt1.id
+      LEFT JOIN jugador_torneo_warmaster jt2 ON pw.jugador2_id = jt2.id AND pw.es_bye = FALSE
+      INNER JOIN usuarios u1 ON jt1.jugador_id = u1.id
+      LEFT JOIN usuarios u2 ON jt2.jugador_id = u2.id
       ${whereClause}
       ORDER BY pw.mesa, pw.id
     `;
@@ -3085,21 +3285,47 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
     }
     
     console.log('📥 Recibiendo emparejamientos:', emparejamientos.length);
-    console.log('📋 Primer emparejamiento:', emparejamientos[0]);
     
     await connection.beginTransaction();
     
-    // 1. Eliminar emparejamientos existentes de esta ronda
+    // Eliminar emparejamientos existentes de esta ronda
     await connection.execute(
       'DELETE FROM partidas_warmaster WHERE torneo_id = ? AND ronda = ?',
       [torneoId, ronda]
     );
     
-    // 2. Insertar nuevos emparejamientos
+    // Insertar nuevos emparejamientos
     for (const partida of emparejamientos) {
-      const jugador1_id = partida.jugador1_id;
-      const jugador2_id = partida.jugador2_id || null;
-      const es_bye = !jugador2_id;
+      // Buscar ID de participación para jugador1
+      const [j1] = await connection.execute(
+        'SELECT id FROM jugador_torneo_warmaster WHERE jugador_id = ? AND torneo_id = ?',
+        [partida.jugador1_id, torneoId]
+      );
+      
+      if (j1.length === 0) {
+        console.error(`❌ Jugador1 ${partida.jugador1_id} no está inscrito en el torneo`);
+        continue;
+      }
+      
+      const jugador1_participacion_id = j1[0].id;
+      let jugador2_participacion_id = null;
+      let es_bye = false;
+      
+      if (partida.jugador2_id) {
+        const [j2] = await connection.execute(
+          'SELECT id FROM jugador_torneo_warmaster WHERE jugador_id = ? AND torneo_id = ?',
+          [partida.jugador2_id, torneoId]
+        );
+        
+        if (j2.length > 0) {
+          jugador2_participacion_id = j2[0].id;
+        } else {
+          console.error(`❌ Jugador2 ${partida.jugador2_id} no está inscrito en el torneo`);
+          es_bye = true;
+        }
+      } else {
+        es_bye = true;
+      }
       
       const insertQuery = `
         INSERT INTO partidas_warmaster (
@@ -3121,8 +3347,8 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
       
       await connection.execute(insertQuery, [
         torneoId,
-        jugador1_id,
-        jugador2_id, 
+        jugador1_participacion_id,  // FK a jugador_torneo_warmaster.id
+        jugador2_participacion_id,  // FK a jugador_torneo_warmaster.id
         ronda,
         partida.mesa || null,
         partida.nombre_partida || 'Partida sin nombre',
@@ -3130,15 +3356,13 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
         es_bye ? 'victoria_j1' : 'pendiente',
         es_bye ? 3 : 0,
         0,
-        es_bye ?  150 : 0,
-        0,
-        0,
+        es_bye ? 150 : 0,
         0,
         false 
       ]);
     }
     
-    // 3. Actualizar ronda_actual del torneo
+    // Actualizar ronda_actual del torneo
     await connection.execute(
       'UPDATE torneos_sistemas SET ronda_actual = ? WHERE id = ?',
       [ronda, torneoId]
@@ -3156,7 +3380,6 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
   } catch (error) {
     await connection.rollback();
     console.error('❌ ERROR al guardar emparejamientos:', error);
-    console.error('❌ Stack:', error.stack);
     res.status(500).json({
       success: false,
       message: error.message
@@ -3221,7 +3444,6 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
             SELECT 
                 cjw.id,
                 cjw.jugador_id,
-                cjw.equipo_id,
                 cjw.partidas_ganadas,
                 cjw.partidas_empatadas,
                 cjw.partidas_perdidas,
@@ -3235,6 +3457,7 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
                 COALESCE(cjw.partidas_perdidas, 0) as jugador_partidas_perdidas,
                 COALESCE(cjw.puntos_victoria_totales, 0) as puntos_victoria_totales,
                 COALESCE(cjw.puntos_masacre_totales, 0) as puntos_masacre_totales,
+                COALESCE(cjw.general_muerto_total, 0) as general_muerto_total
               FROM clasificacion_jugadores_warmaster cjw
                 INNER JOIN usuarios u 
                   ON cjw.jugador_id = u.id

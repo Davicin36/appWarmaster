@@ -3,11 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import torneosSagaApi from '../../servicios/apiSaga.js';
+import torneosSagaApi from '@/servicios/apiSaga.js';
 import { 
   procesarEpocasYBandas, 
-  obtenerConfiguracionBanda , 
-  permiteTipoTropa
+  obtenerConfiguracionBanda,
+  permiteTipoTropa,
+  obtenerOpcionesWarlordLegendario,
+  obtenerInfoCompletaWarlord,
+  calcularPuntosDisponibles,
+  validarComposicionBanda,
+  estaProhibido,
+  sonMutuamenteExcluyentes
 } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
 import Footer from '@/paginas/Footer.jsx'
@@ -24,22 +30,26 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   // ==========================================
   const [epocaSeleccionada, setEpocaSeleccionada] = useState("");
   const [bandaSeleccionada, setBandaSeleccionada] = useState("");
+  const [warlordSeleccionado, setWarlordSeleccionado] = useState(null);
+  const [opcionesWarlordSucesores, setOpcionesWarlordSucesores] = useState({})
+  
   const [puntos, setPuntos] = useState({
     guardias: 0,
     guerreros: 0,
     levas: 0,
     mercenarios: 0,
     elefantes: 0,
-    carros: 0,        // ✅ NUEVO
-    tambor: 0,        // ✅ NUEVO
-    curaids: 0,       // ✅ NUEVO
+    carros: 0,
+    tambor: 0,
+    curaids: 0,
     perros: 0,
-    berserkers: 0,       // ✅ NUEVO
+    berserkers: 0,
+    cerdos: 0,
   });
 
-  const [unidadesEspeciales, setUnidadesEspeciales] = useState({});  // Para manubalista, los compañeros, etc.
-  const [opcionesBanda, setOpcionesBanda] = useState({});  // Para tipo de Warlord, etc.
-  const [tiposTropaPersonalizados, setTiposTropaPersonalizados] = useState({});  // Para Edad de la Magia
+  const [unidadesEspeciales, setUnidadesEspeciales] = useState({});
+  const [opcionesBanda, setOpcionesBanda] = useState({});
+  const [tiposTropaPersonalizados, setTiposTropaPersonalizados] = useState({});
   
   const [detalleMercenarios, setDetalleMercenarios] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,7 +64,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   );
 
   // ==========================================
-  // ✅ CONFIGURACIÓN DE LA BANDA SELECCIONADA
+  // CONFIGURACIÓN DE LA BANDA SELECCIONADA
   // ==========================================
   const configuracionBanda = React.useMemo(() => {
     if (!bandaSeleccionada) {
@@ -74,24 +84,98 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     return obtenerConfiguracionBanda(bandaSeleccionada);
   }, [bandaSeleccionada]);
 
-  // ✅ Extraer permisos de la configuración
- const permiteElefantes = configuracionBanda.permiteElefantes;
+  // ==========================================
+  // WARLORDS LEGENDARIOS
+  // ==========================================
+  const opcionesWarlord = React.useMemo(() => {
+      if (!bandaSeleccionada) return null;
+      if (torneo?.unidades_legendarias !== 1) return null;
+      
+      const epocaTorneo = torneo?.epocas_disponibles;
+      
+      if (!epocaTorneo) {
+          console.warn('⚠️ No se pudo determinar la época del torneo');
+          return null;
+      }
+      
+      return obtenerOpcionesWarlordLegendario(epocaTorneo, bandaSeleccionada);
+  }, [bandaSeleccionada, torneo?.unidades_legendarias, torneo?.epocas_disponibles]);
+
+  const infoWarlord = React.useMemo(() => {
+      if (!bandaSeleccionada) {
+          return {
+              tieneWarlord: false,
+              nombreBandaFinal: bandaSeleccionada,
+              costePuntos: 0,
+              restricciones: { mutuamenteExcluyentes: [], prohibido: [] },
+              unidadesDesbloqueadas: [] // ✅ AÑADIR
+          };
+      }
+      
+      const epocaTorneo = torneo?.epocas_disponibles;
+      
+      return obtenerInfoCompletaWarlord(epocaTorneo, bandaSeleccionada, warlordSeleccionado);
+  }, [bandaSeleccionada, warlordSeleccionado, torneo?.epocas_disponibles]);
+
+  const puntosMaximosReales = React.useMemo(() => {
+      if (!torneo?.puntos_banda || !bandaSeleccionada) return 0;
+      
+      const epocaTorneo = torneo?.epocas_disponibles;
+      
+      return calcularPuntosDisponibles(
+          torneo.puntos_banda,
+          epocaTorneo,
+          bandaSeleccionada,
+          warlordSeleccionado
+      );
+  }, [torneo?.puntos_banda, torneo?.epocas_disponibles, bandaSeleccionada, warlordSeleccionado])
+
+  // ✅ COMBINAR UNIDADES ESPECIALES: BASE + DESBLOQUEADAS POR WARLORD
+  const unidadesEspecialesDisponibles = React.useMemo(() => {
+    const unidadesBase = configuracionBanda.unidadesEspeciales || [];
+    const unidadesWarlord = infoWarlord.unidadesDesbloqueadas || [];
+    
+    // Combinar y eliminar duplicados
+    const todas = [...unidadesBase];
+    unidadesWarlord.forEach(unidadWarlord => {
+      const yaExiste = todas.find(u => u.nombre === unidadWarlord.nombre);
+      if (!yaExiste) {
+        todas.push({
+          ...unidadWarlord,
+          desbloquedaPorWarlord: true // ✅ Marcar que viene del warlord
+        });
+      }
+    });
+    
+    return todas;
+  }, [configuracionBanda.unidadesEspeciales, infoWarlord.unidadesDesbloqueadas]);
+
+  // Extraer permisos de la configuración
+  const permiteElefantes = configuracionBanda.permiteElefantes;
   const permiteCarros = configuracionBanda.permiteCarros;
   const permiteTambor = configuracionBanda.permiteTambor;
   const permiteCuraids = configuracionBanda.permiteCuraids;
   const permitePerros = configuracionBanda.permitePerros;
   const permiteBerserkers = configuracionBanda.permiteBerserkers;
-  const tieneUnidadesEspeciales = configuracionBanda.unidadesEspeciales?.length > 0;
+  const tieneUnidadesEspeciales = unidadesEspecialesDisponibles.length > 0; // ✅ USAR LA LISTA COMBINADA
   const tieneOpcionesBanda = configuracionBanda.opcionesBanda?.length > 0;
   const usaTiposTropaPersonalizados = configuracionBanda.tiposTropaPersonalizados !== null;
   
-  // ✅ Permisos de tipos de tropa (para bandas con restricciones)
   const permiteGuardias = permiteTipoTropa(configuracionBanda, 'guardias');
   const permiteGuerreros = permiteTipoTropa(configuracionBanda, 'guerreros');
   const permiteLevas = permiteTipoTropa(configuracionBanda, 'levas');
   const permiteMercenarios = permiteTipoTropa(configuracionBanda, 'mercenarios');
+  
+  const permiteCerdos = React.useMemo (() => {
+    if(!bandaSeleccionada || torneo?.unidades_legendarias !== 1) {
+      return false
+    }
 
-// ==========================================
+    const config = obtenerConfiguracionBanda (bandaSeleccionada)
+    return config.epoca === 'Ánibal'
+  }, [bandaSeleccionada, torneo?.unidades_legendarias])
+
+  // ==========================================
   // INICIALIZAR OPCIONES DE BANDA CON VALORES POR DEFECTO
   // ==========================================
   useEffect(() => {
@@ -99,7 +183,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       const valoresPorDefecto = {};
       configuracionBanda.opcionesBanda.forEach(opcion => {
         if (!opcionesBanda[opcion.id]) {
-          valoresPorDefecto[opcion.id] = opcion.porDefecto || '';
+          valoresPorDefecto[opcion.id] = opcion.valorPorDefecto || '';
         }
       });
       if (Object.keys(valoresPorDefecto).length > 0) {
@@ -136,17 +220,22 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
           if (inscripcion.epoca) setEpocaSeleccionada(inscripcion.epoca);
           setBandaSeleccionada(inscripcion.faccion || "");
           
+          if (composicion.warlordLegendario) {
+            setWarlordSeleccionado(composicion.warlordLegendario.valor);
+          }
+          
           setPuntos({
-            guardias: parseFloat(composicion.guardias || inscripcion.puntos_guardias || 0),
-            guerreros: parseFloat(composicion.guerreros || inscripcion.puntos_guerreros || 0),
-            levas: parseFloat(composicion.levas || inscripcion.puntos_levas || 0),
-            mercenarios: parseFloat(composicion.mercenarios || inscripcion.puntos_mercenarios || 0),
-            elefantes: parseFloat(composicion.elefantes || inscripcion.puntos_elefantes || 0),
-            carros: parseFloat(composicion.carros || inscripcion.puntos_carros || 0),      // ✅ NUEVO
-            tambor: parseFloat(composicion.tambor || inscripcion.puntos_tambor || 0),      // ✅ NUEVO
-            curaids: parseFloat(composicion.curaids || inscripcion.puntos_curaids || 0),   // ✅ NUEVO
-            perros: parseFloat(composicion.perros || inscripcion.puntos_perros || 0), 
-            berserkers: parseFloat(composicion.berserkers || inscripcion.puntos_berserkers || 0)     // ✅ NUEVO
+            guardias: parseFloat(composicion.guardias || 0),
+            guerreros: parseFloat(composicion.guerreros || 0),
+            levas: parseFloat(composicion.levas || 0),
+            mercenarios: parseFloat(composicion.mercenarios || 0),
+            elefantes: parseFloat(composicion.elefantes || 0),
+            carros: parseFloat(composicion.carros || 0),
+            tambor: parseFloat(composicion.tambor || 0),
+            curaids: parseFloat(composicion.curaids || 0),
+            perros: parseFloat(composicion.perros || 0),
+            berserkers: parseFloat(composicion.berserkers || 0),
+            cerdos: parseFloat(composicion.cerdos || 0)
           });
 
           if (composicion.unidadesEspeciales) {
@@ -161,12 +250,11 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
             setOpcionesBanda(composicion.opcionesBanda);
           }
 
-          // ✅ Cargar tipos de tropa personalizados (Edad de la Magia)
           if (composicion.tiposTropaPersonalizados) {
             setTiposTropaPersonalizados(composicion.tiposTropaPersonalizados);
           }
           
-          setDetalleMercenarios(composicion.detalleMercenarios || inscripcion.detalle_mercenarios || "");
+          setDetalleMercenarios(composicion.detalleMercenarios || "");
         }
       } catch (err) {
         console.error("❌ Error al cargar inscripción:", err);
@@ -180,11 +268,25 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   }, [modoEdicion, torneoId]);
 
   // ==========================================
-  // ✅ LIMPIAR CAMPOS ESPECIALES SI CAMBIA LA BANDA
+  // LIMPIAR CAMPOS SI CAMBIA LA BANDA O WARLORD
   // ==========================================
   useEffect(() => {
     const nuevosPuntos = { ...puntos };
     let cambios = false;
+
+    if (infoWarlord.restricciones.prohibido.length > 0) {
+      infoWarlord.restricciones.prohibido.forEach(tipo => {
+        if (nuevosPuntos[tipo] > 0) {
+          nuevosPuntos[tipo] = 0;
+          cambios = true;
+        }
+      });
+    }
+
+    if(!permiteCerdos && puntos.cerdos > 0) {
+      nuevosPuntos.cerdos = 0
+      cambios = true
+    }
 
     if (!permiteElefantes && puntos.elefantes > 0) {
       nuevosPuntos.elefantes = 0;
@@ -194,8 +296,8 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       nuevosPuntos.carros = 0;
       cambios = true;
     }
-    if (!permiteTambor && puntos.tambor> 0) {
-      nuevosPuntos.tambos = 0;
+    if (!permiteTambor && puntos.tambor > 0) {
+      nuevosPuntos.tambor = 0;
       cambios = true;
     }
     if (!permiteCuraids && puntos.curaids > 0) {
@@ -211,7 +313,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       cambios = true;
     }
 
-   if (!permiteGuardias && puntos.guardias > 0) {
+    if (!permiteGuardias && puntos.guardias > 0) {
       nuevosPuntos.guardias = 0;
       cambios = true;
     }
@@ -233,26 +335,25 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       setPuntos(nuevosPuntos);
     }
 
-    // ✅ Limpiar unidades especiales si no las tiene
     if (!tieneUnidadesEspeciales && Object.keys(unidadesEspeciales).length > 0) {
       setUnidadesEspeciales({});
     }
 
-    // ✅ Limpiar opciones de banda si no las tiene
     if (!tieneOpcionesBanda && Object.keys(opcionesBanda).length > 0) {
       setOpcionesBanda({});
     }
 
-    // ✅ Limpiar tipos personalizados si no los usa
     if (!usaTiposTropaPersonalizados && Object.keys(tiposTropaPersonalizados).length > 0) {
       setTiposTropaPersonalizados({});
     }
   }, [
-    bandaSeleccionada, 
-    permiteElefantes, 
-    permiteCarros, 
-    permiteTambor, 
-    permiteCuraids, 
+    bandaSeleccionada,
+    warlordSeleccionado,
+    infoWarlord,
+    permiteElefantes,
+    permiteCarros,
+    permiteTambor,
+    permiteCuraids,
     permitePerros,
     permiteBerserkers,
     permiteGuardias,
@@ -261,8 +362,75 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     permiteMercenarios,
     tieneUnidadesEspeciales,
     tieneOpcionesBanda,
-    usaTiposTropaPersonalizados
+    usaTiposTropaPersonalizados,
+    permiteCerdos
   ]);
+
+  // ==========================================
+  // VALIDAR RESTRICCIONES EN TIEMPO REAL
+  // ==========================================
+  useEffect(() => {
+    if (!bandaSeleccionada || !infoWarlord) return;
+    
+    const composicionActual = {
+      elefantes: puntos.elefantes,
+      carros: puntos.carros,
+      levas: puntos.levas,
+      guardias: puntos.guardias,
+      guerreros: puntos.guerreros,
+      mercenarios: puntos.mercenarios
+    };
+    
+    const validacion = validarComposicionBanda(composicionActual, infoWarlord.restricciones);
+    
+    if (!validacion.valido && validacion.errores.length > 0) {
+      console.warn('⚠️ Restricciones violadas:', validacion.errores);
+    }
+  }, [puntos, infoWarlord, bandaSeleccionada]);
+
+ //==========================================================
+//AUTO-ESTABLECER OPCIONES REQUERIDAS PARA WARLORDS SUCESORES
+// ========================================================
+
+useEffect (() => {
+  console.log('🔍 useEffect warlord ejecutado:', { warlordSeleccionado, opcionesWarlord });
+
+  if (!warlordSeleccionado || !opcionesWarlord) {
+    console.log('❌ No hay warlord u opciones, desbloqueando');
+    setOpcionesWarlordSucesores({});
+    return;
+  }
+
+  // Buscar el warlord seleccionado en las opciones
+  const opcionWarlord = opcionesWarlord.opciones.find(o => o.valor === warlordSeleccionado);
+  console.log('🔍 Warlord encontrado:', opcionWarlord);
+  console.log('🔍 Tiene opcionesRequeridas?', opcionWarlord?.opcionesRequeridas);
+  
+  if (opcionWarlord?.opcionesRequeridas) {
+    console.log('✅ Estableciendo opciones requeridas:', opcionWarlord.opcionesRequeridas);
+    
+    // Establecer automáticamente las opciones requeridas
+    setOpcionesBanda(prev => {
+      const nuevo = {
+        ...prev,
+        ...opcionWarlord.opcionesRequeridas
+      };
+      console.log('🔍 Nuevo estado opcionesBanda:', nuevo);
+      return nuevo;
+    });
+    
+    // Marcar esas opciones como bloqueadas
+    const bloqueadas = {};
+    Object.keys(opcionWarlord.opcionesRequeridas).forEach(key => {
+      bloqueadas[key] = true;
+    });
+    console.log('🔒 Opciones bloqueadas:', bloqueadas);
+    setOpcionesWarlordSucesores(bloqueadas);
+  } else {
+    console.log('❌ No tiene opciones requeridas, desbloqueando');
+    setOpcionesWarlordSucesores({});
+  }
+}, [warlordSeleccionado, opcionesWarlord]);
 
   // ==========================================
   // HANDLERS
@@ -270,6 +438,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
   const handleBandaChange = (e) => {
     const banda = e.target.value;
     setBandaSeleccionada(banda);
+    setWarlordSeleccionado(null);
     
     if (banda && mapaBandaAEpoca[banda]) {
       setEpocaSeleccionada(mapaBandaAEpoca[banda]);
@@ -299,6 +468,39 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
   };
 
+  const handleWarlordChange = (valor) => {
+    const valorFinal = valor || null;
+    setWarlordSeleccionado(valorFinal);
+    
+    if (!valorFinal) {
+      // Si se deselecciona el warlord, desbloquear opciones
+      setOpcionesWarlordSucesores({});
+      return;
+    }
+    
+    const epocaTorneo = torneo?.epocas_disponibles;
+    const nuevaInfo = obtenerInfoCompletaWarlord(epocaTorneo, bandaSeleccionada, valorFinal);
+    
+    if (nuevaInfo.restricciones.prohibido.length > 0) {
+        const nuevosPuntos = { ...puntos };
+        let cambios = false;
+        
+        nuevaInfo.restricciones.prohibido.forEach(tipo => {
+            if (nuevosPuntos[tipo] > 0) {
+                nuevosPuntos[tipo] = 0;
+                cambios = true;
+            }
+        });
+        
+        if (cambios) {
+            setPuntos(nuevosPuntos);
+            setTimeout(() => {
+                alert(`⚠️ Algunas unidades han sido reseteadas porque están prohibidas por ${nuevaInfo.nombreWarlord}`);
+            }, 100);
+        }
+    }
+};
+
   const handlePuntosChange = (e) => {
     const { name, value } = e.target;
     const valorNumerico = parseFloat(value) || 0;
@@ -310,30 +512,28 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
   };
 
-   const handleUnidadEspecialChange = (nombreUnidad, value) => {
-      const valorNumerico = parseFloat(value) || 0;
-      setUnidadesEspeciales(prev => ({
-        ...prev,
-        [nombreUnidad]: valorNumerico
-      }));
-    };
+  const handleUnidadEspecialChange = (nombreUnidad, value) => {
+    const valorNumerico = parseFloat(value) || 0;
+    setUnidadesEspeciales(prev => ({
+      ...prev,
+      [nombreUnidad]: valorNumerico
+    }));
+  };
 
-  // ✅ Handler para opciones de banda
-    const handleOpcionBandaChange = (idOpcion, valor) => {
-      setOpcionesBanda(prev => ({
-        ...prev,
-        [idOpcion]: valor
-      }));
-    };
+  const handleOpcionBandaChange = (idOpcion, valor) => {
+    setOpcionesBanda(prev => ({
+      ...prev,
+      [idOpcion]: valor
+    }));
+  };
 
-    // ✅ Handler para tipos de tropa personalizados (Edad de la Magia)
-    const handleTropaPersonalizadaChange = (idTropa, value) => {
-      const valorNumerico = parseFloat(value) || 0;
-      setTiposTropaPersonalizados(prev => ({
-        ...prev,
-        [idTropa]: valorNumerico
-      }));
-    };
+  const handleTropaPersonalizadaChange = (idTropa, value) => {
+    const valorNumerico = parseFloat(value) || 0;
+    setTiposTropaPersonalizados(prev => ({
+      ...prev,
+      [idTropa]: valorNumerico
+    }));
+  };
 
   const eliminarInscripcion = async () => {
     if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
@@ -375,7 +575,6 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       return;
     }
 
-    // ✅ Validar opciones de banda obligatorias
     if (configuracionBanda.opcionesBanda?.length > 0) {
       for (const opcion of configuracionBanda.opcionesBanda) {
         if (opcion.obligatorio && !opcionesBanda[opcion.id]) {
@@ -385,11 +584,10 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       }
     }
 
-    // ✅ CALCULAR TOTAL según el tipo de banda
+    // CALCULAR TOTAL según el tipo de banda
     let totalPuntos = 0;
 
     if (usaTiposTropaPersonalizados) {
-      // Para Edad de la Magia: calcular según puntos de cada tipo
       Object.keys(tiposTropaPersonalizados).forEach(idTropa => {
         const cantidad = tiposTropaPersonalizados[idTropa];
         const config = configuracionBanda.tiposTropaPersonalizados.find(t => t.id === idTropa);
@@ -398,21 +596,23 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         }
       });
     } else {
-      // Para bandas normales
       const totalUnidadesEspeciales = Object.values(unidadesEspeciales).reduce((acc, val) => acc + val, 0);
       
       totalPuntos = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios + 
                     puntos.elefantes + puntos.carros + puntos.tambor + puntos.curaids + 
-                    puntos.perros + puntos.berserkers + totalUnidadesEspeciales;
+                    puntos.perros + puntos.berserkers + puntos.cerdos + totalUnidadesEspeciales;
     }
 
     totalPuntos = parseFloat(totalPuntos.toFixed(2));
 
     if (totalPuntos > 0) {
-      const puntosMaximos = torneo?.puntos_banda || 24;
+      const puntosEsperados = puntosMaximosReales;
       
-      if (Math.abs(totalPuntos - puntosMaximos) > 0.01) {
-        setError(`Si introduces puntos, deben sumar exactamente ${puntosMaximos}`);
+      if (Math.abs(totalPuntos - puntosEsperados) > 0.01) {
+        setError(
+          `Los puntos deben sumar exactamente ${puntosEsperados}` +
+          (warlordSeleccionado ? ` (${torneo.puntos_banda} - ${infoWarlord.costePuntos} del warlord)` : '')
+        );
         return;
       }
 
@@ -423,6 +623,24 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
 
       if (puntos.mercenarios > 0 && !detalleMercenarios.trim()) {
         setError("Debes especificar qué mercenarios usarás");
+        return;
+      }
+    }
+
+    if (warlordSeleccionado && totalPuntos > 0) {
+      const composicionActual = {
+        elefantes: puntos.elefantes,
+        carros: puntos.carros,
+        levas: puntos.levas,
+        guardias: puntos.guardias,
+        guerreros: puntos.guerreros,
+        mercenarios: puntos.mercenarios
+      };
+      
+      const validacion = validarComposicionBanda(composicionActual, infoWarlord.restricciones);
+      
+      if (!validacion.valido) {
+        setError(`Violación de restricciones: ${validacion.errores.join(', ')}`);
         return;
       }
     }
@@ -439,12 +657,22 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
         inscripcionData.faccion = bandaSeleccionada;
       }
 
+      if (warlordSeleccionado && opcionesWarlord) {
+        const opcionWarlord = opcionesWarlord.opciones.find(o => o.valor === warlordSeleccionado);
+        if (opcionWarlord) {
+          inscripcionData.warlordLegendario = {
+            valor: warlordSeleccionado,
+            nombre: opcionWarlord.nombre,
+            costePuntos: opcionWarlord.costePuntos,
+            bandaDesbloqueada: opcionWarlord.bandaDesbloqueada || null
+          };
+        }
+      }
+
       if (totalPuntos > 0) {
         if (usaTiposTropaPersonalizados) {
-          // ✅ Edad de la Magia: guardar tipos personalizados
           inscripcionData.tiposTropaPersonalizados = tiposTropaPersonalizados;
         } else {
-          // ✅ Bandas normales: guardar tipos estándar
           inscripcionData.puntosGuardias = puntos.guardias;
           inscripcionData.puntosGuerreros = puntos.guerreros;
           inscripcionData.puntosLevas = puntos.levas;
@@ -455,14 +683,13 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
           inscripcionData.puntosCuraids = puntos.curaids;
           inscripcionData.puntosPerros = puntos.perros;
           inscripcionData.puntosBerserkers = puntos.berserkers;
+          inscripcionData.puntosCerdos = puntos.cerdos
           
-          // ✅ Unidades especiales
           if (Object.keys(unidadesEspeciales).length > 0) {
             inscripcionData.unidadesEspeciales = unidadesEspeciales;
           }
         }
 
-        // ✅ Opciones de banda
         if (Object.keys(opcionesBanda).length > 0) {
           inscripcionData.opcionesBanda = opcionesBanda;
         }
@@ -499,11 +726,10 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
     }
   };
 
-  const puntosMaximos = torneo?.puntos_banda || 24;
+  // Calcular puntos actuales
   let puntosActuales = 0;
 
   if (usaTiposTropaPersonalizados) {
-    // Para Edad de la Magia
     Object.keys(tiposTropaPersonalizados).forEach(idTropa => {
       const cantidad = tiposTropaPersonalizados[idTropa];
       const config = configuracionBanda.tiposTropaPersonalizados?.find(t => t.id === idTropa);
@@ -512,13 +738,13 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
       }
     });
   } else {
-    // Para bandas normales
     const totalUnidadesEspeciales = Object.values(unidadesEspeciales).reduce((acc, val) => acc + val, 0);
     puntosActuales = puntos.guardias + puntos.guerreros + puntos.levas + puntos.mercenarios + 
                       puntos.elefantes + puntos.carros + puntos.tambor + puntos.curaids + 
-                      puntos.perros + puntos.berserkers + totalUnidadesEspeciales;
+                      puntos.perros + puntos.berserkers + puntos.cerdos + totalUnidadesEspeciales;
   }
-  const diferencia = puntosMaximos - puntosActuales;
+  
+  const diferencia = puntosMaximosReales - puntosActuales;
 
   // ==========================================
   // RENDER
@@ -577,7 +803,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
           
           <div className="dato-item">
             <label>Puntos Banda:</label>
-            <span>{puntosMaximos} puntos</span>
+            <span>{torneo?.puntos_banda || 6} puntos</span>
           </div>
           
           <div className="dato-item">
@@ -588,6 +814,13 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                 : "N/A"}
             </span>
           </div>
+
+          {torneo?.unidades_legendarias === 1 && (
+            <div className="dato-item">
+              <label>Unidades Legendarias:</label>
+              <span className="legendarias-activas">✅ Activadas</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -613,38 +846,126 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
               ))
             )}
           </select>
-          <small style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem', display: 'block' }}>
+          <small className="form-help-text">
             La época se detectará automáticamente según la banda seleccionada
           </small>
         </div>
 
-        {bandaSeleccionada && tieneOpcionesBanda && (
-          <section className="opciones-banda-section" style={{ marginTop: '1rem' }}>
-            <h3>Configuración de la Banda</h3>
-            {configuracionBanda.opcionesBanda.map((opcion) => (
-              <div key={opcion.id} className="form-group">
-                <label htmlFor={opcion.id}>
-                  {opcion.label}
-                  {opcion.obligatorio && <span style={{ color: 'red' }}> *</span>}
-                </label>
-                {opcion.tipo === 'select' && (
-                  <select
-                    id={opcion.id}
-                    value={opcionesBanda[opcion.id] || ''}
-                    onChange={(e) => handleOpcionBandaChange(opcion.id, e.target.value)}
-                    disabled={loading}
-                    required={opcion.obligatorio}
-                  >
-                    <option value="">-- Seleccionar --</option>
-                    {opcion.opciones.map((opt) => (
-                      <option key={opt.valor} value={opt.valor}>
-                        {opt.nombre}
-                      </option>
+        {/* ========================================
+            SELECTOR DE WARLORD LEGENDARIO
+            ======================================== */}
+        {bandaSeleccionada && opcionesWarlord && torneo?.unidades_legendarias === 1 && (
+          <section className="warlord-section">
+            <h3 className="warlord-title">⚔️ Warlord Legendario</h3>
+            
+            <div className="form-group">
+              <label htmlFor="warlord">
+                {opcionesWarlord.label}
+                {opcionesWarlord.obligatorio && <span className="required"> *</span>}
+              </label>
+              <select
+                id="warlord"
+                value={warlordSeleccionado || ''}
+                onChange={(e) => handleWarlordChange(e.target.value || null)}
+                disabled={loading}
+                required={opcionesWarlord.obligatorio}
+              >
+                <option value="">-- Sin warlord legendario --</option>
+                {opcionesWarlord.opciones.map((opcion) => (
+                  <option key={opcion.valor} value={opcion.valor}>
+                    {opcion.nombreCompleto}
+                    {opcion.tieneBandaDesbloqueada && ` → ${opcion.bandaDesbloqueada}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {infoWarlord.tieneWarlord && (
+              <div className="info-warlord">
+                <p className="info-line">
+                  <strong>Warlord:</strong> {infoWarlord.nombreWarlord}
+                </p>
+                <p className="info-line">
+                  <strong>Coste:</strong> {infoWarlord.costePuntos} {infoWarlord.costePuntos === 1 ? 'punto' : 'puntos'}
+                </p>
+                {infoWarlord.tieneBandaDesbloqueada && (
+                  <p className="info-line banda-desbloqueada">
+                    <strong>✨ Banda desbloqueada:</strong> {infoWarlord.nombreBandaFinal}
+                  </p>
+                )}
+                <p className="info-line">
+                  <strong>Puntos disponibles:</strong> {puntosMaximosReales} 
+                  <small className="puntos-detalle-small">
+                    ({torneo.puntos_banda} - {infoWarlord.costePuntos})
+                  </small>
+                </p>
+                
+                {infoWarlord.restricciones.prohibido.length > 0 && (
+                  <div className="restriccion-prohibido">
+                    <strong>⛔ Prohibido:</strong>{' '}
+                    {infoWarlord.restricciones.prohibido.join(', ')}
+                  </div>
+                )}
+                
+                {infoWarlord.restricciones.mutuamenteExcluyentes.length > 0 && (
+                  <div className="restriccion-excluyentes">
+                    <strong>⚠️ Mutuamente excluyentes:</strong>
+                    {infoWarlord.restricciones.mutuamenteExcluyentes.map((par, i) => (
+                      <div key={i} className="restriccion-item">• {par.join(' ↔ ')}</div>
                     ))}
-                  </select>
+                  </div>
+                )}
+
+                {/* ✅ MOSTRAR UNIDADES DESBLOQUEADAS */}
+                {infoWarlord.unidadesDesbloqueadas && infoWarlord.unidadesDesbloqueadas.length > 0 && (
+                  <div className="unidades-desbloqueadas">
+                    <strong>✨ Unidades desbloqueadas:</strong>
+                    <ul className="lista-unidades-desbloqueadas">
+                      {infoWarlord.unidadesDesbloqueadas.map((unidad, i) => (
+                        <li key={i}>{unidad.label || unidad.nombre}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
-            ))}
+            )}
+          </section>
+        )}
+
+        {bandaSeleccionada && tieneOpcionesBanda && (
+          <section className="opciones-banda-section">
+            <h3>Configuración de la Banda</h3>
+            {configuracionBanda.opcionesBanda.map((opcion) => {
+
+              const estaBloqueada = opcionesWarlordSucesores[opcion.id] || false
+
+              return (
+                <div key={opcion.id} className="form-group">
+                  <label htmlFor={opcion.id}>
+                    {opcion.label}
+                    {opcion.obligatorio && <span className="required"> *</span>}
+                    {estaBloqueada && <span className="warlord-locked">🔒(Exclusivo de este Warlord)</span>}
+                  </label>
+                  {opcion.tipo === 'select' && (
+                    <select
+                      id={opcion.id}
+                      value={opcionesBanda[opcion.id] || ''}
+                      onChange={(e) => handleOpcionBandaChange(opcion.id, e.target.value)}
+                      disabled={loading || estaBloqueada}
+                      required={opcion.obligatorio}
+                      className={estaBloqueada ? ' input-locked' : ' '}
+                    >
+                      <option value="">-- Seleccionar --</option>
+                      {opcion.opciones.map((opt) => (
+                        <option key={opt.valor} value={opt.valor}>
+                          {opt.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )
+            })}
           </section>
         )}
 
@@ -653,7 +974,12 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
             <section className="puntos-section">
               <h3>Distribución de Puntos</h3>
               <p className="puntos-info">
-                Total: <strong>{puntosActuales.toFixed(1)}</strong> / {puntosMaximos}
+                Total: <strong>{puntosActuales.toFixed(1)}</strong> / {puntosMaximosReales}
+                {warlordSeleccionado && (
+                  <small className="puntos-detalle-small">
+                    ({torneo.puntos_banda} - {infoWarlord.costePuntos} warlord)
+                  </small>
+                )}
                 {diferencia > 0 && (
                   <span className="puntos-faltantes"> ⚠️ Faltan {diferencia.toFixed(1)}</span>
                 )}
@@ -663,9 +989,6 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
               </p>
 
               <div className="puntos-grid">
-                {/* ========================================
-                    EDAD DE LA MAGIA - TIPOS PERSONALIZADOS
-                    ======================================== */}
                 {usaTiposTropaPersonalizados ? (
                   <>
                     {configuracionBanda.tiposTropaPersonalizados.map((tipo) => (
@@ -680,7 +1003,7 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={tiposTropaPersonalizados[tipo.id] || 0}
                           onChange={(e) => handleTropaPersonalizadaChange(tipo.id, e.target.value)}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step={tipo.step || 0.5}
                           disabled={loading}
                         />
@@ -689,14 +1012,14 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                   </>
                 ) : (
                   <>
-                    {/* ========================================
-                        BANDAS NORMALES - TIPOS ESTÁNDAR
-                        ======================================== */}
-                    
-                    {/* GUARDIAS */}
                     {permiteGuardias && (
                       <div className="punto-item">
-                        <label htmlFor="guardias">Guardias</label>
+                        <label htmlFor="guardias">
+                          Guardias
+                          {estaProhibido('guardias', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="guardias"
@@ -704,17 +1027,22 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.guardias}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="0.5"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('guardias', infoWarlord.restricciones)}
+                          className={estaProhibido('guardias', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* BERSERKERS */}
                     {permiteBerserkers && (
                       <div className="punto-item">
-                        <label htmlFor="berserkers">Berserkers</label>
+                        <label htmlFor="berserkers">
+                          Berserkers
+                          {estaProhibido('berserkers', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="berserkers"
@@ -724,15 +1052,43 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           min="0"
                           max="1"
                           step="1"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('berserkers', infoWarlord.restricciones)}
+                          className={estaProhibido('berserkers', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* ELEFANTES */}
+                    {permiteCerdos && (
+                      <div className="punto-item cerdos-legendario">
+                        <label htmlFor="cerdos">
+                           Cerdos Incendiarios
+                          {estaProhibido('cerdos', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
+                        <input
+                          type="number"
+                          id="cerdos"
+                          name="cerdos"
+                          value={puntos.cerdos}
+                          onChange={handlePuntosChange}
+                          min="0"
+                          max="1"
+                          step="1"
+                          disabled={loading || estaProhibido('cerdos', infoWarlord.restricciones)}
+                          className={estaProhibido('cerdos', infoWarlord.restricciones) ? 'input-prohibido' : ''}
+                        />
+                      </div>
+                    )}
+
                     {permiteElefantes && (
                       <div className="punto-item">
-                        <label htmlFor="elefantes">Elefantes </label>
+                        <label htmlFor="elefantes">
+                          Elefantes
+                          {estaProhibido('elefantes', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="elefantes"
@@ -740,17 +1096,27 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.elefantes}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="1"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('elefantes', infoWarlord.restricciones)}
+                          className={estaProhibido('elefantes', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
+                        {sonMutuamenteExcluyentes('elefantes', 'carros', infoWarlord.restricciones) && puntos.carros > 0 && (
+                          <small className="restriccion-warning">
+                            ⚠️ Incompatible con carros
+                          </small>
+                        )}
                       </div>
                     )}
 
-                    {/* CARROS */}
                     {permiteCarros && (
                       <div className="punto-item">
-                        <label htmlFor="carros">Carros </label>
+                        <label htmlFor="carros">
+                          Carros
+                          {estaProhibido('carros', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="carros"
@@ -758,17 +1124,27 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.carros}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="1"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('carros', infoWarlord.restricciones)}
+                          className={estaProhibido('carros', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
+                        {sonMutuamenteExcluyentes('elefantes', 'carros', infoWarlord.restricciones) && puntos.elefantes > 0 && (
+                          <small className="restriccion-warning">
+                            ⚠️ Incompatible con elefantes
+                          </small>
+                        )}
                       </div>
                     )}
 
-                    {/* TAMBOR */}
                     {permiteTambor && (
                       <div className="punto-item">
-                        <label htmlFor="tambor">Tambor de Guerra </label>
+                        <label htmlFor="tambor">
+                          Tambor de Guerra
+                          {estaProhibido('tambor', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="tambor"
@@ -778,15 +1154,20 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           min="0"
                           max="1"
                           step="1"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('tambor', infoWarlord.restricciones)}
+                          className={estaProhibido('tambor', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* CURAIDS */}
                     {permiteCuraids && (
                       <div className="punto-item">
-                        <label htmlFor="curaids">Curaids </label>
+                        <label htmlFor="curaids">
+                          Curaids
+                          {estaProhibido('curaids', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="curaids"
@@ -794,17 +1175,22 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.curaids}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="0.5"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('curaids', infoWarlord.restricciones)}
+                          className={estaProhibido('curaids', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* PERROS */}
                     {permitePerros && (
                       <div className="punto-item">
-                        <label htmlFor="perros">Perros de Guerra</label>
+                        <label htmlFor="perros">
+                          Perros de Guerra
+                          {estaProhibido('perros', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="perros"
@@ -814,38 +1200,53 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           min="0"
                           max="1"
                           step="0.5"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('perros', infoWarlord.restricciones)}
+                          className={estaProhibido('perros', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* ✅ UNIDADES ESPECIALES DINÁMICAS */}
-                    {tieneUnidadesEspeciales && configuracionBanda.unidadesEspeciales.map((unidad) => (
-                      <div key={unidad.nombre} className="punto-item">
-                        <label htmlFor={unidad.nombre}>
-                          {unidad.label} 
-                          <small style={{ fontSize: '0.75rem', color: '#666', padding: '0.25rem'}}>
-                            ({unidad.puntos} pts c/u)
-                          </small>
-                        </label>
-                        <input
-                          type="number"
-                          id={unidad.nombre}
-                          name={unidad.nombre}
-                          value={unidadesEspeciales[unidad.nombre] || 0}
-                          onChange={(e) => handleUnidadEspecialChange(unidad.nombre, e.target.value)}
-                          min="0"
-                          max="1"
-                          step={unidad.step || 0.5}
-                          disabled={loading}
-                        />
-                      </div>
-                    ))}
+                    {/* ✅ UNIDADES ESPECIALES: BASE + DESBLOQUEADAS POR WARLORD */}
+                    {tieneUnidadesEspeciales && unidadesEspecialesDisponibles.map((unidad) => {
+                      const key = unidad.valor || unidad.nombre
 
-                    {/* GUERREROS */}
+                      return (
+                          <div key={key} className={`punto-item ${unidad.desbloquedaPorWarlord ? 'unidad-warlord' : ''}`}>
+                            <label htmlFor={unidad.nombre}>
+                              {unidad.desbloquedaPorWarlord && '✨ '}
+                              {unidad.label} 
+                              <small className="puntos-unidad-small">
+                                ({unidad.puntos} pts c/u)
+                              </small>
+                            </label>
+                            <input
+                              type="number"
+                              id={key}
+                              name={key}
+                              value={unidadesEspeciales[key] || 0}
+                              onChange={(e) => handleUnidadEspecialChange(key, e.target.value)}
+                              min="0"
+                              max="1"
+                              step={unidad.step || 0.5}
+                              disabled={loading}
+                            />
+                            {unidad.desbloquedaPorWarlord && (
+                              <small className="unidad-desbloqueada-label">
+                                Desbloqueada por {infoWarlord.nombreWarlord}
+                              </small>
+                            )}
+                          </div>
+                      )
+                    })}
+
                     {permiteGuerreros && (
                       <div className="punto-item">
-                        <label htmlFor="guerreros">Guerreros</label>
+                        <label htmlFor="guerreros">
+                          Guerreros
+                          {estaProhibido('guerreros', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="guerreros"
@@ -853,17 +1254,22 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.guerreros}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="0.5"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('guerreros', infoWarlord.restricciones)}
+                          className={estaProhibido('guerreros', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* LEVAS */}
                     {permiteLevas && (
                       <div className="punto-item">
-                        <label htmlFor="levas">Levas</label>
+                        <label htmlFor="levas">
+                          Levas
+                          {estaProhibido('levas', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="levas"
@@ -871,17 +1277,22 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.levas}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="0.5"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('levas', infoWarlord.restricciones)}
+                          className={estaProhibido('levas', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
 
-                    {/* MERCENARIOS */}
                     {permiteMercenarios && (
                       <div className="punto-item">
-                        <label htmlFor="mercenarios">Mercenarios</label>
+                        <label htmlFor="mercenarios">
+                          Mercenarios
+                          {estaProhibido('mercenarios', infoWarlord.restricciones) && 
+                            <span className="prohibido-badge"> ⛔</span>
+                          }
+                        </label>
                         <input
                           type="number"
                           id="mercenarios"
@@ -889,9 +1300,10 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                           value={puntos.mercenarios}
                           onChange={handlePuntosChange}
                           min="0"
-                          max={puntosMaximos}
+                          max={puntosMaximosReales}
                           step="0.5"
-                          disabled={loading}
+                          disabled={loading || estaProhibido('mercenarios', infoWarlord.restricciones)}
+                          className={estaProhibido('mercenarios', infoWarlord.restricciones) ? 'input-prohibido' : ''}
                         />
                       </div>
                     )}
@@ -899,7 +1311,6 @@ function InscripcionSagaIndividual({ torneoId, torneo, user }) {
                 )}
               </div>
 
-              {/* DETALLE MERCENARIOS */}
               {puntos.mercenarios > 0 && permiteMercenarios && !usaTiposTropaPersonalizados && (
                 <div className="form-group mercenarios-detalle">
                   <label htmlFor="detalleMercenarios">

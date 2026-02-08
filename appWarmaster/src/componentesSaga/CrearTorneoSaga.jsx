@@ -34,6 +34,7 @@ function CrearTorneoSaga() {
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
     const [puntosBanda, setPuntosBanda] = useState(PUNTOS_BANDA_RANGO.default);
+    const [unidadesLegendarias, setUnidadesLegendarias] = useState (false)
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
     const [equiposMax, setEquiposMax] = useState(EQUIPOS_RANGO.default);
     const [archivoPDF, setArchivoPDF] = useState(null); 
@@ -232,6 +233,7 @@ function CrearTorneoSaga() {
                 torneoData.append('fecha_fin', fechaFin || '');
                 torneoData.append('ubicacion', ubicacion || '');
                 torneoData.append('puntos_banda', parseInt(puntosBanda));
+                torneoData.append('unidades_legendarias', unidadesLegendarias ? '1' : '0');
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('equipos_max', parseInt(equiposMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
@@ -254,6 +256,7 @@ function CrearTorneoSaga() {
                     fecha_fin: fechaFin || null,
                     ubicacion: ubicacion || null,
                     puntos_banda: parseInt(puntosBanda),
+                    unidades_legendarias: unidadesLegendarias ? '1' : '0',
                     participantes_max: parseInt(participantesMax),
                     equipos_max: parseInt(equiposMax),
                     partida_ronda_1: partidaRonda1,
@@ -264,6 +267,21 @@ function CrearTorneoSaga() {
                     organizadores_emails: organizadorAdicional
                 };
             }
+
+            console.group('📤 FRONTEND - ENVIANDO TORNEO');
+console.log('Estado unidadesLegendarias:', unidadesLegendarias);
+console.log('Tipo:', typeof unidadesLegendarias); 
+
+if (archivoPDF) {
+  // Si usas FormData, el valor se convierte a string automáticamente
+  console.log('Modo: FormData (valores como strings)');
+} else {
+  console.log('Modo: JSON');
+  console.log('Valor que se enviará:', {
+    unidades_legendarias: unidadesLegendarias ? 1 : 0
+  });
+}
+console.groupEnd();
 
             const result = await torneosSagaApi.crearTorneo(torneoData);
             
@@ -414,6 +432,31 @@ function CrearTorneoSaga() {
                             </small>
                         )}
                     </label>
+                    {/* CONFIGURACIÓN DE REGLAS ESPECIALES */}
+                    <fieldset>
+                        <legend>⚔️ Unidades Legendarias</legend>
+                        
+                        <div className="unidades-legendarias-container">
+                            <label className="checkbox-container">
+                                <input
+                                    type="checkbox"
+                                    name="unidadesLegendarias"
+                                    checked={unidadesLegendarias}
+                                    onChange={(e) => setUnidadesLegendarias(e.target.checked)}
+                                    disabled={loading}
+                                />
+                                <span className="checkbox-label">
+                                    <strong>   Permitir Unidades Legendarias</strong>
+                                </span>
+                            </label>
+                            <small className="help-text">
+                                {unidadesLegendarias 
+                                    ? "✅ Los jugadores podrán seleccionar Warlords Legendarios y unidades legendarias  que cuestan puntos y pueden desbloquear bandas especiales o imponer restricciones."
+                                    : "⚠️ Las Unidades Legendarias están desactivadas."}
+                            </small>
+                        </div>
+                    </fieldset>
+
                     <div className="epocas-grid">
                         {EPOCAS_SAGA.map((epoca) => (
                             <label key={epoca} className="epoca-option">

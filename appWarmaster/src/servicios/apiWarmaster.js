@@ -184,8 +184,8 @@ class TorneosWarmasterApi {
 
   async obtenerPartidasTorneo(torneoId, ronda) {
     const endpoint = ronda 
-      ? `/${torneoId}/partidasTorneoSaga?ronda=${ronda}`
-      : `/${torneoId}/partidasTorneoSaga`;
+      ? `/${torneoId}/partidasTorneoWarmaster?ronda=${ronda}`
+      : `/${torneoId}/partidasTorneoWarmaster`;
     
     const response = await this.request(endpoint);
     
@@ -197,18 +197,18 @@ class TorneosWarmasterApi {
   }
 
   async obtenerPartida(torneoId, partidaId) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`);
+    return this.request(`/${torneoId}/partidasTorneoWarmaster/${partidaId}`);
   }
 
   async registrarPartida(torneoId, partidaId, partida) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoWarmaster/${partidaId}`, {
       method: 'PUT',
       body: partida
     });
   }
 
   async confirmarResultado(torneoId, partidaId, confirmar) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmar`, {
+    return this.request(`/${torneoId}/partidasTorneoWarmaster/${partidaId}/confirmar`, {
       method: 'PATCH',
       body: { confirmar }
     });
@@ -236,14 +236,14 @@ class TorneosWarmasterApi {
   }
 
   async actualizarPartida(partidaId, torneoId, partida) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoWarmaster/${partidaId}`, {
       method: 'PUT',
       body: partida,
     });
   }
 
   async eliminarPartida(partidaId, torneoId) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoWarmaster/${partidaId}`, {
       method: 'DELETE',
     });
   }

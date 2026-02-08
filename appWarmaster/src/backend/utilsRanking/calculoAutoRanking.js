@@ -72,6 +72,7 @@ class EloSystem {
 const eloSystem = new EloSystem();
 
 // ===== OBTENER O CREAR ELO =====
+
 async function obtenerOCrearElo(connRanking, jugadorId, temporadaId, sistemaJuego, eloInicial) {
   const [existente] = await connRanking.query(
     `SELECT * FROM elo_jugadores 
@@ -116,19 +117,15 @@ async function actualizarEloJugador(connRanking, jugadorId, temporadaId, sistema
     actualizaciones.empates = 'empates + 1';
   }
 
-  // ✅ CORREGIR: Verificar si es string antes de usar .includes()
   const sets = Object.entries(actualizaciones)
     .map(([key, val]) => {
-      // Si el valor es un string Y contiene '+', es una expresión SQL
       if (typeof val === 'string' && val.includes('+')) {
         return `${key} = ${val}`;
       }
-      // Si no, es un valor parametrizado
       return `${key} = ?`;
     })
     .join(', ');
 
-  // ✅ CORREGIR: Solo incluir valores que no son expresiones SQL
   const valores = Object.entries(actualizaciones)
     .filter(([_, val]) => typeof val !== 'string' || !val.includes('+'))
     .map(([_, val]) => val);
@@ -202,16 +199,18 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
   const eloInicial = temporada[0].elo_inicial;
   console.log(`✅ Temporada ID: ${temporadaId}, ELO Inicial: ${eloInicial}`);
 
-  // 4. Obtener partidas con época y facción (SIN BANDA)
+  // 4. Obtener partidas con campos específicos del sistema
   let queryPartidas;
-  
+  let campoResultado;
+
   if (sistemaJuego === 'saga') {
+    campoResultado = 'resultado_ps';
     queryPartidas = `
       SELECT 
         p.id,
         p.jugador1_id,
         p.jugador2_id,
-        p.resultado_ps,
+        p.${campoResultado} as resultado,
         p.warlord_muerto_j1,
         p.warlord_muerto_j2,
         jt1.epoca as epoca_j1,
@@ -226,22 +225,49 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
       AND p.es_bye = FALSE
       ORDER BY p.ronda, p.mesa
     `;
+  } else if (sistemaJuego === 'warmaster') {
+    campoResultado = 'resultado_pw';
+    queryPartidas = `
+      SELECT 
+        p.id,
+        jt1.jugador_id as jugador1_id,
+        jt2.jugador_id as jugador2_id,
+        p.${campoResultado} as resultado,
+        p.general_muerto_j1 as warlord_muerto_j1,
+        p.general_muerto_j2 as warlord_muerto_j2,
+        jt1.ejercito as ejercito_j1,
+        jt2.ejercito as ejercito_j2
+      FROM ${tablas.partidas} p
+      INNER JOIN ${tablas.jugadorTorneo} jt1 
+        ON p.jugador1_id = jt1.id
+      INNER JOIN ${tablas.jugadorTorneo} jt2 
+        ON p.jugador2_id = jt2.id
+      WHERE p.torneo_id = ? 
+      AND p.resultado_confirmado = TRUE 
+      AND (p.es_bye IS NULL OR p.es_bye = FALSE)
+      ORDER BY p.ronda, p.mesa
+    `;
   } else {
+    campoResultado = 'resultado';
     queryPartidas = `
       SELECT 
         id,
         jugador1_id,
         jugador2_id,
-        resultado_ps
+        resultado
       FROM ${tablas.partidas}
       WHERE torneo_id = ? 
       AND resultado_confirmado = TRUE 
-      AND es_bye = FALSE
       ORDER BY ronda, mesa
     `;
   }
 
   const [partidas] = await connTorneos.query(queryPartidas, [torneoId]);
+
+  console.log(`\n📦 MUESTRA DE PARTIDA 1:`, JSON.stringify(partidas[0], null, 2));
+  console.log(`📦 Campo resultado:`, partidas[0]?.resultado);
+  console.log(`📦 jugador1_id:`, partidas[0]?.jugador1_id);
+  console.log(`📦 jugador2_id:`, partidas[0]?.jugador2_id);
 
   if (partidas.length === 0) {
     throw new Error('No hay partidas confirmadas en este torneo');
@@ -249,7 +275,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
 
   console.log(`📊 Procesando ${partidas.length} partidas confirmadas\n`);
 
-  // 5. Acumulador de estadísticas (SIN BANDA)
+  // 5. Acumulador de estadísticas
   const estadisticasJugadores = new Map();
   const torneosParticipados = new Set();
   
@@ -259,24 +285,33 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
   for (const partida of partidas) {
     console.log(`\n--- Partida ${partida.id} ---`);
 
-    const jugador1Id = await obtenerJugadorIdDesdeParticipacion(
-      connTorneos,
-      partida.jugador1_id,
-      sistemaJuego
-    );
+    let jugador1Id, jugador2Id;
+  
+    if (sistemaJuego === 'warmaster') {
+      // WARMASTER: los IDs ya vienen correctos
+      jugador1Id = partida.jugador1_id;
+      jugador2Id = partida.jugador2_id;
+    } else {
+      // SAGA: necesita conversión
+      jugador1Id = await obtenerJugadorIdDesdeParticipacion(
+        connTorneos,
+        partida.jugador1_id,
+        sistemaJuego
+      );
 
-    const jugador2Id = await obtenerJugadorIdDesdeParticipacion(
-      connTorneos,
-      partida.jugador2_id,
-      sistemaJuego
-    );
+      jugador2Id = await obtenerJugadorIdDesdeParticipacion(
+        connTorneos,
+        partida.jugador2_id,
+        sistemaJuego
+      );
+    }
 
     if (!jugador1Id || !jugador2Id) {
       console.warn(`⚠️  Partida ${partida.id}: No se pudieron obtener los IDs de jugadores`);
       continue;
     }
 
-    // Acumular estadísticas de época/facción (SIN BANDA)
+    // Acumular estadísticas de época/facción
     if (sistemaJuego === 'saga') {
       // Jugador 1
       if (!estadisticasJugadores.has(jugador1Id)) {
@@ -317,6 +352,40 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
       if (partida.warlord_muerto_j2) {
         stats2.warlords_muertos++;
       }
+    } else if (sistemaJuego === 'warmaster') {
+      // WARMASTER: Estadísticas para ejercitos
+      
+      // Jugador 1
+      if (!estadisticasJugadores.has(jugador1Id)) {
+        estadisticasJugadores.set(jugador1Id, {
+          ejercitos: {},
+          generales_muertos: 0
+        });
+      }
+      
+      const stats1 = estadisticasJugadores.get(jugador1Id);
+      if (partida.ejercito_j1) {
+        stats1.ejercitos[partida.ejercito_j1] = (stats1.ejercitos[partida.ejercito_j1] || 0) + 1;
+      }
+      if (partida.warlord_muerto_j1) {
+        stats1.generales_muertos++;
+      }
+
+      // Jugador 2
+      if (!estadisticasJugadores.has(jugador2Id)) {
+        estadisticasJugadores.set(jugador2Id, {
+          ejercitos: {},
+          generales_muertos: 0
+        });
+      }
+      
+      const stats2 = estadisticasJugadores.get(jugador2Id);
+      if (partida.ejercito_j2) {
+        stats2.ejercitos[partida.ejercito_j2] = (stats2.ejercitos[partida.ejercito_j2] || 0) + 1;
+      }
+      if (partida.warlord_muerto_j2) {
+        stats2.generales_muertos++;
+      }
     }
 
     torneosParticipados.add(jugador1Id);
@@ -326,13 +395,13 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
     const jugador1 = await obtenerOCrearElo(connRanking, jugador1Id, temporadaId, sistemaJuego, eloInicial);
     const jugador2 = await obtenerOCrearElo(connRanking, jugador2Id, temporadaId, sistemaJuego, eloInicial);
 
-    // Determinar ganador
+    // ✅✅✅ CORREGIDO: Usar partida.resultado en lugar de partida.resultado_ps ✅✅✅
     let ganador;
-    if (partida.resultado_ps === 'victoria_j1') ganador = 1;
-    else if (partida.resultado_ps === 'victoria_j2') ganador = 2;
-    else if (partida.resultado_ps === 'empate') ganador = 0;
+    if (partida.resultado === 'victoria_j1') ganador = 1;
+    else if (partida.resultado === 'victoria_j2') ganador = 2;
+    else if (partida.resultado === 'empate') ganador = 0;
     else {
-      console.warn(`⚠️  Partida ${partida.id}: resultado pendiente`);
+      console.warn(`⚠️  Partida ${partida.id}: resultado pendiente (${partida.resultado})`);
       continue;
     }
 
@@ -350,8 +419,8 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
     await actualizarEloJugador(connRanking, jugador1Id, temporadaId, sistemaJuego, cambios.jugador1.eloNuevo, cambios.jugador1.resultado);
     await actualizarEloJugador(connRanking, jugador2Id, temporadaId, sistemaJuego, cambios.jugador2.eloNuevo, cambios.jugador2.resultado);
 
-    // Actualizar warlords muertos
-    if (sistemaJuego === 'saga' && partida.warlord_muerto_j1) {
+    // Actualizar warlords/generales muertos
+    if (partida.warlord_muerto_j1) {
       await connRanking.query(
         `UPDATE elo_jugadores 
          SET warlords_muertos = warlords_muertos + 1
@@ -359,8 +428,8 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         [jugador1Id, temporadaId, sistemaJuego]
       );
     }
-    
-    if (sistemaJuego === 'saga' && partida.warlord_muerto_j2) {
+
+    if (partida.warlord_muerto_j2) {
       await connRanking.query(
         `UPDATE elo_jugadores 
          SET warlords_muertos = warlords_muertos + 1
@@ -369,7 +438,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
       );
     }
 
-    // Guardar en historial (SIN BANDA)
+    // Guardar en historial
     await connRanking.query(
       `INSERT INTO elo_historial 
        (jugador_id, temporada_id, sistema_juego, partida_id, torneo_id, elo_anterior, elo_nuevo, 
@@ -379,8 +448,8 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         jugador1Id, temporadaId, sistemaJuego, partida.id, torneoId,
         cambios.jugador1.eloAnterior, cambios.jugador1.eloNuevo, cambios.jugador1.cambio,
         jugador2Id, jugador2.elo_actual, cambios.jugador1.resultado,
-        partida.epoca_j1 || null, 
-        partida.faccion_j1 || null,
+        sistemaJuego === 'saga' ? (partida.epoca_j1 || null) : (partida.ejercito_j1 || null),
+        sistemaJuego === 'saga' ? (partida.faccion_j1 || null) : null,
         partida.warlord_muerto_j1 || false
       ]
     );
@@ -394,8 +463,8 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         jugador2Id, temporadaId, sistemaJuego, partida.id, torneoId,
         cambios.jugador2.eloAnterior, cambios.jugador2.eloNuevo, cambios.jugador2.cambio,
         jugador1Id, jugador1.elo_actual, cambios.jugador2.resultado,
-        partida.epoca_j2 || null, 
-        partida.faccion_j2 || null,
+        sistemaJuego === 'saga' ? (partida.epoca_j2 || null) : (partida.ejercito_j2 || null),
+        sistemaJuego === 'saga' ? (partida.faccion_j2 || null) : null,
         partida.warlord_muerto_j2 || false
       ]
     );
@@ -403,7 +472,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
     partidasProcesadas++;
   }
 
-  // 7. Guardar estadísticas detalladas (SIN BANDA)
+  // 7. Guardar estadísticas detalladas
   console.log(`\n📊 Guardando estadísticas detalladas...`);
   
   if (sistemaJuego === 'saga') {
@@ -436,6 +505,33 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
           faccionFavorita,
           JSON.stringify(stats.epocas),
           JSON.stringify(stats.facciones)
+        ]
+      );
+    }
+  } else if (sistemaJuego === 'warmaster') {
+    // ✅✅✅ NUEVO: Guardar estadísticas para WARMASTER ✅✅✅
+    for (const [jugadorId, stats] of estadisticasJugadores) {
+      const ejercitoFavorito = Object.entries(stats.ejercitos)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+      console.log(`  Jugador ${jugadorId}: ejército=${ejercitoFavorito}`);
+
+      await connRanking.query(
+        `INSERT INTO estadisticas_jugador 
+        (jugador_id, temporada_id, sistema_juego, faccion_favorita,
+          facciones_jugadas, torneos_participados)
+        VALUES (?, ?, ?, ?, ?, 1)
+        ON DUPLICATE KEY UPDATE
+          faccion_favorita = VALUES(faccion_favorita),
+          facciones_jugadas = JSON_MERGE_PRESERVE(COALESCE(facciones_jugadas, '{}'), VALUES(facciones_jugadas)),
+          torneos_participados = torneos_participados + 1,
+          updated_at = CURRENT_TIMESTAMP`,
+        [
+          jugadorId,
+          temporadaId,
+          sistemaJuego,
+          ejercitoFavorito,  // ✅ Guardar ejército en faccion_favorita
+          JSON.stringify(stats.ejercitos)  // ✅ Guardar conteo de ejércitos
         ]
       );
     }

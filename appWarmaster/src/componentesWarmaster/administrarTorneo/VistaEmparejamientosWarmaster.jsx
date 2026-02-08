@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import torneosWarmasterApi from '@/servicios/apiWarmaster';
 import { generarEmparejamientosIndividuales } from '../funcionesWarmaster/emparejamientosIndividualesWarmaster';
 
-import ModalRegistroPartida from '../ModalRegistroPartidaWarmaster';
+import ModalRegistroPartidaWarmaster from '../ModalRegistroPartidaWarmaster';
 
 import '@/estilos/vistasTorneos/vistaEmparejamientos.css';
 
@@ -139,14 +139,12 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                 return;
             }
 
-            // Validar participantes mínimos
             const minParticipantes = jugadores.length;
             if (minParticipantes < 2) {
                 alert(`⚠️ Se necesitan al menos 2 jugadores para generar emparejamientos`);
                 return;
             }
 
-            // Preparar participantes para torneos individuales
             const responseClasificacion = await torneosWarmasterApi.obtenerClasificacionIndividual(torneoId);
             const clasificacion = responseClasificacion.data || responseClasificacion || [];
 
@@ -159,7 +157,6 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                 };
             });
 
-            // 🎯 LLAMADA UNIFICADA
             const nuevosEmparejamientos = await generarEmparejamientosIndividuales(
                 torneoId,
                 torneo.ronda_actual || 1,
@@ -186,7 +183,6 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                 return;
             }
       
-            // Para torneos individuales, usar el escenario de la ronda actual
             const nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
             
             if (!nombreEscenario) {
@@ -313,6 +309,28 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
         return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye;
     };
 
+    const tieneDatos = (partida) => {
+        if (esBye(partida)) {
+            return true;
+        }
+        
+        return (partida.puntos_masacre_j1 > 0 || partida.puntos_masacre_j2 > 0) &&
+               partida.resultado_pw && 
+               partida.resultado_pw !== 'pendiente';
+    };
+
+    const puedeEditarEstaPartida = (partida) => {
+        if (partida.resultado_confirmado) {
+            return false;
+        }
+        
+        if (esBye(partida)) {
+            return false;
+        }
+        
+        return puedeEditarPartidas();
+    };
+
     const abrirModalPartida = (partida) => {
         if (!puedeEditarPartidas()) {
             alert('⚠️ El torneo debe estar "En Curso" para poder introducir resultados.\n\nCambia el estado del torneo primero.');
@@ -342,9 +360,8 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
     };
 
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
-        const partidaEsBye = esBye(partida);
         const estaConfirmado = partida.resultado_confirmado;
-        const puedeEditar = esRondaActual && puedeEditarPartidas() && !partidaEsBye && !estaConfirmado;
+        const puedeEditar = esRondaActual && puedeEditarEstaPartida(partida) && !esBye(partida);
 
         return (
             <div 
@@ -352,8 +369,9 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                 className={`emparejamiento-card ${puedeEditar ? 'editable' : ''}`}
                 onClick={() => puedeEditar && abrirModalPartida(partida)}
                 style={{
-                    border: `2px solid ${estaConfirmado ? '#4caf50' : '#ff9800'}`,
-                    background: estaConfirmado ? '#e8f5e9' : '#fff'
+                    border: `2px solid ${estaConfirmado ? '#4caf50' : (tieneDatos(partida) ? '#2196f3' : '#ff9800')}`,
+                    background: estaConfirmado ? '#e8f5e9' : (tieneDatos(partida) ? '#e3f2fd' : '#fff'),
+                    cursor: puedeEditar ? 'pointer' : 'default'
                 }}
             >
                 {puedeEditar && (
@@ -364,36 +382,42 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
                 {!esVistaPublica && esOrganizador && esRondaActual && (
                     <button
-                        className={`boton-confirmar ${estaConfirmado ? 'confirmado' : 'pendiente'}`}
+                        className={`boton-confirmar ${estaConfirmado ? 'confirmado' : (tieneDatos(partida) ? 'por-confirmar' : 'pendiente')}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (window.confirm(
                                 estaConfirmado 
                                     ? '¿Desconfirmar este resultado?\n\nLos puntos se restarán de la clasificación.'
-                                    : (partidaEsBye 
-                                        ? '⭐ ¿Confirmar este BYE?\n\nSe sumarán 10 Puntos de Torneo a la clasificación.'
+                                    : (esBye(partida) 
+                                        ? '⭐ ¿Confirmar este BYE?\n\nSe sumarán 3 PV y 150 PM a la clasificación.'
                                         : '¿Confirmar este resultado?\n\nLos puntos se sumarán a la clasificación.')
                             )) {
                                 confirmarPartida(partida.id, !estaConfirmado);
                             }
                         }}
                     >
-                        {estaConfirmado ? '✅ CONFIRMADO' : '⏳ PENDIENTE'}
+                        {estaConfirmado ? '✅ CONFIRMADO' : (tieneDatos(partida) ? '🔵 POR CONFIRMAR' : '⏳ PENDIENTE')}
                     </button>
                 )}
 
-                <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
+                <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : (tieneDatos(partida) ? 'por-confirmar' : 'pendiente')} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
                     Mesa {partida.mesa || index + 1}
-                    {partidaEsBye ? ' ⭐ BYE' : ''} 
-                    {' - '}
-                    {estaConfirmado ? '✅ CONFIRMADA' : '⏳ PENDIENTE'}
+                    {esBye(partida) ? ' ⭐ BYE' : ''}
+                    {partida.nombre_partida && (
+                        <div className="escenario-partida">
+                            📋 {partida.nombre_partida}
+                        </div>
+                    )}
                 </div>
 
                 <div className="enfrentamiento">
                     <div className="jugador">
-                        <div className="nombre">{partida.jugador1_nombre}</div>
+                        <div className="nombre">
+                            {partida.jugador1_nombre}
+                            {partida.jugador1?.nombre_alias && ` "${partida.jugador1.nombre_alias}"`}
+                        </div>
                         {partida.jugador1?.ejercito && (
-                            <div className="ejercito">⚔️ {partida.jugador1.ejercito}</div>
+                            <div className="faccion">⚔️ {partida.jugador1.ejercito}</div>
                         )}
                         <div className="stats">
                             PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} | 
@@ -405,9 +429,12 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
                     {partida.jugador2_nombre ? (
                         <div className="jugador">
-                            <div className="nombre">{partida.jugador2_nombre}</div>
+                            <div className="nombre">
+                                {partida.jugador2_nombre}
+                                {partida.jugador2?.nombre_alias && ` "${partida.jugador2.nombre_alias}"`}
+                            </div>
                             {partida.jugador2?.ejercito && (
-                                <div className="ejercito">⚔️ {partida.jugador2.ejercito}</div>
+                                <div className="faccion">⚔️ {partida.jugador2.ejercito}</div>
                             )}
                             <div className="stats">
                                 PV: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} | 
@@ -418,7 +445,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                         <div className="jugador bye">
                             <div>⭐ BYE</div>
                             <div>Victoria automática</div>
-                            <div>150 PM clasificación Individual</div>
+                            <div>3 PV | 150 PM</div>
                         </div>
                     )}
                 </div>
@@ -640,7 +667,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
             )}
 
             {modalAbierto && partidaSeleccionada && (
-                <ModalRegistroPartida
+                <ModalRegistroPartidaWarmaster
                     partida={partidaSeleccionada}
                     esOrganizador={esOrganizador}
                     onClose={() => {

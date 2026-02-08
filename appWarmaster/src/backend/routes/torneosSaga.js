@@ -87,6 +87,7 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.fecha_fin,
         ts.ubicacion,
         ts.puntos_banda,
+        ts.unidades_legendarias,
         ts.participantes_max,
         ts.equipos_max,
         ts.estado,
@@ -191,6 +192,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.fecha_fin,
         ts.ubicacion,
         ts.puntos_banda,
+        unidades_legendarias,
         ts.participantes_max,
         ts.equipos_max,
         ts.estado,
@@ -259,6 +261,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       participantes_max: participantes_max_raw,
       equipos_max: equipos_max_raw,
       estado,
+      unidades_legendarias: unidades_legendarias_raw,
       partida_ronda_1,
       partida_ronda_2,
       partida_ronda_3,
@@ -271,6 +274,16 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
     const puntos_banda = parseInt(puntos_banda_raw);
     const participantes_max = parseInt(participantes_max_raw);
     const equipos_max = parseInt(equipos_max_raw);
+
+    let unidades_legendarias = 0
+    if (unidades_legendarias_raw !== undefined && unidades_legendarias_raw !== null) {
+      const esVerdadero = unidades_legendarias_raw === true || 
+                        unidades_legendarias_raw === 'true' || 
+                        unidades_legendarias_raw === 1 || 
+                        unidades_legendarias_raw === '1';
+    
+      unidades_legendarias = esVerdadero ? 1 : 0;
+    }
 
     // ✅ CORREGIDO: Parsear épocas si viene como string
     let epocas_disponibles;
@@ -421,6 +434,18 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       baseTamaño = req.file.size;
     }
 
+  console.group('🔍 DEBUG CREAR TORNEO - UNIDADES LEGENDARIAS');
+console.log('1. Valor RAW recibido:', unidades_legendarias_raw);
+console.log('2. Tipo de dato RAW:', typeof unidades_legendarias_raw);
+console.log('3. Comparaciones:');
+console.log('   - === true:', unidades_legendarias_raw === true);
+console.log('   - === "true":', unidades_legendarias_raw === 'true');
+console.log('   - === 1:', unidades_legendarias_raw === 1);
+console.log('   - === "1":', unidades_legendarias_raw === '1');
+console.log('4. Valor procesado:', unidades_legendarias);
+console.log('5. Tipo procesado:', typeof unidades_legendarias);
+console.groupEnd();
+
     const [resultado] = await pool.execute(
       `INSERT INTO torneos_sistemas 
        (nombre_torneo, 
@@ -432,6 +457,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         ubicacion, 
         puntos_banda, 
         puntos_ejercito,
+        unidades_legendarias,
         participantes_max, 
         equipos_max,
         estado, 
@@ -444,7 +470,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         tipo_torneo === 'Por equipos' ? 'Por equipos' : 'Individual',
@@ -455,6 +481,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         ubicacion || null,  // ✅ Asegurar que se guarde
         puntos_banda,
         0,
+        unidades_legendarias,
         participantes_max,
         equipos_max,
         estado || 'pendiente',
@@ -614,6 +641,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         num_jugadores_equipo: num_jugadores_equipo || null,
         epocas_disponibles: epocas_disponibles,
         ubicacion: ubicacion || null,
+        unidades_legendarias: unidades_legendarias,
         tiene_bases_pdf: !!req.file,
         created_by: req.usuario.userId,
         organizadores: {
@@ -1470,12 +1498,13 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
     const { 
       usuarioId,
       faccion,
+      warlordLegendario,
      ...restoDatos
     } = req.body;
 
     // Validar que el torneo existe y obtener su época
     const [torneos] = await pool.execute(
-      `SELECT puntos_banda, participantes_max, estado, tipo_torneo 
+      `SELECT puntos_banda, participantes_max, estado, tipo_torneo, unidades_legendarias
           FROM torneos_sistemas 
           WHERE id = ?`,
       [torneoId]
@@ -1541,6 +1570,11 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       );
     }
 
+    let costePuntosWarlord = 0
+    if ( warlordLegendario && torneo.unidades_legendarias === 1) {
+      costePuntosWarlord = warlordLegendario.costePuntos || 0
+    }
+
     let composicionEjercito =  null
     let totalPuntos = 0
 
@@ -1556,8 +1590,9 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         composicionEjercito.opcionesBanda = restoDatos.opcionesBanda;
       }
 
-      // Calcular total (esto debería venir calculado del frontend)
-      // O podríamos recibir el total como parámetro
+      if(warlordLegendario) {
+        composicionEjercito.warlordLegendario =warlordLegendario
+      }
       
     } else {
       // ✅ BANDAS NORMALES: Solo incluir campos que existen
@@ -1610,6 +1645,10 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         composicion.berserkers = parseFloat(restoDatos.puntosBerserkers);
         totalPuntos += composicion.berserkers;
       }
+      if(restoDatos.puntosCerdos > 0) {
+        composicion.cerdos = parseFloat (restoDatos.puntosCerdos)
+        totalPuntos += composicion.cerdos
+      }
 
       // ✅ Unidades especiales (manubalista, los compañeros, etc.)
       if (restoDatos.unidadesEspeciales && Object.keys(restoDatos.unidadesEspeciales).length > 0) {
@@ -1627,6 +1666,10 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         composicion.opcionesBanda = restoDatos.opcionesBanda;
       }
 
+      if (warlordLegendario) {
+        composicion.warlordLegendario = warlordLegendario
+      }
+
       // Solo crear composición si hay datos
       if (Object.keys(composicion).length > 0) {
         composicionEjercito = composicion;
@@ -1635,9 +1678,15 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 
     // ✅ VALIDAR PUNTOS (solo si hay composición)
     if (composicionEjercito && totalPuntos > 0) {
-      if (Math.abs(totalPuntos - torneo.puntos_banda) > 0.01) {
+      const puntosDisponibles = torneo.puntos_banda - costePuntosWarlord
+
+      if (Math.abs(totalPuntos - puntosDisponibles) > 0.01) {
         return res.status(400).json(
-          errorResponse(`Los puntos deben sumar ${torneo.puntos_banda}. Total actual: ${totalPuntos}`)
+          errorResponse(`
+            Los puntos deben sumar ${puntosDisponibles}` + 
+            (costePuntosWarlord > 0 ? ` (${torneo.puntos_banda} - ${costePuntosWarlord} del warlord)` : '') + 
+            `. Total actual: ${totalPuntos}`
+          )
         );
       }
     }
@@ -1679,7 +1728,8 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
         torneoId,
         usuarioId,
         epoca: epocaTorneo,
-        faccion: faccion || null,
+        bandaFinal: warlordLegendario?.bandaDesbloqueada || faccion || null,
+        warlordLegendario: warlordLegendario || null,
         composicionEjercito: composicionEjercito
       })
     );
@@ -1707,15 +1757,39 @@ router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => 
         }
 
         // Parsear la composición si existe
+        let composicion = null;
+        let warlordLegendario = null;
+        let bandaFinal = inscripcion[0].faccion;
+
         if (inscripcion[0].composicion_ejercito) {
             try {
-                inscripcion[0].composicion_ejercito = JSON.parse(inscripcion[0].composicion_ejercito);
+                composicion = JSON.parse(inscripcion[0].composicion_ejercito);
+                inscripcion[0].composicion_ejercito = composicion;
+
+                // ✅ Extraer warlord de la composición
+                if (composicion.warlordLegendario) {
+                    warlordLegendario = composicion.warlordLegendario;
+                    
+                    // Si tiene banda desbloqueada, es la banda final
+                    if (warlordLegendario.bandaDesbloqueada) {
+                        bandaFinal = warlordLegendario.bandaDesbloqueada;
+                    }
+                }
             } catch {
                 inscripcion[0].composicion_ejercito = {};
             }
         }
+
+        // ✅ Añadir información adicional útil
+        const respuesta = {
+            ...inscripcion[0],
+            warlordLegendario: warlordLegendario,
+            bandaFinal: bandaFinal,
+            tieneWarlord: !!warlordLegendario,
+            tieneBandaDesbloqueada: !!warlordLegendario?.bandaDesbloqueada
+        };
         
-        res.json(successResponse('Inscripción encontrada', inscripcion[0]));
+        res.json(successResponse('Inscripción encontrada', respuesta));
         
     } catch (error) {
         console.error('Error:', error);
@@ -1731,7 +1805,7 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
   try {
     const { torneoId } = req.params;
     const jugadorId = req.usuario.userId;
-    const { faccion, ...restoDatos } = req.body;
+    const { faccion, warlordLegendario, ...restoDatos } = req.body; // ✅ Extraer warlord
 
     await connection.beginTransaction();
 
@@ -1746,13 +1820,20 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
       return res.status(404).json(errorResponse('No estás inscrito en este torneo'));
     }
 
-    // Obtener puntos del torneo
+    // Obtener puntos del torneo y si permite unidades legendarias
     const [torneos] = await connection.execute(
-      'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
+      'SELECT puntos_banda, unidades_legendarias FROM torneos_sistemas WHERE id = ?',
       [torneoId]
     );
 
     const puntosBandaTorneo = torneos.length > 0 ? torneos[0].puntos_banda : 24;
+    const permiteLegendarias = torneos.length > 0 ? torneos[0].unidades_legendarias === 1 : false;
+
+    // ✅ Calcular coste del warlord
+    let costePuntosWarlord = 0;
+    if (warlordLegendario && permiteLegendarias) {
+      costePuntosWarlord = warlordLegendario.costePuntos || 0;
+    }
 
     // ✅ CONSTRUIR COMPOSICIÓN DINÁMICAMENTE
     let composicionEjercito = null;
@@ -1769,8 +1850,10 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         composicionEjercito.opcionesBanda = restoDatos.opcionesBanda;
       }
 
-      // El cálculo de puntos para Edad de Magia debe venir del frontend
-      // ya que necesitamos la configuración de cada banda
+      // ✅ Guardar warlord legendario en la composición
+      if (warlordLegendario && permiteLegendarias) {
+        composicionEjercito.warlordLegendario = warlordLegendario;
+      }
       
     } else {
       // ✅ BANDAS NORMALES: Solo incluir campos que existen
@@ -1823,6 +1906,10 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         composicion.berserkers = parseFloat(restoDatos.puntosBerserkers);
         totalPuntos += composicion.berserkers;
       }
+      if (restoDatos.puntosCerdos > 0) {
+        composicion.cerdos = parseFloat(restoDatos.puntosCerdos);
+        totalPuntos += composicion.cerdos;
+      }
 
       // ✅ Unidades especiales
       if (restoDatos.unidadesEspeciales && Object.keys(restoDatos.unidadesEspeciales).length > 0) {
@@ -1840,18 +1927,29 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         composicion.opcionesBanda = restoDatos.opcionesBanda;
       }
 
+      // ✅ Warlord legendario (se guarda completo en la composición)
+      if (warlordLegendario && permiteLegendarias) {
+        composicion.warlordLegendario = warlordLegendario;
+      }
+
       // Solo crear composición si hay datos
       if (Object.keys(composicion).length > 0) {
         composicionEjercito = composicion;
       }
     }
 
-    // ✅ VALIDAR PUNTOS (solo si hay composición)
+    // ✅ VALIDAR PUNTOS (considerando coste del warlord)
     if (composicionEjercito && totalPuntos > 0) {
-      if (Math.abs(totalPuntos - puntosBandaTorneo) > 0.01) {
+      const puntosDisponibles = puntosBandaTorneo - costePuntosWarlord;
+      
+      if (Math.abs(totalPuntos - puntosDisponibles) > 0.01) {
         await connection.rollback();
         return res.status(400).json(
-          errorResponse(`Los puntos deben sumar ${puntosBandaTorneo}. Total actual: ${totalPuntos}`)
+          errorResponse(
+            `Los puntos deben sumar ${puntosDisponibles}` +
+            (costePuntosWarlord > 0 ? ` (${puntosBandaTorneo} - ${costePuntosWarlord} del warlord)` : '') +
+            `. Total actual: ${totalPuntos}`
+          )
         );
       }
     }
@@ -1881,17 +1979,44 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
       [torneoId, jugadorId]
     );
 
+    // ✅ Parsear y añadir info del warlord
+    let composicionFinal = null;
+    let warlordInfo = null;
+    let bandaFinal = faccion;
+
     if (inscripcionActualizada.length > 0 && inscripcionActualizada[0].composicion_ejercito) {
       try {
-        inscripcionActualizada[0].composicion_ejercito = JSON.parse(inscripcionActualizada[0].composicion_ejercito);
+        composicionFinal = JSON.parse(inscripcionActualizada[0].composicion_ejercito);
+        inscripcionActualizada[0].composicion_ejercito = composicionFinal;
+
+        if (composicionFinal.warlordLegendario) {
+          warlordInfo = composicionFinal.warlordLegendario;
+          if (warlordInfo.bandaDesbloqueada) {
+            bandaFinal = warlordInfo.bandaDesbloqueada;
+          }
+        }
       } catch {
         inscripcionActualizada[0].composicion_ejercito = null;
       }
     }
 
-    console.log(`✅ Inscripción actualizada para usuario ${jugadorId} en torneo ${torneoId}`);
+    const respuesta = {
+      ...inscripcionActualizada[0],
+      warlordLegendario: warlordInfo,
+      bandaFinal: bandaFinal,
+      tieneWarlord: !!warlordInfo,
+      tieneBandaDesbloqueada: !!warlordInfo?.bandaDesbloqueada
+    };
 
-    res.json(successResponse('Inscripción actualizada correctamente', inscripcionActualizada[0]));
+    console.log(`✅ Inscripción actualizada para usuario ${jugadorId} en torneo ${torneoId}`);
+    if (warlordInfo) {
+      console.log(`   🎖️  Warlord: ${warlordInfo.nombre} (${warlordInfo.costePuntos} pts)`);
+      if (warlordInfo.bandaDesbloqueada) {
+        console.log(`   ✨ Banda desbloqueada: ${warlordInfo.bandaDesbloqueada}`);
+      }
+    }
+
+    res.json(successResponse('Inscripción actualizada correctamente', respuesta));
 
   } catch (error) {
     await connection.rollback();

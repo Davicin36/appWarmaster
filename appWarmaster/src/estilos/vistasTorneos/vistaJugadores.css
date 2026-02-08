@@ -782,3 +782,144 @@
     font-size: 0.85em;
     font-weight: 500;
 }
+
+/* ==========================================
+   ESTILOS PARA UNIDADES LEGENDARIAS
+   ========================================== */
+
+/* Información del Warlord */
+.warlord-info-admin {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.badge-warlord {
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(233, 30, 99, 0.3);
+}
+
+.badge-banda-desbloqueada {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(156, 39, 176, 0.3);
+}
+
+.coste-warlord-info {
+    color: #666;
+    margin-left: 0.5rem;
+    font-size: 0.85rem;
+}
+
+/* Banda desbloqueada en celda de tabla */
+.banda-desbloqueada-celda {
+    font-size: 0.85em;
+    color: #9c27b0;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+.banda-desbloqueada-inline {
+    color: #9c27b0;
+    margin-left: 5px;
+    font-weight: 600;
+}
+
+/* Unidades especiales */
+.unidad-especial {
+    color: #ff5722;
+    font-weight: 600;
+}
+
+/* Unidades legendarias (Cerdos Incendiarios) */
+.unidad-legendaria-especial {
+    background: linear-gradient(135deg, #ff6b00, #ff8c00);
+    color: rgb(2, 2, 2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    font-weight: bold;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(255, 107, 0, 0.3);
+    animation: pulse-legendary 2s ease-in-out infinite;
+}
+
+@keyframes pulse-legendary {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(255, 107, 0, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(255, 107, 0, 0.5);
+    }
+}
+
+/* Unidades desbloqueadas por warlord */
+.unidad-warlord-desbloqueada {
+    color: #9c27b0;
+    font-weight: bold;
+    border: 1px solid #9c27b0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #f3e5f5;
+    display: inline-block;
+    margin: 2px;
+}
+
+/* Puntos detalle */
+.puntos-detalle-admin span {
+    margin-right: 0.75rem;
+    margin-bottom: 0.25rem;
+    display: inline-block;
+}
+
+/* Opciones de banda */
+.opciones-banda-mini-admin {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.badge-opcion {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Detalle mercenarios */
+.detalle-mercenarios-mini-admin {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: #fff3e0;
+    border-left: 3px solid #ff9800;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #e65100;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .warlord-info-admin {
+        flex-direction: column;
+    }
+    
+    .badge-warlord,
+    .badge-banda-desbloqueada {
+        width: 100%;
+        text-align: center;
+    }
+}

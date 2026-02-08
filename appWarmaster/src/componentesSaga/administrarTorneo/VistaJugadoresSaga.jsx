@@ -3,7 +3,10 @@ import { useParams } from 'react-router-dom';
 
 import torneosSagaApi from '@/servicios/apiSaga';
 import AnadirParticipantesTorneos from '@/componente/vistasAdministrarTorneos/AnadirParticipantesTorneos';
-import { obtenerConfiguracionBanda } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
+import { 
+    obtenerConfiguracionBanda,
+    obtenerOpcionesWarlordLegendario
+} from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
 import '@/estilos/vistasTorneos/vistaJugadores.css';
 
@@ -44,6 +47,7 @@ const calcularPuntosTotales = (composicion, banda) => {
     total += parseFloat(composicion.curaids || 0);
     total += parseFloat(composicion.perros || 0);
     total += parseFloat(composicion.berserkers || 0);
+    total += parseFloat(composicion.cerdos || 0);
     
     // Unidades especiales
     if (composicion.unidadesEspeciales) {
@@ -56,22 +60,82 @@ const calcularPuntosTotales = (composicion, banda) => {
 };
 
 // ==========================================
-// ✅ COMPONENTE: MOSTRAR COMPOSICIÓN
+// ✅ OBTENER UNIDADES ESPECIALES DESBLOQUEADAS POR WARLORD
 // ==========================================
-const MostrarComposicion = ({ composicion, banda }) => {
+const obtenerUnidadesWarlord = (bandaBase, warlordValor) => {
+    if (!warlordValor || !bandaBase) return [];
+    
+    try {
+        // ✅ Obtener la época correcta de la banda
+        const configuracionBanda = obtenerConfiguracionBanda(bandaBase);
+        const epocaBanda = configuracionBanda.epoca;
+        
+        if (!epocaBanda) {
+            console.warn('⚠️ No se pudo determinar la época de la banda:', bandaBase);
+            return [];
+        }
+        
+        const opciones = obtenerOpcionesWarlordLegendario(epocaBanda, bandaBase);
+        if (!opciones) return [];
+        
+        const opcionWarlord = opciones.opciones.find(o => o.valor === warlordValor);
+        if (opcionWarlord && opcionWarlord.unidadesEspecialesDesbloqueadas) {
+            return opcionWarlord.unidadesEspecialesDesbloqueadas;
+        }
+    } catch (error) {
+        console.error('Error al obtener unidades del warlord:', error);
+    }
+    
+    return [];
+};
+
+// ==========================================
+// ✅ COMPONENTE: MOSTRAR COMPOSICIÓN (MEJORADO)
+// ==========================================
+const MostrarComposicion = ({ composicion, banda, mostrarWarlord = true }) => {
     if (!composicion || Object.keys(composicion).length === 0) {
         return <span className="sin-composicion">Sin composición</span>;
     }
 
-    const config = banda ? obtenerConfiguracionBanda(banda) : null;
-    const totalPuntos = calcularPuntosTotales(composicion, banda);
+    // ✅ Extraer información del warlord
+    const warlord = composicion.warlordLegendario || null;
+    const bandaFinal = warlord?.bandaDesbloqueada || banda;
+
+    // ✅ Usar bandaFinal para obtener la configuración correcta
+    const config = bandaFinal ? obtenerConfiguracionBanda(bandaFinal) : null;
+    const totalPuntos = calcularPuntosTotales(composicion, bandaFinal);
+
+    // ✅ Obtener unidades especiales desbloqueadas por warlord
+    const unidadesWarlord = warlord && banda 
+        ? obtenerUnidadesWarlord(banda, warlord.valor)  // ✅ Solo banda y warlord, la época se obtiene internamente
+        : [];
 
     // ✅ EDAD DE LA MAGIA - Tipos personalizados
     if (composicion.tiposTropaPersonalizados && config?.tiposTropaPersonalizados) {
         return (
             <div className="miembro-composicion-admin">
+                {/* ✅ WARLORD LEGENDARIO */}
+                {mostrarWarlord && warlord && (
+                    <div className="warlord-info-admin">
+                        <span className="badge-warlord">
+                            ⚔️ {warlord.nombre}
+                            {warlord.costePuntos > 0 && ` (${warlord.costePuntos} pts)`}
+                        </span>
+                        {warlord.bandaDesbloqueada && (
+                            <span className="badge-banda-desbloqueada">
+                                {warlord.bandaDesbloqueada}
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 <div className="puntos-total-admin">
                     <strong>Total: {totalPuntos.toFixed(1)} pts</strong>
+                    {warlord?.costePuntos > 0 && (
+                        <small className="coste-warlord-info">
+                            (+{warlord.costePuntos} warlord)
+                        </small>
+                    )}
                 </div>
                 <div className="puntos-detalle-admin">
                     {config.tiposTropaPersonalizados.map(tipo => {
@@ -102,28 +166,69 @@ const MostrarComposicion = ({ composicion, banda }) => {
     // ✅ BANDAS NORMALES
     return (
         <div className="miembro-composicion-admin">
+            {/* ✅ WARLORD LEGENDARIO */}
+            {mostrarWarlord && warlord && (
+                <div className="warlord-info-admin">
+                    <span className="badge-warlord">
+                        ⚔️ {warlord.nombre}
+                        {warlord.costePuntos > 0 && ` (${warlord.costePuntos} pts)`}
+                    </span>
+                    {warlord.bandaDesbloqueada && (
+                        <span className="badge-banda-desbloqueada">
+                            ✨ {warlord.bandaDesbloqueada}
+                        </span>
+                    )}
+                </div>
+            )}
+
             <div className="puntos-total-admin">
                 <strong>Total: {totalPuntos.toFixed(1)} pts</strong>
+                {warlord?.costePuntos > 0 && (
+                    <small className="coste-warlord-info">
+                        (+{warlord.costePuntos} warlord)
+                    </small>
+                )}
             </div>
             <div className="puntos-detalle-admin">
                 {/* Tipos estándar */}
                 {composicion.guardias > 0 && <span>Guardias: {parseFloat(composicion.guardias)}</span>}
-                {composicion.berserkers > 0 && <span>Berserkers: {parseFloat(composicion.berserkers)}</span>}
+                {composicion.berserkers > 0 && (
+                    <span className="unidad-especial"> Berserkers: {parseFloat(composicion.berserkers)}</span>
+                )}
                 
                 {/* Características especiales */}
-                {composicion.elefantes > 0 && <span>Elefantes : {parseFloat(composicion.elefantes)}</span>}
-                {composicion.carros > 0 && <span>Carros : {parseFloat(composicion.carros)}</span>}
-                {composicion.tambor > 0 && <span>Tambor : {parseFloat(composicion.tambor)}</span>}
-                {composicion.curaids > 0 && <span>Curaids : {parseFloat(composicion.curaids)}</span>}
-                {composicion.perros > 0 && <span>Perros de Guerra: {parseFloat(composicion.perros)}</span>}
+                {composicion.elefantes > 0 && <span> Elefantes: {parseFloat(composicion.elefantes)}</span>}
+                {composicion.carros > 0 && <span> Carros: {parseFloat(composicion.carros)}</span>}
+                {composicion.tambor > 0 && <span>Tambor: {parseFloat(composicion.tambor)}</span>}
+                {composicion.curaids > 0 && <span>Curaids: {parseFloat(composicion.curaids)}</span>}
+                {composicion.perros > 0 && <span> Perros de Guerra: {parseFloat(composicion.perros)}</span>}
+                
+                {/* CERDOS INCENDIARIOS - UNIDAD LEGENDARIA */}
+                {composicion.cerdos > 0 && (
+                    <span className="unidad-legendaria-especial">
+                        Cerdos Incendiarios: {parseFloat(composicion.cerdos)} 
+                    </span>
+                )}
                 
                 {/* Unidades especiales */}
                 {composicion.unidadesEspeciales && Object.entries(composicion.unidadesEspeciales).map(([key, value]) => {
                     if (value > 0) {
-                        // Obtener label de la configuración si está disponible
                         const unidad = config?.unidadesEspeciales?.find(u => u.nombre === key);
-                        const label = unidad?.label || key;
-                        return <span key={key}>{label}: {parseFloat(value)}</span>;
+                        const unidadWarlord = unidadesWarlord.find(u => u.nombre === key);
+                        const label = unidad?.label || unidadWarlord?.label || key;
+                        
+                        // ✅ Si es unidad desbloqueada por warlord, destacarla
+                        const esUnidadWarlord = !!unidadWarlord;
+                        
+                        return (
+                            <span 
+                                key={key}
+                                className={esUnidadWarlord ? 'unidad-warlord-desbloqueada' : ''}
+                            >
+                                {label}: {parseFloat(value)}
+                                {unidadWarlord && ` (${unidadWarlord.puntos} pts)`}
+                            </span>
+                        );
                     }
                     return null;
                 })}
@@ -137,7 +242,6 @@ const MostrarComposicion = ({ composicion, banda }) => {
             {composicion.opcionesBanda && Object.keys(composicion.opcionesBanda).length > 0 && (
                 <div className="opciones-banda-mini-admin">
                     {Object.entries(composicion.opcionesBanda).map(([key, value]) => {
-                        // Obtener label de la configuración si está disponible
                         const opcion = config?.opcionesBanda?.find(o => o.id === key);
                         const label = opcion?.label || key;
                         return (
@@ -478,7 +582,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                     <th>Club</th>
                                     <th>Época</th>
                                     <th>Facción</th>
-                                    <th>Puntos</th>
+                                    <th>Composición</th>
                                     <th>Pago</th>
                                     {torneo?.estado === 'pendiente' && <th>Acciones</th>}
                                 </tr>
@@ -496,7 +600,10 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                         }
                                     }
                                     
-                                    const totalPuntos = calcularPuntosTotales(composicion, jugador.faccion);
+                                    // ✅ Obtener banda final (desbloqueada si hay warlord)
+                                    const warlord = composicion.warlordLegendario;
+                                    const bandaFinal = warlord?.bandaDesbloqueada || jugador.faccion;
+                                    
                                     const isPagado = jugador.pagado === 'pagado';
                                     const isLoadingPago = loadingPago[`jugador-${jugador.id}`];
 
@@ -508,9 +615,23 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                             </td>
                                             <td>{jugador.nombre_alias || '-'}</td>
                                             <td>{jugador.club || '-'}</td>
-                                            <td>{jugador.epoca || '-'}</td>
-                                            <td>{jugador.faccion || '-'}</td>
-                                            <td>{totalPuntos.toFixed(1)}</td>
+                                            <td>{torneo?.epocas_disponibles || jugador.epoca || '-'}</td>
+                                            <td>
+                                                {/* ✅ Mostrar banda base y desbloqueada */}
+                                                <div>{jugador.faccion || '-'}</div>
+                                                {warlord?.bandaDesbloqueada && (
+                                                    <div className="banda-desbloqueada-celda">
+                                                        ✨ {warlord.bandaDesbloqueada}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <MostrarComposicion 
+                                                    composicion={composicion} 
+                                                    banda={bandaFinal}
+                                                    mostrarWarlord={torneo?.unidades_legendarias === 1}
+                                                />
+                                            </td>
                                             <td>
                                                 <button
                                                     onClick={() => cambiarEstadoPagoJugador(jugador.id, jugador.pagado)}
@@ -613,7 +734,7 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                 <div className="equipo-header-admin">
                                     <h3>🏆 {equipo.nombre_equipo}</h3>
                                     <span className="badge-capitan-admin">
-                                        👑 {equipo.capitan_nombre} {equipo.capitan_apellidos} -  {equipo.capitan_alias && `(${equipo.capitan_alias})`}
+                                        👑 {equipo.capitan_nombre} {equipo.capitan_apellidos} {equipo.capitan_alias && `(${equipo.capitan_alias})`}
                                     </span>
                                 </div>
 
@@ -621,24 +742,37 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                     <h4>Miembros ({(equipo.miembros || []).length}):</h4>
                                     {(equipo.miembros || []).length > 0 ? (
                                         <ul className="lista-miembros-admin">
-                                            {equipo.miembros.map((miembro, idx) => (
-                                                <li key={idx} className="miembro-item-admin">
-                                                    <div className="miembro-header-admin">
-                                                        <span className="miembro-nombre-admin">
-                                                            {miembro.es_capitan && '👑 '}
-                                                            {miembro.nombre} - {miembro.alias && `(${miembro.alias})`}
-                                                        </span>
-                                                        <span className="miembro-epoca-banda-admin">
-                                                            {miembro.epoca} - {miembro.faccion}
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    <MostrarComposicion 
-                                                        composicion={miembro.composicion} 
-                                                        banda={miembro.faccion}
-                                                    />
-                                                </li>
-                                            ))}
+                                            {equipo.miembros.map((miembro, idx) => {
+                                                // ✅ Obtener banda final del miembro
+                                                const warlord = miembro.composicion?.warlordLegendario;
+                                                const bandaFinal = warlord?.bandaDesbloqueada || miembro.faccion;
+
+                                                return (
+                                                    <li key={idx} className="miembro-item-admin">
+                                                        <div className="miembro-header-admin">
+                                                            <span className="miembro-nombre-admin">
+                                                                {miembro.es_capitan && '👑 '}
+                                                                {miembro.nombre} {miembro.alias && `(${miembro.alias})`}
+                                                            </span>
+                                                            <span className="miembro-epoca-banda-admin">
+                                                                {miembro.epoca} - {miembro.faccion}
+                                                                {warlord?.bandaDesbloqueada && (
+                                                                    <span className="banda-desbloqueada-inline">
+                                                                        ✨ {warlord.bandaDesbloqueada}
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        <MostrarComposicion 
+                                                            composicion={miembro.composicion} 
+                                                            banda={bandaFinal}
+                                                            epoca={miembro.epoca}
+                                                            mostrarWarlord={torneo?.unidades_legendarias === 1}
+                                                        />
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                                     ) : (
                                         <p className="sin-miembros-admin">Sin miembros</p>

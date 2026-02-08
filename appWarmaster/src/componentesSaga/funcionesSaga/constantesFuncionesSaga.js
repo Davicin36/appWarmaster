@@ -125,8 +125,50 @@ export const BANDAS_POR_EPOCA = {
     { nombre: "VÁNDALOS" }
   ],
   "Ánibal": [
-    { nombre: "IBEROS" },
-    { nombre: "CARTAGINESES", permiteElefantes: true }, 
+    { nombre: "IBEROS", 
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "viriato", nombre: "Viriato",
+              costeEnPuntos: 1,
+             },
+            { valor: "punicus", nombre: "Punicus",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ]
+     },
+    { nombre: "CARTAGINESES", permiteElefantes: true, permiteCarros: true,
+      restricciones: {
+        mutuamenteExcluyentes: [
+          ["elefantes", "carros"]
+        ]
+      },
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "anibal", nombre: "Aníbal Barca, el General tuerto, Némesis de Roma",
+              costeEnPuntos: 1,
+             },
+            { valor: "amilcar", nombre: "Amílcar Barca",
+              costeEnPuntos: 1,
+              restriccionesAdicionales : {
+                prohibido : ["elefantes", "carros", "levas"]
+              }
+             }
+          ],
+        }
+      ]
+    }, 
     { nombre: "REPÚBLICA DE ROMA",
       opcionesBanda: [
         {
@@ -140,22 +182,207 @@ export const BANDAS_POR_EPOCA = {
           ],
           valorPorDefecto: "consul"
         }
+      ],
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "publio", nombre: "PUBLIO CORNELIO ESCIPIÓN, El Africano",
+              costeEnPuntos: 1,
+             },
+            { valor: "marcus", nombre: "MARCUS CLAUDIUS MARCELLUS, la Espada de Roma",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
       ]
     },
-    { nombre: "GALOS", permiteCarros: true },
-    { nombre: "NÚMIDAS", permiteElefantes: true,
-       tiposTropaPermitidos: ['guerreros', 'levas', 'mercenarios' ]
+    { nombre: "GALOS",
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "ducario", nombre: "DUCARIO el Ínsubro",
+              costeEnPuntos: 1,
+             },
+            { valor: "viridomaros", nombre: "VIRIDÓMAROS, Rey de los Gaesati",
+              costeEnPuntos: 1,
+              nombreBandaDesbloqueada: "GALOS -UNIDADES GAESATIS",
+              composicionBanda: null,
+              restriccionesAdicionales : {
+                prohibido : ["carros"]
+              }
+             }
+          ],
+        }
+      ] 
      },
-    { nombre: "GRAECULI-SIRACUSSA" },
-    { nombre: "GRAECULI-EPIRO", permiteElefantes: true},
-    { nombre: "GRAECULI-ITALIOTAS" }
+    { nombre: "NÚMIDAS", permiteElefantes: true,
+       tiposTropaPermitidos: ['guerreros', 'levas', 'mercenarios' ],
+       unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "masinisa", nombre: "MASINISA",
+              costeEnPuntos: 1,
+            },
+            { valor: "yugurta", nombre: "YUGURTA",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     },
+    { nombre: "GRAECULI-SIRACUSSA",
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "pirro", nombre: "PIRRO, Rey de Epiro",
+              costeEnPuntos: 0,
+             },
+            { valor: "hieron", nombre: "HIERÓN II, Tirano de Siracusa",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     },
+    { nombre: "GRAECULI-EPIRO", permiteElefantes: true,
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "pirro", nombre: "PIRRO, Rey de Epiro",
+              costeEnPuntos: 0,
+             },
+            { valor: "hieron", nombre: "HIERÓN II, Tirano de Siracusa",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+    },
+    { nombre: "GRAECULI-ITALIOTAS",
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "pirro", nombre: "PIRRO, Rey de Epiro",
+              costeEnPuntos: 0,
+             },
+            { valor: "hieron", nombre: "HIERÓN II, Tirano de Siracusa",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     }
   ],
   "Alejandro": [
-    { nombre: "PERSAS-MEDOS" },
-    { nombre: "PERSAS-AQUEMÉNIDAS", permiteCarros: true, permiteElefantes: true },
-    { nombre: "TRACIOS" },
-    { nombre: "MACEDONIOS" },
-    { nombre: "INDIOS", permiteElefantes: true }, 
+    { nombre: "PERSAS-MEDOS",
+       unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "jerjes", nombre: "JERJES, Rey de Reyes",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     },
+    { nombre: "PERSAS-AQUEMÉNIDAS", permiteCarros: true, permiteElefantes: true,
+       unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "dario", nombre: "DARIO III",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     },
+    { nombre: "TRACIOS",
+       unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "seuytes", nombre: "SEUYTES III",
+              costeEnPuntos: 1,
+             },
+             {costeEnPuntos: 1,
+              nombreBandaDesbloqueada: "TRACIOS -ESCORDISCOS",
+              composicionBanda: null
+             }
+          ]
+        }
+      ] 
+     },
+    { nombre: "MACEDONIOS",
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "alejandro", nombre: "ALEJANDRO MAGNO ",
+              costeEnPuntos: 1,
+             },
+            { valor: "filipo", nombre: "FILIPO II",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     },
+    { nombre: "INDIOS", permiteElefantes: true,
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "poros", nombre: "POROS",
+              costeEnPuntos: 2,
+             },
+            { valor: "chandragupta", nombre: "CHANDRAGUPTA MAURYA, El primer Emperador",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     }, 
     { nombre: "SUCESORES-GRECIA",
       opcionesBanda: [
         {
@@ -170,9 +397,25 @@ export const BANDAS_POR_EPOCA = {
           ],
           valorPorDefecto: "legatum"
         }
-      ]
+      ],
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "filipo", nombre: "FILIPO V",
+              costeEnPuntos: 1,
+              opcionesRequeridas: {
+                tipoWarlord: "legatum"
+              }
+             }
+          ],
+        }
+      ] 
      },
-    { nombre: "SUCESORES-EGIPTO",
+    { nombre: "SUCESORES-EGIPTO", permiteElefantes: true,
       opcionesBanda: [
         {
           id:"tipoWarlord",
@@ -186,7 +429,23 @@ export const BANDAS_POR_EPOCA = {
           ],
           valorPorDefecto: "legatum"
         }
-      ]
+      ],
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "ptolomeo", nombre: "PTOLOMEO II FILADELFOS, El Rey Faraón",
+              costeEnPuntos: 1,
+              opcionesRequeridas: {
+                tipoWarlord: "divitiae"
+              }
+             }
+          ],
+        }
+      ] 
      },
     { nombre: "SUCESORES-ASIA", permiteElefantes: true, permiteCarros: true,
       opcionesBanda: [
@@ -202,10 +461,65 @@ export const BANDAS_POR_EPOCA = {
           ],
           valorPorDefecto: "legatum"
         }
-      ]
+      ],
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "mitriades", nombre: "MITRÍADES VI EUPATOR, Enemigo de Roma",
+              costeEnPuntos: 1,
+              opcionesRequeridas: {
+                tipoWarlord: "divitiae"
+              }
+             },
+             { valor: "antioco", nombre: "ANTÍOCO III, El Grande",
+              costeEnPuntos: 1,
+              opcionesRequeridas: {
+                tipoWarlord: "hubris"
+              }
+             }
+          ],
+        }
+      ] 
      }, 
-    { nombre: "CIUDADES GRIEGAS-ATENAS" },
-    { nombre: "CIUDADES GRIEGAS-LACEDEMONIOS" },
+    { nombre: "CIUDADES GRIEGAS-ATENAS",
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "FILOPEMEN", nombre: "FILOPEMÉN, El último de los Griegos",
+              costeEnPuntos: 1,
+             }
+          ],
+        }
+      ] 
+     },
+    { nombre: "CIUDADES GRIEGAS-LACEDEMONIOS",
+      unidadesLegendarias: [
+        {
+          id:"warlord_legendario",
+          label:"Warlord Legendario",
+          tipo: "select",
+          obligatorio: false,
+          opciones:[
+            { valor: "leonidas", nombre: "LEÓNIDAS, Rey de Esparta",
+              costeEnPuntos: 0,
+             unidadesEspecialesDesbloqueadas: [
+              { valor: "batallon_sagrado", 
+                nombre: "Batallón Sagrado", 
+                label: " Batallón Sagrado, (tienes que indicar los dos puntos)", puntos: 2, step: 1 }
+             ]
+             }
+          ],
+        }
+      ] 
+     },
     { nombre: "CIUDADES GRIEGAS-TESALIOS" },
     { nombre: "CIUDADES GRIEGAS-TEBANOS" }
   ],
@@ -704,4 +1018,297 @@ export const validarPuntosBanda = (puntos) => {
  */
 export const validarJugadoresEquipo = (jugadores) => {
   return jugadores >= JUGADORES_EQUIPO_RANGO.min && jugadores <= JUGADORES_EQUIPO_RANGO.max;
+};
+
+/**
+ * ✅ Obtiene las unidades legendarias disponibles para una banda
+ */
+export const obtenerUnidadesLegendarias = (epoca, nombreBanda) => {
+  if (!epoca || !nombreBanda) {
+    return null;
+  }
+
+  // Manejar épocas combinadas (ej: "Alejandro/Ánibal")
+  if (epoca.includes('/')) {
+    const epocas = epoca.split('/').map(e => e.trim());
+    
+    // Buscar en cada época individual
+    for (const epocaIndividual of epocas) {
+      const bandas = BANDAS_POR_EPOCA[epocaIndividual];
+      if (!bandas) continue;
+      
+      const banda = bandas.find(b => b.nombre === nombreBanda);
+      if (banda && banda.unidadesLegendarias) {
+        return banda.unidadesLegendarias;
+      }
+    }
+    
+    // Si no se encontró en ninguna época
+    console.warn(`⚠️ Banda "${nombreBanda}" no encontrada en épocas combinadas: "${epoca}"`);
+    return null;
+  }
+
+  const bandas = BANDAS_POR_EPOCA[epoca];
+  if (!bandas) {
+    console.warn(`⚠️ Época no encontrada: "${epoca}"`);
+    return null;
+  }
+
+  const banda = bandas.find(b => b.nombre === nombreBanda);
+  if (!banda) {
+    console.warn(`⚠️ Banda no encontrada: "${nombreBanda}" en época "${epoca}"`);
+    return null;
+  }
+
+  return banda.unidadesLegendarias || null;
+};
+
+/**
+ * ✅ Obtiene las opciones de warlord legendario con sus costes y características
+ */
+export const obtenerOpcionesWarlordLegendario = (epoca, nombreBanda) => {
+  const unidadesLegendarias = obtenerUnidadesLegendarias(epoca, nombreBanda);
+  
+  if (!unidadesLegendarias || unidadesLegendarias.length === 0) {
+    return null;
+  }
+
+  // Asumiendo que solo hay un slot de warlord legendario
+  const configuracion = unidadesLegendarias[0];
+  
+  if (!configuracion || !configuracion.opciones) {
+    return null;
+  }
+
+  return {
+    id: configuracion.id,
+    label: configuracion.label,
+    tipo: configuracion.tipo,
+    obligatorio: configuracion.obligatorio || false,
+    opciones: configuracion.opciones.map(opcion => ({
+      valor: opcion.valor,
+      nombre: opcion.nombre,
+      costePuntos: opcion.costeEnPuntos || 0,
+      nombreCompleto: opcion.costeEnPuntos > 0 
+        ? `${opcion.nombre} (${opcion.costeEnPuntos} ${opcion.costeEnPuntos === 1 ? 'punto' : 'puntos'})`
+        : opcion.nombre,
+      bandaDesbloqueada: opcion.nombreBandaDesbloqueada || null,
+      tieneBandaDesbloqueada: !!opcion.nombreBandaDesbloqueada,
+      composicionDiferente: !!opcion.composicionBanda,
+      restriccionesAdicionales: opcion.restriccionesAdicionales || opcion.restriccionesAdicionales || null, // Soporte para ambos spellings
+      tieneRestricciones: !!(opcion.restriccionesAdicionales || opcion.restriccionesAdicionales),
+      unidadesEspecialesDesbloqueadas: opcion.unidadesEspecialesDesbloqueadas || [],
+      opcionesRequeridas: opcion.opcionesRequeridas || null
+    }))
+  };
+};
+
+/**
+ * ✅ Valida la selección de un warlord legendario
+ */
+export const validarWarlordLegendario = (epoca, nombreBanda, warlordSeleccionado) => {
+  if (!warlordSeleccionado) {
+    return { valido: true }; // No es obligatorio tener warlord
+  }
+
+  const opciones = obtenerOpcionesWarlordLegendario(epoca, nombreBanda);
+  
+  if (!opciones) {
+    return { 
+      valido: false, 
+      error: 'Esta banda no tiene warlords legendarios disponibles' 
+    };
+  }
+
+  const opcionValida = opciones.opciones.find(o => o.valor === warlordSeleccionado);
+  
+  if (!opcionValida) {
+    return { 
+      valido: false, 
+      error: 'Warlord legendario no válido para esta banda' 
+    };
+  }
+
+  return {
+    valido: true,
+    opcion: opcionValida,
+    costePuntos: opcionValida.costePuntos,
+    bandaDesbloqueada: opcionValida.bandaDesbloqueada,
+    restriccionesAdicionales: opcionValida.restriccionesAdicionales,
+    unidadesEspecialesDesbloqueadas: opcionValida.unidadesEspecialesDesbloqueadas || []
+  };
+};
+
+/**
+ * ✅ Obtiene las restricciones de la banda base
+ */
+export const obtenerRestriccionesBanda = (epoca, nombreBanda) => {
+  const bandas = BANDAS_POR_EPOCA[epoca];
+  if (!bandas) return null;
+  
+  const banda = bandas.find(b => b.nombre === nombreBanda);
+  if (!banda) return null;
+  
+  return banda.restricciones || null;
+};
+
+/**
+ * ✅ Obtiene todas las restricciones combinadas (banda base + warlord)
+ */
+export const obtenerRestriccionesCombinadas = (epoca, nombreBanda, warlordSeleccionado) => {
+  const restriccionesBanda = obtenerRestriccionesBanda(epoca, nombreBanda);
+  
+  const restriccionesCombinadas = {
+    mutuamenteExcluyentes: restriccionesBanda?.mutuamenteExcluyentes || [],
+    prohibido: [],
+    mensaje: null
+  };
+
+  // Si hay warlord seleccionado, añadir sus restricciones
+  if (warlordSeleccionado) {
+    const validacion = validarWarlordLegendario(epoca, nombreBanda, warlordSeleccionado);
+    
+    if (validacion.valido && validacion.restriccionesAdicionales) {
+      restriccionesCombinadas.prohibido = validacion.restriccionesAdicionales.prohibido || [];
+      restriccionesCombinadas.mensaje = validacion.restriccionesAdicionales.mensaje || null;
+    }
+  }
+
+  return restriccionesCombinadas;
+};
+
+/**
+ * ✅ Verifica si un tipo de unidad está prohibido
+ */
+export const estaProhibido = (tipoUnidad, restricciones) => {
+  if (!restricciones || !restricciones.prohibido) {
+    return false;
+  }
+  
+  return restricciones.prohibido.includes(tipoUnidad);
+};
+
+/**
+ * ✅ Verifica si dos tipos de unidad son mutuamente excluyentes
+ */
+export const sonMutuamenteExcluyentes = (tipo1, tipo2, restricciones) => {
+  if (!restricciones || !restricciones.mutuamenteExcluyentes) {
+    return false;
+  }
+  
+  return restricciones.mutuamenteExcluyentes.some(par => 
+    (par.includes(tipo1) && par.includes(tipo2))
+  );
+};
+
+export const validarComposicionBanda = (composicion, restricciones) => {
+  const errores = [];
+  
+  if (!composicion || !restricciones) {
+    return { valido: true, errores: [] };
+  }
+  
+  // Verificar tipos prohibidos
+  if (restricciones.prohibido && restricciones.prohibido.length > 0) {
+    Object.keys(composicion).forEach(tipoUnidad => {
+      if (composicion[tipoUnidad] > 0 && restricciones.prohibido.includes(tipoUnidad)) {
+        errores.push(`${tipoUnidad} está prohibido por el warlord seleccionado`);
+      }
+    });
+  }
+  
+  // Verificar mutuamente excluyentes
+  if (restricciones.mutuamenteExcluyentes && restricciones.mutuamenteExcluyentes.length > 0) {
+    restricciones.mutuamenteExcluyentes.forEach(par => {
+      const [tipo1, tipo2] = par;
+      if (composicion[tipo1] > 0 && composicion[tipo2] > 0) {
+        errores.push(`No puedes tener ${tipo1} y ${tipo2} en la misma banda`);
+      }
+    });
+  }
+  
+  return {
+    valido: errores.length === 0,
+    errores: errores
+  };
+};
+
+/**
+ * ✅ Obtiene el nombre de banda final (desbloqueada o base)
+ */
+export const obtenerNombreBandaFinal = (epoca, nombreBandaBase, warlordSeleccionado) => {
+  if (!warlordSeleccionado) {
+    return nombreBandaBase;
+  }
+  
+  const validacion = validarWarlordLegendario(epoca, nombreBandaBase, warlordSeleccionado);
+  
+  if (validacion.valido && validacion.bandaDesbloqueada) {
+    return validacion.bandaDesbloqueada;
+  }
+  
+  return nombreBandaBase;
+};
+
+/**
+ * ✅ Calcula puntos disponibles después del coste del warlord
+ */
+export const calcularPuntosDisponibles = (puntosBanda, epoca, nombreBanda, warlordSeleccionado) => {
+  if (!warlordSeleccionado) {
+    return puntosBanda;
+  }
+  
+  const validacion = validarWarlordLegendario(epoca, nombreBanda, warlordSeleccionado);
+  
+  if (!validacion.valido) {
+    return puntosBanda;
+  }
+  
+  return puntosBanda - validacion.costePuntos;
+};
+
+/**
+ * ✅ Obtiene información completa del warlord para mostrar en UI
+ */
+export const obtenerInfoCompletaWarlord = (epoca, nombreBanda, warlordSeleccionado) => {
+  if (!warlordSeleccionado) {
+    return {
+      tieneWarlord: false,
+      nombreBandaFinal: nombreBanda,
+      costePuntos: 0,
+      restricciones: obtenerRestriccionesCombinadas(epoca, nombreBanda, null),
+      unidadesDesbloqueadas: []
+    };
+  }
+  
+  const validacion = validarWarlordLegendario(epoca, nombreBanda, warlordSeleccionado);
+  
+  if (!validacion.valido) {
+    return {
+      tieneWarlord: false,
+      error: validacion.error,
+      nombreBandaFinal: nombreBanda,
+      costePuntos: 0,
+      restricciones: obtenerRestriccionesCombinadas(epoca, nombreBanda, null),
+      unidadesDesbloqueadas: []
+    };
+  }
+  
+  return {
+    tieneWarlord: true,
+    nombreWarlord: validacion.opcion.nombre,
+    nombreBandaFinal: validacion.bandaDesbloqueada || nombreBanda,
+    costePuntos: validacion.costePuntos,
+    tieneBandaDesbloqueada: !!validacion.bandaDesbloqueada,
+    restricciones: obtenerRestriccionesCombinadas(epoca, nombreBanda, warlordSeleccionado),
+    unidadesDesbloqueadas: validacion.unidadesEspecialesDesbloqueadas || []
+  };
+};
+
+/**
+ * ✅ Verifica si una banda tiene warlords legendarios disponibles
+ */
+export const tieneWarlordLegendario = (epoca, nombreBanda) => {
+  const unidades = obtenerUnidadesLegendarias(epoca, nombreBanda);
+  return unidades !== null && unidades.length > 0;
 };

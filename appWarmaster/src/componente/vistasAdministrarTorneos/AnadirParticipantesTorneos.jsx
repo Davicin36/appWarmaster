@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
 import torneosSagaApi from '@/servicios/apiSaga';
+import torneosWarmasterApi from '../../servicios/apiWarmaster';
 import usuarioApi from '@/servicios/apiUsuarios';
 
 import '@/estilos/anadirParticipantesTorneos.css';
 
 const AnadirParticipantesTorneos = ({ 
   torneoId,
+  sistema = 'SAGA',
   onClose, 
   onSuccess,
   mode = 'modal'
 }) => {
+
+   const api = sistema === 'WARMASTER' ? torneosWarmasterApi : torneosSagaApi;
   // Estados para la información del torneo
   const [torneo, setTorneo] = useState(null);
   const [loadingTorneo, setLoadingTorneo] = useState(true);
@@ -71,7 +75,7 @@ const AnadirParticipantesTorneos = ({
     try {
       setLoadingTorneo(true);
       
-      const response = await torneosSagaApi.obtenerTorneo(torneoId);
+      const response = await api.obtenerTorneo(torneoId);
       const torneoData = response.data?.torneo || response.torneo || response;
       
       setTorneo(torneoData);
@@ -263,10 +267,10 @@ const AnadirParticipantesTorneos = ({
         // ✅ ENVIAR SOLO NOMBRE Y EMAIL
         const participanteNormalizado = {
           nombre: individualData.nombre,
-          email: individualData.email || null
+          email: individualData.email || null// ✅ AÑADIR EJERCITO SI ES WARMASTER
         };
 
-        resultado = await torneosSagaApi.añadirJugadorIndividual(torneoId, participanteNormalizado);
+        resultado = await api.añadirJugadorIndividual(torneoId, participanteNormalizado);
         
       } else {
         // ✅ ENVIAR SOLO NOMBRE Y EMAIL POR CADA MIEMBRO
@@ -279,7 +283,7 @@ const AnadirParticipantesTorneos = ({
           }))
         };
 
-        resultado = await torneosSagaApi.añadirEquipo(torneoId, equipoNormalizado);
+        resultado = await api.añadirEquipo(torneoId, equipoNormalizado);
       }
 
       if (resultado.success) {

@@ -38,6 +38,7 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         puntos_banda: PUNTOS_BANDA_RANGO.default,
         participantes_max: PARTICIPANTES_RANGO.default,
         equipos_max: EQUIPOS_RANGO.default,
+        unidades_legendarias: '',
         fecha_inicio: '',
         fecha_fin: '',
         ubicacion: '',
@@ -64,48 +65,65 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         }
     }, [torneoId]);
 
-    useEffect(() => {
-        if (torneo) {
-            let epocas = [];
-            if (torneo.epocas_disponibles) {
-                epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
-            }
+ useEffect(() => {
+    if (torneo) {
+        console.group('🔍 DEBUG - Cargando datos del torneo');
+        console.log('torneo completo:', torneo);
+        console.log('unidades_legendarias (snake_case):', torneo.unidades_legendarias);
+        console.log('tipo de unidades_legendarias:', typeof torneo.unidades_legendarias);
+        console.groupEnd();
 
-            const tipoTorneo = torneo.tipo_torneo === 'Por equipos' 
-                ? 'Por equipos' 
-                : 'Individual';
-
-                const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
-            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
-
-            // DETECTAR DURACIÓN AUTOMÁTICAMENTE
-            if (fechaFin && fechaFin !== fechaInicio) {
-                setDuracionTorneo("2"); // Varios días
-            } else {
-                setDuracionTorneo("1"); // Un día
-            }
-
-            setDatosEdicion({
-                nombre_torneo: torneo.nombre_torneo || '',
-                tipo_torneo: tipoTorneo,
-                epocas_disponibles: epocas,
-                num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
-                rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
-                puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
-                equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
-                participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-                fecha_inicio: fechaInicio,
-                fecha_fin: fechaFin,
-                ubicacion: torneo.ubicacion || '',
-                estado: torneo.estado || 'pendiente',
-                partida_ronda_1: torneo.partida_ronda_1 || '',
-                partida_ronda_2: torneo.partida_ronda_2 || '',
-                partida_ronda_3: torneo.partida_ronda_3 || '',
-                partida_ronda_4: torneo.partida_ronda_4 || '',
-                partida_ronda_5: torneo.partida_ronda_5 || ''
-            });
+        let epocas = [];
+        if (torneo.epocas_disponibles) {
+            epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
         }
-    }, [torneo]);
+
+        const tipoTorneo = torneo.tipo_torneo === 'Por equipos' 
+            ? 'Por equipos' 
+            : 'Individual';
+
+        const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+        const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+
+        if (fechaFin && fechaFin !== fechaInicio) {
+            setDuracionTorneo("2");
+        } else {
+            setDuracionTorneo("1");
+        }
+
+        // ✅ NORMALIZAR A STRING: Convertir cualquier valor truthy a '1', falsy a '0'
+        const unidadesLegendariasValor = (
+            torneo.unidades_legendarias === 1 || 
+            torneo.unidades_legendarias === '1' || 
+            torneo.unidades_legendarias === true
+        ) ? '1' : '0';
+
+        console.log('✅ Valor final NORMALIZADO:', unidadesLegendariasValor, typeof unidadesLegendariasValor);
+
+        setDatosEdicion({
+            nombre_torneo: torneo.nombre_torneo || '',
+            tipo_torneo: tipoTorneo,
+            num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
+            epocas_disponibles: epocas,
+            rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
+            puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
+            equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
+            participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
+            unidades_legendarias: unidadesLegendariasValor,  // ✅ String '0' o '1'
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+            ubicacion: torneo.ubicacion || '',
+            estado: torneo.estado || 'pendiente',
+            partida_ronda_1: torneo.partida_ronda_1 || '',
+            partida_ronda_2: torneo.partida_ronda_2 || '',
+            partida_ronda_3: torneo.partida_ronda_3 || '',
+            partida_ronda_4: torneo.partida_ronda_4 || '',
+            partida_ronda_5: torneo.partida_ronda_5 || ''
+        });
+
+        console.log('📝 datosEdicion.unidades_legendarias configurado como:', unidadesLegendariasValor);
+    }
+}, [torneo]);
 
     const cargarDatos = async () => {
         try {
@@ -170,7 +188,6 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         }
       };
     
-
     const handleEdicionChange = (e) => {
         const { name, value } = e.target;
         setDatosEdicion(prev => ({ ...prev, [name]: value }));
@@ -178,151 +195,196 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
     };
 
     const handleGuardarCambios = async (e) => {
-        e.preventDefault();
-        
-        if (!datosEdicion.nombre_torneo.trim()) {
-            setErrorEdicion('El nombre del torneo es obligatorio');
+    e.preventDefault();
+    
+    if (!datosEdicion.nombre_torneo.trim()) {
+        setErrorEdicion('El nombre del torneo es obligatorio');
+        return;
+    }
+
+    if (!datosEdicion.epocas_disponibles || datosEdicion.epocas_disponibles.length === 0) {
+        setErrorEdicion('Debes seleccionar al menos una época');
+        return;
+    }
+
+    if (datosEdicion.tipo_torneo === 'Por equipos') {
+        if (!datosEdicion.num_jugadores_equipo || datosEdicion.num_jugadores_equipo < JUGADORES_EQUIPO_RANGO.min) {
+            setErrorEdicion(`Los torneos por equipos deben tener al menos ${JUGADORES_EQUIPO_RANGO.min} jugadores por equipo`);
             return;
         }
 
-        if (!datosEdicion.epocas_disponibles || datosEdicion.epocas_disponibles.length === 0) {
-            setErrorEdicion('Debes seleccionar al menos una época');
+        if (datosEdicion.epocas_disponibles.length < datosEdicion.num_jugadores_equipo) {
+            setErrorEdicion(`Debes seleccionar al menos ${datosEdicion.num_jugadores_equipo} épocas para ${datosEdicion.num_jugadores_equipo} jugadores por equipo`);
             return;
         }
+    }
 
-        if (datosEdicion.tipo_torneo === 'Por equipos') {
-            if (!datosEdicion.num_jugadores_equipo || datosEdicion.num_jugadores_equipo < JUGADORES_EQUIPO_RANGO.min) {
-                setErrorEdicion(`Los torneos por equipos deben tener al menos ${JUGADORES_EQUIPO_RANGO.min} jugadores por equipo`);
-                return;
-            }
-
-            if (datosEdicion.epocas_disponibles.length < datosEdicion.num_jugadores_equipo) {
-                setErrorEdicion(`Debes seleccionar al menos ${datosEdicion.num_jugadores_equipo} épocas para ${datosEdicion.num_jugadores_equipo} jugadores por equipo`);
-                return;
-            }
+    if (datosEdicion.tipo_torneo === 'Por equipos'){
+        if (!datosEdicion.num_jugadores_equipo || datosEdicion.num_jugadores_equipo < JUGADORES_EQUIPO_RANGO.min){
+            setErrorEdicion(`Los torneos por equipos deben de tener al menos ${JUGADORES_EQUIPO_RANGO.min} jugadores por equipo.`)
+            return
+        }
+        if (datosEdicion.epocas_disponibles.length < datosEdicion.num_jugadores_equipo){
+            setErrorEdicion(`Debes seleccionar al menos ${datosEdicion.num_jugadores_equipo} épocas para cada miembro del equipo.`)
+            return
         }
 
-        if (datosEdicion.tipo_torneo === 'Por equipos'){
-            if (!datosEdicion.num_jugadores_equipo || datosEdicion.num_jugadores_equipo < JUGADORES_EQUIPO_RANGO.min){
-                setErrorEdicion(`Los torneos por equipos deben de tener al menos ${JUGADORES_EQUIPO_RANGO.min} jugadores por equipo.`)
-                return
-            }
-            if (datosEdicion.epocas_disponibles.length < datosEdicion.num_jugadores_equipo){
-                setErrorEdicion(`Debes seleccionar al menos ${datosEdicion.num_jugadores_equipo} épocas para cada miembro del equipo.`)
-                return
-            }
-
-            if (datosEdicion.equipos_max < equipos.length){
-                setErrorEdicion(`No puedes reducir el número de equipos a menos de ${equipos.length}`)
-                return
-            }
-        }else {
-            if (datosEdicion.participantes_max < jugadores.length) {
-                setErrorEdicion(`No puedes reducir el número de participantes a menos de ${jugadores.length}`);
-                return;
-            }
+        if (datosEdicion.equipos_max < equipos.length){
+            setErrorEdicion(`No puedes reducir el número de equipos a menos de ${equipos.length}`)
+            return
         }
-
-        if (!window.confirm('¿Deseas guardar los cambios en el torneo?')) return;
-
-        try {
-            setLoadingEdicion(true);
-            setErrorEdicion('');
-
-            const datosLimpios = {
-                ...datosEdicion,
-                fecha_fin: duracionTorneo === "1" ? null : (datosEdicion.fecha_fin || null),
-                ubicacion: datosEdicion.ubicacion || null,
-                partida_ronda_3: datosEdicion.partida_ronda_3 || null,
-                partida_ronda_4: datosEdicion.partida_ronda_4 || null,
-                partida_ronda_5: datosEdicion.partida_ronda_5 || null
-            };
-
-            let dataToSend;
-            
-            if (archivoPDF || eliminarPDF) {
-                dataToSend = new FormData();
-                Object.keys(datosLimpios).forEach(key => {
-                    if (key === 'epocas_disponibles') {
-                        dataToSend.append('epoca_torneo', datosLimpios.epocas_disponibles.join('|'));
-                    } else if (datosLimpios[key] !== null && datosLimpios[key] !== '') {
-                        dataToSend.append(key, datosLimpios[key]);
-                    }
-                });
-                if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
-                if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
-            } else {
-                dataToSend = {
-                    ...datosLimpios,
-                    epoca_torneo: datosLimpios.epocas_disponibles.join('|')
-                };
-                delete dataToSend.epocas_disponibles;
-            }
-
-            await torneosSagaApi.actualizarTorneo(torneoId, dataToSend);
-            
-            alert('✅ Torneo actualizado correctamente');
-            setModoEdicion(false);
-            setArchivoPDF(null);
-            setEliminarPDF(false);
-            await cargarDatos();
-            if (onUpdate) onUpdate();
-            
-        } catch (error) {
-            console.error('Error:', error);
-            setErrorEdicion(error.message || 'Error al actualizar el torneo');
-        } finally {
-            setLoadingEdicion(false);
+    }else {
+        if (datosEdicion.participantes_max < jugadores.length) {
+            setErrorEdicion(`No puedes reducir el número de participantes a menos de ${jugadores.length}`);
+            return;
         }
-    };
+    }
 
-    const handleCancelarEdicion = () => {
-        setModoEdicion(false);
+    if (!window.confirm('¿Deseas guardar los cambios en el torneo?')) return;
+
+    try {
+        setLoadingEdicion(true);
         setErrorEdicion('');
+
+        // ✅ CONSTRUIR DATOS CON MANEJO CORRECTO DE '0'
+        const datosLimpios = {
+            nombre_torneo: datosEdicion.nombre_torneo,
+            tipo_torneo: datosEdicion.tipo_torneo,
+            num_jugadores_equipo: datosEdicion.num_jugadores_equipo,
+            rondas_max: datosEdicion.rondas_max,
+            puntos_banda: datosEdicion.puntos_banda,
+            participantes_max: datosEdicion.participantes_max,
+            equipos_max: datosEdicion.equipos_max,
+            epocas_disponibles: datosEdicion.epocas_disponibles,
+            unidades_legendarias: datosEdicion.unidades_legendarias, // ✅ Siempre incluir, incluso si es '0'
+            fecha_inicio: datosEdicion.fecha_inicio,
+            fecha_fin: duracionTorneo === "1" ? null : (datosEdicion.fecha_fin || null),
+            ubicacion: datosEdicion.ubicacion || null,
+            estado: datosEdicion.estado,
+            partida_ronda_1: datosEdicion.partida_ronda_1,
+            partida_ronda_2: datosEdicion.partida_ronda_2,
+            partida_ronda_3: datosEdicion.partida_ronda_3 || null,
+            partida_ronda_4: datosEdicion.partida_ronda_4 || null,
+            partida_ronda_5: datosEdicion.partida_ronda_5 || null
+        };
+
+        console.group('📤 ENVIANDO ACTUALIZACIÓN');
+        console.log('unidades_legendarias que se enviará:', datosLimpios.unidades_legendarias);
+        console.log('Tipo:', typeof datosLimpios.unidades_legendarias);
+        console.groupEnd();
+
+        let dataToSend;
+        
+        if (archivoPDF || eliminarPDF) {
+            // ✅ FORMDATA: Añadir explícitamente todos los campos
+            dataToSend = new FormData();
+            
+            dataToSend.append('nombre_torneo', datosLimpios.nombre_torneo);
+            dataToSend.append('tipo_torneo', datosLimpios.tipo_torneo);
+            dataToSend.append('num_jugadores_equipo', datosLimpios.num_jugadores_equipo);
+            dataToSend.append('rondas_max', datosLimpios.rondas_max);
+            dataToSend.append('puntos_banda', datosLimpios.puntos_banda);
+            dataToSend.append('participantes_max', datosLimpios.participantes_max);
+            dataToSend.append('equipos_max', datosLimpios.equipos_max);
+            dataToSend.append('epoca_torneo', datosLimpios.epocas_disponibles.join('|'));
+            dataToSend.append('unidades_legendarias', datosLimpios.unidades_legendarias); // ✅ Siempre añadir
+            dataToSend.append('fecha_inicio', datosLimpios.fecha_inicio);
+            dataToSend.append('estado', datosLimpios.estado);
+            dataToSend.append('partida_ronda_1', datosLimpios.partida_ronda_1);
+            dataToSend.append('partida_ronda_2', datosLimpios.partida_ronda_2);
+            
+            if (datosLimpios.fecha_fin) dataToSend.append('fecha_fin', datosLimpios.fecha_fin);
+            if (datosLimpios.ubicacion) dataToSend.append('ubicacion', datosLimpios.ubicacion);
+            if (datosLimpios.partida_ronda_3) dataToSend.append('partida_ronda_3', datosLimpios.partida_ronda_3);
+            if (datosLimpios.partida_ronda_4) dataToSend.append('partida_ronda_4', datosLimpios.partida_ronda_4);
+            if (datosLimpios.partida_ronda_5) dataToSend.append('partida_ronda_5', datosLimpios.partida_ronda_5);
+            
+            if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
+            if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
+            
+            console.log('📦 Enviando como FormData');
+        } else {
+            // ✅ JSON: Enviar tal cual
+            dataToSend = {
+                ...datosLimpios,
+                epoca_torneo: datosLimpios.epocas_disponibles.join('|')
+            };
+            delete dataToSend.epocas_disponibles;
+            
+            console.log('📦 Enviando como JSON:', dataToSend);
+        }
+
+        await torneosSagaApi.actualizarTorneo(torneoId, dataToSend);
+        
+        alert('✅ Torneo actualizado correctamente');
+        setModoEdicion(false);
         setArchivoPDF(null);
         setEliminarPDF(false);
+        await cargarDatos();
+        if (onUpdate) onUpdate();
         
-        if (torneo) {
-            let epocas = [];
-            if (torneo.epocas_disponibles) {
-                epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
-            }
+    } catch (error) {
+        console.error('Error:', error);
+        setErrorEdicion(error.message || 'Error al actualizar el torneo');
+    } finally {
+        setLoadingEdicion(false);
+    }
+};
 
-            const tipoTorneo = torneo.tipo_torneo === 'Por equipos'
-                ? 'Por equipos'
-                : 'Individual';
-
-            const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
-            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
-
-            // 🆕 RESTAURAR DURACIÓN ORIGINAL
-            if (fechaFin && fechaFin !== fechaInicio) {
-                setDuracionTorneo("2");
-            } else {
-                setDuracionTorneo("1");
-            }
-
-            setDatosEdicion({
-                nombre_torneo: torneo.nombre_torneo || '',
-                tipo_torneo: tipoTorneo,
-                num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
-                epocas_disponibles: epocas,
-                rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
-                puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
-                participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-                equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
-                fecha_inicio: fechaInicio,
-                fecha_fin: fechaFin,
-                ubicacion: torneo.ubicacion || '',
-                estado: torneo.estado || 'pendiente',
-                partida_ronda_1: torneo.partida_ronda_1 || '',
-                partida_ronda_2: torneo.partida_ronda_2 || '',
-                partida_ronda_3: torneo.partida_ronda_3 || '',
-                partida_ronda_4: torneo.partida_ronda_4 || '',
-                partida_ronda_5: torneo.partida_ronda_5 || ''
-            });
+const handleCancelarEdicion = () => {
+    setModoEdicion(false);
+    setErrorEdicion('');
+    setArchivoPDF(null);
+    setEliminarPDF(false);
+    
+    if (torneo) {
+        let epocas = [];
+        if (torneo.epocas_disponibles) {
+            epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
         }
-    };
+
+        const tipoTorneo = torneo.tipo_torneo === 'Por equipos'
+            ? 'Por equipos'
+            : 'Individual';
+
+        const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+        const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+
+        if (fechaFin && fechaFin !== fechaInicio) {
+            setDuracionTorneo("2");
+        } else {
+            setDuracionTorneo("1");
+        }
+
+        // ✅ NORMALIZAR A STRING
+        const unidadesLegendariasValor = (
+            torneo.unidades_legendarias === 1 || 
+            torneo.unidades_legendarias === '1' || 
+            torneo.unidades_legendarias === true
+        ) ? '1' : '0';
+
+        setDatosEdicion({
+            nombre_torneo: torneo.nombre_torneo || '',
+            tipo_torneo: tipoTorneo,
+            num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
+            epocas_disponibles: epocas,
+            rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
+            puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
+            participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
+            equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
+            unidades_legendarias: unidadesLegendariasValor,  // ✅ String '0' o '1'
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+            ubicacion: torneo.ubicacion || '',
+            estado: torneo.estado || 'pendiente',
+            partida_ronda_1: torneo.partida_ronda_1 || '',
+            partida_ronda_2: torneo.partida_ronda_2 || '',
+            partida_ronda_3: torneo.partida_ronda_3 || '',
+            partida_ronda_4: torneo.partida_ronda_4 || '',
+            partida_ronda_5: torneo.partida_ronda_5 || ''
+        });
+    }
+};
 
     const cambiarEstadoTorneo = async (nuevoEstado) => {
         if (torneo.estado === 'finalizado') {
@@ -738,6 +800,35 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                                 ⚠️ Necesitas al menos {datosEdicion.num_jugadores_equipo} épocas para {datosEdicion.num_jugadores_equipo} jugadores por equipo
                             </p>
                         )}
+
+                        <fieldset>
+                            <legend>⚔️ Reglas Especiales</legend>
+                            
+                            <div className="unidades-legendarias-container">
+                                <label className="checkbox-container">
+                                    <input
+                                        type="checkbox"
+                                        name="unidades_legendarias"
+                                        checked={datosEdicion.unidades_legendarias === '1' || datosEdicion.unidades_legendarias === 1}
+                                        onChange={(e) => {
+                                            setDatosEdicion(prev => ({
+                                                ...prev,
+                                                unidades_legendarias: e.target.checked ? '1' : '0'
+                                            }));
+                                        }}
+                                        disabled={loadingEdicion}
+                                    />
+                                    <span className="checkbox-label">
+                                        <strong>Permitir Unidades Legendarias</strong>
+                                    </span>
+                                </label>
+                                <small className="help-text">
+                                    {(datosEdicion.unidades_legendarias === '1' || datosEdicion.unidades_legendarias === 1)
+                                        ? "✅ Los jugadores podrán seleccionar Warlords Legendarios y unidades legendarias que cuestan puntos y pueden desbloquear bandas especiales o imponer restricciones."
+                                        : "⚠️ Las Unidades Legendarias están desactivadas."}
+                                </small>
+                            </div>
+                        </fieldset>
 
                         <div className="form-row">
                             <div className="form-group">
@@ -1206,6 +1297,17 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                             <div className="info-item">
                                 <label>🎭 Épocas Disponibles:</label>
                                 <p>{formatearEpocas(torneo.epocas_disponibles)}</p>
+                            </div>
+
+                            <div className="info-item">
+                                <label>⚔️ Unidades Legendarias:</label>
+                                <p>
+                                    {torneo.unidades_legendarias || torneo.unidadesLegendarias ? (
+                                        <span className="badge-activo">✅ Permitidas</span>
+                                    ) : (
+                                        <span className="badge-inactivo">⚠️ No permitidas</span>
+                                    )}
+                                </p>
                             </div>
 
                             <div className="info-item">

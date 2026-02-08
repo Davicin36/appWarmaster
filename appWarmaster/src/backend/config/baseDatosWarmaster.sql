@@ -13,13 +13,15 @@ CREATE TABLE jugador_torneo_warmaster (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
   jugador_id INT NOT NULL,
-  ejercito VARCHAR(100) NOT NULL,
+  ejercito VARCHAR(100) NULL DEFAULT NULL,
+  nombre_ejercito VARCHAR(200) NULL DEFAULT NULL,
   lista_ejercito LONGBLOB,
   lista_nombre VARCHAR(255), 
   lista_tamaño INT,      
   pagado INT DEFAULT 0,
   puntos_victoria INT DEFAULT 0,
   puntos_masacre INT DEFAULT 0,
+  general_muerto INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -36,6 +38,7 @@ CREATE TABLE clasificacion_jugadores_warmaster (
   partidas_perdidas INT DEFAULT 0,
   puntos_victoria_totales INT DEFAULT 0,
   puntos_masacre_totales INT DEFAULT 0,
+  general_muerto_total INT DEFAULT 0
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   UNIQUE KEY unique_torneo_jugador (torneo_id, jugador_id)
@@ -53,6 +56,8 @@ CREATE TABLE partidas_warmaster (
   puntos_victoria_j2 INT DEFAULT 0,
   puntos_masacre_j1 INT DEFAULT 0,
   puntos_masacre_j2 INT DEFAULT 0,
+  general_muerto_j1 INT DEFAULT 0,
+  general_muerto_j2 INT DEFAULT 0,
   resultado_ps ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
   resultado_confirmado BOOLEAN DEFAULT FALSE,
   ronda INT DEFAULT 1,
@@ -61,8 +66,8 @@ CREATE TABLE partidas_warmaster (
   primer_jugador INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),
-  FOREIGN KEY (jugador2_id) REFERENCES usuarios(id)
+  FOREIGN KEY (jugador1_id) REFERENCES jugador_torneo_warmaster(id),
+  FOREIGN KEY (jugador2_id) REFERENCES jugador_torneo_warmaster(id)
 );
 
 /**

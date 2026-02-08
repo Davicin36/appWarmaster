@@ -22,8 +22,6 @@ const generarEmparejamientosIniciales = async (torneoId) => {
         const jugadoresAleatorios = [...jugadores].sort(() => Math.random() - 0.5);
         const emparejamientosRonda1 = [];
 
-        console.log('jugadores', jugadoresAleatorios);
-
         for (let i = 0; i < jugadoresAleatorios.length - 1; i += 2) {
             const jug1 = jugadoresAleatorios[i];
             const jug2 = jugadoresAleatorios[i + 1];

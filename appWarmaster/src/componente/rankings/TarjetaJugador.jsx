@@ -8,6 +8,8 @@ import '@/estilos/ranking.css';
 const TarjetaJugador = ({ jugador, mostrarSistema = false }) => {
   //const navigate = useNavigate();
   const categoria = obtenerCategoria(jugador.elo_actual);
+  const esSaga = jugador.sistema_juego?.toLowerCase() === 'saga'
+  const esWarmaster = jugador.sistema_juego?.toLowerCase() === 'warmaster'
 
   /*
   const handleClick = () => {
@@ -72,34 +74,30 @@ const TarjetaJugador = ({ jugador, mostrarSistema = false }) => {
           <span className="stat-label">Él más sanguinario</span>
           <span className="stat-valor">{jugador.warlords_muertos}</span>
         </div>
-        <div className="stat">
-          <span className="stat-label">Epoca más usada</span>
-           <span className="stat-valor epoca-stat">
-              {jugador.epoca_favorita ? (
-                <>
-                  {jugador.epoca_favorita}
-                </>
-              ) : (
-                <>
-                  Sin Datos
-                </>
-              )}
-          </span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Ejercito más usado</span>
-          <span className="stat-valor epoca-stat">
-              {jugador.faccion_favorita ? (
-                <>
-                  {jugador.faccion_favorita}
-                </>
-              ) : (
-                <>
-                  Sin Datos
-                </>
-              )}
-          </span>
-        </div>
+        {esSaga && (
+          <div className="stat">
+            <span className="stat-label">Epoca más usada</span>
+            <span className="stat-valor epoca-stat">
+                {jugador.epoca_favorita || 'Sin Datos'}
+            </span>
+          </div>
+        )}
+         {esSaga && (
+          <div className="stat">
+            <span className="stat-label">Banda más usado</span>
+            <span className="stat-valor epoca-stat">
+                {jugador.faccion_favorita || 'Sin Datos'}
+            </span>
+          </div>
+        )}
+        {esWarmaster && (
+          <div className="stat">
+            <span className="stat-label">Ejercito más usado</span>
+            <span className="stat-valor epoca-stat">
+                {jugador.faccion_favorita  || 'Sin Datos'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
