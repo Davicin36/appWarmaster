@@ -168,7 +168,7 @@ function CrearTorneoWarmaster() {
                 torneoData.append('fecha_inicio', fechaInicio);
                 torneoData.append('fecha_fin', fechaFin || '');
                 torneoData.append('ubicacion', ubicacion || '');
-                torneoData.append('puntos_banda', parseInt(puntosEjercito));
+                torneoData.append('puntos_ejercito', parseInt(puntosEjercito));
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
                 torneoData.append('partida_ronda_2', partidaRonda2);
