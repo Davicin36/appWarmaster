@@ -192,7 +192,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.fecha_fin,
         ts.ubicacion,
         ts.puntos_banda,
-        unidades_legendarias,
+        ts.unidades_legendarias,
         ts.participantes_max,
         ts.equipos_max,
         ts.estado,
