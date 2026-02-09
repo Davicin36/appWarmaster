@@ -379,7 +379,7 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         0,
         puntos_ejercito,
         participantes_max,
-        null,
+        0,
         estado,
         partida_ronda_1,
         partida_ronda_2,

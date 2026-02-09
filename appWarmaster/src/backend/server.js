@@ -60,7 +60,9 @@ const opcionesCors = {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  optionsSuccessStatus: 200
+  maxAge: 86400, // ✅ CRÍTICO: Cache preflight por 24 horas
+  preflightContinue: false, // ✅ Termina OPTIONS aquí, no pasa al siguiente middleware
+  optionsSuccessStatus: 204 // ✅ Cambiado a 204 (estándar para OPTIONS)
 }
 
 //APLICAR CORS
@@ -145,11 +147,13 @@ app.use((req, res) => {
 // INICIAR SERVIDOR
 // ==========================================
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0'; // ✅ Escuchar en todas las interfaces
 
 app.listen(PORT, async () => {
   console.log('\n' + '='.repeat(50));
   console.log(`✅ Servidor corriendo en puerto ${PORT}`);
   console.log(`🔧 Entorno: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Host: ${HOST}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test API: http://localhost:${PORT}/api/test`);

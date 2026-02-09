@@ -10,36 +10,34 @@ const baseConfigTorneos = {
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
+  
+  // ✅ SOLO OPCIONES VÁLIDAS PARA MYSQL2
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  connectTimeout: 20000,        // ✅ Esta SÍ existe
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  connectTimeout: 20000,
-  acquireTimeout: 20000,
-  timeout: 20000,
-  idleTimeout: 20000,
-  charset: 'utf8mb4',
-  maxIdle: 5
+  charset: 'utf8mb4'
+  
+  // ❌ ELIMINADAS: acquireTimeout, timeout, idleTimeout, maxIdle
 };
 
-// ✅ Configuración base para ranking (NUEVO)
+// ✅ Configuración base para ranking
 const baseConfigRanking = {
-  host: process.env.DB_RANKING_HOST || process.env.DB_HOST,  // ✅ Fallback
-  port: process.env.DB_RANKING_PORT || process.env.DB_PORT || 3306,  // ✅ Fallback
-  user: process.env.DB_RANKING_USER || process.env.DB_USER,  // ✅ Fallback
-  password: process.env.DB_RANKING_PASSWORD || process.env.DB_PASSWORD,  // ✅ Fallback
+  host: process.env.DB_RANKING_HOST || process.env.DB_HOST,
+  port: process.env.DB_RANKING_PORT || process.env.DB_PORT || 3306,
+  user: process.env.DB_RANKING_USER || process.env.DB_USER,
+  password: process.env.DB_RANKING_PASSWORD || process.env.DB_PASSWORD,
+  
+  // ✅ SOLO OPCIONES VÁLIDAS PARA MYSQL2
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  connectTimeout: 20000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  connectTimeout: 20000,
-  acquireTimeout: 20000,
-  timeout: 20000,
-  idleTimeout: 20000,
-  charset: 'utf8mb4',
-  maxIdle: 5
+  charset: 'utf8mb4'
 };
 
 // Pool para la base de datos principal 'torneos'
@@ -50,17 +48,16 @@ const poolTorneos = mysql.createPool({
 
 // Pool para la base de datos 'rankingTorneos'
 const poolRanking = mysql.createPool({
-  ...baseConfigRanking,  // ✅ Usa configuración separada
+  ...baseConfigRanking,
   database: process.env.DB_RANKING_NAME || 'railway'
 });
 
-// Pool general sin base de datos específica (para queries cross-database)
+// Pool general sin base de datos específica
 const poolGeneral = mysql.createPool({
-  ...baseConfigTorneos  // Usa las credenciales de torneos
-  // Sin especificar database
+  ...baseConfigTorneos
 });
 
-// Pool principal (mantiene compatibilidad con código existente)
+// Pool principal (mantiene compatibilidad)
 const pool = poolTorneos;
 
 // ============================================
@@ -115,7 +112,6 @@ const testConnection = async () => {
 // FUNCIONES DE TRANSACCIONES
 // ============================================
 
-// Función helper para transacciones en la BD de torneos (mantiene compatibilidad)
 const executeTransaction = async (callback) => {
   let connection;
   try {
@@ -148,7 +144,6 @@ const executeTransaction = async (callback) => {
   }
 };
 
-// Función para transacciones en la BD de ranking
 const executeRankingTransaction = async (callback) => {
   let connection;
   try {
@@ -181,7 +176,6 @@ const executeRankingTransaction = async (callback) => {
   }
 };
 
-// Función para transacciones que afectan AMBAS bases de datos
 const executeCrossTransaction = async (callback) => {
   let connTorneos, connRanking;
   try {
@@ -199,7 +193,6 @@ const executeCrossTransaction = async (callback) => {
     return result;
     
   } catch (error) {
-    // Rollback en ambas bases de datos
     if (connTorneos) {
       try {
         await connTorneos.rollback();
@@ -274,23 +267,14 @@ const closePool = async () => {
 // ============================================
 
 export {
-  // Pools individuales
   poolTorneos,
   poolRanking,
   poolGeneral,
-  
-  // Pool principal (compatibilidad con código existente)
   pool,
-  
-  // Funciones de testing
   testConnection,
-  
-  // Funciones de transacciones
-  executeTransaction,           // Solo para torneos (mantiene compatibilidad)
-  executeRankingTransaction,    // Solo para ranking
-  executeCrossTransaction,      // Para operaciones en ambas BDs
-  
-  // Funciones de utilidad
+  executeTransaction,
+  executeRankingTransaction,
+  executeCrossTransaction,
   getPoolStatus,
   closePool
 };
