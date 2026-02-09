@@ -172,7 +172,7 @@ function CrearTorneoWarmaster() {
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
                 torneoData.append('partida_ronda_2', partidaRonda2);
-                torneoData.append('partida_ronda_4', rondasMax >= 3 ? partidaRonda3 : '');
+                torneoData.append('partida_ronda_3', rondasMax >= 3 ? partidaRonda3 : '');
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
                 torneoData.append('bases_pdf', archivoPDF);
