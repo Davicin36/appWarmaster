@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+import usuarioApi from '@/servicios/apiUsuarios';
 
 import PrincipalSaga from '@/componentesSaga/PrincipalSaga';
 import PrincipalWarmaster from '@/componentesWarmaster/PrincipalWarmaster';
@@ -11,8 +13,63 @@ import vikingo from '../assets/vikingo.png';
 import '../estilos/principal.css';
 
 function Principal({ onOpenLogin }) {
-    const [juegoActivo, setJuegoActivo] = useState('saga');
+    const [juegoActivo, setJuegoActivo] = useState('todos');
+    const [torneos, setTorneos] = useState([]);
+    const [cargando, setCargando] = useState(true);
+    const [error, setError] = useState(null);
     const navigate = useNavigate()
+
+    useEffect(() => {
+        const cargarTorneos = async () => {
+            try {
+                setCargando(true);
+                setError(null);
+                
+                // Usar la función de la API
+                const data = await usuarioApi.obtenerTodosTorneos();
+                
+                // Ordenar por fecha de creación (más recientes primero)
+                const torneosOrdenados = data.sort((a, b) => 
+                    new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
+                );
+                
+                setTorneos(torneosOrdenados);
+            } catch (error) {
+                console.error('Error al cargar torneos:', error);
+                setError('No se pudieron cargar los torneos. Por favor, intenta de nuevo.');
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        cargarTorneos();
+    }, []);
+
+        // Formatear fecha
+    const formatearFecha = (fecha) => {
+        if (!fecha) return 'Fecha no disponible';
+        const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(fecha).toLocaleDateString('es-ES', opciones);
+    };
+
+    // Función para recargar torneos
+    const recargarTorneos = async () => {
+        try {
+            setCargando(true);
+            setError(null);
+            const data = await usuarioApi.obtenerTodosTorneos();
+            const torneosOrdenados = data.sort((a, b) => 
+                new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
+            );
+            setTorneos(torneosOrdenados);
+        } catch (error) {
+            console.error('Error al recargar torneos:', error);
+            setError('No se pudieron cargar los torneos. Por favor, intenta de nuevo.');
+        } finally {
+            setCargando(false);
+        }
+    };
+
 
     return (
         <div>      
@@ -72,6 +129,12 @@ function Principal({ onOpenLogin }) {
 
             <nav className="navegacion-juegos">
                 <button 
+                    className={juegoActivo === 'todos' ? 'activo' : ''}
+                    onClick={() => setJuegoActivo('todos')}
+                >
+                    CARTELES TORNEOS
+                </button>
+                <button 
                     className={juegoActivo === 'saga' ? 'activo' : ''}
                     onClick={() => setJuegoActivo('saga')}
                 >
@@ -98,6 +161,123 @@ function Principal({ onOpenLogin }) {
                 </button>
                 {*/}
             </nav>
+
+            {/* SECCIÓN DE TODOS LOS TORNEOS - Solo se muestra cuando juegoActivo === 'todos' */}
+            {juegoActivo === 'todos' && (
+                <section className="seccion-torneos-principales">
+                    <div className="header-torneos">
+                        <h2>🎯 Todos los Torneos</h2>
+                        <p>
+                            {torneos.length === 0 
+                                ? 'No hay torneos disponibles' 
+                                : `${torneos.length} torneo${torneos.length !== 1 ? 's' : ''} disponible${torneos.length !== 1 ? 's' : ''}`
+                            }
+                        </p>
+                    </div>
+
+                    {/* Mostrar error si existe */}
+                    {error && (
+                        <div className="mensaje-error">
+                            <p>{error}</p>
+                            <button onClick={recargarTorneos} className="btn-reintentar">
+                                🔄 Reintentar
+                            </button>
+                        </div>
+                    )}
+
+                    {cargando ? (
+                        <div className="torneos-cargando">
+                            <div className="spinner"></div>
+                            <p>Cargando torneos...</p>
+                        </div>
+                    ) : torneos.length === 0 && !error ? (
+                        <div className="sin-torneos">
+                            <p>📅 No hay torneos todavía</p>
+                            <p>¡Sé el primero en crear uno!</p>
+                        </div>
+                    ) : !error ? (
+                        <div className="grid-torneos">
+                            {torneos.map((torneo) => (
+                                <div 
+                                    key={torneo.id} 
+                                    className="card-torneo"
+                                    onClick={() => {
+                                        if (torneo.sistema === 'SAGA') {
+                                            navigate(`/torneosSaga/${torneo.id}/detalles`);
+                                        } else if (torneo.sistema === 'WARMASTER') {
+                                            navigate(`/torneosWarmaster/${torneo.id}/detalles`);
+                                        } else if (torneo.sistema === 'FOW') {
+                                            navigate(`/torneosFow/${torneo.id}/detalles`);
+                                        }
+                                    }}
+                                >
+                                    {/* IMAGEN */}
+                                    <div className="card-imagen-wrapper">
+                                        {torneo.imagen_url ? (
+                                            <img 
+                                                src={torneo.imagen_url} 
+                                                alt={torneo.nombre}
+                                                className="torneo-imagen"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = vikingo;
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="torneo-sin-imagen">
+                                                <span className="icono-sin-imagen">🎮</span>
+                                                <p>Sin imagen</p>
+                                            </div>
+                                        )}
+                                        <span className="torneo-badge">{torneo.tipo_juego}</span>
+                                    </div>
+
+                                    {/* INFO */}
+                                    <div className="torneo-info">
+                                        <h3>{torneo.nombre}</h3>
+                                        {torneo.descripcion && (
+                                            <p className="torneo-descripcion">
+                                                {torneo.descripcion.length > 150 
+                                                    ? torneo.descripcion.substring(0, 150) + '...' 
+                                                    : torneo.descripcion}
+                                            </p>
+                                        )}
+                                        <div className="torneo-detalles">
+                                            <span className="torneo-detalle">
+                                                <strong>{torneo.sistema} - Torneo {torneo.tipo_torneo}</strong>
+                                            </span>
+                                            <span className="torneo-detalle">📅 {formatearFecha(torneo.fecha_inicio)}</span>
+                                            {torneo.ubicacion && (
+                                                <span className="torneo-detalle">📍 {torneo.ubicacion}</span>
+                                            )}
+                                            {torneo.tipo_torneo === 'Por equipos' ? (
+                                                <span className="torneo-detalle">
+                                                    👥 {torneo.num_participantes || 0} / {torneo.equipos_max} equipos
+                                                </span>
+                                            ) : (
+                                                <span className="torneo-detalle">
+                                                    👤 {torneo.num_participantes || 0} / {torneo.participantes_max} participantes
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="torneo-footer">
+                                            <span className={`estado-badge ${torneo.estado?.toLowerCase()}`}>
+                                                {torneo.estado === 'pendiente' && '⏳ Pendiente'}
+                                                {torneo.estado === 'en_curso' && '▶️ En Curso'}
+                                                {torneo.estado === 'finalizado' && '✅ Finalizado'}
+                                                {torneo.estado === 'cancelado' && '❌ Cancelado'}
+                                            </span>
+                                            {torneo.creador_nombre && (
+                                                <span className="torneo-creador">Por: {torneo.creador_nombre}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
+                </section>
+            )}
 
             {juegoActivo === 'saga' && <PrincipalSaga onOpenLogin={onOpenLogin} />}
             {juegoActivo === 'warmaster' && <PrincipalWarmaster onOpenLogin={onOpenLogin} />}

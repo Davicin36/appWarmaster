@@ -35,6 +35,7 @@ CREATE TABLE torneos_sistemas (
   fecha_inicio DATE NOT NULL,
   fecha_fin DATE,
   ubicacion VARCHAR(200),
+  imagen_url VARCHAR(500) NULL DEFAULT NULL,
   puntos_banda INT NOT NULL,
   puntos_ejercito INT NOT NULL, /*PARA  FOW Y BOLT*/
   unidades_legendarias TINYINT (1) DEFAULT 0,

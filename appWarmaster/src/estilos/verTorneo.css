@@ -33,7 +33,7 @@
 
 /* ===== HEADER DEL TORNEO ===== */
 .ver-torneo-container .torneo-header {
-    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro)) !important;
     color: white;
     padding: 2rem;
     border-radius: 15px;
@@ -46,7 +46,7 @@
 .ver-torneo-container .torneo-header h1 {
     margin: 0 0 1.5rem 0;
     font-size: 2.5rem;
-    color: white;
+    color: white !important;
     text-align: center;
     font-weight: 700;
     width: 100%;
@@ -71,15 +71,20 @@
     align-items: center;
 }
 
+.ver-torneo-container .torneo-content,
+.ver-torneo-container .torneo-info {
+    background: transparent !important;
+}
+
 .ver-torneo-container .info-item {
     display: inline-flex;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.2) !important;
     padding: 0.6rem 1.2rem;
     border-radius: 25px;
     font-size: 0.95rem;
     font-weight: 500;
     backdrop-filter: blur(10px);
-    color: white;
+    color: white !important;
     white-space: nowrap;
     border: 1px solid rgba(255, 255, 255, 0.3);
     transition: all 0.3s ease;
@@ -121,7 +126,7 @@
     min-width: 280px;
     max-width: 320px;
     padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.15) !important;
     border-radius: 12px;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.3);

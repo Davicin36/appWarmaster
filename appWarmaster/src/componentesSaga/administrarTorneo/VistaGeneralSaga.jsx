@@ -54,6 +54,12 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
     const [archivoPDF, setArchivoPDF] = useState(null);
     const [eliminarPDF, setEliminarPDF] = useState(false);
 
+    // ⬅️ NUEVOS ESTADOS PARA IMAGEN
+    const [imagenActual, setImagenActual] = useState(null);
+    const [imagenNueva, setImagenNueva] = useState(null);
+    const [vistaPreviaImagen, setVistaPreviaImagen] = useState(null);
+    const [eliminarImagenFlag, setEliminarImagenFlag] = useState(false);
+
     const [organizadores, setOrganizadores] = useState({ activos: [], pendientes: [] });
     const [nuevoOrganizadorEmail, setNuevoOrganizadorEmail] = useState('');
     const [loadingOrganizadores, setLoadingOrganizadores] = useState(false);
@@ -67,12 +73,6 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
 
  useEffect(() => {
     if (torneo) {
-        console.group('🔍 DEBUG - Cargando datos del torneo');
-        console.log('torneo completo:', torneo);
-        console.log('unidades_legendarias (snake_case):', torneo.unidades_legendarias);
-        console.log('tipo de unidades_legendarias:', typeof torneo.unidades_legendarias);
-        console.groupEnd();
-
         let epocas = [];
         if (torneo.epocas_disponibles) {
             epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
@@ -98,8 +98,6 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             torneo.unidades_legendarias === true
         ) ? '1' : '0';
 
-        console.log('✅ Valor final NORMALIZADO:', unidadesLegendariasValor, typeof unidadesLegendariasValor);
-
         setDatosEdicion({
             nombre_torneo: torneo.nombre_torneo || '',
             tipo_torneo: tipoTorneo,
@@ -121,7 +119,9 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             partida_ronda_5: torneo.partida_ronda_5 || ''
         });
 
-        console.log('📝 datosEdicion.unidades_legendarias configurado como:', unidadesLegendariasValor);
+        if (torneo.imagen_url) {
+                setImagenActual(torneo.imagen_url);
+            }
     }
 }, [torneo]);
 
@@ -192,6 +192,72 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         const { name, value } = e.target;
         setDatosEdicion(prev => ({ ...prev, [name]: value }));
         if (errorEdicion) setErrorEdicion('');
+    };
+
+       const handleNuevaImagenCartel = (e) => {
+        const file = e.target.files[0];
+        
+        if (!file) {
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            return;
+        }
+        
+        const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!tiposPermitidos.includes(file.type)) {
+            setErrorEdicion('⚠️ Solo se permiten imágenes (JPG, PNG, GIF, WEBP)');
+            e.target.value = '';
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setTimeout(() => setErrorEdicion(''), 4000);
+            return;
+        }
+        
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
+            setErrorEdicion(`⚠️ La imagen (${tamañoMB}MB) supera el tamaño máximo de 5MB.`);
+            e.target.value = '';
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setTimeout(() => setErrorEdicion(''), 5000);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setVistaPreviaImagen(reader.result);
+        };
+        reader.readAsDataURL(file);
+        
+        setImagenNueva(file);
+        setEliminarImagenFlag(false);
+        setErrorEdicion('');
+    };
+
+    const handleCancelarNuevaImagen = () => {
+        setImagenNueva(null);
+        setVistaPreviaImagen(null);
+        const fileInput = document.getElementById('nuevaImagenCartel');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    };
+
+    const handleEliminarImagenActual = () => {
+        if (window.confirm('¿Estás seguro de que quieres eliminar la imagen del cartel?')) {
+            setEliminarImagenFlag(true);
+            setImagenActual(null);
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+        }
+    };
+
+    const handleCancelarEliminacionImagen = () => {
+        setEliminarImagenFlag(false);
+        if (torneo?.imagen_url) {
+            setImagenActual(torneo.imagen_url);
+        }
     };
 
     const handleGuardarCambios = async (e) => {
@@ -268,74 +334,62 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             partida_ronda_5: datosEdicion.partida_ronda_5 || null
         };
 
-        console.group('📤 ENVIANDO ACTUALIZACIÓN');
-        console.log('unidades_legendarias que se enviará:', datosLimpios.unidades_legendarias);
-        console.log('Tipo:', typeof datosLimpios.unidades_legendarias);
-        console.groupEnd();
-
         let dataToSend;
         
-        if (archivoPDF || eliminarPDF) {
-            // ✅ FORMDATA: Añadir explícitamente todos los campos
+        if (archivoPDF || eliminarPDF || imagenNueva || eliminarImagenFlag) {
             dataToSend = new FormData();
+            Object.keys(datosLimpios).forEach(key => {
+               if (datosLimpios[key] !== null && datosLimpios[key] !== '') {
+                    dataToSend.append(key, datosLimpios[key]);
+                }
+            });
             
-            dataToSend.append('nombre_torneo', datosLimpios.nombre_torneo);
-            dataToSend.append('tipo_torneo', datosLimpios.tipo_torneo);
-            dataToSend.append('num_jugadores_equipo', datosLimpios.num_jugadores_equipo);
-            dataToSend.append('rondas_max', datosLimpios.rondas_max);
-            dataToSend.append('puntos_banda', datosLimpios.puntos_banda);
-            dataToSend.append('participantes_max', datosLimpios.participantes_max);
-            dataToSend.append('equipos_max', datosLimpios.equipos_max);
-            dataToSend.append('epoca_torneo', datosLimpios.epocas_disponibles.join('|'));
-            dataToSend.append('unidades_legendarias', datosLimpios.unidades_legendarias); // ✅ Siempre añadir
-            dataToSend.append('fecha_inicio', datosLimpios.fecha_inicio);
-            dataToSend.append('estado', datosLimpios.estado);
-            dataToSend.append('partida_ronda_1', datosLimpios.partida_ronda_1);
-            dataToSend.append('partida_ronda_2', datosLimpios.partida_ronda_2);
-            
-            if (datosLimpios.fecha_fin) dataToSend.append('fecha_fin', datosLimpios.fecha_fin);
-            if (datosLimpios.ubicacion) dataToSend.append('ubicacion', datosLimpios.ubicacion);
-            if (datosLimpios.partida_ronda_3) dataToSend.append('partida_ronda_3', datosLimpios.partida_ronda_3);
-            if (datosLimpios.partida_ronda_4) dataToSend.append('partida_ronda_4', datosLimpios.partida_ronda_4);
-            if (datosLimpios.partida_ronda_5) dataToSend.append('partida_ronda_5', datosLimpios.partida_ronda_5);
-            
+            // PDF
             if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
             if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
             
-            console.log('📦 Enviando como FormData');
+            // ⬅️ IMAGEN
+            if (imagenNueva) {
+                dataToSend.append('imagen_cartel', imagenNueva);
+                console.log('🖼️ Nueva imagen añadida:', imagenNueva.name);
+            }
+            if (eliminarImagenFlag) {
+                dataToSend.append('eliminar_imagen', 'true');
+                console.log('🗑️ Imagen marcada para eliminar');
+            }
         } else {
-            // ✅ JSON: Enviar tal cual
-            dataToSend = {
-                ...datosLimpios,
-                epoca_torneo: datosLimpios.epocas_disponibles.join('|')
-            };
-            delete dataToSend.epocas_disponibles;
-            
-            console.log('📦 Enviando como JSON:', dataToSend);
+            dataToSend = {...datosLimpios};
         }
 
         await torneosSagaApi.actualizarTorneo(torneoId, dataToSend);
         
         alert('✅ Torneo actualizado correctamente');
-        setModoEdicion(false);
-        setArchivoPDF(null);
-        setEliminarPDF(false);
-        await cargarDatos();
-        if (onUpdate) onUpdate();
-        
-    } catch (error) {
-        console.error('Error:', error);
-        setErrorEdicion(error.message || 'Error al actualizar el torneo');
-    } finally {
-        setLoadingEdicion(false);
-    }
-};
+            setModoEdicion(false);
+            setArchivoPDF(null);
+            setEliminarPDF(false);
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setEliminarImagenFlag(false);
+            await cargarDatos();
+            if (onUpdate) onUpdate();
+            
+        } catch (error) {
+            console.error('Error:', error);
+            setErrorEdicion(error.message || 'Error al actualizar el torneo');
+        } finally {
+            setLoadingEdicion(false);
+        }
+    };
+
 
 const handleCancelarEdicion = () => {
-    setModoEdicion(false);
-    setErrorEdicion('');
-    setArchivoPDF(null);
-    setEliminarPDF(false);
+     setModoEdicion(false);
+        setErrorEdicion('');
+        setArchivoPDF(null);
+        setEliminarPDF(false);
+        setImagenNueva(null);
+        setVistaPreviaImagen(null);
+        setEliminarImagenFlag(false);
     
     if (torneo) {
         let epocas = [];
@@ -383,6 +437,11 @@ const handleCancelarEdicion = () => {
             partida_ronda_4: torneo.partida_ronda_4 || '',
             partida_ronda_5: torneo.partida_ronda_5 || ''
         });
+
+          // Restaurar imagen actual
+            if (torneo.imagen_url) {
+                setImagenActual(torneo.imagen_url);
+            }
     }
 };
 
@@ -1024,6 +1083,111 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                         />
                     </fieldset>
 
+                    {/* ⬅️ NUEVA SECCIÓN: CARTEL DEL TORNEO */}
+                    <fieldset>
+                        <legend>🖼️ Cartel del Torneo</legend>
+                        
+                        {/* MOSTRAR IMAGEN ACTUAL */}
+                        {imagenActual && !eliminarImagenFlag && !imagenNueva && (
+                            <div className="imagen-actual-container">
+                                <p className="imagen-label">Imagen actual:</p>
+                                <div className="imagen-actual-preview">
+                                    <img 
+                                        src={imagenActual} 
+                                        alt="Cartel actual" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                                <div className="imagen-acciones">
+                                    <label htmlFor="nuevaImagenCartel" className="btn-cambiar-imagen">
+                                        🔄 Cambiar imagen
+                                    </label>
+                                    <input 
+                                        type="file"
+                                        id="nuevaImagenCartel"
+                                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                        onChange={handleNuevaImagenCartel}
+                                        style={{ display: 'none' }}
+                                        disabled={loadingEdicion}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleEliminarImagenActual}
+                                        className="btn-eliminar-imagen"
+                                        disabled={loadingEdicion}
+                                    >
+                                        🗑️ Eliminar imagen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* MOSTRAR NUEVA IMAGEN SELECCIONADA */}
+                        {imagenNueva && vistaPreviaImagen && (
+                            <div className="imagen-nueva-container">
+                                <p className="imagen-label">Nueva imagen seleccionada:</p>
+                                <div className="archivo-info">
+                                    <p className="archivo-nombre">✅ <strong>{imagenNueva.name}</strong></p>
+                                    <p className="archivo-tamaño">
+                                        📦 {(imagenNueva.size / 1024).toFixed(2)} KB ({(imagenNueva.size / 1024 / 1024).toFixed(2)} MB)
+                                    </p>
+                                </div>
+                                <div className="imagen-preview">
+                                    <img 
+                                        src={vistaPreviaImagen} 
+                                        alt="Vista previa" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelarNuevaImagen}
+                                    className="btn-cancelar-nueva-imagen"
+                                    disabled={loadingEdicion}
+                                >
+                                    ❌ Cancelar cambio
+                                </button>
+                            </div>
+                        )}
+                        
+                        {/* SI NO HAY IMAGEN O SE MARCÓ PARA ELIMINAR */}
+                        {(!imagenActual || eliminarImagenFlag) && !imagenNueva && (
+                            <div className="sin-imagen-container">
+                                {eliminarImagenFlag ? (
+                                    <>
+                                        <p className="aviso-eliminar">⚠️ La imagen se eliminará al guardar los cambios</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelarEliminacionImagen}
+                                            className="btn-cancelar-eliminacion"
+                                            disabled={loadingEdicion}
+                                        >
+                                            ↩️ Cancelar eliminación
+                                        </button>
+                                    </>
+                                ) : (
+                                    <p className="sin-imagen-texto">📷 Este torneo no tiene imagen de cartel</p>
+                                )}
+                                
+                                <label htmlFor="nuevaImagenCartel" className="btn-subir-imagen">
+                                    ➕ Subir imagen
+                                </label>
+                                <input 
+                                    type="file"
+                                    id="nuevaImagenCartel"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onChange={handleNuevaImagenCartel}
+                                    style={{ display: 'none' }}
+                                    disabled={loadingEdicion}
+                                />
+                                <small className="help-text-file">
+                                    🖼️ Formatos: JPG, PNG, GIF, WEBP | Tamaño máximo: 5MB
+                                </small>
+                            </div>
+                        )}
+                    </fieldset>
+
+
                     <fieldset>
                         <legend>🎲 Escenarios por Ronda</legend>
 
@@ -1278,6 +1442,18 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                             <div className="advertencia-no-editable">
                                 <strong>▶️ Torneo EN CURSO</strong>
                                 <p>Para editar la configuración del torneo, primero debe volverse a estado PENDIENTE.</p>
+                            </div>
+                        )}
+
+                        {/* ⬅️ MOSTRAR IMAGEN EN MODO VISTA */}
+                        {torneo.imagen_url && (
+                            <div className="cartel-vista">
+                                <h3>🖼️ Cartel del Torneo</h3>
+                                <img 
+                                    src={torneo.imagen_url} 
+                                    alt="Cartel del torneo" 
+                                    className="cartel-imagen-vista"
+                                />
                             </div>
                         )}
 

@@ -1,7 +1,8 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
-import { pool, executeCrossTransaction  } from '../config/bd.js';
+import cloudinary from 'cloudinary'
+import { pool, executeCrossTransaction } from '../config/bd.js';
 import { enviarInvitarJugador }  from '../utils/emailInvitarTorneoInd.js';
 import { enviarInvitacionOrganizadorNoRegistrado, enviarInvitacionOrganizadorRegistrado } from '../utils/emailInvitarOrganizador.js'; 
 import  { emailTorneo }  from '../utils/emailComunicaciones.js';
@@ -22,10 +23,11 @@ const router = express.Router();
 // =====CONFIGURACIÓN DE MULTER PARA SUBIDA DE PDF=====
 
 const storage = multer.memoryStorage();
+
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize:  16 * 1024 * 1024
+    fileSize: 16 * 1024 * 1024 // 16MB máximo
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
@@ -34,6 +36,40 @@ const upload = multer({
       cb(new Error('Solo se permiten archivos PDF'), false);
     }
   }
+});
+
+const uploadMultiple = multer({
+  storage: storage,
+  limits: {
+    fileSize: 16 * 1024 * 1024 // 16MB máximo
+  },
+  fileFilter: (req, file, cb) => {
+    // ⬅️ ACTUALIZADO: Aceptar tanto PDFs como imágenes
+    if (file.fieldname === 'bases_pdf') {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten archivos PDF para las bases'), false);
+      }
+    } else if (file.fieldname === 'imagen_cartel') {
+      const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (tiposPermitidos.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten imágenes (JPG, PNG, GIF, WEBP) para el cartel'), false);
+      }
+    } else {
+      cb(new Error('Campo de archivo no reconocido'), false);
+    }
+  }
+});
+
+// ======CONFIGURACION CLOUDINARY========
+
+cloudinary.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 
@@ -85,6 +121,7 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
+        ts.imagen_url,
         ts.puntos_ejercito,
         ts.participantes_max,
         ts.estado,
@@ -182,6 +219,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
+        ts.imagen_url,
         ts.puntos_ejercito,
         ts.participantes_max,
         ts.estado,
@@ -229,44 +267,51 @@ router.get('/torneo/:torneoId', async (req, res) => {
 
 // =====CREAR NUEVO TORNEO=====
 
-router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async (req, res) => {
-  try {
-    
-    const { 
-      nombre_torneo, 
-      tipo_torneo,
-      rondas_max,
-      epocas_disponibles: epocas_raw,
-      fecha_inicio, 
-      fecha_fin, 
-      ubicacion,
-      puntos_banda,
-      participantes_max,
-      estado,
-      partida_ronda_1,
-      partida_ronda_2,
-      partida_ronda_3,
-      partida_ronda_4,
-      partida_ronda_5
-    } = req.body;
-
-    // ✅ CORREGIDO: Parsear épocas si viene como string
-    let epocas_disponibles;
-    if (typeof epocas_raw === 'string') {
+    router.post('/creandoTorneo', verificarToken,uploadMultiple.fields([
+        { name: 'bases_pdf', maxCount: 1 },
+        { name: 'imagen_cartel', maxCount: 1 }
+    ]), async (req, res) => {
       try {
-        epocas_disponibles = JSON.parse(epocas_raw);
-      } catch (e) {
-        epocas_disponibles = epocas_raw.split('|').map(e => e.trim()).filter(e => e);
-      }
-    } else {
-      epocas_disponibles = epocas_raw;
-    }
+        
+        const { 
+          nombre_torneo, 
+          tipo_torneo = 'Individual',
+          rondas_max: rondas_max_raw,
+          fecha_inicio, 
+          fecha_fin, 
+          ubicacion,
+          puntos_ejercito: puntos_ejercito_raw,
+          participantes_max: participantes_max_raw,
+          estado = 'pendiente',
+          partida_ronda_1,
+          partida_ronda_2,
+          partida_ronda_3,
+          partida_ronda_4,
+          partida_ronda_5,
+          organizadores_emails: organizadores_raw
+        } = req.body;
     
+
+        const rondas_max = parseInt(rondas_max_raw);
+        const puntos_ejercito = parseInt(puntos_ejercito_raw);
+        const participantes_max = parseInt(participantes_max_raw);
+
+        let organizadores_emails = [];
+        if (organizadores_raw) {
+          if(typeof organizadores_raw === 'string') {
+              try {
+                organizadores_emails = JSON.parse(organizadores_raw)
+              }catch (e) {
+                organizadores_emails = organizadores_raw.split(', ').map(e => e.trim()).filter(e => e);
+              }
+          } else if (Array.isArray(organizadores_raw)) {
+            organizadores_emails = organizadores_raw;
+          }
+        } 
+
     const camposFaltantes = validarCamposRequeridos(req.body, [
       'nombre_torneo', 
-      'tipo_torneo',
-      'rondas_max', 
-      'epocas_disponibles', 
+      'rondas_max',
       'fecha_inicio',
       'puntos_ejercito',
       'participantes_max',
@@ -275,67 +320,27 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       'partida_ronda_3'
     ]);
     
-    if (camposFaltantes.length > 0) {
+   if (camposFaltantes.length > 0) {
       return res.status(400).json(
         errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
       );
     }
 
-    if (!Array.isArray(epocas_disponibles) || epocas_disponibles.length === 0) {
-      return res.status(400).json(
-        errorResponse('Debe seleccionar al menos una época')
-      );
-    }
-
-    if (tipo_torneo === 'Por equipos') {
-      if (!num_jugadores_equipo) {
-        return res.status(400).json(
-          errorResponse('Debe especificar el número de jugadores por equipo')
-        );
-      }
-
-      const numJugadores = parseInt(num_jugadores_equipo);
-
-      if (isNaN(numJugadores)) {
-        return res.status(400).json(
-          errorResponse('El número de jugadores debe ser un número válido')
-        );
-      }
-
-      if (numJugadores < 2 || numJugadores > 6) {
-        return res.status(400).json(
-          errorResponse('El número de jugadores por equipo debe estar entre 2 y 6')
-        );
-      }
-
-      if (epocas_disponibles.length < numJugadores) {
-        return res.status(400).json(
-          errorResponse(`Debe seleccionar al menos ${numJugadores} épocas (una por jugador)`)
-        );
-      }
-    }
-    
     if (rondas_max < 3 || rondas_max > 5) {
       return res.status(400).json(
         errorResponse('El número de rondas debe estar entre 3 y 5')
       );
     }
 
-    if (puntos_banda < 4 || puntos_banda > 8) {
+    if (puntos_ejercito < 1000 || puntos_ejercito > 3000) {
       return res.status(400).json(
-        errorResponse('Los puntos de banda deben estar entre 4 y 8')
+        errorResponse('Los puntos de ejercit deben estar entre 1000 y 3000')
       );
     }
 
     if (participantes_max < 4 || participantes_max > 100) {
       return res.status(400).json(
         errorResponse('El número de participantes debe estar entre 4 y 100')
-      );
-    }
-
-     if (equipos_max < 5 || equipos_max > 20) {
-      return res.status(400).json(
-        errorResponse('El número de equipos debe estar entre 5 y 20')
       );
     }
     
@@ -351,42 +356,84 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
       );
     }
 
+    if (organizadores_emails.length > 5) {
+      return res.status(400).json(
+        errorResponse('Máximo 5 organizadores adicionales permitidos')
+      );
+    }
+
     const [usuarios] = await pool.execute(
-      'SELECT rol FROM usuarios WHERE id = ?',
+      'SELECT rol, nombre, apellidos FROM usuarios WHERE id = ?',
       [req.usuario.userId]
     );
 
     let rolActualizado = usuarios[0].rol;
-
-    if (usuarios[0].rol !== 'organizador') {
-      await pool.execute(
-        'UPDATE usuarios SET rol = ? WHERE id = ?',
-        ['organizador', req.usuario.userId]
-      );
-      rolActualizado = 'organizador';
-    }
+        const creadorNombre = `${usuarios[0].nombre} ${usuarios[0].apellidos}`;
     
-    let basesPdf = null;
-    let basesNombre = null;
-    let baseTamaño = null;
+        if (usuarios[0].rol !== 'organizador') {
+          await pool.execute(
+            'UPDATE usuarios SET rol = ? WHERE id = ?',
+            ['organizador', req.usuario.userId]
+          );
+          rolActualizado = 'organizador';
+        }
+        
+        let basesPdf = null;
+        let basesNombre = null;
+        let baseTamaño = null;
+        
+        if (req.files && req.files['bases_pdf']) {
+          const pdfFile = req.files['bases_pdf'][0];
+          basesPdf = pdfFile.buffer;
+          basesNombre = pdfFile.originalname;
+          baseTamaño = pdfFile.size;
+          console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
+        }
     
-    if (req.file) {
-      basesPdf = req.file.buffer;
-      basesNombre = req.file.originalname;
-      baseTamaño = req.file.size;
-      console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
-    }
+        let imagenUrl = null;
+    
+            if (req.files && req.files['imagen_cartel']) {
+              const imagenFile = req.files['imagen_cartel'][0];
+              
+              console.log('📤 Subiendo imagen a Cloudinary...');
+              console.log('   Nombre:', imagenFile.originalname);
+              console.log('   Tamaño:', imagenFile.size, 'bytes');
+              console.log('   Tipo:', imagenFile.mimetype);
+              
+              try {
+                // Convertir buffer a base64
+                const b64 = Buffer.from(imagenFile.buffer).toString('base64');
+                const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
+                
+                // Subir a Cloudinary
+                const resultado = await cloudinary.v2.uploader.upload(dataURI, {
+                  folder: 'torneos_warmaster',
+                  resource_type: 'auto',
+                  public_id: `torneo_${Date.now()}` // nombre único
+                });
+                
+                imagenUrl = resultado.secure_url;
+                console.log('✅ Imagen subida a Cloudinary:', imagenUrl);
+              } catch (cloudinaryError) {
+                console.error('❌ Error al subir a Cloudinary:', cloudinaryError);
+                // No bloquear la creación del torneo si falla Cloudinary
+                // pero podrías retornar error si lo consideras crítico
+              }
+            }
 
     const [resultado] = await pool.execute(
       `INSERT INTO torneos_sistemas 
        (nombre_torneo, 
+        sistema,
         tipo_torneo,
         num_jugadores_equipo,
         rondas_max, 
         fecha_inicio, 
         fecha_fin, 
-        ubicacion, 
-        puntos_banda, 
+        ubicacion,
+        imagen_url,
+        puntos_banda,
+        puntos_ejercito, 
         participantes_max, 
         equipos_max,
         estado, 
@@ -399,19 +446,22 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?))`,
       [
         nombre_torneo, 
-        tipo_torneo === 'Por equipos' ? 'Por equipos' : 'Individual',
-        num_jugadores_equipo || null,
+        'FOW',
+        tipo_torneo,
+        null,
         rondas_max, 
         fecha_inicio, 
         fecha_fin || null, 
-        ubicacion || null,  // ✅ Asegurar que se guarde
-        puntos_banda,
+        ubicacion || null, 
+        imagenUrl,
+        0,
+        puntos_ejercito,
         participantes_max,
-        equipos_max,
-        estado || 'pendiente',
+        0,
+        estado,
         partida_ronda_1,
         partida_ronda_2,
         partida_ronda_3,
@@ -426,341 +476,494 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
 
     const torneoId = resultado.insertId;
 
-    // Guardar cada época en la tabla torneo_saga_epocas
-    for (const epoca of epocas_disponibles) {
-      await pool.execute(
-        `INSERT INTO torneo_saga_epocas (torneo_id, epoca) VALUES (?, ?)`,
-        [torneoId, epoca]
-      );
-      console.log(`  ✓ Época guardada: ${epoca}`);
-    }
+     //INSERTAR A LOS ORGANIZADORES DEL TORNEO EN SU BD.
+        await pool.execute(
+          `INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)`,
+          [torneoId, req.usuario.userId]
+        )
     
-    res.status(201).json(
-      successResponse('Torneo creado exitosamente', {
-        torneoId: resultado.insertId,
-        nombre_torneo,
-        tipo_torneo,
-        num_jugadores_equipo: num_jugadores_equipo || null,
-        epocas_disponibles: epocas_disponibles,
-        ubicacion: ubicacion || null,
-        tiene_bases_pdf: !!req.file,
-        created_by: req.usuario.userId
-      })
-    );
-  
-  } catch (error) {
-    console.error('❌ Error al crear torneo:', error);
+        let organizadoresRegistrados = []
+        let organizadoresNoRegistrados = []
     
-    if (error instanceof multer.MulterError) {
-      if (error.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json(
-          errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
+        if(organizadores_emails.length > 0){
+    
+          for (const email of organizadores_emails) {
+            const emailLower = email.toLowerCase().trim();
+    
+            // Verificar si el usuario ya existe
+            const [usuarioExistente] = await pool.execute(
+              'SELECT id, nombre, apellidos, email FROM usuarios WHERE LOWER(email) = ?',
+              [emailLower]
+            );
+    
+            if (usuarioExistente.length > 0) {
+              const usuario = usuarioExistente[0];
+    
+              const [yaEsOrganizador] = await pool.execute (
+                'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND  usuario_id = ?',
+                [torneoId, usuario.id]
+              )
+    
+              if(yaEsOrganizador.length === 0){
+                  await pool.execute(
+                    'INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)',
+                    [torneoId, usuario.id]
+                  );
+    
+                  if (usuario.estado_cuenta === 'activo') {
+                    await pool.execute(
+                      `UPDATE usuarios SET rol = 'organizador' WHERE id = ? AND rol != 'organizador'`,
+                      [usuario.id]
+                    );
+    
+                  organizadoresRegistrados.push ({
+                      email: usuario.email,
+                      nombre: `${usuario.nombre} ${usuario.apellidos }`,
+                      estado: usuario.estado_cuenta
+                  })
+                }  else {
+                      organizadoresNoRegistrados.push({
+                      email: usuario.email
+                    });
+                }
+              }
+          } else {
+    
+              try {
+                // Crear usuario pendiente
+                const [nuevoUsuario] = await pool.execute(
+                  `INSERT INTO usuarios (email, nombre, apellidos, password, estado_cuenta, rol) VALUES (?, ?, ?, ?, 'pendiente_registro', 'organizador')`,
+                  [emailLower, 'Pendiente', 'de Registro', crypto.randomBytes(32).toString('hex')]
+                );
+    
+                const usuarioId = nuevoUsuario.insertId;
+    
+                // Añadir como organizador del torneo
+                await pool.execute(
+                  'INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)',
+                  [torneoId, usuarioId]
+                );
+    
+                organizadoresNoRegistrados.push({
+                  email: emailLower,
+                  usuarioId: usuarioId
+                });
+    
+                organizadoresNoRegistrados.push({
+                  email: emailLower,
+                  usuarioId: usuarioId
+                });
+    
+              } catch (dbError) {
+                console.error(`  ❌ Error creando usuario pendiente para ${emailLower}:`, dbError);
+              }
+            }
+          }
+    
+        // ✅ ENVIAR EMAILS
+          if (organizadoresRegistrados.length > 0 || organizadoresNoRegistrados.length > 0) {
+    
+            // Enviar emails a organizadores activos
+            for (const org of organizadoresRegistrados) {
+              try {
+                await enviarInvitacionOrganizadorRegistrado({
+                  destinatario: org.email,
+                  nombreDestinatario: org.nombre,
+                  creadorNombre,
+                  nombreTorneo: nombre_torneo,
+                  fechaInicio: fecha_inicio,
+                  fechaFin: fecha_fin,
+                  ubicacion,
+                  tipoTorneo: tipo_torneo,
+                  rondasMax: rondas_max
+                });
+              } catch (emailError) {
+                console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
+              }
+            }
+    
+            // Enviar emails a organizadores pendientes
+            for (const org of organizadoresNoRegistrados) {
+              try {
+                await enviarInvitacionOrganizadorNoRegistrado({
+                  destinatario: org.email,
+                  creadorNombre,
+                  nombreTorneo: nombre_torneo,
+                  fechaInicio: fecha_inicio,
+                  fechaFin: fecha_fin,
+                  ubicacion,
+                  tipoTorneo: tipo_torneo,
+                  rondasMax: rondas_max
+                });
+              } catch (emailError) {
+                console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
+              }
+            }
+          }
+        }
+        
+        res.status(201).json(
+          successResponse('Torneo creado exitosamente', {
+            torneoId: resultado.insertId,
+            nombre_torneo,
+            tipo_torneo,
+            ubicacion: ubicacion || null,
+            imagen_url: imagenUrl,
+            tiene_bases_pdf: !!req.file,
+            created_by: req.usuario.userId,
+            organizadores: {
+              activos: organizadoresRegistrados.length,
+              pendientes: organizadoresNoRegistrados.length,
+              emails_enviados: organizadoresRegistrados.length + organizadoresNoRegistrados.length
+            }
+          })
         );
+      
+      } catch (error) {
+        console.error('❌ Error al crear torneo:', error);
+        
+        if (error instanceof multer.MulterError) {
+          if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json(
+              errorResponse('El archivo PDF excede el tamaño máximo de 16MB')
+            );
+          }
+          return res.status(400).json(errorResponse(error.message));
+        }
+        
+        if (error.message === 'Solo se permiten archivos PDF') {
+          return res.status(400).json(errorResponse(error.message));
+        }
+    
+        if (error.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json(
+            errorResponse('Ya existe un torneo con esa época')
+          );
+        }
+        
+        const mensaje = manejarErrorDB(error);
+        res.status(500).json(errorResponse(mensaje));
       }
-      return res.status(400).json(errorResponse(error.message));
-    }
-    
-    if (error.message === 'Solo se permiten archivos PDF') {
-      return res.status(400).json(errorResponse(error.message));
-    }
-
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json(
-        errorResponse('Ya existe un torneo con esa época')
-      );
-    }
-    
-    const mensaje = manejarErrorDB(error);
-    res.status(500).json(errorResponse(mensaje));
-  }
-});
+    });
 
 // ======ACTUALIZAR TORNEO=====
 
-router.put('/:torneoId/actualizarTorneo', verificarToken, upload.single('bases_pdf'), async (req, res) => {
+router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTorneo, uploadMultiple.fields([
+    { name: 'bases_pdf', maxCount: 1 },
+    { name: 'imagen_cartel', maxCount: 1 }
+]), async (req, res) => {
   try {
     const { torneoId } = req.params;
     
     const { 
       nombre_torneo, 
       rondas_max,
-      tipo_torneo,
-      num_jugadores_equipo,
       ronda_actual,
-      epoca_torneo: epoca_raw,
       fecha_inicio, 
       fecha_fin, 
       ubicacion,
-      puntos_banda,
+      puntos_ejercito,
       participantes_max,
-      equipos_max,
       estado,
       partida_ronda_1,
       partida_ronda_2,
       partida_ronda_3,
       partida_ronda_4,
       partida_ronda_5,
-      eliminar_pdf
+      eliminar_pdf,
+      eliminar_imagen
     } = req.body;
 
-    // ✅ CORREGIDO: Parsear época si viene como string
-    let epocas_disponibles;
-    if (epoca_raw) {
-      if (typeof epoca_raw === 'string') {
-        epocas_disponibles = epoca_raw.split('|').map(e => e.trim()).filter(e => e);
-      } else if (Array.isArray(epoca_raw)) {
-        epocas_disponibles = epoca_raw;
-      }
-    }
+    // ⬅️ TAMBIÉN TRAER imagen_url actual para poder eliminarla de Cloudinary
+        const [torneoExistente] = await pool.execute(
+          'SELECT created_by, imagen_url FROM torneos_sistemas WHERE id = ?',
+          [torneoId]
+        );
         
-    const [torneoExistente] = await pool.execute(
-      'SELECT created_by FROM torneos_sistemas WHERE id = ?',
-      [torneoId]
-    );
-    
-    if (torneoExistente.length === 0) {
-      return res.status(404).json(errorResponse('Torneo no encontrado'));
-    }
-    
-    if (torneoExistente[0].created_by !== req.usuario.userId) {
-      return res.status(403).json(
-        errorResponse('Solo el creador del torneo puede modificarlo')
-      );
-    }
-
-    if (tipo_torneo === 'Por equipos' ) {
-      if (num_jugadores_equipo) {
-        const numJugadores = parseInt(num_jugadores_equipo);
+        if (torneoExistente.length === 0) {
+          return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
         
-        if (isNaN(numJugadores) || numJugadores < 2 || numJugadores > 6) {
+        // Validaciones
+        if (rondas_max && (rondas_max < 3 || rondas_max > 5)) {
           return res.status(400).json(
-            errorResponse('El número de jugadores por equipo debe estar entre 2 y 6')
+            errorResponse('El número de rondas debe estar entre 3 y 5')
           );
         }
-      if (epocas_disponibles && Array.isArray(epocas_disponibles)) {
-      if (epocas_disponibles.length < numJugadores) {
-        return res.status(400).json(
-          errorResponse(`Debe tener al menos ${numJugadores} épocas para ${numJugadores} jugadores`)
+    
+        if (puntos_ejercito && (puntos_ejercito < 1000 || puntos_ejercito > 3000)) {
+          return res.status(400).json(
+            errorResponse('Los puntos de ejército deben estar entre 1000 y 3000')
+          );
+        }
+    
+        if (participantes_max && (participantes_max < 4 || participantes_max > 100)) {
+          return res.status(400).json(
+            errorResponse('El número de participantes debe estar entre 4 y 100')
+          );
+        }
+        
+        if (fecha_inicio && !validarFecha(fecha_inicio)) {
+          return res.status(400).json(
+            errorResponse('La fecha de inicio no puede ser en el pasado')
+          );
+        }
+        
+        if (fecha_fin && fecha_inicio && new Date(fecha_fin) < new Date(fecha_inicio)) {
+          return res.status(400).json(
+            errorResponse('La fecha de fin debe ser posterior o igual a la fecha de inicio')
+          );
+        }
+    
+        if (estado && !['pendiente', 'en_curso', 'finalizado'].includes(estado)) {
+          return res.status(400).json(
+            errorResponse('Estado inválido. Debe ser: pendiente, en_curso o finalizado')
+          );
+        }
+        
+        const camposActualizar = [];
+        const valores = [];
+        
+        // Campos básicos
+        if (nombre_torneo !== undefined) {
+          camposActualizar.push('nombre_torneo = ?');
+          valores.push(nombre_torneo);
+        }
+    
+        if (rondas_max !== undefined) {
+          camposActualizar.push('rondas_max = ?');
+          valores.push(rondas_max);
+        }
+    
+        if (ronda_actual !== undefined) {
+          camposActualizar.push('ronda_actual = ?');
+          valores.push(ronda_actual);
+        }
+        
+        if (fecha_inicio !== undefined) {
+          camposActualizar.push('fecha_inicio = ?');
+          valores.push(fecha_inicio);
+        }
+    
+        if (fecha_fin !== undefined) {
+          camposActualizar.push('fecha_fin = ?');
+          valores.push(fecha_fin);
+        }
+        
+        if (ubicacion !== undefined) {
+          camposActualizar.push('ubicacion = ?');
+          valores.push(ubicacion || null);
+        }
+    
+        // ========================================
+        // MANEJAR IMAGEN DEL CARTEL
+        // ========================================
+        let imagenActualizada = false;
+        let imagenEliminada = false;
+    
+        // Si se sube una nueva imagen
+        if (req.files && req.files['imagen_cartel']) {
+          const imagenFile = req.files['imagen_cartel'][0];
+          
+          try {
+            console.log('📤 Subiendo nueva imagen a Cloudinary...');
+            console.log('   Archivo:', imagenFile.originalname);
+            console.log('   Tamaño:', (imagenFile.size / 1024).toFixed(2), 'KB');
+            
+            // Convertir buffer a base64
+            const b64 = Buffer.from(imagenFile.buffer).toString('base64');
+            const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
+            
+            // Subir a Cloudinary
+            const resultado = await cloudinary.v2.uploader.upload(dataURI, {
+              folder: 'torneos_fow',
+              resource_type: 'auto',
+              public_id: `torneo_${torneoId}_${Date.now()}`
+            });
+            
+            // Eliminar imagen anterior de Cloudinary si existe
+            if (torneoExistente[0].imagen_url) {
+              try {
+                // Extraer public_id de la URL
+                const urlParts = torneoExistente[0].imagen_url.split('/');
+                const publicIdWithExt = urlParts.slice(-2).join('/');
+                const publicId = publicIdWithExt.replace(/\.[^/.]+$/, "");
+                
+                await cloudinary.v2.uploader.destroy(publicId);
+                console.log('🗑️ Imagen anterior eliminada de Cloudinary');
+              } catch (deleteError) {
+                console.warn('⚠️ No se pudo eliminar imagen anterior:', deleteError.message);
+              }
+            }
+            
+            camposActualizar.push('imagen_url = ?');
+            valores.push(resultado.secure_url);
+            imagenActualizada = true;
+            
+            console.log('✅ Nueva imagen subida:', resultado.secure_url);
+            
+          } catch (cloudinaryError) {
+            console.error('❌ Error al subir imagen a Cloudinary:', cloudinaryError);
+            return res.status(500).json(
+              errorResponse('Error al subir la imagen a Cloudinary: ' + cloudinaryError.message)
+            );
+          }
+        }
+        // Si se solicita eliminar la imagen existente
+        else if (eliminar_imagen === 'true' || eliminar_imagen === true) {
+          if (torneoExistente[0].imagen_url) {
+            try {
+              // Extraer public_id de la URL
+              const urlParts = torneoExistente[0].imagen_url.split('/');
+              const publicIdWithExt = urlParts.slice(-2).join('/');
+              const publicId = publicIdWithExt.replace(/\.[^/.]+$/, "");
+              
+              await cloudinary.v2.uploader.destroy(publicId);
+              console.log('🗑️ Imagen eliminada de Cloudinary');
+            } catch (deleteError) {
+              console.warn('⚠️ No se pudo eliminar imagen de Cloudinary:', deleteError.message);
+            }
+          }
+          
+          camposActualizar.push('imagen_url = NULL');
+          imagenEliminada = true;
+          console.log('🗑️ Eliminando referencia de imagen en BD');
+        }
+        
+        // Campos de puntuación
+        if (puntos_ejercito !== undefined) {
+          camposActualizar.push('puntos_ejercito = ?');
+          valores.push(puntos_ejercito);
+        }
+    
+        if (participantes_max !== undefined) {
+          camposActualizar.push('participantes_max = ?');
+          valores.push(participantes_max);
+        }
+    
+        if (estado !== undefined) {
+          camposActualizar.push('estado = ?');
+          valores.push(estado);
+        }
+    
+        // Partidas por ronda
+        if (partida_ronda_1 !== undefined) {
+          camposActualizar.push('partida_ronda_1 = ?');
+          valores.push(partida_ronda_1);
+        }
+        if (partida_ronda_2 !== undefined) {
+          camposActualizar.push('partida_ronda_2 = ?');
+          valores.push(partida_ronda_2);
+        }
+        if (partida_ronda_3 !== undefined) {
+          camposActualizar.push('partida_ronda_3 = ?');
+          valores.push(partida_ronda_3);
+        }
+        if (partida_ronda_4 !== undefined) {
+          camposActualizar.push('partida_ronda_4 = ?');
+          valores.push(partida_ronda_4);
+        }
+        if (partida_ronda_5 !== undefined) {
+          camposActualizar.push('partida_ronda_5 = ?');
+          valores.push(partida_ronda_5);
+        }
+        
+        // ========================================
+        // MANEJAR PDF DE BASES
+        // ========================================
+        let pdfActualizado = false;
+        let pdfEliminado = false;
+    
+        // Si se sube un nuevo PDF - ⬅️ CAMBIO: usar req.files en lugar de req.file
+        if (req.files && req.files['bases_pdf']) {
+          const pdfFile = req.files['bases_pdf'][0];
+          
+          camposActualizar.push('bases_torneo = ?');
+          valores.push(pdfFile.buffer);
+          
+          camposActualizar.push('bases_nombre = ?');
+          valores.push(pdfFile.originalname);
+          
+          camposActualizar.push('base_tamaño = ?');
+          valores.push(pdfFile.size);
+          
+          pdfActualizado = true;
+          console.log('📄 Nuevo PDF recibido:', pdfFile.originalname);
+        }
+        // Si se solicita eliminar el PDF existente
+        else if (eliminar_pdf === 'true' || eliminar_pdf === true) {
+          camposActualizar.push('bases_torneo = NULL');
+          camposActualizar.push('bases_nombre = NULL');
+          camposActualizar.push('base_tamaño = NULL');
+          pdfEliminado = true;
+          console.log('🗑️ Eliminando PDF existente');
+        }
+        
+        // ========================================
+        // EJECUTAR UPDATE SI HAY CAMBIOS
+        // ========================================
+        if (camposActualizar.length > 0) {
+          valores.push(torneoId);
+          
+          const query = `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`;
+          
+          console.log('📝 Ejecutando UPDATE con', camposActualizar.length, 'campos');
+          
+          await pool.execute(query, valores);
+          
+          console.log('✅ Torneo actualizado correctamente');
+        } else {
+          console.log('ℹ️ No hay cambios para actualizar');
+        }
+        
+        // ========================================
+        // RESPUESTA
+        // ========================================
+        res.json(
+          successResponse('Torneo actualizado exitosamente', {
+            torneoId: parseInt(torneoId),
+            cambios: {
+              ubicacion: ubicacion !== undefined,
+              imagen_actualizada: imagenActualizada,
+              imagen_eliminada: imagenEliminada,
+              pdf_actualizado: pdfActualizado,
+              pdf_eliminado: pdfEliminado,
+              total_campos: camposActualizar.length
+            }
+          })
         );
+        
+      } catch (error) {
+        console.error('❌ Error al actualizar torneo:', error);
+        console.error('Stack:', error.stack);
+        
+        // Manejo de errores de Multer
+        if (error instanceof multer.MulterError) {
+          if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json(
+              errorResponse('Uno de los archivos excede el tamaño máximo de 16MB')
+            );
+          }
+          return res.status(400).json(errorResponse(error.message));
+        }
+        
+        // Errores de validación de archivos
+        if (error.message && error.message.includes('Solo se permiten')) {
+          return res.status(400).json(errorResponse(error.message));
+        }
+    
+        // Error de duplicado
+        if (error.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json(
+            errorResponse('Ya existe un torneo con ese nombre')
+          );
+        }
+        
+        // Error genérico
+        const mensaje = manejarErrorDB(error);
+        res.status(500).json(errorResponse(mensaje));
       }
-    }
-  }
-}
-    
-    if (rondas_max && (rondas_max < 3 || rondas_max > 5)) {
-      return res.status(400).json(
-        errorResponse('El número de rondas debe estar entre 3 y 5')
-      );
-    }
-
-    if (puntos_banda && (puntos_banda < 4 || puntos_banda > 8)) {
-      return res.status(400).json(
-        errorResponse('Los puntos de banda deben estar entre 4 y 8')
-      );
-    }
-
-    if (participantes_max && (participantes_max < 4 || participantes_max > 100)) {
-      return res.status(400).json(
-        errorResponse('El número de participantes debe estar entre 4 y 100')
-      );
-    }
-
-     if (equipos_max && (equipos_max < 5 || equipos_max > 20)) {
-      return res.status(400).json(
-        errorResponse('El número de equipos debe estar entre 5 y 20')
-      );
-    }
-    
-    if (fecha_inicio && !validarFecha(fecha_inicio)) {
-      return res.status(400).json(
-        errorResponse('La fecha de inicio no puede ser en el pasado')
-      );
-    }
-    
-    if (fecha_fin && fecha_inicio && new Date(fecha_fin) < new Date(fecha_inicio)) {
-      return res.status(400).json(
-        errorResponse('La fecha de fin debe ser posterior o igual a la fecha de inicio')
-      );
-    }
-
-    if (estado && !['pendiente', 'en_curso', 'finalizado'].includes(estado)) {
-      return res.status(400).json(
-        errorResponse('Estado inválido. Debe ser: pendiente, en_curso o finalizado')
-      );
-    }
-    
-     const camposActualizar = [];
-    const valores = [];
-    
-    if (nombre_torneo !== undefined) {
-      camposActualizar.push('nombre_torneo = ?');
-      valores.push(nombre_torneo);
-    }
-
-    if (tipo_torneo !== undefined) {  
-      camposActualizar.push('tipo_torneo = ?');
-      valores.push(tipo_torneo);
-    }
-
-    if (num_jugadores_equipo !== undefined) { 
-      camposActualizar.push('num_jugadores_equipo = ?');
-      valores.push(num_jugadores_equipo || null);
-    }
-
-    if (rondas_max !== undefined) {
-      camposActualizar.push('rondas_max = ?');
-      valores.push(rondas_max);
-    }
-
-    if (ronda_actual !== undefined) {
-      camposActualizar.push('ronda_actual = ?');
-      valores.push(ronda_actual);
-    }
-    
-    if (fecha_inicio !== undefined) {
-      camposActualizar.push('fecha_inicio = ?');
-      valores.push(fecha_inicio);
-    }
-    if (fecha_fin !== undefined) {
-      camposActualizar.push('fecha_fin = ?');
-      valores.push(fecha_fin);
-    }
-    
-    // ✅ IMPORTANTE: Guardar ubicacion
-    if (ubicacion !== undefined) {
-      console.log('🔄 Actualizando ubicacion a:', ubicacion);
-      camposActualizar.push('ubicacion = ?');
-      valores.push(ubicacion || null);
-    }
-    
-    if (puntos_banda !== undefined) {
-      camposActualizar.push('puntos_banda = ?');
-      valores.push(puntos_banda);
-    }
-    if (participantes_max !== undefined) {
-      camposActualizar.push('participantes_max = ?');
-      valores.push(participantes_max);
-    }
-
-     if (equipos_max !== undefined) {
-        camposActualizar.push('equipos_max = ?');
-        valores.push(equipos_max);
-      }
-
-    if (estado !== undefined) {
-      camposActualizar.push('estado = ?');
-      valores.push(estado);
-    }
-    if (partida_ronda_1 !== undefined) {
-      camposActualizar.push('partida_ronda_1 = ?');
-      valores.push(partida_ronda_1);
-    }
-    if (partida_ronda_2 !== undefined) {
-      camposActualizar.push('partida_ronda_2 = ?');
-      valores.push(partida_ronda_2);
-    }
-    if (partida_ronda_3 !== undefined) {
-      camposActualizar.push('partida_ronda_3 = ?');
-      valores.push(partida_ronda_3);
-    }
-    if (partida_ronda_4 !== undefined) {
-      camposActualizar.push('partida_ronda_4 = ?');
-      valores.push(partida_ronda_4);
-    }
-    if (partida_ronda_5 !== undefined) {
-      camposActualizar.push('partida_ronda_5 = ?');
-      valores.push(partida_ronda_5);
-    }
-    
-    if (req.file) {
-      camposActualizar.push('bases_torneo = ?');
-      valores.push(req.file.buffer);
-      
-      camposActualizar.push('bases_nombre = ?');
-      valores.push(req.file.originalname);
-      
-      camposActualizar.push('base_tamaño = ?');
-      valores.push(req.file.size);
-    }
-    else if (eliminar_pdf === 'true' || eliminar_pdf === true) {
-      camposActualizar.push('bases_torneo = NULL');
-      camposActualizar.push('bases_nombre = NULL');
-      camposActualizar.push('base_tamaño = NULL');
-      console.log('🗑️ Eliminando PDF existente');
-    }
-    
-    if (camposActualizar.length === 0 && !epocas_disponibles) {
-      return res.status(400).json(
-        errorResponse('No se proporcionaron campos para actualizar')
-      );
-    }
-    
-    // ✅ Actualizar torneo principal si hay cambios
-    if (camposActualizar.length > 0) {
-      valores.push(torneoId);
-      await pool.execute(
-        `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`,
-        valores
-      );
-      console.log('✅ Torneo actualizado');
-    }
-    
-    // ✅ NUEVO: Actualizar épocas si se proporcionaron
-    if (epocas_disponibles && Array.isArray(epocas_disponibles)) {
-      console.log('📝 Actualizando épocas en torneo_saga_epocas...');
-      
-      // Eliminar épocas antiguas
-      await pool.execute(
-        'DELETE FROM torneo_saga_epocas WHERE torneo_id = ?',
-        [torneoId]
-      );
-      
-      // Insertar nuevas épocas
-      for (const epoca of epocas_disponibles) {
-        await pool.execute(
-          `INSERT INTO torneo_saga_epocas (torneo_id, epoca) VALUES (?, ?)`,
-          [torneoId, epoca]
-        );
-        console.log(`  ✓ Época guardada: ${epoca}`);
-      }
-    }
-    
-    res.json(
-      successResponse('Torneo actualizado exitosamente', {
-        torneoId,
-        ubicacion_actualizada: ubicacion !== undefined,
-        epocas_actualizadas: !!epocas_disponibles,
-        pdf_actualizado: !!req.file,
-        pdf_eliminado: eliminar_pdf === 'true' || eliminar_pdf === true
-      })
-    );
-    
-  } catch (error) {
-    console.error('❌ Error al actualizar torneo:', error);
-    
-    if (error instanceof multer.MulterError) {
-      if (error.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json(
-          errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
-        );
-      }
-      return res.status(400).json(errorResponse(error.message));
-    }
-    
-    if (error.message === 'Solo se permiten archivos PDF') {
-      return res.status(400).json(errorResponse(error.message));
-    }
-
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json(
-        errorResponse('Ya existe un torneo con esa época')
-      );
-    }
-    
-    const mensaje = manejarErrorDB(error);
-    res.status(500).json(errorResponse(mensaje));
-  }
-});
+    });
 
 // ===== OBTENER ORGANIZADORES DEL TORNEO =====
 
@@ -1305,37 +1508,35 @@ router.post('/:torneoId/organizadores/:organizadorId/reenviar', verificarToken, 
 
 // ======INSCRIBIRSE EN TORNEO=====
 
-router.post('/:torneoId/inscripcion', async (req, res) => {
+router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejercito'), async (req, res) => {
   try {
     const { torneoId } = req.params;
+    const usuarioId = req.usuario.userId;
+    const { nombre_ejercito, ejercito, bando } = req.body;
 
-    const { 
-      usuarioId,
-      epoca,
-      faccion,
-      puntosGuardias,
-      puntosGuerreros,
-      puntosLevas,
-      puntosMercenarios,
-      detalleMercenarios
-    } = req.body;
+    if(!nombre_ejercito || !nombre_ejercito.trim()) {
+      return  res.status(400).json(
+        errorResponse('El nombre del ejército es obligatorio')
+      );
+    } 
 
-    if(!epoca){
+     if (!ejercito || !ejercito.trim()) {
       return res.status(400).json(
-        errorResponse('Debe seleccionar una época')
+        errorResponse('El ejército es obligatorio')
+      );
+    }
+
+    if (!bando || !bando.trim()) {
+      return res.status (400).json (
+        errorResponse('Tienes que elegir un bando: EJE o ALIADOS')
       )
     }
 
-    // Validar que el torneo existe y obtener su época
+    // Validar que el torneo existe 
     const [torneos] = await pool.execute(
-      'SELECT puntos_banda FROM torneos_sistemas WHERE id = ?',
+      'SELECT nombre_torneo, puntos_ejercito FROM torneos_sistemas WHERE id = ?',
       [torneoId]
     );
-
-    const [epocaBD] =await pool.execute(
-      'SELECT epoca FROM torneo_saga_epocas WHERE torneo_id = ?',
-      [torneoId]  
-    )
 
     if (torneos.length === 0) {
       return res.status(404).json(
@@ -1343,34 +1544,11 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       );
     }
 
-     if (epocaBD.length === 0) {
-      return res.status(404).json(
-        errorResponse('No hya epocas en este torneo')
-      );
-    }
-
     const torneo = torneos[0];
-
-    const epocasValidas = epocaBD.map(e => e.epoca.trim());
-
-    // Validar época
-    if (!epocasValidas.includes(epoca)) {
-      return res.status(400).json(
-        errorResponse('La época seleccionada no es válida para este torneo')
-      );
-    }
-
-    // Validar puntos
-    const totalPuntos = puntosGuardias + puntosGuerreros + puntosLevas + puntosMercenarios;
-      if (Math.abs(totalPuntos - torneo.puntos_banda) > 0.01) {
-        return res.status(400).json(
-          errorResponse(`Los puntos deben sumar ${torneo.puntos_banda}`)
-        );
-      }
 
     // Verificar si ya está inscrito
     const [inscripcionExistente] = await pool.execute(
-      'SELECT id FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
+      'SELECT id FROM jugador_torneo_fow WHERE torneo_id = ? AND jugador_id = ?',
       [torneoId, usuarioId]
     );
 
@@ -1380,38 +1558,42 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       );
     }
 
-    const composicionEjercito = JSON.stringify({
-      guardias: puntosGuardias,
-      guerreros: puntosGuerreros,
-      levas: puntosLevas,
-      mercenarios: puntosMercenarios,
-      detalleMercenarios: detalleMercenarios || null
-    });
+    let listaEjercito = null;
+    let listaNombre = null;
+    let listaTamaño = null;
+
+    if (req.file) {
+      listaEjercito = req.file.buffer;
+      listaNombre = req.file.originalname;
+      listaTamaño = req.file.size;
+      console.log(`📄 Lista recibida: ${listaNombre} (${listaTamaño} bytes)`);
+    }
     
     // Insertar inscripción
     const [resultado] = await pool.execute(
-      `INSERT INTO jugador_torneo_saga (
+      `INSERT INTO jugador_torneo_fow (
         torneo_id, 
         jugador_id, 
-        epoca,
-        faccion, 
-        composicion_ejercito,
+        nombre_ejercito,
+        ejercito,
+        bando,
+        lista_ejercito,
+        lista_nombre,
+        lista_tamaño,
         pagado,
         puntos_victoria,
         puntos_torneo,
-        puntos_masacre,
-        warlord_muerto
-      ) VALUES (?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)`,
+        pelotones_matados,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)`,
       [
         torneoId,
         usuarioId,
-        epoca,
-        faccion,
-        composicionEjercito,
-        0,      // puntos_victoria por defecto 0
-        0,      // puntos_torneo por defecto 0
-        0,      // puntos_masacre por defecto 0
-        0       // warlord_muerto por defecto 0
+        nombre_ejercito,
+        ejercito,
+        bando,
+        listaEjercito,
+        listaNombre,
+        listaTamaño 
       ]
     );
 
@@ -1421,15 +1603,32 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
       successResponse('Inscripción realizada exitosamente', {
         inscripcionId: resultado.insertId,
         torneoId,
+        torneoNombre: torneo.nombre_torneo,
         usuarioId,
-        epoca,
-        faccion,
-        composicionEjercito: JSON.parse(composicionEjercito)
+        nombre_ejercito,
+        ejercito,
+        bando,
+        tiene_lista_pdf: !!req.file
       })
     );
 
   } catch (error) {
     console.error('❌ Error al inscribirse:', error);
+     if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json(
+          errorResponse('El archivo PDF excede el tamaño máximo de 16MB')
+        );
+      }
+      return res.status(400).json(errorResponse(error.message));
+    }
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json(
+        errorResponse('Ya estás inscrito en este torneo')
+      );
+    }
+
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
@@ -1439,65 +1638,80 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
 router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => {
     try {
         const { torneoId } = req.params;
-        const jugadorId = req.userId
+        const jugadorId = req.usuario.userId;
         
         const [inscripcion] = await pool.execute(`
-            SELECT * FROM jugador_torneo_saga 
-            WHERE torneo_id = ? AND jugador_id = ?
+          SELECT 
+            jtf.id,
+            jtf.torneo_id,
+            jtf.jugador_id,
+            jtf.nombre_ejercito,
+            jtf.ejercito,
+            jtf.bando,
+            jtf.lista_nombre,
+            jtf.lista_tamaño,
+            jtf.pagado,
+            jtf.puntos_victoria,
+            jtf.puntos_torneo,
+            jtf.pelotones_matados,
+            jtw.created_at
+          FROM jugador_torneo_fow jtf
+          WHERE jtf.torneo_id = ? AND jtf.jugador_id = ?
         `, [torneoId, jugadorId]);
-        
+
         if (inscripcion.length === 0) {
-            return res.status(404).json(errorResponse('No estás inscrito'));
+          return res.status(404).json(
+            errorResponse('No estás inscrito en este torneo')
+          );
         }
 
-        // Parsear la composición si existe
-        if (inscripcion[0].composicion_ejercito) {
-            try {
-                inscripcion[0].composicion_ejercito = JSON.parse(inscripcion[0].composicion_ejercito);
-            } catch {
-                inscripcion[0].composicion_ejercito = {};
-            }
-        }
-        
-        res.json(successResponse('Inscripción encontrada', inscripcion[0]));
-        
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json(errorResponse('Error al obtener inscripción'));
-    }
+        res.json(
+          successResponse('Inscripción obtenida exitosamente', inscripcion[0])
+        );
+
+      } catch (error) {
+        console.error('❌ Error al obtener inscripción:', error);
+        res.status(500).json(errorResponse('Error interno del servidor'));
+      }
 });
 
 // =====ACTUALIZAR INSCRIPCIÓN=====
 
-router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) => {
+router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('lista_ejercito'), async (req, res) => {
     const connection = await pool.getConnection();
     
     try {
         const { torneoId } = req.params;
         const jugadorId = req.usuario.userId
 
-        const {
-            epoca,
-            faccion,
-            puntosGuardias,
-            puntosGuerreros,
-            puntosLevas,
-            puntosMercenarios,
-            detalleMercenarios
-        } = req.body;
+        const {nombre_ejercito, ejercito, bando } = req.body;
 
-        if (!epoca) {
+        if(!nombre_ejercito || !nombre_ejercito.trim()) {
+            await connection.rollback();
+            return  res.status(400).json(
+                errorResponse('El nombre del ejército es obligatorio')
+            );
+        } 
+
+         if (!ejercito || !ejercito.trim()) {
             await connection.rollback();
             return res.status(400).json(
-                errorResponse('Debes seleccionar una época')
+                errorResponse('El ejército es obligatorio')
             );
+        }
+
+        if(!bando || !bando.trim()) {
+          await connection.rollback()
+          return res.status(400).json(
+            errorResponse('Tienes que elegir un bando : EJE o ALIADOS')
+          )
         }
 
         await connection.beginTransaction();
 
         // Verificar que está inscrito
         const [inscripcion] = await connection.execute(
-            'SELECT id FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
+            'SELECT id FROM jugador_torneo_fow WHERE torneo_id = ? AND jugador_id = ?',
             [torneoId, jugadorId]
         );
 
@@ -1507,56 +1721,46 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         }
 
         const [torneos] = await connection.execute(`
-          SELECT 
-              ts.id,
-              ts.nombre_torneo,
-              ts.estado,
-              ts.puntos_banda,
-              GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR ',') as epocas_disponibles
-          FROM torneos_sistemas ts
-          LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-          WHERE ts.id = ?
-          GROUP BY ts.id
-      `, [torneoId]);
+            SELECT 
+                ts.id,
+                ts.nombre_torneo,
+                ts.estado,
+                ts.puntos_ejercito
+            FROM torneos_sistemas ts
+            WHERE ts.id = ? AND ts.sistema = "WARMASTER"
+        `, [torneoId]);
 
           if (torneos.length === 0) {
             await connection.rollback();
             return res.status(404).json(errorResponse('Torneo no encontrado'));
           }
         
-        if (torneos.length > 0) {
-            const epocasValidas = torneos[0].epocas_disponibles.split(',').map(e => e.trim());
-            if (!epocasValidas.includes(epoca)) {
-                await connection.rollback();
-                return res.status(400).json(
-                    errorResponse('La época seleccionada no es válida para este torneo')
-                );
-            }
+         if (torneos[0].estado !== 'pendiente') {
+            await connection.rollback();
+            return res.status(400).json(
+                errorResponse('No se pueden modificar inscripciones. El torneo ya no está en estado pendiente')
+            );
         }
 
-        // Crear objeto JSON con la composición del ejército
-        const composicionEjercito = JSON.stringify({
-            guardias: puntosGuardias || 0,
-            guerreros: puntosGuerreros || 0,
-            levas: puntosLevas || 0,
-            mercenarios: puntosMercenarios || 0,
-            detalleMercenarios: detalleMercenarios || null
-        });
+       let updateFields = ['nombre_ejercito = ?', 'ejercito = ?'];
+        let updateValues = [nombre_ejercito, ejercito];
+
+        if (req.file) {
+            updateFields.push('lista_ejercito = ?');
+            updateFields.push('lista_nombre = ?');
+            updateFields.push('lista_tamaño = ?');
+            updateValues.push(req.file.buffer, req.file.originalname, req.file.size);
+            console.log(`📄 Nueva lista recibida: ${req.file.originalname} (${req.file.size} bytes)`);
+        }
+
+        updateValues.push(torneoId, jugadorId);
 
         // Actualizar inscripción
-        const resultado = await connection.execute(`
-            UPDATE jugador_torneo_saga 
-            SET   epoca = ?,
-                      faccion = ?,
-                      composicion_ejercito = ?
+         const [resultado] = await connection.execute(`
+            UPDATE jugador_torneo_fow
+            SET ${updateFields.join(', ')}
             WHERE torneo_id = ? AND jugador_id = ?
-        `, [
-          epoca,
-          faccion,
-          composicionEjercito,
-          torneoId,
-          jugadorId
-        ]);
+        `, updateValues);
 
         if (resultado.affectedRows === 0) {
             await connection.rollback();
@@ -1566,26 +1770,514 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
         await connection.commit();
 
         const [inscripcionActualizada] = await connection.execute(`
-            SELECT * FROM jugador_torneo_saga 
+            SELECT 
+                id,
+                torneo_id,
+                jugador_id,
+                nombre_ejercito,
+                ejercito,
+                bando,
+                lista_nombre,
+                lista_tamaño,
+                pagado,
+                puntos_victoria,
+                puntos_torneo,
+                pelotones_matados
+                created_at
+            FROM jugador_torneo_fow
             WHERE torneo_id = ? AND jugador_id = ?
         `, [torneoId, jugadorId]);
 
-        if (inscripcionActualizada.length > 0 && inscripcionActualizada[0].composicion_ejercito) {
-            try {
-                inscripcionActualizada[0].composicion_ejercito = JSON.parse(inscripcionActualizada[0].composicion_ejercito);
-            } catch {
-                inscripcionActualizada[0].composicion_ejercito = {};
-            }
-        }
-         res.json(successResponse(inscripcionActualizada[0], 'Inscripción actualizada correctamente'));
+        res.json(
+            successResponse('Inscripción actualizada correctamente', {
+                inscripcion: inscripcionActualizada[0],
+                lista_actualizada: !!req.file
+            })
+        );
 
     } catch (error) {
         await connection.rollback();
-        console.error('Error:', error);
+        console.error('❌ Error al actualizar inscripción:', error);
+        
+        if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json(
+                    errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
+                );
+            }
+            return res.status(400).json(errorResponse(error.message));
+        }
+        
         res.status(500).json(errorResponse('Error al actualizar inscripción'));
     } finally {
         connection.release();
     }
+});
+
+// =====AÑADIR JUGADOR INDIVIDUAL MANUALMENTE (ADMIN)=====
+
+router.post('/:torneoId/add-individual-participant', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { torneoId } = req.params;
+    const { participante } = req.body;
+    const usuarioOrganizadorId = req.usuario.userId;
+
+    // ✅ VALIDAR SOLO NOMBRE (sin apellidos)
+    if (!participante.nombre) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre es obligatorio'
+      });
+    }
+
+    await connection.beginTransaction();
+
+    // Verificar que el usuario es organizador del torneo y obtener datos completos
+    const [torneoCheck] = await connection.query(
+        `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre, 
+          u.email as organizador_email
+        FROM torneos_sistemas t 
+        LEFT JOIN usuarios u ON t.created_by = u.id 
+        WHERE t.id = ?
+        GROUP BY t.id`,
+        [torneoId]
+    );
+
+    if (torneoCheck.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    if (torneoCheck[0].created_by !== usuarioOrganizadorId) {
+      await connection.rollback();
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para añadir participantes a este torneo'
+      });
+    }
+
+    if (torneoCheck[0].estado !== 'pendiente') {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden añadir participantes a torneos en estado PENDIENTE'
+      });
+    }
+
+    const torneo = torneoCheck[0];
+
+    let usuarioId;
+    let esNuevoUsuario = false;
+
+    // Verificar si el usuario existe por email
+    if (participante.email) {
+      const [usuarioExistente] = await connection.query(
+        'SELECT id, estado_cuenta FROM usuarios WHERE email = ?',
+        [participante.email.toLowerCase()]
+      );
+
+      if (usuarioExistente.length > 0) {
+        usuarioId = usuarioExistente[0].id;
+
+        // Verificar que no esté ya inscrito
+        const [yaInscrito] = await connection.query(
+          'SELECT id FROM jugador_torneo_fow WHERE torneo_id = ? AND jugador_id = ?',
+          [torneoId, usuarioId]
+        );
+
+        if (yaInscrito.length > 0) {
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Este usuario ya está inscrito en el torneo'
+          });
+        }
+      }
+    }
+
+    // Si no existe, crear nuevo usuario (SOLO con nombre, sin apellidos)
+    if (!usuarioId) {
+      const passwordTemporal = Math.random().toString(36).slice(-12);
+      const passwordHash = await bcrypt.hash(passwordTemporal, 10);
+
+      const [nuevoUsuario] = await connection.query(
+        `INSERT INTO usuarios (nombre, apellidos, email, password, estado_cuenta, created_at) 
+         VALUES (?, 'Pendiente', ?, ?, 'pendiente_registro', NOW())`,
+        [
+          participante.nombre,
+          participante.email || null,
+          passwordHash
+        ]
+      );
+      usuarioId = nuevoUsuario.insertId;
+      esNuevoUsuario = true;
+    }
+
+    // ✅ Insertar en jugador_torneo_warmaster
+    const [jugadorInsertado] = await connection.query(
+      `INSERT INTO jugador_torneo_fow(
+        torneo_id, 
+        jugador_id, 
+        ejercito, 
+        epoca, 
+        nombre_ejercito,
+        bando,
+        lista_ejercito, 
+        lista_nombre, 
+        lista_tamaño, 
+        pagado, 
+        puntos_victoria, 
+        puntos_torneo, 
+        created_at'
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        torneoId, 
+        usuarioId, 
+        participante.ejercito || 'Por definir', 
+        epoca,
+        null,
+        participante.bando,
+        null, 
+        null, 
+        null, 
+        0, 
+        0, 
+        0
+      ]
+    );
+
+    const jugadorTorneoId = jugadorInsertado.insertId;
+
+    // ✅ Insertar en clasificacion_jugadores_warmaster
+    await connection.query(
+      `INSERT INTO clasificacion_jugadores_fow(
+        torneo_id, 
+        jugador_id, 
+        partidas_jugadas, 
+        partidas_ganadas, 
+        partidas_empatadas, 
+        partidas_perdidas, 
+        puntos_victoria_totales, 
+        puntos_torneo_totales
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [torneoId, usuarioId, 0, 0, 0, 0, 0, 0]
+    );
+
+    await connection.commit();
+
+    // ✅ ENVIAR EMAIL SI HAY CORREO
+    let emailEnviado = false;
+    if (participante.email) {
+      try {
+        const destinatario = {
+          nombre: participante.nombre,
+          email: participante.email,
+          esNuevo: esNuevoUsuario,
+          ejercito: participante.ejercito || 'Por definir'
+        };
+
+        const torneoInfo = {
+          nombre_torneo: torneo.nombre_torneo,
+          sistema: torneo.sistema,
+          tipo_torneo: 'Individual',
+          ubicacion: torneo.ubicacion,
+          fecha_inicio: torneo.fecha_inicio,
+          fecha_fin: torneo.fecha_fin,
+          puntos_banda: torneo.puntos_banda,
+          organizador: {
+            nombre: torneo.organizador_nombre,
+            email: torneo.organizador_email
+          }
+        };
+
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
+        
+        if (resultado.success) {
+          emailEnviado = true;
+        }
+        
+        console.log('✅ Email enviado a:', participante.email);
+      } catch (emailError) {
+        console.error('❌ Error al enviar email:', emailError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: emailEnviado
+        ? 'Jugador añadido correctamente. Se ha enviado un email de invitación.'
+        : 'Jugador añadido correctamente.',
+      data: {
+        jugadorTorneoId,
+        usuarioId,
+        esNuevoUsuario,
+        emailEnviado
+      }
+    });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('❌ Error al añadir jugador individual:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al añadir jugador',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// ===== REENVIAR EMAIL A UN JUGADOR INDIVIDUAL (ORGANIZADOR) =====
+
+router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { torneoId, jugadorId } = req.params;
+
+    console.log('📧 Reenviando invitación al jugador:', { torneoId, jugadorId });
+
+    // Obtener datos del jugador en el torneo
+    const [jugadorData] = await connection.query(
+      `SELECT jtf.id, jtf.usuario_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jtf.faccion
+       FROM jugador_torneo_fow jtf
+       INNER JOIN usuarios u ON jtf.usuario_id = u.id
+       WHERE jtf.id = ? AND jtf.torneo_id = ?`,
+      [jugadorId, torneoId]
+    );
+
+    if (jugadorData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Jugador no encontrado en este torneo'
+      });
+    }
+
+    const jugador = jugadorData[0];
+    const esNuevoUsuario = jugador.estado_cuenta === 'pendiente_registro';
+
+    // Obtener datos del torneo
+    const [torneoData] = await connection.query(
+      `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre,
+          u.apellidos as organizador_apellidos,
+          u.email as organizador_email 
+       FROM torneos_sistemas t 
+       LEFT JOIN usuarios u ON t.created_by = u.id 
+       WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneoData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    const torneo = torneoData[0];
+    const torneoInfo = {
+      nombre_torneo: torneo.nombre_torneo,
+      sistema: torneo.sistema,
+      tipo_torneo: torneo.tipo_torneo,
+      ubicacion: torneo.ubicacion,
+      fecha_inicio: torneo.fecha_inicio,
+      fecha_fin: torneo.fecha_fin,
+      puntos_banda: torneo.puntos_banda,
+      organizador: {
+        nombre: `${torneo.organizador_nombre} ${torneo.organizador_apellidos}`.trim(),
+        email: torneo.organizador_email
+      }
+    };
+
+    // Enviar email
+    const destinatario = {
+      nombre: `${jugador.nombre} ${jugador.apellidos}`.trim(),
+      email: jugador.email,
+      esNuevo: esNuevoUsuario,
+      epoca: jugador.epoca,
+      banda: jugador.faccion
+    };
+
+    const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+
+    if (resultado.success) {
+      res.json({
+        success: true,
+        message: `Invitación reenviada correctamente a ${destinatario.nombre} ${destinatario.apellidos}`,
+        data: {
+          jugador: destinatario.nombre,
+          email: destinatario.email,
+          esNuevo: destinatario.esNuevo
+        }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'No se pudo reenviar la invitación',
+        error: resultado.error
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitación individual:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar invitación individual',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// ===== REENVIAR EMAIL A TODOS LOS JUGADORES (ORGANIZADOR) =====
+
+router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const { torneoId } = req.params;
+
+    console.log('📧 Reenviando invitaciones a todos los jugadores del torneo:', torneoId);
+
+    // Obtener todos los jugadores del torneo
+    const [jugadores] = await connection.query(
+      `SELECT jts.id, jts.usuario_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
+       FROM jugador_torneo_warmaster jts
+       INNER JOIN usuarios u ON jts.usuario_id = u.id
+       WHERE jts.torneo_id = ?
+       ORDER BY u.nombre ASC`,
+      [torneoId]
+    );
+
+    if (jugadores.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron jugadores en este torneo'
+      });
+    }
+
+    // Obtener datos del torneo
+    const [torneoData] = await connection.query(
+      `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre,
+          u.apellidos as organizador_apellidos,
+          u.email as organizador_email 
+       FROM torneos_sistemas t 
+       LEFT JOIN usuarios u ON t.created_by = u.id 
+       WHERE t.id = ?`,
+      [torneoId]
+    );
+
+    if (torneoData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    const torneo = torneoData[0];
+    const torneoInfo = {
+      nombre_torneo: torneo.nombre_torneo,
+      sistema: torneo.sistema,
+      tipo_torneo: torneo.tipo_torneo,
+      ubicacion: torneo.ubicacion,
+      fecha_inicio: torneo.fecha_inicio,
+      fecha_fin: torneo.fecha_fin,
+      puntos_banda: torneo.puntos_banda,
+      organizador: {
+        nombre: `${torneo.organizador_nombre} ${torneo.organizador_apellidos}`.trim(),
+        email: torneo.organizador_email
+      }
+    };
+
+    // Enviar emails
+    const resultadosPorJugador = [];
+    let totalEnviados = 0;
+    let totalFallidos = 0;
+    let totalPendientes = 0;
+    let totalRegistrados = 0;
+
+    for (const jugador of jugadores) {
+      try {
+        const esNuevo = jugador.estado_cuenta === 'pendiente_registro';
+        const destinatario = {
+          nombre: `${jugador.nombre} ${jugador.apellidos}`.trim(),
+          email: jugador.email,
+          esNuevo,
+          epoca: jugador.epoca,
+          banda: jugador.faccion
+        };
+
+        const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+
+        if (resultado.success) {
+          totalEnviados++;
+          if (esNuevo) totalPendientes++;
+          else totalRegistrados++;
+
+          resultadosPorJugador.push({
+            jugador: destinatario.nombre,
+            email: destinatario.email,
+            enviado: true
+          });
+        } else {
+          totalFallidos++;
+          resultadosPorJugador.push({
+            jugador: destinatario.nombre,
+            email: destinatario.email,
+            enviado: false,
+            error: resultado.error
+          });
+        }
+
+      } catch (err) {
+        totalFallidos++;
+        resultadosPorJugador.push({
+          jugador: `${jugador.nombre} ${jugador.apellidos}`,
+          email: jugador.email,
+          enviado: false,
+          error: err.message
+        });
+        console.error(`❌ Error al enviar invitación a ${jugador.email}:`, err.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Se reenviaron invitaciones a ${totalEnviados} jugadores del torneo`,
+      data: {
+        totales: {
+          enviados: totalEnviados,
+          fallidos: totalFallidos,
+          pendientes: totalPendientes,
+          registrados: totalRegistrados
+        },
+        resultadosPorJugador
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error al reenviar invitaciones a todos los jugadores:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar invitaciones a todos los jugadores',
+      error: error.message
+    });
+  } finally {
+    connection.release();
+  }
 });
 
 //======ACTUALIZAR EL PAGO INSCRIPCION (solo organizadores)=====
@@ -1593,28 +2285,41 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
 router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req, res) => {
     try {
         const { torneoId, jugadorId } = req.params;
-        const { pagado } = req.body; // 'pagado' o 'pendiente'
+        const { pagado } = req.body;
+
+        console.log('📥 Datos recibidos:', { torneoId, jugadorId, pagado, userId: req.userId }); // 👈 LOG
 
         // Validar valor
         if (!['pendiente', 'pagado'].includes(pagado)) {
-            return res.status(400).json(errorResponse('Valor de pago inválido. Debe ser "pendiente" o "pagado"'));
+            return res.status(400).json(errorResponse('Valor de pago inválido'));
         }
 
-        // Verificar que el usuario es organizador del torneo (opcional)
+        const valorPagado = pagado === 'pagado' ? 1 : 0;
+
+        // Verificar que el usuario es organizador del torneo
         const [torneo] = await pool.execute(
-             'SELECT created_by FROM torneos_sistemas WHERE id = ?',
-             [torneoId]
-         );
-         if (torneo[0].created_by !== req.userId) {
-             return res.status(403).json(errorResponse('No tienes permisos'));
-         }
+            'SELECT created_by FROM torneos_sistemas WHERE id = ?',
+            [torneoId]
+        );
+        
+        console.log('🏆 Torneo encontrado:', torneo[0]); // 👈 LOG
+        
+        if (!torneo[0]) { // 👈 AGREGAR VALIDACIÓN
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+        
+        if (torneo[0].created_by !== req.userId) {
+            return res.status(403).json(errorResponse('No tienes permisos'));
+        }
 
         // Actualizar estado de pago
         const [result] = await pool.execute(`
-            UPDATE jugador_torneo_saga 
+            UPDATE jugador_torneo_fow
             SET pagado = ?
             WHERE torneo_id = ? AND id = ?
-        `, [pagado, torneoId, jugadorId]);
+        `, [valorPagado, torneoId, jugadorId]);
+
+        console.log('✅ Resultado UPDATE:', result); // 👈 LOG
 
         if (result.affectedRows === 0) {
             return res.status(404).json(errorResponse('Inscripción no encontrada'));
@@ -1623,7 +2328,7 @@ router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req,
         res.json(successResponse(`Estado de pago actualizado a: ${pagado}`));
 
     } catch (error) {
-        console.error('Error al actualizar pago:', error);
+        console.error('❌ Error completo:', error); // 👈 LOG DETALLADO
         res.status(500).json(errorResponse('Error al actualizar estado de pago'));
     }
 });
@@ -1633,10 +2338,13 @@ router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req,
 router.get('/:torneoId/verificarPagos', verificarToken, async (req, res) => {
     try {
         const { torneoId } = req.params;
+        const usuarioId = req.usuario.userId;
 
-        // Obtener tipo de torneo
+        console.log(`💰 Verificando pagos - Torneo ${torneoId}`);
+
+        // Verificar que el torneo existe y que el usuario es el creador
         const [torneo] = await pool.execute(
-            'SELECT tipo_torneo FROM torneos_sistemas WHERE id = ?',
+            'SELECT id, tipo_torneo, created_by FROM torneos_sistemas WHERE id = ? AND sistema = "FOW"',
             [torneoId]
         );
 
@@ -1646,48 +2354,41 @@ router.get('/:torneoId/verificarPagos', verificarToken, async (req, res) => {
 
         const tipoTorneo = torneo[0].tipo_torneo;
 
-        if (tipoTorneo === 'Por equipos') {
-            // Verificar equipos
-            const [equipos] = await pool.execute(
-                'SELECT COUNT(*) as total, SUM(CASE WHEN pagado = "pagado" THEN 1 ELSE 0 END) as pagados FROM torneo_saga_equipo WHERE torneo_id = ?',
-                [torneoId]
+        // Verificar que el usuario es el organizador
+        if (torneo[0].created_by !== usuarioId) {
+            return res.status(403).json(
+                errorResponse('No tienes permisos para ver esta información')
             );
-
-            const total = Number(equipos[0].total);
-            const pagados = Number(equipos[0].pagados);
-            const pendientes = total - pagados;
-            const todosPagados = total > 0 && total === pagados;
-
-            return res.json(successResponse({
-                todosPagados,
-                total,
-                pagados,
-                pendientes
-            }));
-
-        } else {
-            // Verificar jugadores individuales
-            const [jugadores] = await pool.execute(
-                'SELECT COUNT(*) as total, SUM(CASE WHEN pagado = "pagado" THEN 1 ELSE 0 END) as pagados FROM jugador_torneo_saga WHERE torneo_id = ?',
-                [torneoId]
-            );
-
-            const total = Number(jugadores[0].total);
-            const pagados = Number(jugadores[0].pagados);
-            const pendientes = total - pagados;
-            const todosPagados = total > 0 && total === pagados;
-
-
-            return res.json(successResponse({
-                todosPagados,
-                total,
-                pagados,
-                pendientes
-            }));
         }
 
+        // Obtener estadísticas de pagos
+        const [jugadores] = await pool.execute(
+            `SELECT 
+                COUNT(*) as total, 
+                SUM(CASE WHEN pagado = 1 THEN 1 ELSE 0 END) as pagados 
+            FROM jugador_torneo_fow 
+            WHERE torneo_id = ?`,
+            [torneoId]
+        );
+
+        const total = Number(jugadores[0].total);
+        const pagados = Number(jugadores[0].pagados);
+        const pendientes = total - pagados;
+        const todosPagados = total > 0 && total === pagados;
+
+        console.log(`✅ Total: ${total}, Pagados: ${pagados}, Pendientes: ${pendientes}`);
+
+        return res.json(
+            successResponse('Estadísticas de pago obtenidas', {
+                todosPagados,
+                total,
+                pagados,
+                pendientes
+            })
+        );
+
     } catch (error) {
-        console.error('Error al verificar pagos:', error);
+        console.error('❌ Error al verificar pagos:', error);
         res.status(500).json(errorResponse('Error al verificar pagos'));
     }
 });
@@ -1727,7 +2428,7 @@ router.delete('/:torneoId/eliminarTorneo', verificarToken, async (req, res) => {
     }
     
     const [participantes] = await pool.execute(
-      'SELECT COUNT(*) as total FROM jugador_torneo_saga WHERE torneo_id = ?',
+      'SELECT COUNT(*) as total FROM jugador_torneo_fow WHERE torneo_id = ?',
       [torneoId]
     );
     
@@ -1779,10 +2480,10 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     }
     
     const [participante] = await pool.execute(
-      `SELECT jts.id, u.nombre, u.apellidos 
-       FROM jugador_torneo_saga jts
-       INNER JOIN usuarios u ON jts.jugador_id = u.id
-       WHERE jts.torneo_id = ? AND jts.jugador_id = ?`,
+      `SELECT jtf.id, u.nombre, u.apellidos 
+       FROM jugador_torneo_fow jtf
+       INNER JOIN usuarios u ON jtf.jugador_id = u.id
+       WHERE jtf.torneo_id = ? AND jtf.jugador_id = ?`,
       [torneoId, jugadorId]
     );
     
@@ -1796,7 +2497,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     
     const [partidas] = await pool.execute(
       `SELECT COUNT(*) as total 
-       FROM partidas_saga 
+       FROM partidas_fow 
        WHERE torneo_id = ? AND (jugador1_id = ? OR jugador2_id = ?)`,
       [torneoId, jugadorId, jugadorId]
     );
@@ -1808,7 +2509,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     }
     
     await pool.execute(
-      'DELETE FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
+      'DELETE FROM jugador_torneo_fow WHERE torneo_id = ? AND jugador_id = ?',
       [torneoId, jugadorId]
     );
     
@@ -1830,59 +2531,98 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
 });
 
  //====================================================
-  //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS SAGA
+  //METODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS FLAMES OF WAR
 //====================================================
 
 // =======OBTENER JUGADORES DE UN TORNEO=======
 
-router.get('/obtenerJugadoresTorneos', async (req, res) => {
-  try {
-    console.log('📥 GET /api/torneosFow/obtenerJugadoresTorneos');
-    
-    const [jugadores] = await pool.query(`
-      SELECT 
-        jtf.id,
-        jtf.torneo_id,
-        jtf.jugador_id,
-        jtf.ejercito,
-        jtf.bandos_2gm,
-        u.nombre as jugador_nombre,
-        u.apellidos as jugador_apellidos,
-        u.nombre_alias,
-        u.club,
-        u.localidad,
-        u.pais
-      FROM jugador_torneo_fow jtf
-      INNER JOIN usuarios u ON jtf.jugador_id = u.id
-      INNER JOIN torneos_sistemas ts ON jtf.torneo_id = ts.id
-      WHERE ts.sistema = "FOW"
-      ORDER BY jtf.torneo_id, jtf.created_at
-    `);
-    
-    console.log(`✅ ${jugadores.length} jugadores FOW obtenidos`);
-    
-    res.json(
-      successResponse('Jugadores obtenidos exitosamente', {
-        jugadoresFow: jugadores
-      })
-    );
-    
-  } catch (error) {
-    console.error('❌ Error al obtener jugadores FOW:', error);
-    res.status(500).json(errorResponse('Error interno del servidor'));
-  }
+router.get('/:torneoId/jugadores', async (req, res) => {
+    try {
+        const { torneoId } = req.params;
+        
+        const [jugadores] = await pool.execute(`
+            SELECT 
+                jtf.id,
+                jtf.jugador_id,
+                u.nombre as jugador_nombre,
+                u.apellidos as jugador_apellidos,
+                u.nombre_alias,
+                u.club,
+                u.localidad,
+                u.pais,
+                jtf.ejercito,
+                jtf.bando,
+                jtf.nombre_ejercito,
+                jtf.lista_ejercito,
+                jtf.lista_nombre,
+                jtf.lista_tamaño,
+                jtf.pagado,
+                jtf.puntos_victoria,
+                jtf.puntos_torneo,
+                jtf.created_at as fecha_inscripcion
+            FROM jugador_torneo_fow jtf
+            INNER JOIN usuarios u ON jtf.jugador_id = u.id
+            WHERE jtf.torneo_id = ?
+        `, [torneoId]);
+        
+        res.json(successResponse('Jugadores obtenidos', jugadores));
+        
+    } catch (error) {
+        console.error('Error al obtener jugadores:', error);
+        res.status(500).json(errorResponse('Error al obtener jugadores'));
+    }
 });
 
-// =====CAMBIAR ESTADO DEL TORNEO=====
+// =======VER LISTA PDF DE UN JUGADOR=======
 
-router.put('/:torneoId/estado', verificarToken, async (req, res) => {
-  const connection = await pool.getConnection();
+router.get('/:torneoId/jugadores/:jugadorId/lista-pdf', verificarToken, async (req, res) => {
+    try {
+        const { torneoId, jugadorId } = req.params;
+        
+        const [resultado] = await pool.execute(`
+            SELECT 
+                lista_ejercito,
+                lista_nombre,
+                lista_tamaño
+            FROM jugador_torneo_fow
+            WHERE torneo_id = ? AND jugador_id = ?
+        `, [torneoId, jugadorId]);
+        
+        if (resultado.length === 0) {
+            return res.status(404).json(errorResponse('Jugador no encontrado'));
+        }
+        
+        const jugador = resultado[0];
+        
+        if (!jugador.lista_ejercito) {
+            return res.status(404).json(errorResponse('Este jugador no tiene lista cargada'));
+        }
+        
+        // Configurar headers para visualización en navegador
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${jugador.lista_nombre || 'lista_ejercito.pdf'}"`);
+        res.setHeader('Content-Length', jugador.lista_tamaño || jugador.lista_ejercito.length);
+        
+        // Enviar el PDF
+        res.send(jugador.lista_ejercito);
+        
+    } catch (error) {
+        console.error('Error al obtener lista PDF:', error);
+        res.status(500).json(errorResponse('Error al obtener la lista'));
+    }
+});
+
+/// =====CAMBIAR ESTADO DEL TORNEO WARMASTER=====
+
+router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const { torneoId } = req.params;
+  const { estado } = req.body;
+  
+  console.log(`\n🎯 ===== INICIANDO CAMBIO DE ESTADO FOW =====`);
+  console.log(`📋 Torneo ID: ${torneoId}`);
+  console.log(`📋 Estado solicitado: ${estado}`);
   
   try {
-    const { torneoId } = req.params;
-    const { estado } = req.body;
-    const userId = req.usuario.userId;
-    
     // Validar que se envió el estado
     if (!estado) {
       return res.status(400).json(errorResponse('El estado es requerido'));
@@ -1896,69 +2636,163 @@ router.put('/:torneoId/estado', verificarToken, async (req, res) => {
       );
     }
     
-    await connection.beginTransaction();
-    
-    // Verificar que el torneo existe y que el usuario es el creador
-    const [torneo] = await connection.execute(
-      'SELECT id, created_by, estado, nombre_torneo FROM torneos_sistemas WHERE id = ?',
-      [torneoId]
-    );
-    
-    if (torneo.length === 0) {
-      await connection.rollback();
-      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    // Si el estado es "finalizado", usar transacción cross-database
+    if (estado === 'finalizado') {
+      console.log(`\n🏁 Estado es FINALIZADO - Iniciando transacción cross-database...`);
+      
+      const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
+        console.log(`✅ Conexiones obtenidas`);
+        
+        // Verificar que el torneo existe y es Warmaster
+        const [torneo] = await connTorneos.query(
+          'SELECT id, created_by, estado, nombre_torneo, sistema FROM torneos_sistemas WHERE id = ? AND sistema = ?',
+          [torneoId, 'FOW']
+        );
+        
+        console.log(`📊 Torneo encontrado:`, torneo[0]);
+        
+        if (torneo.length === 0) {
+          throw new Error('Torneo FOW no encontrado');
+        }
+        
+        const estadoActual = torneo[0].estado;
+        
+        // Validaciones
+        if (estadoActual === 'cancelado') {
+          throw new Error('No se puede cambiar el estado de un torneo cancelado');
+        }
+        
+        if (estadoActual === 'finalizado') {
+          throw new Error('El torneo ya está finalizado');
+        }
+        
+        // Actualizar el estado a finalizado
+        console.log(`\n📝 Actualizando estado de torneo...`);
+        await connTorneos.query(
+          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
+          [estado, torneoId]
+        );
+        console.log(`✅ Estado actualizado a: ${estado}`);
+        
+        // Calcular ELO automáticamente
+        console.log(`\n🎲 Llamando a actualizarEloAutomatico para FOW...`);
+        let resultadoElo = null;
+        let errorElo = null;
+        
+        try {
+          resultadoElo = await actualizarEloAutomatico(connTorneos, connRanking, torneoId);
+          console.log(`✅ ELO calculado exitosamente:`, resultadoElo);
+        } catch (eloError) {
+          console.error('❌ ERROR en actualizarEloAutomatico:', eloError);
+          console.error('Stack:', eloError.stack);
+          errorElo = eloError.message;
+        }
+        
+        return {
+          id: parseInt(torneoId),
+          nombre_torneo: torneo[0].nombre_torneo,
+          sistema: torneo[0].sistema,
+          estado_anterior: estadoActual,
+          estado_nuevo: estado,
+          elo: resultadoElo,
+          errorElo: errorElo
+        };
+      });
+      
+      console.log(`\n✅ Transacción completada`);
+      console.log(`📊 Resultado final:`, resultado);
+      
+      // Construir respuesta
+      let mensaje = `Torneo finalizado correctamente`;
+      
+      if (resultado.elo) {
+        mensaje += ` - ELO calculado: ${resultado.elo.partidasProcesadas} partidas procesadas en ${resultado.elo.sistemaJuego}`;
+      }
+      
+      if (resultado.errorElo) {
+        mensaje += ` - Advertencia: ${resultado.errorElo}`;
+      }
+      
+      return res.json(successResponse(mensaje, resultado));
+      
+    } else {
+      // Para otros estados (pendiente, en_curso)
+      console.log(`\n📝 Cambiando estado a: ${estado}`);
+      
+      const connection = await pool.getConnection();
+      
+      try {
+        await connection.beginTransaction();
+        
+        const [torneo] = await connection.query(
+          'SELECT id, created_by, estado, nombre_torneo FROM torneos_sistemas WHERE id = ? AND sistema = ?',
+          [torneoId, 'FOW']
+        );
+        
+        if (torneo.length === 0) {
+          await connection.rollback();
+          return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+        
+        const estadoActual = torneo[0].estado;
+        
+        console.log(`📊 Estado actual: ${estadoActual} → Nuevo: ${estado}`);
+        
+        if (estadoActual === 'cancelado') {
+          await connection.rollback();
+          return res.status(400).json(
+            errorResponse('No se puede cambiar el estado de un torneo cancelado')
+          );
+        }
+        
+        // ⚠️ Permitir revertir de finalizado SOLO si no se ha procesado ELO
+        if (estadoActual === 'finalizado') {
+          const [eloCheck] = await connection.query(
+            'SELECT elo_procesado FROM torneos_sistemas WHERE id = ?',
+            [torneoId]
+          );
+          
+          if (eloCheck[0]?.elo_procesado) {
+            await connection.rollback();
+            return res.status(400).json(
+              errorResponse('No se puede revertir el estado de un torneo con ELO ya procesado. Contacta con el administrador.')
+            );
+          }
+          
+          console.log(`⚠️ Revirtiendo torneo finalizado (ELO no procesado)`);
+        }
+        
+        await connection.query(
+          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
+          [estado, torneoId]
+        );
+        
+        await connection.commit();
+        
+        console.log(`✅ Estado del torneo ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
+        
+        res.json(
+          successResponse(`Estado del torneo actualizado a "${estado}"`, {
+            id: parseInt(torneoId),
+            nombre_torneo: torneo[0].nombre_torneo,
+            estado_anterior: estadoActual,
+            estado_nuevo: estado
+          })
+        );
+        
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     }
-    
-    // Verificar que el usuario es el creador del torneo
-    if (torneo[0].created_by !== userId) {
-      await connection.rollback();
-      return res.status(403).json(
-        errorResponse('No tienes permiso para cambiar el estado de este torneo')
-      );
-    }
-    
-    const estadoActual = torneo[0].estado;
-    
-    // Validaciones de transiciones de estado
-    if (estadoActual === 'cancelado') {
-      await connection.rollback();
-      return res.status(400).json(
-        errorResponse('No se puede cambiar el estado de un torneo cancelado')
-      );
-    }
-    
-    if (estadoActual === 'finalizado' && estado !== 'finalizado') {
-      await connection.rollback();
-      return res.status(400).json(
-        errorResponse('No se puede cambiar el estado de un torneo finalizado')
-      );
-    }
-    
-    // Actualizar el estado
-    await connection.execute(
-      'UPDATE torneos_sistemas SET estado = ?  WHERE id = ?',
-      [estado, torneoId]
-    );
-    
-    await connection.commit();
-    
-    console.log(`✅ Estado del torneo ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
-    
-    res.json(
-      successResponse(`Estado del torneo actualizado a "${estado}"`, {
-        id: parseInt(torneoId),
-        nombre_torneo: torneo[0].nombre_torneo,
-        estado_anterior: estadoActual,
-        estado_nuevo: estado
-      })
-    );
     
   } catch (error) {
-    await connection.rollback();
-    console.error('❌ Error al cambiar estado del torneo:', error);
-    res.status(500).json(errorResponse('Error al cambiar el estado del torneo'));
-  } finally {
-    connection.release();
+    console.error('\n❌ ===== ERROR GENERAL FOW =====');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json(errorResponse(error.message || 'Error al cambiar el estado del torneo'));
   }
 });
 
@@ -1966,97 +2800,124 @@ router.put('/:torneoId/estado', verificarToken, async (req, res) => {
   // MÉTODOS DE PARTIDAS
   // ==========================================
 
-// =======OBTENER PARTIDAS DE UN TORNEO=========
+// ======= OBTENER PARTIDAS DE UN TORNEO =========
 
-router.get('/:torneoId/partidasTorneoSaga', async (req, res) => {
+router.get('/:torneoId/partidasTorneoFow', async (req, res) => {
   try {
     const { torneoId } = req.params;
     const { ronda } = req.query;
     
-    let whereClause = 'WHERE ps.torneo_id = ?';
+    let whereClause = 'WHERE pf.torneo_id = ?';
     let params = [torneoId];
     
     if (ronda) {
-      whereClause += ' AND ps.ronda = ?';
+      whereClause += ' AND pf.ronda = ?';
       params.push(ronda);
     }
     
     const [partidas] = await pool.execute(`
       SELECT 
-        ps.*,
-        ps.nombre_partida,
+        pf.id,
+        pf.torneo_id,
+        pf.ronda,
+        pf.mesa,
+        pf.nombre_partida,
+        pf.es_bye,
+        pf.resultado_pw,
+        pf.resultado_confirmado,
+        pf.puntos_victoria_j1,
+        pf.puntos_victoria_j2,
+        pf.puntos_torneo_j1,
+        pf.puntos_torneo_j2,
+        pf.pelotones_destruidos_j1,
+        pf.pelotones_destruidos_j2,
+        pf.created_at,
+        pf.fecha_partida,
+        
+        -- IDs de participación (ya son jugador_torneo_warmaster.id)
+        pf.jugador1_id,
+        pf.jugador2_id,
 
-        -- Jugador 1
+        -- Info Jugador 1
+        jt1.jugador_id as jugador1_usuario_id,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
         u1.nombre_alias as jugador1_alias,
-        jt1.faccion as jugador1_faccion,
-        jt1.epoca as jugador1_epoca,
-        eq1.nombre_equipo as jugador1_equipo_nombre,
-        eq1.id as jugador1_equipo_id,
+        jt1.ejercito as jugador1_ejercito,
         
-        -- Jugador 2
+        -- Info Jugador 2
+        jt2.jugador_id as jugador2_usuario_id,
         CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
+          WHEN pf.es_bye = TRUE THEN NULL
           ELSE u2.nombre
         END as jugador2_nombre,
         CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
+          WHEN pf.es_bye = TRUE THEN NULL
           ELSE u2.apellidos
         END as jugador2_apellidos,
         CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
+          WHEN pf.es_bye = TRUE THEN NULL
           ELSE u2.nombre_alias
         END as jugador2_alias,
         CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
-          ELSE jt2.faccion
-        END as jugador2_faccion,
-        CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
-          ELSE jt2.epoca
-        END as jugador2_epoca,
-        CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
-          ELSE eq2.nombre_equipo
-        END as jugador2_equipo_nombre,
-        CASE 
-          WHEN ps.es_bye = TRUE THEN NULL
-          ELSE eq2.id
-        END as jugador2_equipo_id
+          WHEN pf.es_bye = TRUE THEN NULL
+          ELSE jt2.ejercito
+        END as jugador2_ejercito
         
-      FROM partidas_saga ps
+      FROM partidas_fow pf
       
-      -- JOIN Jugador 1
-      LEFT JOIN usuarios u1 ON ps.jugador1_id = u1.id
-      LEFT JOIN jugador_torneo_saga jt1 ON (jt1.jugador_id = ps.jugador1_id AND jt1.torneo_id = ps.torneo_id)
-      LEFT JOIN torneo_saga_equipo eq1 ON ps.equipo1_id = eq1.id
+      -- JOINs: pf.jugador1_id = jugador_torneo_fow.id (gracias a FK)
+      INNER JOIN jugador_torneo_fow jt1 ON pf.jugador1_id = jt1.id
+      INNER JOIN usuarios u1 ON jt1.jugador_id = u1.id
       
-      -- JOIN Jugador 2
-      LEFT JOIN usuarios u2 ON ps.jugador2_id = u2.id AND ps.es_bye = FALSE
-      LEFT JOIN jugador_torneo_saga jt2 ON (jt2.jugador_id = ps.jugador2_id AND jt2.torneo_id = ps.torneo_id)
-      LEFT JOIN torneo_saga_equipo eq2 ON ps.equipo2_id = eq2.id
+      LEFT JOIN jugador_torneo_fow jt2 ON pf.jugador2_id = jt2.id AND pf.es_bye = FALSE
+      LEFT JOIN usuarios u2 ON jt2.jugador_id = u2.id
       
       ${whereClause}
-      ORDER BY ps.mesa, ps.id
+      ORDER BY pf.ronda, pf.mesa, pf.id
     `, params);
 
     console.log(`📊 Partidas obtenidas: ${partidas.length}`);
     
-    // Formatear con objetos anidados para jugador1 y jugador2
     const partidasFormateadas = partidas.map(p => ({
-      ...p,
-      jugador1: {
-        equipo_nombre: p.jugador1_equipo_nombre || null,
-        equipo_id: p.jugador1_equipo_id || null,
-        faccion: p.jugador1_faccion || null,
-        epoca: p.jugador1_epoca || null
+      id: p.id,
+      torneo_id: p.torneo_id,
+      ronda: p.ronda,
+      mesa: p.mesa,
+      nombre_partida: p.nombre_partida,
+      es_bye: p.es_bye,
+      resultado_pw: p.resultado_pw,
+      resultado_confirmado: p.resultado_confirmado,
+      puntos_victoria_j1: p.puntos_victoria_j1,
+      puntos_victoria_j2: p.puntos_victoria_j2,
+      puntos_torneo_j1: p.puntos_torneo_j1,
+      puntos_torneo_j2: p.puntos_torneo_j2,
+      pelotones_destruidos_j1: p.pelotones_destruidos_j1,
+      pelotones_destruidos_j2: p.pelotones_destruidos_j2,
+      created_at: p.created_at,
+      fecha_partida: p.fecha_partida,
+      
+      // IDs de participación (jugador_torneo_warmaster.id)
+      jugador1_id: p.jugador1_id,
+      jugador2_id: p.jugador2_id,
+      
+      // IDs de usuario (usuarios.id) - por si el frontend los necesita
+      jugador1_usuario_id: p.jugador1_usuario_id,
+      jugador2_usuario_id: p.jugador2_usuario_id,
+      
+      // Info adicional
+      jugador1_nombre: p.jugador1_nombre,
+      jugador1_apellidos: p.jugador1_apellidos,
+      jugador1_alias: p.jugador1_alias,
+      jugador2_nombre: p.jugador2_nombre,
+      jugador2_apellidos: p.jugador2_apellidos,
+      jugador2_alias: p.jugador2_alias,
+      
+      jugador1: { 
+        ejercito: p.jugador1_ejercito || null 
       },
-      jugador2: p.jugador2_id ? {
-        equipo_nombre: p.jugador2_equipo_nombre || null,
-        equipo_id: p.jugador2_equipo_id || null,
-        faccion: p.jugador2_faccion || null,
-        epoca: p.jugador2_epoca || null
+      jugador2: p.jugador2_id ? { 
+        ejercito: p.jugador2_ejercito || null 
       } : null
     }));
     
@@ -2073,30 +2934,30 @@ router.get('/:torneoId/partidasTorneoSaga', async (req, res) => {
 
 // ======OBTENER PARTIDA ESPECÍFICA=======
 
-router.get('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (req, res) => {
+router.get('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req, res) => {
   try {
     const { partidaId } = req.params;
     
     const [partidas] = await pool.execute(`
       SELECT 
-        ps.*,
+        pf.*,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
         u1.nombre_alias as jugador1_alias,
         u2.nombre as jugador2_nombre,
         u2.apellidos as jugador2_apellidos,
         u2.nombre_alias as jugador2_alias,
-        p1.faccion as jugador1_faccion,
-        p2.faccion as jugador2_faccion,
-        ps.ronda,
+        jtf1.ejercito as jugador1_ejercito,
+        jtf2.ejercito as jugador2_ejercito,
+        pf.ronda,
         ts.nombre_torneo
-      FROM partidas_saga ps
-      JOIN usuarios u1 ON ps.jugador1_id = u1.id
-      JOIN usuarios u2 ON ps.jugador2_id = u2.id
-      JOIN torneos_sistemas ts ON ps.torneo_id = ts.id
-      LEFT JOIN jugador_torneo_saga p1 ON (ps.torneo_id = p1.torneo_id AND ps.jugador1_id = p1.jugador_id)
-      LEFT JOIN jugador_torneo_saga p2 ON (ps.torneo_id = p2.torneo_id AND ps.jugador2_id = p2.jugador_id)
-      WHERE ps.id = ?
+      FROM partidas_fow pf
+      JOIN usuarios u1 ON pf.jugador1_id = u1.id
+      JOIN usuarios u2 ON pf.jugador2_id = u2.id
+      JOIN torneos_sistemas ts ON pf.torneo_id = ts.id
+      LEFT JOIN jugador_torneo_fow jtf1 ON (pf.torneo_id = jtf1.torneo_id AND pf.jugador1_id = jtf1.jugador_id)
+      LEFT JOIN jugador_torneo_fow jtf2 ON (pf.torneo_id = jtf2.torneo_id AND pf.jugador2_id = jtf2.jugador_id)
+      WHERE pw.id = ?
     `, [partidaId]);
     
     if (partidas.length === 0) {
@@ -2119,25 +2980,17 @@ router.get('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
 
 // ====== REGISTRAR PARTIDA========
 
-router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (req, res) => {
+router.put('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req, res) => {
   try {
     const { partidaId, torneoId } = req.params;
     const { 
-      puntos_partida_j1,
-      puntos_partida_j2,
-      puntos_masacre_j1,
-      puntos_masacre_j2,
-      warlord_muerto_j1,
-      warlord_muerto_j2,
-      primer_jugador
+      pelotones_destruidos_j1, 
+      pelotones_destruidos_j2  
     } = req.body;
     
-    // Validar campos requeridos
     const camposFaltantes = validarCamposRequeridos(req.body, [
-      'puntos_partida_j1',
-      'puntos_partida_j2',
-      'puntos_masacre_j1',
-      'puntos_masacre_j2'
+      'pelotones_destruidos_j1',
+      'pelotones_destruidos_j2'
     ]);
     
     if (camposFaltantes.length > 0) {
@@ -2149,17 +3002,19 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
     // Verificar que la partida existe
     const [partida] = await pool.execute(`
       SELECT 
-        ps.id,
-        ps.jugador1_id, 
-        ps.jugador2_id, 
-        ps.resultado_ps, 
-        ps.torneo_id, 
-        ps.ronda, 
-        ps.resultado_confirmado,
-        t.tipo_torneo
-        FROM partidas_saga ps
-      INNER JOIN torneos_sistemas t ON ps.torneo_id = t.id
-      WHERE ps.id = ? AND torneo_id = ?
+        pf.id,
+        pf.jugador1_id,                         -- Ya es jugador_torneo_fow.id
+        pf.jugador2_id,                         -- Ya es jugador_torneo_fow.id
+        pf.resultado_pf, 
+        pf.torneo_id, 
+        pf.ronda, 
+        pf.resultado_confirmado,
+        pf.nombre_partida,
+        pf.es_bye,
+        ts.tipo_torneo
+      FROM partidas_fow
+      INNER JOIN torneos_sistemas ts ON pf.torneo_id = ts.id
+      WHERE pf.id = ? AND pf.torneo_id = ?
     `, [partidaId, torneoId]);
     
     if (partida.length === 0) {
@@ -2168,104 +3023,96 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       );
     }
     
-    // ✅ Extraer los IDs de jugadores
-    const jugador1_id = partida[0].jugador1_id;
-    const jugador2_id = partida[0].jugador2_id;
-    const tipoTorneo = partida[0].tipo_torneo
+    const jugador1_id = partida[0].jugador1_id;  // jugador_torneo_fow.id
+    const jugador2_id = partida[0].jugador2_id;  // jugador_torneo_fow.id
+    const nombrePartida = partida[0].nombre_partida || '';
+    const esBye = !jugador2_id || partida[0].es_bye;
     
-    // ✅ Verificar que no sea una partida BYE
-    if (!jugador2_id || partida[0].resultado_ps === 'victoria_j1') {
+    if (esBye) {
       return res.status(400).json(
         errorResponse('No se puede actualizar una partida BYE. La victoria automática ya está registrada.')
       );
     }
 
-    // Verificar que el resultado no esté confirmado
     if (partida[0].resultado_confirmado) {
       return res.status(400).json(
         errorResponse('No se puede actualizar una partida con resultado confirmado. El organizador debe desconfirmar el resultado primero.')
       );
     }
-    
-    // Validar que primer_jugador sea uno de los dos jugadores
-    if (primer_jugador && primer_jugador !== jugador1_id && primer_jugador !== jugador2_id) {
-      return res.status(400).json(
-        errorResponse('El primer jugador debe ser uno de los dos jugadores de la partida')
-      );
-    }
-
-    // Calcular resultado basado en puntos de victoria
-    const puntosPartidaJ1 = parseInt(puntos_partida_j1) || 0;
-    const puntosPartidaJ2 = parseInt(puntos_partida_j2) || 0;
 
     let puntosVictoriaJ1, puntosVictoriaJ2, resultado;
     
-    if (puntosPartidaJ1 > puntosPartidaJ2) {
-      puntosVictoriaJ1 = 3;
-      puntosVictoriaJ2 = 0;
-      resultado = 'victoria_j1';
-    } else if (puntosPartidaJ2 > puntosPartidaJ1) {
-      puntosVictoriaJ1 = 0;
-      puntosVictoriaJ2 = 3;
-      resultado = 'victoria_j2';
-    } else {
-      puntosVictoriaJ1 = 1;
-      puntosVictoriaJ2 = 1;
-      resultado = 'empate';
-    }
-
-    const puntosMasacreJ1 = parseInt(puntos_masacre_j1) || 0;
-    const puntosMasacreJ2 = parseInt(puntos_masacre_j2) || 0;
-    
-    // Determinar quién fue el primer jugador
-    const primerJugadorId = primer_jugador || null;
-
-    let puntosTorneoJ1, puntosTorneoJ2
-    
-    if (tipoTorneo === 'Por equipos'){
-      puntosTorneoJ1 = puntosPartidaJ1
-      puntosTorneoJ2 = puntosPartidaJ2
-
-    } else {
+    if (esBatallaCampal) {
+      const diferencia = Math.abs(puntosMasacreJ1 - puntosMasacreJ2);
+      const diferenciaEmpate = 150;
       
-      const puntosTorneo = calcularPuntosTorneo(
-        puntosPartidaJ1, 
-        puntosPartidaJ2, 
-        jugador1_id, 
-        primerJugadorId
-      )
-
-      puntosTorneoJ1 = puntosTorneo.j1
-      puntosTorneoJ2 = puntosTorneo.j2
-
+      if (diferencia <= diferenciaEmpate) {
+        puntosVictoriaJ1 = 1;
+        puntosVictoriaJ2 = 1;
+        resultado = 'empate';
+      } else if (puntosMasacreJ1 > puntosMasacreJ2) {
+        puntosVictoriaJ1 = 3;
+        puntosVictoriaJ2 = 0;
+        resultado = 'victoria_j1';
+      } else {
+        puntosVictoriaJ1 = 0;
+        puntosVictoriaJ2 = 3;
+        resultado = 'victoria_j2';
+      }
+    } else {
+      if (puntos_torneo_j1 !== undefined && puntos_torneo_j2 !== undefined) {
+        const puntosPartidaJ1 = parseInt(puntos_torneo_j1) || 0;
+        const puntosPartidaJ2 = parseInt(puntos_torneo_j2) || 0;
+        
+        if (puntosPartidaJ1 > puntosPartidaJ2) {
+          puntosVictoriaJ1 = 3;
+          puntosVictoriaJ2 = 0;
+          resultado = 'victoria_j1';
+        } else if (puntosPartidaJ2 > puntosPartidaJ1) {
+          puntosVictoriaJ1 = 0;
+          puntosVictoriaJ2 = 3;
+          resultado = 'victoria_j2';
+        } else {
+          puntosVictoriaJ1 = 1;
+          puntosVictoriaJ2 = 1;
+          resultado = 'empate';
+        }
+      } else {
+        if (puntosMasacreJ1 > puntosMasacreJ2) {
+          puntosVictoriaJ1 = 3;
+          puntosVictoriaJ2 = 0;
+          resultado = 'victoria_j1';
+        } else if (puntosMasacreJ2 > puntosMasacreJ1) {
+          puntosVictoriaJ1 = 0;
+          puntosVictoriaJ2 = 3;
+          resultado = 'victoria_j2';
+        } else {
+          puntosVictoriaJ1 = 1;
+          puntosVictoriaJ2 = 1;
+          resultado = 'empate';
+        }
+      }
     }
-    
-    // ✅ Actualizar la partida con la sintaxis SQL correcta
+
     await pool.execute(`
-      UPDATE partidas_saga SET
+      UPDATE partidas_fow SET
         puntos_victoria_j1 = ?, 
         puntos_victoria_j2 = ?,
         puntos_torneo_j1 = ?, 
         puntos_torneo_j2 = ?,
-        puntos_masacre_j1 = ?, 
-        puntos_masacre_j2 = ?,
-        warlord_muerto_j1 = ?, 
-        warlord_muerto_j2 = ?,
-        resultado_ps = ?, 
-        primer_jugador = ?,
+        pelotones_destruidos_j1 = ?,
+        pelotones_destruidos_j2 = ?,
+        resultado_pf = ?, 
         resultado_confirmado = FALSE
       WHERE id = ?
     `, [
       puntosVictoriaJ1, 
       puntosVictoriaJ2,
-      puntosTorneoJ1,
-      puntosTorneoJ2,
-      puntosMasacreJ1, 
-      puntosMasacreJ2,
-      warlord_muerto_j1 || false, 
-      warlord_muerto_j2 || false,
-      resultado, 
-      primerJugadorId,
+      puntos_torneo_j1, 
+      puntos_torneo_j2,
+      pelotones_destruidos_j1,
+      pelotones_destruidos_j2,
+      resultado,
       partidaId
     ]);
     
@@ -2273,31 +3120,32 @@ router.put('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (re
       successResponse('Partida registrada exitosamente (pendiente de confirmación)', {
         partidaId,
         resultado,
-        puntosTorneo: {
-          jugador1: puntosTorneoJ1,
-          jugador2: puntosTorneoJ2
-        },
+        esBatallaCampal,
         puntosVictoria: {
           jugador1: puntosVictoriaJ1,
           jugador2: puntosVictoriaJ2
         },
-        puntosMasacre: {
-          jugador1: puntosMasacreJ1,
-          jugador2: puntosMasacreJ2
+        puntosTorneo: {
+          jugador1: puntos_torneo_j1,
+          jugador2: puntos_torneo_j2
+        },
+        pelotonesMatados: {
+          jugador1PelotonesMatados: pelotones_destruidos_j1 ? true : false,
+          jugador2PelotonesMatados: pelotones_destruidos_j2 ? true : false
         }
       })
     );
     
   } catch (error) {
-    console.error('Error al registrar partida:', error);
+    console.error('❌ Error al registrar partida:', error);
     const mensaje = manejarErrorDB(error);
     res.status(500).json(errorResponse(mensaje));
   }
 });
 
-// ====== CONFIRMAR RESULTADO  INDIVIDUAL POR ORGANIZADOR ========
+// ====== CONFIRMAR RESULTADO INDIVIDUAL POR ORGANIZADOR ========
 
-router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToken, async (req, res) => {
+router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken, async (req, res) => {
   let connection;
   
   try {
@@ -2307,27 +3155,29 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     
     await connection.beginTransaction();
     
-    // Verificar organizador y obtener partida
+    // Traer ambos IDs: participación y usuario
     const [verificacion] = await connection.execute(
       `SELECT 
-        t.created_by,
-        p.id, 
-        p.jugador1_id, 
-        p.jugador2_id,
-        p.puntos_victoria_j1, 
-        p.puntos_victoria_j2,
-        p.puntos_torneo_j1, 
-        p.puntos_torneo_j2,
-        p.puntos_masacre_j1, 
-        p.puntos_masacre_j2,
-        p.warlord_muerto_j1, 
-        p.warlord_muerto_j2,
-        p.resultado_confirmado,
-        p.resultado_ps,
-        p.es_bye
-      FROM torneos_sistemas t
-      INNER JOIN partidas_saga p ON p.torneo_id = t.id
-      WHERE t.id = ? AND p.id = ?`,
+        ts.created_by,
+        pf.id, 
+        pf.jugador1_id as participacion_j1_id,     -- jugador_torneo_fow.id
+        pf.jugador2_id as participacion_j2_id,     -- jugador_torneo_fow.id
+        jt1.jugador_id as jugador1_id,             -- usuarios.id
+        jt2.jugador_id as jugador2_id,             -- usuarios.id
+        pf.puntos_victoria_j1, 
+        pf.puntos_victoria_j2,
+        pf.puntos_torneo_j1, 
+        pf.puntos_torneo_j2,
+        COALESCE(pf.pelotones_destruidos_j1, 0) as pelotones_destruidos_j1,
+        COALESCE(pf.pelotones_destruidos_j2, 0) as pelotones_destruidos_j2,
+        pf.resultado_confirmado,
+        pf.resultado_pf,
+        pf.es_bye
+      FROM torneos_sistemas ts
+      INNER JOIN partidas_fow pf ON pf.torneo_id = ts.id
+      LEFT JOIN jugador_torneo_fow jt1 ON pf.jugador1_id = jt1.id
+      LEFT JOIN jugador_torneo_fow jt2 ON pf.jugador2_id = jt2.id
+      WHERE ts.id = ? AND pf.id = ?`,
       [torneoId, partidaId]
     );
     
@@ -2345,7 +3195,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
       return res.status(403).json(errorResponse('Solo el organizador puede confirmar resultados'));
     }
     
-    const esBye = !partidaData.jugador2_id || partidaData.es_bye;
+    const esBye = !partidaData.participacion_j2_id || partidaData.es_bye;
     
     if (confirmar && partidaData.resultado_confirmado) {
       await connection.rollback();
@@ -2365,7 +3215,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     if (esBye) {
       j1Gana = 1;
     } else {
-      switch (partidaData.resultado_ps) {
+      switch (partidaData.resultado_pw) {
         case 'victoria_j1':
           j1Gana = 1;
           j2Pierde = 1;
@@ -2382,30 +3232,32 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     }
     
     if (confirmar) {
-      // Actualizar jugador_torneo_saga J1
+      // Actualizar jugador_torneo_fow (usa participacion_id)
       await connection.execute(`
-        UPDATE jugador_torneo_saga 
+        UPDATE jugador_torneo_fow 
         SET puntos_victoria = puntos_victoria + ?,
             puntos_torneo = puntos_torneo + ?,
-            puntos_masacre = puntos_masacre + ?,
-            warlord_muerto = warlord_muerto + ?
-        WHERE jugador_id = ? AND torneo_id = ?
+        WHERE id = ? AND torneo_id = ?
       `, [
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_torneo_j1 || 0,
-        partidaData.puntos_masacre_j1 || 0,
-        partidaData.warlord_muerto_j1 ? 1 : 0,
-        partidaData.jugador1_id,
+        partidaData.participacion_j1_id,
         torneoId
       ]);
       
+      // INSERT clasificacion (usa jugador_id = usuarios.id)
       await connection.execute(`
-        INSERT INTO clasificacion_jugadores_saga (
-            torneo_id, jugador_id, partidas_jugadas, partidas_ganadas, 
-            partidas_empatadas, partidas_perdidas, puntos_victoria_totales, 
-            puntos_torneo_totales, puntos_masacre_totales, warlord_muerto_totales
+        INSERT INTO clasificacion_jugadores_fow (
+            torneo_id, 
+            jugador_id, 
+            partidas_jugadas, 
+            partidas_ganadas, 
+            partidas_empatadas, 
+            partidas_perdidas, 
+            puntos_victoria_totales, 
+            puntos_torneo_totales
           )
-        VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, 1, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           partidas_jugadas = partidas_jugadas + 1,
           partidas_ganadas = partidas_ganadas + VALUES(partidas_ganadas),       
@@ -2413,40 +3265,36 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
           partidas_perdidas = partidas_perdidas + VALUES(partidas_perdidas),
           puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
           puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales),
-          puntos_masacre_totales = puntos_masacre_totales + VALUES(puntos_masacre_totales),
-          warlord_muerto_totales = warlord_muerto_totales + VALUES(warlord_muerto_totales)
       `, [
-        torneoId, partidaData.jugador1_id, j1Gana, j1Empata, j1Pierde,
+        torneoId, 
+        partidaData.jugador1_id,
+        j1Gana,
+        j1Empata,
+        j1Pierde,
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_torneo_j1 || 0,
-        partidaData.puntos_masacre_j1 || 0,
-        partidaData.warlord_muerto_j1 ? 1 : 0        
       ]);
       
       if (!esBye) {
         await connection.execute(`
-          UPDATE jugador_torneo_saga 
+          UPDATE jugador_torneo_fow
           SET puntos_victoria = puntos_victoria + ?,
               puntos_torneo = puntos_torneo + ?,
-              puntos_masacre = puntos_masacre + ?,
-              warlord_muerto = warlord_muerto + ?
-          WHERE jugador_id = ? AND torneo_id = ?
+          WHERE id = ? AND torneo_id = ?
         `, [
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_torneo_j2 || 0,
-          partidaData.puntos_masacre_j2 || 0,
-          partidaData.warlord_muerto_j2 ? 1 : 0,
-          partidaData.jugador2_id,
+          partidaData.participacion_j2_id,
           torneoId
         ]);
 
         await connection.execute(`
-          INSERT INTO clasificacion_jugadores_saga (
+          INSERT INTO clasificacion_jugadores_fow (
              torneo_id, jugador_id, partidas_jugadas, partidas_ganadas, 
              partidas_empatadas, partidas_perdidas, puntos_victoria_totales, 
-             puntos_torneo_totales, puntos_masacre_totales, warlord_muerto_totales
+             puntos_torneo_totales
           )
-          VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, 1, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             partidas_jugadas = partidas_jugadas + 1,
             partidas_ganadas = partidas_ganadas + VALUES(partidas_ganadas),       
@@ -2454,37 +3302,33 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
             partidas_perdidas = partidas_perdidas + VALUES(partidas_perdidas),
             puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
             puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales),
-            puntos_masacre_totales = puntos_masacre_totales + VALUES(puntos_masacre_totales),
-            warlord_muerto_totales = warlord_muerto_totales + VALUES(warlord_muerto_totales)
         `, [
-          torneoId, partidaData.jugador2_id, j2Gana, j2Empata, j2Pierde,
+          torneoId, 
+          partidaData.jugador2_id,
+          j2Gana,
+          j2Empata,
+          j2Pierde,
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_torneo_j2 || 0,
-          partidaData.puntos_masacre_j2 || 0,
-          partidaData.warlord_muerto_j2 ? 1 : 0
         ]);
       }
       
     } else {
       // DESCONFIRMAR
       await connection.execute(`
-        UPDATE jugador_torneo_saga 
+        UPDATE jugador_torneo_fow
         SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
             puntos_torneo = GREATEST(0, puntos_torneo - ?),
-            puntos_masacre = GREATEST(0, puntos_masacre - ?),
-            warlord_muerto = GREATEST(0, warlord_muerto - ?)
-        WHERE jugador_id = ? AND torneo_id = ?
+        WHERE id = ? AND torneo_id = ?
       `, [
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_torneo_j1 || 0,
-        partidaData.puntos_masacre_j1 || 0,
-        partidaData.warlord_muerto_j1 ? 1 : 0,
-        partidaData.jugador1_id,
+        partidaData.participacion_j1_id,
         torneoId
       ]);
       
       await connection.execute(`
-        UPDATE clasificacion_jugadores_saga 
+        UPDATE clasificacion_jugadores_fow 
         SET 
           partidas_jugadas = GREATEST(0, partidas_jugadas - 1),
           partidas_ganadas = GREATEST(0, partidas_ganadas - ?),
@@ -2492,38 +3336,32 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
           partidas_perdidas = GREATEST(0, partidas_perdidas - ?),
           puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
           puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?),
-          puntos_masacre_totales = GREATEST(0, puntos_masacre_totales - ?),
-          warlord_muerto_totales = GREATEST(0, warlord_muerto_totales - ?)
         WHERE torneo_id = ? AND jugador_id = ?
       `, [
-        j1Gana, j1Empata, j1Pierde,
+        j1Gana,
+        j1Empata,
+        j1Pierde,
         partidaData.puntos_victoria_j1 || 0,
         partidaData.puntos_torneo_j1 || 0,
-        partidaData.puntos_masacre_j1 || 0,
-        partidaData.warlord_muerto_j1 ? 1 : 0,
         torneoId,
         partidaData.jugador1_id
       ]);
       
       if (!esBye) {
         await connection.execute(`
-          UPDATE jugador_torneo_saga 
+          UPDATE jugador_torneo_fow
           SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
               puntos_torneo = GREATEST(0, puntos_torneo - ?),
-              puntos_masacre = GREATEST(0, puntos_masacre - ?),
-              warlord_muerto = GREATEST(0, warlord_muerto - ?)
-          WHERE jugador_id = ? AND torneo_id = ?
+          WHERE id = ? AND torneo_id = ?
         `, [
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_torneo_j2 || 0,
-          partidaData.puntos_masacre_j2 || 0,
-          partidaData.warlord_muerto_j2 ? 1 : 0,
-          partidaData.jugador2_id,
+          partidaData.participacion_j2_id,
           torneoId
         ]);
         
         await connection.execute(`
-          UPDATE clasificacion_jugadores_saga 
+          UPDATE clasificacion_jugadores_fow
           SET 
             partidas_jugadas = GREATEST(0, partidas_jugadas - 1),
             partidas_ganadas = GREATEST(0, partidas_ganadas - ?),
@@ -2531,15 +3369,13 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
             partidas_perdidas = GREATEST(0, partidas_perdidas - ?),
             puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
             puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?),
-            puntos_masacre_totales = GREATEST(0, puntos_masacre_totales - ?),
-            warlord_muerto_totales = GREATEST(0, warlord_muerto_totales - ?)
           WHERE torneo_id = ? AND jugador_id = ?
         `, [    
-          j2Gana, j2Empata, j2Pierde,
+          j2Gana,
+          j2Empata,
+          j2Pierde,
           partidaData.puntos_victoria_j2 || 0,
           partidaData.puntos_torneo_j2 || 0,
-          partidaData.puntos_masacre_j2 || 0,
-          partidaData.warlord_muerto_j2 ? 1 : 0,
           torneoId,
           partidaData.jugador2_id
         ]);
@@ -2547,7 +3383,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     }
    
     await connection.execute(
-      'UPDATE partidas_saga SET resultado_confirmado = ? WHERE id = ?',
+      'UPDATE partidas_fow SET resultado_confirmado = ? WHERE id = ?',
       [confirmar, partidaId]
     );
     
@@ -2582,7 +3418,7 @@ router.patch('/:torneoId/partidasTorneoSaga/:partidaId/confirmar', verificarToke
     
     res.status(500).json(errorResponse('Error al confirmar resultado'));
   }
-});;
+});
 
 // ======= OBTENER EMPAREJAMIENTOS DE RONDA INDIVIDUALES (GET) =======
 
@@ -2591,26 +3427,30 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, asyn
     const { torneoId } = req.params;
     const { ronda } = req.query;
     
-    let whereClause = 'WHERE ps.torneo_id = ?';
+    let whereClause = 'WHERE pf.torneo_id = ?';
     let params = [torneoId];
     
     if (ronda) {
-      whereClause += ' AND ps.ronda = ?';
+      whereClause += ' AND pf.ronda = ?';
       params.push(ronda);
     }
 
     const queryConJoins = `
       SELECT 
-        ps.*,
+        pf.*,
+        jt1.jugador_id as jugador1_usuario_id,
+        jt2.jugador_id as jugador2_usuario_id,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
         u2.nombre as jugador2_nombre,
         u2.apellidos as jugador2_apellidos
-      FROM partidas_saga ps
-      LEFT JOIN usuarios u1 ON ps.jugador1_id = u1.id
-      LEFT JOIN usuarios u2 ON ps.jugador2_id = u2.id AND ps.es_bye = FALSE
+      FROM partidas_warmaster pf
+      INNER JOIN jugador_torneo_fow jt1 ON pf.jugador1_id = jt1.id
+      LEFT JOIN jugador_torneo_fow jt2 ON pf.jugador2_id = jt2.id AND pf.es_bye = FALSE
+      INNER JOIN usuarios u1 ON jt1.jugador_id = u1.id
+      LEFT JOIN usuarios u2 ON jt2.jugador_id = u2.id
       ${whereClause}
-      ORDER BY ps.mesa, ps.id
+      ORDER BY pw.mesa, pw.id
     `;
     
     const [partidasConJoins] = await pool.execute(queryConJoins, params);
@@ -2644,52 +3484,72 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
     }
     
     console.log('📥 Recibiendo emparejamientos:', emparejamientos.length);
-    console.log('📋 Primer emparejamiento:', emparejamientos[0]);
     
     await connection.beginTransaction();
     
-    // 1. Eliminar emparejamientos existentes de esta ronda
+    // Eliminar emparejamientos existentes de esta ronda
     await connection.execute(
-      'DELETE FROM partidas_saga WHERE torneo_id = ? AND ronda = ?',
+      'DELETE FROM partidas_fow WHERE torneo_id = ? AND ronda = ?',
       [torneoId, ronda]
     );
     
-    // 2. Insertar nuevos emparejamientos
+    // Insertar nuevos emparejamientos
     for (const partida of emparejamientos) {
-      const jugador1_id = partida.jugador1_id;
-      const jugador2_id = partida.jugador2_id || null;
-      const es_bye = !jugador2_id;
+      // Buscar ID de participación para jugador1
+      const [j1] = await connection.execute(
+        'SELECT id FROM jugador_torneo_fow WHERE jugador_id = ? AND torneo_id = ?',
+        [partida.jugador1_id, torneoId]
+      );
+      
+      if (j1.length === 0) {
+        console.error(`❌ Jugador1 ${partida.jugador1_id} no está inscrito en el torneo`);
+        continue;
+      }
+      
+      const jugador1_participacion_id = j1[0].id;
+      let jugador2_participacion_id = null;
+      let es_bye = false;
+      
+      if (partida.jugador2_id) {
+        const [j2] = await connection.execute(
+          'SELECT id FROM jugador_torneo_fow WHERE jugador_id = ? AND torneo_id = ?',
+          [partida.jugador2_id, torneoId]
+        );
+        
+        if (j2.length > 0) {
+          jugador2_participacion_id = j2[0].id;
+        } else {
+          console.error(`❌ Jugador2 ${partida.jugador2_id} no está inscrito en el torneo`);
+          es_bye = true;
+        }
+      } else {
+        es_bye = true;
+      }
       
       const insertQuery = `
-        INSERT INTO partidas_saga (
+        INSERT INTO partidas_fow (
           torneo_id, 
           jugador1_id, 
           jugador2_id,
-          equipo1_id,
-          equipo2_id,
-          epoca,
           ronda, 
           mesa, 
           nombre_partida,
           es_bye,
-          resultado_ps,
+          resultado_pw,
           puntos_victoria_j1,
           puntos_victoria_j2,
           puntos_torneo_j1,
           puntos_torneo_j2,
-          puntos_masacre_j1,
-          puntos_masacre_j2,
+          pelotones_destruidos_j1,
+          pelotones_destruidos_j2
           resultado_confirmado
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       await connection.execute(insertQuery, [
         torneoId,
-        jugador1_id,
-        jugador2_id,
-        partida.equipo1_id || null,
-        partida.equipo2_id || null,
-        partida.epoca || null,        // ✅ AGREGADO
+        jugador1_participacion_id,  // FK a jugador_torneo_warmaster.id
+        jugador2_participacion_id,  // FK a jugador_torneo_warmaster.id
         ronda,
         partida.mesa || null,
         partida.nombre_partida || 'Partida sin nombre',
@@ -2697,15 +3557,13 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
         es_bye ? 'victoria_j1' : 'pendiente',
         es_bye ? 3 : 0,
         0,
-        es_bye ? 10 : 0,
-        0,
-        0,
+        es_bye ? 3 : 0,
         0,
         false 
       ]);
     }
     
-    // 3. Actualizar ronda_actual del torneo
+    // Actualizar ronda_actual del torneo
     await connection.execute(
       'UPDATE torneos_sistemas SET ronda_actual = ? WHERE id = ?',
       [ronda, torneoId]
@@ -2723,7 +3581,6 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
   } catch (error) {
     await connection.rollback();
     console.error('❌ ERROR al guardar emparejamientos:', error);
-    console.error('❌ Stack:', error.stack);
     res.status(500).json({
       success: false,
       message: error.message
@@ -2735,16 +3592,16 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
 
 // ======ELIMINAR PARTIDA======
 
-router.delete('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async (req, res) => {
+router.delete('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req, res) => {
   try {
     const { partidaId } = req.params;
     
     // Verificar que la partida existe y permisos
     const [partidaExistente] = await pool.execute(`
-      SELECT ps.*, ts.created_by
-      FROM partidas_saga ps
-      JOIN torneos_sistemas ts ON ps.torneo_id = ts.id
-      WHERE ps.id = ?
+      SELECT pf.*, ts.created_by
+      FROM partidas_fow pf
+      JOIN torneos_sistemas ts ON pf.torneo_id = ts.id
+      WHERE pf.id = ?
     `, [partidaId]);
     
     if (partidaExistente.length === 0) {
@@ -2763,7 +3620,7 @@ router.delete('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async 
     }
     
     // Eliminar la partida
-    await pool.execute('DELETE FROM partidas_saga WHERE id = ?', [partidaId]);
+    await pool.execute('DELETE FROM partidas_fow WHERE id = ?', [partidaId]);
     
     res.json(
       successResponse('Partida eliminada exitosamente')
@@ -2773,213 +3630,6 @@ router.delete('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, async 
     console.error('Error al eliminar partida:', error);
     const mensaje = manejarErrorDB(error);
     res.status(500).json(errorResponse(mensaje));
-  }
-});
-
-// =====CAMBIAR ESTADO DEL TORNEO FOW=====
-
-router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
-  const { torneoId } = req.params;
-  const { estado } = req.body;
-  const userId = req.usuario.userId;
-  
-  try {
-    if (!estado) {
-      return res.status(400).json(errorResponse('El estado es requerido'));
-    }
-    
-    const estadosPermitidos = ['pendiente', 'en_curso', 'finalizado'];
-    if (!estadosPermitidos.includes(estado)) {
-      return res.status(400).json(
-        errorResponse(`Estado no válido. Debe ser: ${estadosPermitidos.join(', ')}`)
-      );
-    }
-    
-    // Si el estado es "finalizado"
-    if (estado === 'finalizado') {
-      const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
-        // Verificar que el torneo existe y es FOW
-        const [torneo] = await connTorneos.execute(
-          'SELECT id, created_by, estado, nombre_torneo, sistema FROM torneos_sistemas WHERE id = ? AND sistema = ?',
-          [torneoId, 'FOW'] // O 'fow' según cómo lo guardes
-        );
-        
-        if (torneo.length === 0) {
-          throw new Error('Torneo FOW no encontrado');
-        }
-        
-        const estadoActual = torneo[0].estado;
-        
-        if (estadoActual === 'cancelado') {
-          throw new Error('No se puede cambiar el estado de un torneo cancelado');
-        }
-        
-        if (estadoActual === 'finalizado') {
-          throw new Error('El torneo ya está finalizado');
-        }
-        
-        // Actualizar estado
-        await connTorneos.execute(
-          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
-          [estado, torneoId]
-        );
-        
-        console.log(`✅ Torneo FOW ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
-        
-        // Calcular ELO
-        let resultadoElo = null;
-        let errorElo = null;
-        
-        try {
-          resultadoElo = await actualizarEloAutomatico(connTorneos, connRanking, torneoId);
-          console.log(`✅ ELO calculado: ${resultadoElo.partidasProcesadas} partidas`);
-        } catch (eloError) {
-          console.error('⚠️ Error calculando ELO:', eloError.message);
-          errorElo = eloError.message;
-        }
-        
-        return {
-          id: parseInt(torneoId),
-          nombre_torneo: torneo[0].nombre_torneo,
-          sistema: torneo[0].sistema,
-          estado_anterior: estadoActual,
-          estado_nuevo: estado,
-          elo: resultadoElo,
-          errorElo: errorElo
-        };
-      });
-      
-      let mensaje = `Torneo finalizado correctamente`;
-      
-      if (resultado.elo) {
-        mensaje += ` - ELO calculado: ${resultado.elo.partidasProcesadas} partidas procesadas en ${resultado.elo.sistemaJuego}`;
-      }
-      
-      if (resultado.errorElo) {
-        mensaje += ` - Advertencia: ${resultado.errorElo}`;
-      }
-      
-      return res.json(successResponse(mensaje, resultado));
-      
-    } else {
-      // Para otros estados
-      const connection = await pool.getConnection();
-      
-      try {
-        await connection.beginTransaction();
-        
-        const [torneo] = await connection.execute(
-          'SELECT id, created_by, estado, nombre_torneo FROM torneos_sistemas WHERE id = ? AND sistema = ?',
-          [torneoId, 'FOW']
-        );
-        
-        if (torneo.length === 0) {
-          await connection.rollback();
-          return res.status(404).json(errorResponse('Torneo no encontrado'));
-        }
-        
-        const estadoActual = torneo[0].estado;
-        
-        if (estadoActual === 'cancelado') {
-          await connection.rollback();
-          return res.status(400).json(
-            errorResponse('No se puede cambiar el estado de un torneo cancelado')
-          );
-        }
-        
-        if (estadoActual === 'finalizado' && estado !== 'finalizado') {
-          await connection.rollback();
-          return res.status(400).json(
-            errorResponse('No se puede cambiar el estado de un torneo finalizado')
-          );
-        }
-        
-        await connection.execute(
-          'UPDATE torneos_sistemas SET estado = ? WHERE id = ?',
-          [estado, torneoId]
-        );
-        
-        await connection.commit();
-        
-        console.log(`✅ Estado del torneo ${torneoId} cambiado de "${estadoActual}" a "${estado}"`);
-        
-        res.json(
-          successResponse(`Estado del torneo actualizado a "${estado}"`, {
-            id: parseInt(torneoId),
-            nombre_torneo: torneo[0].nombre_torneo,
-            estado_anterior: estadoActual,
-            estado_nuevo: estado
-          })
-        );
-        
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      } finally {
-        connection.release();
-      }
-    }
-    
-  } catch (error) {
-    console.error('❌ Error al cambiar estado del torneo FOW:', error);
-    res.status(500).json(errorResponse(error.message || 'Error al cambiar el estado del torneo'));
-  }
-});
-
-
-//======ACTUALIZAR A PRIMER JUGADOR DE CADA PARTIDA=======
-
-router.put('/:torneoId/partidasTorneoSaga/:partidaId/primer-jugador/:jugadorId', async (req, res) => {
-   try {  
-    const { partidaId, torneoId } = req.params; // id de la partida y del torneo
-    const { jugadorId } = req.body; // id del jugador que clicó
-
-    // Validación de datos
-    if (!jugadorId) {
-      return res.status(400).json(
-        errorResponse('El ID del jugador es requerido')
-      );
-    }
-
-    // Verificar que el jugador pertenece a la partida
-    const [partida] = await pool.execute(
-      "SELECT jugador1_id, jugador2_id FROM partidas_saga WHERE id = ? AND torneo_id = ?",
-      [partidaId, torneoId]
-    );
-
-    if (partida.length === 0) {
-      return res.status(404).json(
-        errorResponse('Partida no encontrada')
-      );
-    }
-
-    const jugador1Id = partida[0].jugador1_id;
-    const jugador2Id = partida[0].jugador2_id;
-
-    if (jugador1Id !== parseInt(jugadorId) && jugador2Id !== parseInt(jugadorId)) {
-      return res.status(403).json(
-        errorResponse('El jugador no pertenece a esta partida')
-      );
-    }
-
-    // Actualizar primer jugador
-    await pool.execute(
-      "UPDATE partidas_saga SET primer_jugador = ? WHERE id = ?",
-      [jugadorId, partidaId]
-    );
-    
-    res.json(
-      successResponse('Primer jugador registrado correctamente', {
-        partidaId: partidaId,
-        primerJugador: jugadorId
-      })
-    );
-    
-  } catch (error) {
-    console.error('❌ Error al guardar el primer jugador:', error);
-    res.status(500).json(
-      errorResponse('Error interno del servidor')
-    );
   }
 });
 
@@ -2993,36 +3643,30 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
 
         const [clasificacion] = await pool.execute(`
             SELECT 
-                cjs.id,
-                cjs.jugador_id,
-                cjs.equipo_id,
-                cjs.partidas_ganadas,
-                cjs.partidas_empatadas,
-                cjs.partidas_perdidas,
-                tse.nombre_equipo,
+                cjf.id,
+                cjf.jugador_id,
+                cjf.partidas_ganadas,
+                cjf.partidas_empatadas,
+                cjf.partidas_perdidas,
                 u.nombre as jugador_nombre,
                 u.apellidos as jugador_apellidos,
                 u.club,
-                jts.faccion,
-                jts.epoca,
-                COALESCE(cjs.partidas_jugadas, 0) as partidas_jugadas,
-                 COALESCE(cjs.partidas_ganadas, 0) as jugador_partidas_ganadas,
-                COALESCE(cjs.partidas_empatadas, 0) as jugador_partidas_empatadas,
-                COALESCE(cjs.partidas_perdidas, 0) as jugador_partidas_perdidas,
-                COALESCE(cjs.puntos_victoria_totales, 0) as puntos_victoria_totales,
-                COALESCE(ROUND (cjs.puntos_torneo_totales, 1), 0) as puntos_torneo_totales,
-                COALESCE(cjs.puntos_masacre_totales, 0) as puntos_masacre_totales,
-                COALESCE(cjs.warlord_muerto_totales, 0) as warlord_muerto_totales
-              FROM clasificacion_jugadores_saga cjs
+                jtf.nombre_ejercito,
+                jtf.ejercito,
+                jtf.bando,
+                COALESCE(cjf.partidas_jugadas, 0) as partidas_jugadas,
+                 COALESCE(cjf.partidas_ganadas, 0) as jugador_partidas_ganadas,
+                COALESCE(cjf.partidas_empatadas, 0) as jugador_partidas_empatadas,
+                COALESCE(cjf.partidas_perdidas, 0) as jugador_partidas_perdidas,
+                COALESCE(cjf.puntos_victoria_totales, 0) as puntos_victoria_totales,
+                COALESCE(cjf.puntos_torneo_totales, 0) as puntos_torneo_totales,
+              FROM clasificacion_jugadores_fow cjf
                 INNER JOIN usuarios u 
-                  ON cjs.jugador_id = u.id
-                LEFT JOIN torneo_saga_equipo tse
-                  ON tse.torneo_id = cjs.torneo_id 
-                  AND tse.id = cjs.equipo_id
-                LEFT JOIN jugador_torneo_saga jts
-                  ON cjs.jugador_id = jts.jugador_id
-                  AND cjs.torneo_id = jts.torneo_id 
-              WHERE cjs.torneo_id = ?
+                  ON cjf.jugador_id = u.id
+                LEFT JOIN jugador_torneo_fow jtf
+                  ON cjf.jugador_id = jtf.jugador_id
+                  AND cjf.torneo_id = jtf.torneo_id 
+              WHERE cjf.torneo_id = ?
         `, [torneoId]);
 
 
@@ -3035,6 +3679,206 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
         res.status(500).json(errorResponse('Error al obtener la clasificación'));
   }
 })
+
+// ======= ENDPOINTS PARA CORREOS - FOW =======
+
+// ======= OBTENER JUGADORES PARA CORREOS (INDIVIDUAL) =======
+
+router.get('/:torneoId/jugadores-correos', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+
+    try {
+        const { torneoId } = req.params;
+
+        // Verificar que el usuario es uno de los organizadores del torneo
+         const [torneo] = await pool.query(
+            `SELECT 
+              created_by
+            FROM torneos_sistemas 
+            WHERE id = ?`,
+            [torneoId]
+          );
+
+        if (torneo.length === 0) {
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+
+        // Obtener jugadores con su email
+        const [jugadores] = await pool.execute(`
+            SELECT DISTINCT
+                u.id,
+                u.nombre,
+                u.apellidos,
+                u.email,
+                CONCAT(u.nombre, ' ', u.apellidos) as nombre_completo,
+                u.nombre_alias,
+                jtf.ejercito,
+                jtf.nombre_ejercito
+            FROM jugador_torneo_fow jtf
+            INNER JOIN usuarios u ON jtf.jugador_id = u.id
+            ORDER BY u.nombre, u.apellidos
+        `, [torneoId]);
+
+        res.json(successResponse('Jugadores obtenidos', jugadores));
+
+    } catch (error) {
+        console.error('Error al obtener jugadores para correos:', error);
+        res.status(500).json(errorResponse('Error al obtener jugadores'));
+    }
+});
+
+// ======= ENVIAR CORREOS A PARTICIPANTES =======
+
+router.post('/:torneoId/enviar-correo', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+    const connection = await pool.getConnection();
+
+    try {
+        const { torneoId } = req.params;
+        const { destinatarios, asunto, mensaje, tipoTorneo } = req.body;
+
+        // Verificar que el usuario es el organizador del torneo
+          const [torneo] = await pool.query(
+            `SELECT
+              id,
+              tipo_torneo,
+              nombre_torneo,
+              created_by
+            FROM torneos_sistemas 
+            WHERE id = ?`,
+            [torneoId]
+          );
+
+        if (torneo.length === 0) {
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+
+        // Validaciones
+        if (!destinatarios || destinatarios.length === 0) {
+            return res.status(400).json(errorResponse('Debes seleccionar al menos un destinatario'));
+        }
+
+        if (!asunto || !mensaje) {
+            return res.status(400).json(errorResponse('El asunto y el mensaje son obligatorios'));
+        }
+
+        const [organizadores] = await pool.execute(
+          `SELECT 
+            torg.id as organizador_id,
+            torg.torneo_id,
+            torg.usuario_id,
+            u.nombre,
+            u.apellidos,
+            u.nombre_alias,
+            u.email,
+            u.estado_cuenta
+          FROM organizadores_torneos torg
+          INNER JOIN usuarios u ON torg.usuario_id = u.id
+          WHERE torg.torneo_id = ?
+          ORDER BY torg.fecha_asignacion ASC`,
+          [torneoId]
+        );
+
+        if(organizadores.length === 0){
+          return res.status(400).json(errorResponse('No hay organizadores asignados para este torneo'));
+        }
+
+        const organizadorPrincipal = organizadores[0];
+        const datosOrganizador = {
+            nombre: organizadorPrincipal.nombre,
+            apellidos: organizadorPrincipal.apellidos,
+            nombre_completo: organizadorPrincipal.nombre_completo,
+            email: organizadorPrincipal.email
+        };
+
+        const nombreTorneo = torneo[0].nombre_torneo;
+        const tipoJuego = 'FOW';
+        let emails = [];
+
+            // Para torneos individuales, obtener emails de jugadores
+            const [jugadores] = await pool.query(`
+                SELECT DISTINCT 
+                    u.email, 
+                    u.nombre,
+                    u.apellidos,
+                    CONCAT(u.nombre, ' ', u.apellidos) as nombre_completo
+                FROM jugador_torneo_fow jtf
+                INNER JOIN usuarios u ON jtf.jugador_id = u.id
+                WHERE jtf.torneo_id = ? 
+                AND u.id IN (?)
+            `, [torneoId, destinatarios]);
+
+            emails = jugadores.map(j => ({
+                email: j.email,
+                nombre: j.nombre_completo
+            }));
+        
+
+        if (emails.length === 0) {
+            return res.status(400).json(errorResponse('No se encontraron destinatarios válidos'));
+        }
+
+        const enviosExitosos = [];
+        const enviosFallidos = [];
+
+        // Enviar correos
+        for (const destinatario of emails) {
+            
+            const resultado = await emailTorneo.enviarCorreoParticipantes({
+                email: destinatario.email,
+                nombre: destinatario.nombre,
+                nombreTorneo: nombreTorneo,
+                tipoJuego: tipoJuego,
+                asunto: asunto,
+                mensaje: mensaje,
+                nombreEquipo: destinatario.equipo || null,
+                organizador: datosOrganizador
+            });
+
+            if (resultado.success) {
+                enviosExitosos.push(destinatario.email);
+            } else {
+                enviosFallidos.push(destinatario.email);
+                console.error(`❌ Error enviando a ${destinatario.email}:`, resultado.error);
+            }
+        }
+
+        // Registrar el envío en logs (opcional)
+        try {
+            await pool.query(`
+                INSERT INTO logs_correos_torneos 
+                (torneo_id, sistema_juego, asunto, mensaje, destinatarios_exitosos, destinatarios_fallidos, tipo_torneo, fecha)
+                VALUES (?, 'FOW', ?, ?, ?, ?, ?, NOW())
+            `, [
+                torneoId,
+                asunto,
+                mensaje,
+                enviosExitosos.length,
+                enviosFallidos.length,
+                tipoTorneo
+            ]);
+        } catch (logError) {
+            console.error('⚠️ Error al registrar log (no crítico):', logError);
+        }
+
+        const mensajeRespuesta = enviosFallidos.length === 0
+            ? `✅ Todos los correos enviados correctamente (${enviosExitosos.length})`
+            : `⚠️ Correos enviados: ${enviosExitosos.length} exitosos, ${enviosFallidos.length} fallidos`;
+
+        res.json(successResponse(mensajeRespuesta, {
+            exitosos: enviosExitosos.length,
+            fallidos: enviosFallidos.length,
+            detalles: {
+                enviosExitosos,
+                enviosFallidos
+            }
+        }));
+
+    } catch (error) {
+        console.error('❌ Error al enviar correos:', error);
+        res.status(500).json(errorResponse('Error al enviar los correos'));
+    } finally {
+        connection.release();
+    }
+});
 
 //===============================================================================
 //===============================================================================
@@ -3070,5 +3914,58 @@ router.get('/:torneoId/bases-pdf', async (req, res) => {
   }
 });
 
+// =====DESCARGAR PDF DE LISTAS DE EJERCITO=====
+
+router.get('/:torneoId/listasEjercitos-pdf/:jugadorId', verificarToken, async (req, res) => {
+  try {
+    const { torneoId, jugadorId } = req.params;
+    const usuarioActual = req.usuario.userId;
+    
+    // Verificar permisos (solo el jugador o el organizador pueden descargar)
+    const [torneo] = await pool.execute(
+      'SELECT created_by FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
+    
+    if (torneo.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
+    
+    const esOrganizador = torneo[0].created_by === usuarioActual;
+    const esMiLista = parseInt(jugadorId) === usuarioActual;
+    
+    if (!esOrganizador && !esMiLista) {
+      return res.status(403).json(
+        errorResponse('No tienes permiso para descargar esta lista')
+      );
+    }
+    
+    // Obtener la lista del jugador (nota: AND en lugar de coma)
+    const [result] = await pool.execute(
+      'SELECT lista_ejercito, lista_nombre FROM jugador_torneo_fow WHERE torneo_id = ? AND jugador_id = ?',
+      [torneoId, jugadorId]
+    );
+    
+    if (result.length === 0) {
+      return res.status(404).json(errorResponse('Inscripción no encontrada'));
+    }
+    
+    const inscripcion = result[0];
+    
+    // Verificar que tenga PDF
+    if (!inscripcion.lista_ejercito) {
+      return res.status(404).json(errorResponse('Este jugador no ha subido lista de ejército'));
+    }
+    
+    // Enviar el PDF (buffer, no el nombre)
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${inscripcion.lista_nombre || 'lista_ejercito.pdf'}"`);
+    res.send(inscripcion.lista_ejercito); // ✅ Enviar el buffer del PDF
+    
+  } catch (error) {
+    console.error('❌ Error al descargar PDF:', error);
+    res.status(500).json(errorResponse('Error al descargar el PDF'));
+  }
+});
 
 export default router;

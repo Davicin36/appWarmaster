@@ -1017,3 +1017,152 @@
     font-weight: bold;
     font-size: 0.9rem;
 }
+
+/* Vista previa de imagen */
+.imagen-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #ddd;
+}
+
+.preview-titulo {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.imagen-preview-img {
+    max-width: 100%;
+    max-height: 400px;
+    width: auto;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    object-fit: contain;
+}
+
+/* ===== GESTIÓN DE IMAGEN DEL CARTEL ===== */
+
+.imagen-actual-container,
+.imagen-nueva-container,
+.sin-imagen-container {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px dashed var(--color-beige);
+}
+
+.imagen-label {
+    font-weight: 700;
+    color: var(--color-verde-oscuro);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.imagen-actual-preview,
+.imagen-preview {
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.imagen-preview-img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    object-fit: contain;
+}
+
+.imagen-acciones {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.btn-cambiar-imagen,
+.btn-subir-imagen {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background: var(--color-verde-oscuro);
+    color: white;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.btn-cambiar-imagen:hover,
+.btn-subir-imagen:hover {
+    background: var(--color-verde-claro);
+    transform: translateY(-2px);
+}
+
+.btn-eliminar-imagen,
+.btn-cancelar-nueva-imagen,
+.btn-cancelar-eliminacion {
+    padding: 0.8rem 1.5rem;
+    border: 2px solid #dc3545;
+    background: white;
+    color: #dc3545;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-eliminar-imagen:hover,
+.btn-cancelar-nueva-imagen:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-cancelar-eliminacion {
+    border-color: var(--color-verde-oscuro);
+    color: var(--color-verde-oscuro);
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.btn-cancelar-eliminacion:hover {
+    background: var(--color-verde-oscuro);
+    color: white;
+}
+
+.aviso-eliminar {
+    background: #fff3cd;
+    color: #856404;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.sin-imagen-texto {
+    text-align: center;
+    color: #7F8C8D;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .imagen-acciones {
+        flex-direction: column;
+    }
+    
+    .btn-cambiar-imagen,
+    .btn-eliminar-imagen,
+    .btn-subir-imagen {
+        width: 100%;
+        text-align: center;
+    }
+}

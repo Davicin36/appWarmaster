@@ -863,3 +863,31 @@
         padding: 7px 14px;
     }
 }
+
+/* ===== CARTEL EN MODO VISTA ===== */
+.cartel-vista {
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+.cartel-vista h3 {
+    margin-bottom: 1rem;
+    color: var(--color-verde-oscuro);
+}
+
+.cartel-imagen-vista {
+    width: 100% !important;
+    max-width: 500px !important;
+    height: auto !important;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: block;
+    margin: 0 auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .cartel-imagen-vista {
+        max-height: 300px;
+    }
+}

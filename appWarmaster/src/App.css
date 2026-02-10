@@ -57,11 +57,12 @@ section {
   border-bottom: 3px solid var(--color-beige);
 }
 
-section:nth-child(even) {
-  background: linear-gradient(135deg, #FDFEFE 0%, var(--color-beige) 100%);
+body > #root section:nth-child(even) {
+    background: linear-gradient(135deg, #FDFEFE 0%, var(--color-beige) 100%);
 }
 
-section img {
+/* Solo afecta a imágenes directas de section, no a las de tarjetas */
+section > img {
   max-width: 200px;
   height: auto;
   margin: 0 auto 1.5rem;
@@ -70,7 +71,7 @@ section img {
   transition: transform 0.3s ease;
 }
 
-section img:hover {
+section > img:hover {
   transform: scale(1.05);
 }
 
@@ -267,8 +268,8 @@ footer a:hover {
 
 /* Tablets (768px - 1024px) */
 @media (max-width: 1024px) {
-  section {
-    padding: 2.5rem 4%;
+  section > img {  /* ← CAMBIA section img por section > img */
+    max-width: 180px;
   }
   
   section img {
@@ -299,9 +300,8 @@ footer a:hover {
     padding: 2rem 3% !important;
   }
   
-  section img {
+  section > img {  /* ← CAMBIA */
     max-width: 150px !important;
-    margin-bottom: 1rem !important;
   }
   
   section h2 {
@@ -384,7 +384,7 @@ footer a:hover {
     padding: 1.5rem 2% !important;
   }
   
-  section img {
+   section > img {  /* ← CAMBIA */
     max-width: 120px !important;
   }
   
@@ -464,7 +464,7 @@ footer a:hover {
     padding: 1rem 1.5% !important;
   }
   
-  section img {
+  section > img {  /* ← CAMBIA */
     max-width: 100px !important;
   }
   

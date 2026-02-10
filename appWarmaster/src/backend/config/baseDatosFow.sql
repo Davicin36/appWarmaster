@@ -13,18 +13,20 @@ CREATE TABLE jugador_torneo_fow (
     torneo_id INT NOT NULL,
     jugador_id INT NOT NULL,
     ejercito VARCHAR(100) NOT NULL,
-    bandos_2gm ENUM('Aliados', 'Eje') NOT NULL,
+    epoca VARCHAR (100),
+    nombre_ejercito VARCHAR(200) NULL DEFAULT NULL,
+    bando ENUM('Aliados', 'Eje') NOT NULL,
     lista_ejercito LONGBLOB,
     lista_nombre VARCHAR(255), 
     lista_tamaño INT,      
     pagado INT DEFAULT 0,
-    puntos_victoria INT DEFAULT 0,
-    puntos_torneos INT DEAFAULT 0, 
-    puntos_masacre INT DEFAULT 0,
+    puntos_victoria INT DEFAULT 0, --3,1,0
+    puntos_torneo INT DEFAULT 0, --puntos por matar pelotones
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
     FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
     UNIQUE KEY unique_participante (torneo_id, jugador_id)
+    UNIQUE KEY unique_epoca (jugador_id, epoca)
 );
 
 CREATE TABLE clasificacion_jugadores_fow (
@@ -37,7 +39,6 @@ CREATE TABLE clasificacion_jugadores_fow (
   partidas_perdidas INT DEFAULT 0,
   puntos_victoria_totales INT DEFAULT 0,
   puntos_torneo_totales INT DEFAULT 0,
-  puntos_masacre_totales INT DEFAULT 0,
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   UNIQUE KEY unique_torneo_jugador (torneo_id, jugador_id)
@@ -57,8 +58,6 @@ CREATE TABLE partidas_fow (
   pelotones_destruidos_j2 INT DEFAULT 0,
   puntos_torneo_j1 INT DEFAULT 0,
   puntos_torneo_j2 INT DEFAULT 0,
-  puntos_masacre_j1 INT DEFAULT 0,
-  puntos_masacre_j2 INT DEFAULT 0,
   resultado_ps ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
   resultado_confirmado BOOLEAN DEFAULT FALSE,
   ronda INT DEFAULT 1,
@@ -67,9 +66,18 @@ CREATE TABLE partidas_fow (
   primer_jugador INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador1_id) REFERENCES usuarios(id),
-  FOREIGN KEY (jugador2_id) REFERENCES usuarios(id)
+  FOREIGN KEY (jugador1_id) REFERENCES jugador_torneo_fow(id),
+  FOREIGN KEY (jugador2_id) REFERENCES jugador_torneo_fow(id)
 );
+
+CREATE TABLE torneo_epocas_fow (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  torneo_id INT NOT NULL,
+  epoca VARCHAR(100) NOT NULL,
+  created_by TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_epoca_torneo (torneo_id, epoca)
+); 
 
 /**
 CREATE TABLE torneo_fow_equipo(

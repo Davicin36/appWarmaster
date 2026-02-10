@@ -107,6 +107,12 @@ class apiUsuarios {
     return this.request(`/${userId}`);
   }
 
+  //=====OBTENER TODOS LOS TORNEOS DEL SISTEMA=====
+
+  async obtenerTodosTorneos() {
+    return this.request('/torneos')
+  }
+
   //====== OBTENER USUARIOS POR EMAIL=====
 
   async verificarUsuario(email) {

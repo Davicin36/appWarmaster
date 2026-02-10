@@ -359,3 +359,20 @@
         font-size: 0.9rem;
     }
 }
+
+.administrar-torneo-container .torneo-header {
+    background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro)) !important;
+}
+
+.administrar-torneo-container .torneo-info {
+    background: transparent !important;
+}
+
+.administrar-torneo-container .info-item {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+
+.administrar-torneo-container .torneo-header h1 {
+    color: white !important;
+}

@@ -26,7 +26,6 @@ export const ESTADOS_TORNEO_WARMASTER = [
 ];
 
 export const RONDAS_DISPONIBLES = [
-    { valor: 2, nombre: '2 Rondas'},
     { valor: 3, nombre: '3 Rondas' },
     { valor: 4, nombre: '4 Rondas' },
     { valor: 5, nombre: '5 Rondas' }    

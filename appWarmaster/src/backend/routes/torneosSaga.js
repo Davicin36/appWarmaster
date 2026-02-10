@@ -3,6 +3,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
+import cloudinary from 'cloudinary'
 import crypto from 'crypto';
 import { pool, executeCrossTransaction } from '../config/bd.js';
 import { enviarInvitarJugador }  from '../utils/emailInvitarTorneoInd.js';
@@ -27,10 +28,11 @@ const router = express.Router();
 // =====CONFIGURACIÓN DE MULTER PARA SUBIDA DE PDF=====
 
 const storage = multer.memoryStorage();
+
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 16 * 1024 * 1024
+    fileSize: 16 * 1024 * 1024 // 16MB máximo
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
@@ -39,6 +41,40 @@ const upload = multer({
       cb(new Error('Solo se permiten archivos PDF'), false);
     }
   }
+});
+
+const uploadMultiple = multer({
+  storage: storage,
+  limits: {
+    fileSize: 16 * 1024 * 1024 // 16MB máximo
+  },
+  fileFilter: (req, file, cb) => {
+    // ⬅️ ACTUALIZADO: Aceptar tanto PDFs como imágenes
+    if (file.fieldname === 'bases_pdf') {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten archivos PDF para las bases'), false);
+      }
+    } else if (file.fieldname === 'imagen_cartel') {
+      const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (tiposPermitidos.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten imágenes (JPG, PNG, GIF, WEBP) para el cartel'), false);
+      }
+    } else {
+      cb(new Error('Campo de archivo no reconocido'), false);
+    }
+  }
+});
+
+// ======CONFIGURACION CLOUDINARY========
+
+cloudinary.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 //=====OBTENER TORNEOS CON PAGINACIÓN=====
@@ -86,6 +122,7 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
+        ts.imagen_url,
         ts.puntos_banda,
         ts.unidades_legendarias,
         ts.participantes_max,
@@ -191,6 +228,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.fecha_inicio,
         ts.fecha_fin,
         ts.ubicacion,
+        ts.imagen_url,
         ts.puntos_banda,
         ts.unidades_legendarias,
         ts.participantes_max,
@@ -245,7 +283,10 @@ router.get('/torneo/:torneoId', async (req, res) => {
 
 // =====CREAR NUEVO TORNEO=====
 
-router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async (req, res) => {
+router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
+    { name: 'bases_pdf', maxCount: 1 },
+    { name: 'imagen_cartel', maxCount: 1 }
+]), async (req, res) => {
   try {
     
     const { 
@@ -428,23 +469,39 @@ router.post('/creandoTorneo', verificarToken, upload.single('bases_pdf'), async 
     let basesNombre = null;
     let baseTamaño = null;
     
-    if (req.file) {
-      basesPdf = req.file.buffer;
-      basesNombre = req.file.originalname;
-      baseTamaño = req.file.size;
+  if (req.files && req.files['bases_pdf']) {
+      const pdfFile = req.files['bases_pdf'][0];
+      basesPdf = pdfFile.buffer;
+      basesNombre = pdfFile.originalname;
+      baseTamaño = pdfFile.size;
+      console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
     }
 
-  console.group('🔍 DEBUG CREAR TORNEO - UNIDADES LEGENDARIAS');
-console.log('1. Valor RAW recibido:', unidades_legendarias_raw);
-console.log('2. Tipo de dato RAW:', typeof unidades_legendarias_raw);
-console.log('3. Comparaciones:');
-console.log('   - === true:', unidades_legendarias_raw === true);
-console.log('   - === "true":', unidades_legendarias_raw === 'true');
-console.log('   - === 1:', unidades_legendarias_raw === 1);
-console.log('   - === "1":', unidades_legendarias_raw === '1');
-console.log('4. Valor procesado:', unidades_legendarias);
-console.log('5. Tipo procesado:', typeof unidades_legendarias);
-console.groupEnd();
+    
+    let imagenUrl = null;
+
+       if (req.files && req.files['imagen_cartel']) {
+              const imagenFile = req.files['imagen_cartel'][0];
+              
+              try {
+                // Convertir buffer a base64
+                const b64 = Buffer.from(imagenFile.buffer).toString('base64');
+                const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
+                
+                // Subir a Cloudinary
+                const resultado = await cloudinary.v2.uploader.upload(dataURI, {
+                  folder: 'torneos_warmaster',
+                  resource_type: 'auto',
+                  public_id: `torneo_${Date.now()}` // nombre único
+                });
+                
+                imagenUrl = resultado.secure_url;
+              } catch (cloudinaryError) {
+                console.error('❌ Error al subir a Cloudinary:', cloudinaryError);
+                // No bloquear la creación del torneo si falla Cloudinary
+                // pero podrías retornar error si lo consideras crítico
+              }
+            }
 
     const [resultado] = await pool.execute(
       `INSERT INTO torneos_sistemas 
@@ -455,6 +512,7 @@ console.groupEnd();
         fecha_inicio, 
         fecha_fin, 
         ubicacion, 
+        imagen_url,
         puntos_banda, 
         puntos_ejercito,
         unidades_legendarias,
@@ -470,7 +528,7 @@ console.groupEnd();
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         tipo_torneo === 'Por equipos' ? 'Por equipos' : 'Individual',
@@ -479,6 +537,7 @@ console.groupEnd();
         fecha_inicio, 
         fecha_fin || null, 
         ubicacion || null,  // ✅ Asegurar que se guarde
+        imagenUrl,
         puntos_banda,
         0,
         unidades_legendarias,
@@ -641,6 +700,7 @@ console.groupEnd();
         num_jugadores_equipo: num_jugadores_equipo || null,
         epocas_disponibles: epocas_disponibles,
         ubicacion: ubicacion || null,
+        imagen_url: imagen_url || null,
         unidades_legendarias: unidades_legendarias,
         tiene_bases_pdf: !!req.file,
         created_by: req.usuario.userId,
@@ -681,7 +741,10 @@ console.groupEnd();
 
 // ======ACTUALIZAR TORNEO=====
 
-router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTorneo, upload.single('bases_pdf'), async (req, res) => {
+router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTorneo, uploadMultiple.fields([
+    { name: 'bases_pdf', maxCount: 1 },
+    { name: 'imagen_cartel', maxCount: 1 }
+]), async (req, res) => {
   try {
     const { torneoId } = req.params;
     
@@ -704,8 +767,20 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       partida_ronda_3,
       partida_ronda_4,
       partida_ronda_5,
-      eliminar_pdf
+      eliminar_pdf,
+      unidades_legendarias,
+      eliminar_imagen
     } = req.body;
+
+     // ⬅️ AÑADIR ESTO - igual que Warmaster
+    const [torneoExistente] = await pool.execute(
+      'SELECT created_by, imagen_url FROM torneos_sistemas WHERE id = ?',
+      [torneoId]
+    );
+    
+    if (torneoExistente.length === 0) {
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
+    }
 
     let epocas_disponibles;
     if (epoca_raw) {
@@ -819,6 +894,81 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       camposActualizar.push('ubicacion = ?');
       valores.push(ubicacion || null);
     }
+
+     // ========================================
+        // MANEJAR IMAGEN DEL CARTEL
+        // ========================================
+        let imagenActualizada = false;
+        let imagenEliminada = false;
+    
+        // Si se sube una nueva imagen
+        if (req.files && req.files['imagen_cartel']) {
+          const imagenFile = req.files['imagen_cartel'][0];
+          
+          try {
+            console.log('📤 Subiendo nueva imagen a Cloudinary...');
+            console.log('   Archivo:', imagenFile.originalname);
+            console.log('   Tamaño:', (imagenFile.size / 1024).toFixed(2), 'KB');
+            
+            // Convertir buffer a base64
+            const b64 = Buffer.from(imagenFile.buffer).toString('base64');
+            const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
+            
+            // Subir a Cloudinary
+            const resultado = await cloudinary.v2.uploader.upload(dataURI, {
+              folder: 'torneos_warmaster',
+              resource_type: 'auto',
+              public_id: `torneo_${torneoId}_${Date.now()}`
+            });
+            
+            // Eliminar imagen anterior de Cloudinary si existe
+            if (torneoExistente[0].imagen_url) {
+              try {
+                // Extraer public_id de la URL
+                const urlParts = torneoExistente[0].imagen_url.split('/');
+                const publicIdWithExt = urlParts.slice(-2).join('/');
+                const publicId = publicIdWithExt.replace(/\.[^/.]+$/, "");
+                
+                await cloudinary.v2.uploader.destroy(publicId);
+                console.log('🗑️ Imagen anterior eliminada de Cloudinary');
+              } catch (deleteError) {
+                console.warn('⚠️ No se pudo eliminar imagen anterior:', deleteError.message);
+              }
+            }
+            
+            camposActualizar.push('imagen_url = ?');
+            valores.push(resultado.secure_url);
+            imagenActualizada = true;
+            
+            console.log('✅ Nueva imagen subida:', resultado.secure_url);
+            
+          } catch (cloudinaryError) {
+            console.error('❌ Error al subir imagen a Cloudinary:', cloudinaryError);
+            return res.status(500).json(
+              errorResponse('Error al subir la imagen a Cloudinary: ' + cloudinaryError.message)
+            );
+          }
+        }
+        // Si se solicita eliminar la imagen existente
+        else if (eliminar_imagen === 'true' || eliminar_imagen === true) {
+          if (torneoExistente[0].imagen_url) {
+            try {
+              // Extraer public_id de la URL
+              const urlParts = torneoExistente[0].imagen_url.split('/');
+              const publicIdWithExt = urlParts.slice(-2).join('/');
+              const publicId = publicIdWithExt.replace(/\.[^/.]+$/, "");
+              
+              await cloudinary.v2.uploader.destroy(publicId);
+              console.log('🗑️ Imagen eliminada de Cloudinary');
+            } catch (deleteError) {
+              console.warn('⚠️ No se pudo eliminar imagen de Cloudinary:', deleteError.message);
+            }
+          }
+          
+          camposActualizar.push('imagen_url = NULL');
+          imagenEliminada = true;
+          console.log('🗑️ Eliminando referencia de imagen en BD');
+        }
     
     if (puntos_banda !== undefined) {
       camposActualizar.push('puntos_banda = ?');
@@ -859,38 +1009,58 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       camposActualizar.push('partida_ronda_5 = ?');
       valores.push(partida_ronda_5);
     }
+
+    if (unidades_legendarias !== undefined) {
+        camposActualizar.push('unidades_legendarias = ?');
+        valores.push(unidades_legendarias === 'true' || unidades_legendarias === true ? 1 : 0);
+    }
     
-    if (req.file) {
+    // ========================================
+    // MANEJAR PDF DE BASES
+    // ========================================
+    let pdfActualizado = false;
+    let pdfEliminado = false;
+
+    // Si se sube un nuevo PDF - ⬅️ CAMBIO: usar req.files en lugar de req.file
+    if (req.files && req.files['bases_pdf']) {
+      const pdfFile = req.files['bases_pdf'][0];
+      
       camposActualizar.push('bases_torneo = ?');
-      valores.push(req.file.buffer);
+      valores.push(pdfFile.buffer);
       
       camposActualizar.push('bases_nombre = ?');
-      valores.push(req.file.originalname);
+      valores.push(pdfFile.originalname);
       
       camposActualizar.push('base_tamaño = ?');
-      valores.push(req.file.size);
+      valores.push(pdfFile.size);
+      
+      pdfActualizado = true;
+      console.log('📄 Nuevo PDF recibido:', pdfFile.originalname);
     }
+    // Si se solicita eliminar el PDF existente
     else if (eliminar_pdf === 'true' || eliminar_pdf === true) {
       camposActualizar.push('bases_torneo = NULL');
       camposActualizar.push('bases_nombre = NULL');
       camposActualizar.push('base_tamaño = NULL');
+      pdfEliminado = true;
       console.log('🗑️ Eliminando PDF existente');
     }
     
-    if (camposActualizar.length === 0 && !epocas_disponibles) {
-      return res.status(400).json(
-        errorResponse('No se proporcionaron campos para actualizar')
-      );
-    }
-    
-    // ✅ Actualizar torneo principal si hay cambios
+    // ========================================
+    // EJECUTAR UPDATE SI HAY CAMBIOS
+    // ========================================
     if (camposActualizar.length > 0) {
       valores.push(torneoId);
-      await pool.execute(
-        `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`,
-        valores
-      );
-      console.log('✅ Torneo actualizado');
+      
+      const query = `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`;
+      
+      console.log('📝 Ejecutando UPDATE con', camposActualizar.length, 'campos');
+      
+      await pool.execute(query, valores);
+      
+      console.log('✅ Torneo actualizado correctamente');
+    } else {
+      console.log('ℹ️ No hay cambios para actualizar');
     }
     
     // ✅ NUEVO: Actualizar épocas si se proporcionaron
@@ -915,6 +1085,8 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       successResponse('Torneo actualizado exitosamente', {
         torneoId,
         ubicacion_actualizada: ubicacion !== undefined,
+        imagen_actualizada: imagenActualizada,
+        imagen_eliminada: imagenEliminada,
         epocas_actualizadas: !!epocas_disponibles,
         pdf_actualizado: !!req.file,
         pdf_eliminado: eliminar_pdf === 'true' || eliminar_pdf === true
@@ -922,31 +1094,36 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
     );
     
   } catch (error) {
-    console.error('❌ Error al actualizar torneo:', error);
-    
-    if (error instanceof multer.MulterError) {
-      if (error.code === 'LIMIT_FILE_SIZE') {
+      console.error('❌ Error al actualizar torneo:', error);
+      console.error('Stack:', error.stack);
+      
+      // Manejo de errores de Multer
+      if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json(
+            errorResponse('Uno de los archivos excede el tamaño máximo de 16MB')
+          );
+        }
+        return res.status(400).json(errorResponse(error.message));
+      }
+      
+      // Errores de validación de archivos
+      if (error.message && error.message.includes('Solo se permiten')) {
+        return res.status(400).json(errorResponse(error.message));
+      }
+  
+      // Error de duplicado
+      if (error.code === 'ER_DUP_ENTRY') {
         return res.status(400).json(
-          errorResponse('El archivo PDF excede el tamaño máximo de 5MB')
+          errorResponse('Ya existe un torneo con ese nombre')
         );
       }
-      return res.status(400).json(errorResponse(error.message));
+      
+      // Error genérico
+      const mensaje = manejarErrorDB(error);
+      res.status(500).json(errorResponse(mensaje));
     }
-    
-    if (error.message === 'Solo se permiten archivos PDF') {
-      return res.status(400).json(errorResponse(error.message));
-    }
-
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json(
-        errorResponse('Ya existe un torneo con esa época')
-      );
-    }
-    
-    const mensaje = manejarErrorDB(error);
-    res.status(500).json(errorResponse(mensaje));
-  }
-});
+  });
 
 // ===== OBTENER ORGANIZADORES DEL TORNEO =====
 
@@ -2022,6 +2199,214 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, async (req, res) 
     await connection.rollback();
     console.error('❌ Error al actualizar inscripción:', error);
     res.status(500).json(errorResponse('Error al actualizar inscripción'));
+  } finally {
+    connection.release();
+  }
+});
+
+// =====AÑADIR JUGADOR INDIVIDUAL MANUALMENTE (ORGANIZADOR)=====
+
+router.post('/:torneoId/add-individual-participant', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { torneoId } = req.params;
+    const { participante } = req.body;
+    const usuarioOrganizadorId = req.usuario.userId;
+
+    // ✅ VALIDAR SOLO NOMBRE (sin apellidos)
+    if (!participante.nombre) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre es obligatorio'
+      });
+    }
+
+    await connection.beginTransaction();
+
+    // Verificar que el usuario es organizador del torneo y obtener datos completos
+    const [torneoCheck] = await connection.query(
+        `SELECT 
+          t.*, 
+          u.nombre as organizador_nombre, 
+          u.email as organizador_email
+        FROM torneos_sistemas t 
+        LEFT JOIN usuarios u ON t.created_by = u.id 
+        WHERE t.id = ?
+        GROUP BY t.id`,
+        [torneoId]
+    );
+
+    if (torneoCheck.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Torneo no encontrado'
+      });
+    }
+
+    if (torneoCheck[0].created_by !== usuarioOrganizadorId) {
+      await connection.rollback();
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para añadir participantes a este torneo'
+      });
+    }
+
+    if (torneoCheck[0].estado !== 'pendiente') {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden añadir participantes a torneos en estado PENDIENTE'
+      });
+    }
+
+    const torneo = torneoCheck[0];
+
+    let usuarioId;
+    let esNuevoUsuario = false;
+
+    // Verificar si el usuario existe por email
+    if (participante.email) {
+      const [usuarioExistente] = await connection.query(
+        'SELECT id, estado_cuenta FROM usuarios WHERE email = ?',
+        [participante.email.toLowerCase()]
+      );
+
+      if (usuarioExistente.length > 0) {
+        usuarioId = usuarioExistente[0].id;
+
+        // Verificar que no esté ya inscrito
+        const [yaInscrito] = await connection.query(
+          'SELECT id FROM jugador_torneo_saga WHERE torneo_id = ? AND jugador_id = ?',
+          [torneoId, usuarioId]
+        );
+
+        if (yaInscrito.length > 0) {
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Este usuario ya está inscrito en el torneo'
+          });
+        }
+      }
+    }
+
+    // Si no existe, crear nuevo usuario (SOLO con nombre, sin apellidos)
+    if (!usuarioId) {
+      const passwordTemporal = Math.random().toString(36).slice(-12);
+      const passwordHash = await bcrypt.hash(passwordTemporal, 10);
+
+      const [nuevoUsuario] = await connection.query(
+        `INSERT INTO usuarios (nombre, apellidos, email, password, estado_cuenta, created_at) 
+         VALUES (?, 'Pendiente', ?, ?, 'pendiente_registro', NOW())`,
+        [
+          participante.nombre,
+          participante.email || null,
+          passwordHash
+        ]
+      );
+      usuarioId = nuevoUsuario.insertId;
+      esNuevoUsuario = true;
+    }
+
+    // ✅ Insertar en jugador_torneo_warmaster
+    const [jugadorInsertado] = await connection.query(
+      `INSERT INTO jugador_torneo_saga 
+         (torneo_id, 
+         jugador_id, 
+         epoca, 
+         faccion, 
+         composicion_ejercito, 
+         pagado,  
+         puntos_victoria, 
+         puntos_torneo, 
+         puntos_masacre, 
+         warlord_muerto) 
+         VALUES (?, ?, NULL, NULL, NULL, 0, 0, 0, 0, 0)`,
+        [torneoId, miembro.usuarioId])
+
+    
+
+    const jugadorTorneoId = jugadorInsertado.insertId;
+
+    // ✅ Insertar en clasificacion_jugadores_warmaster
+    await connection.query(
+      `INSERT INTO clasificacion_jugadores_saga (
+        torneo_id, 
+        jugador_id, 
+        partidas_jugadas, 
+        partidas_ganadas, 
+        partidas_empatadas, 
+        partidas_perdidas, 
+        puntos_victoria_totales, 
+        puntos_torneo_totales,
+        puntos_masacre_totales,
+        warlord_muerto_totales
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [torneoId, usuarioId, 0, 0, 0, 0, 0, 0, 0, 0]
+    );
+
+    await connection.commit();
+
+    // ✅ ENVIAR EMAIL SI HAY CORREO
+    let emailEnviado = false;
+    if (participante.email) {
+      try {
+        const destinatario = {
+          nombre: participante.nombre,
+          email: participante.email,
+          esNuevo: esNuevoUsuario,
+          ejercito: participante.ejercito || 'Por definir'
+        };
+
+        const torneoInfo = {
+          nombre_torneo: torneo.nombre_torneo,
+          sistema: torneo.sistema,
+          tipo_torneo: torneo.tipo_torneo,
+          ubicacion: torneo.ubicacion,
+          fecha_inicio: torneo.fecha_inicio,
+          fecha_fin: torneo.fecha_fin,
+          puntos_banda: torneo.puntos_banda,
+          organizador: {
+            nombre: torneo.organizador_nombre,
+            email: torneo.organizador_email
+          }
+        };
+
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
+        
+        if (resultado.success) {
+          emailEnviado = true;
+        }
+        
+        console.log('✅ Email enviado a:', participante.email);
+      } catch (emailError) {
+        console.error('❌ Error al enviar email:', emailError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: emailEnviado
+        ? 'Jugador añadido correctamente. Se ha enviado un email de invitación.'
+        : 'Jugador añadido correctamente.',
+      data: {
+        jugadorTorneoId,
+        usuarioId,
+        esNuevoUsuario,
+        emailEnviado
+      }
+    });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('❌ Error al añadir jugador individual:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al añadir jugador',
+      error: error.message
+    });
   } finally {
     connection.release();
   }
@@ -3184,6 +3569,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
     connection.release();
   }
 });
+
 // ===== AÑADIR EQUIPO COMPLETO MANUALMENTE (ORGANIZADOR) =====
 
 router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
@@ -4131,7 +4517,7 @@ router.delete('/:torneoId/eliminarTorneo', verificarToken, verificarOrganizadorT
 
 // =====ELIMINAR JUGADOR TORNEO=====
 
-router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res) => {
   try {
     const { torneoId, jugadorId } = req.params;
 
@@ -4147,11 +4533,12 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, verificarOrgani
     }
     
     const esPropio = parseInt(jugadorId) === parseInt(req.userId);
-    
-    if (!esPropio) {
-      return res.status(403).json(
-        errorResponse('No tienes permiso para eliminar esta inscripción')
-      );
+    const esOrganizador = parseInt(torneoExistente[0].created_by) === parseInt(req.userId);
+
+    if (!esPropio && !esOrganizador) {
+        return res.status(403).json(
+            errorResponse('No tienes permiso para eliminar esta inscripción')
+        );
     }
     
     const [participante] = await pool.execute(

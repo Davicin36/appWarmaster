@@ -16,7 +16,7 @@ import '../estilos/crearTorneo.css';
 
 function CrearTorneoWarmaster() {
     const navigate = useNavigate();
-    const {refrescarUsusario} = useAuth()
+    const { refrescarUsusario } = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -28,6 +28,10 @@ function CrearTorneoWarmaster() {
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
+    
+    const [imagenCartel, setImagenCartel] = useState(null);
+    const [vistaPrevia, setVistaPrevia] = useState(null);
+
     const [puntosEjercito, setPuntosEjercito] = useState(PUNTOS_EJERCITO_WARMASTER.default);
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
     const [archivoPDF, setArchivoPDF] = useState(null); 
@@ -37,12 +41,63 @@ function CrearTorneoWarmaster() {
     const [partidaRonda4, setPartidaRonda4] = useState("");
     const [partidaRonda5, setPartidaRonda5] = useState("");
 
-      //ESTADOS PARA LOS ORGANIZADORES DEL TORNEO
-    const [organizadorAdicional, setOrganizadorAdicional] = useState("");
+    // Estados para los organizadores del torneo
+    const [organizadorAdicional, setOrganizadorAdicional] = useState([]);
     const [emailOrganizador, setEmailOrganizador] = useState("");
 
-    // Función para manejar la selección de archivo PDF
-   const handleArchivoPDF = (e) => {
+    const handleImagenCartel = (e) => {
+        const file = e.target.files[0];
+        
+        if (!file) {
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            return;
+        }
+        
+        // Validar que sea imagen
+        const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!tiposPermitidos.includes(file.type)) {
+            setError('⚠️ Solo se permiten imágenes (JPG, PNG, GIF, WEBP)');
+            e.target.value = '';
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            setTimeout(() => setError(''), 4000);
+            return;
+        }
+        
+        // Validar tamaño (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
+            setError(`⚠️ La imagen (${tamañoMB}MB) supera el tamaño máximo de 5MB. Por favor, comprime la imagen.`);
+            e.target.value = '';
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            setTimeout(() => setError(''), 5000);
+            return;
+        }
+        
+        // Crear vista previa
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setVistaPrevia(reader.result);
+        };
+        reader.readAsDataURL(file);
+        
+        setImagenCartel(file);
+        setError('');
+    };
+
+    const handleEliminarImagen = () => {
+        setImagenCartel(null);
+        setVistaPrevia(null);
+        const fileInput = document.getElementById('imagenCartel');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    };
+
+    const handleArchivoPDF = (e) => {
         const file = e.target.files[0];
         
         if (!file) {
@@ -59,11 +114,11 @@ function CrearTorneoWarmaster() {
             return;
         }
         
-        // Validar tamaño (máximo 5MB)
-        const maxSize =16 * 1024 * 1024; // 5MB en bytes
+        // Validar tamaño (máximo 16MB)
+        const maxSize = 16 * 1024 * 1024;
         if (file.size > maxSize) {
             const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
-            setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 5MB. Por favor, comprime el PDF o sube uno más pequeño.`);
+            setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 16MB. Por favor, comprime el PDF o sube uno más pequeño.`);
             e.target.value = '';
             setArchivoPDF(null);
             setTimeout(() => setError(''), 5000);
@@ -75,38 +130,36 @@ function CrearTorneoWarmaster() {
     };
 
     const handleAnadirOrganizador = () => {
-        
-        const emailCorto = emailOrganizador.trim().toLowerCase()
+        const emailCorto = emailOrganizador.trim().toLowerCase();
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if(!emailRegex.test(emailCorto)){
-            setError("Introduce un email valido")
+        if (!emailRegex.test(emailCorto)) {
+            setError("Introduce un email válido");
             setTimeout(() => setError(""), 3000);
-            return
+            return;
         }
 
         if (organizadorAdicional.length >= 5) {
-            setError("Solo se puede añadir un máximo de 5 organizadores adicionales por torneo")
+            setError("Solo se puede añadir un máximo de 5 organizadores adicionales por torneo");
             setTimeout(() => setError(""), 3000);
-            return
+            return;
         }
 
         setOrganizadorAdicional([...organizadorAdicional, emailCorto]);
         setEmailOrganizador("");
-        setError("")
+        setError("");
     };
 
-     const handleEliminarOrganizador = (email) => {
-            setOrganizadorAdicional(organizadorAdicional.filter(org => org !== email));
-        };
+    const handleEliminarOrganizador = (email) => {
+        setOrganizadorAdicional(organizadorAdicional.filter(org => org !== email));
+    };
 
-        // 🆕 MANEJAR ENTER EN EL INPUT
-        const handleKeyPressOrganizador = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAnadirOrganizador();
-            }
+    const handleKeyPressOrganizador = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAnadirOrganizador();
         }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -126,14 +179,8 @@ function CrearTorneoWarmaster() {
             return;
         }
 
-        if (!partidaRonda1 || !partidaRonda2 ) {
-            setError("Debes seleccionar escenarios para las primeras 2 rondas");
-            setLoading(false);
-            return;
-        }
-
-        if (rondasMax >= 3 && !partidaRonda3) {
-            setError("Debes seleccionar el escenario para la ronda 3");
+        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) {
+            setError("Debes seleccionar escenarios para las primeras 3 rondas");
             setLoading(false);
             return;
         }
@@ -155,13 +202,15 @@ function CrearTorneoWarmaster() {
             setLoading(false);
             return;
         }
-               
+            
         try {
             let torneoData;
             
-            if (archivoPDF) {
-                console.log('📤 Preparando FormData con PDF...');
+            // Crear FormData si hay PDF O IMAGEN
+            if (archivoPDF || imagenCartel) {
+                console.log('📤 Preparando FormData con archivos...');
                 torneoData = new FormData();
+                
                 torneoData.append('nombre_torneo', nombreTorneo);
                 torneoData.append('tipo_torneo', tipoTorneo);
                 torneoData.append('rondas_max', parseInt(rondasMax));
@@ -172,13 +221,25 @@ function CrearTorneoWarmaster() {
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
                 torneoData.append('partida_ronda_2', partidaRonda2);
-                torneoData.append('partida_ronda_3', rondasMax >= 3 ? partidaRonda3 : '');
+                torneoData.append('partida_ronda_3', partidaRonda3);
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
-                torneoData.append('bases_pdf', archivoPDF);
-                torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional))
+                torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional));
+
+                // Añadir PDF si existe
+                if (archivoPDF) {
+                    torneoData.append('bases_pdf', archivoPDF);
+                    console.log('📄 PDF añadido:', archivoPDF.name);
+                }
+                
+                // Añadir IMAGEN si existe
+                if (imagenCartel) {
+                    torneoData.append('imagen_cartel', imagenCartel);
+                    console.log('🖼️ Imagen añadida:', imagenCartel.name, imagenCartel.size, 'bytes');
+                }
                 
             } else {
+                // Sin archivos, usar JSON
                 torneoData = {
                     nombre_torneo: nombreTorneo,
                     tipo_torneo: tipoTorneo,
@@ -190,7 +251,7 @@ function CrearTorneoWarmaster() {
                     participantes_max: parseInt(participantesMax),
                     partida_ronda_1: partidaRonda1,
                     partida_ronda_2: partidaRonda2,
-                    partida_ronda_3: rondasMax >= 3 ? partidaRonda3 : null,
+                    partida_ronda_3: partidaRonda3,
                     partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
                     partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null,
                     organizadores_emails: organizadorAdicional
@@ -200,10 +261,16 @@ function CrearTorneoWarmaster() {
             const result = await torneosWarmasterApi.crearTorneo(torneoData);
             
             if (result.success || result.data) {
-                alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}\n🎉 Ahora eres un organizador.`);
-                navigate("/");
-                await refrescarUsusario()
-                navigate("/perfil")
+                const mensajeExito = [
+                    `✅ ¡Torneo "${nombreTorneo}" creado exitosamente!`,
+                    archivoPDF ? '📄 Bases PDF subidas correctamente.' : '',
+                    imagenCartel ? '🖼️ Cartel subido correctamente.' : '',
+                    '🎉 Ahora eres un organizador.'
+                ].filter(Boolean).join('\n');
+                
+                alert(mensajeExito);
+                await refrescarUsusario();
+                navigate("/perfil");
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
             }
@@ -211,41 +278,36 @@ function CrearTorneoWarmaster() {
         } catch (err) {
             console.error("❌ Error completo:", err);
             
-            // ✅ MEJORADO: Manejo específico de errores
             let mensajeError = "Error al crear el torneo. Por favor, intenta nuevamente.";
             
             if (err.message) {
                 if (err.message.includes('max_allowed_packet')) {
-                    mensajeError = "⚠️ El archivo PDF es demasiado grande para el servidor. Por favor, comprime el PDF o contacta al administrador.";
+                    mensajeError = "⚠️ Los archivos son demasiado grandes para el servidor.";
                 } else if (err.message.includes('LIMIT_FILE_SIZE')) {
-                    mensajeError = "⚠️ El archivo PDF excede el tamaño máximo permitido (5MB). Por favor, comprime el archivo.";
+                    mensajeError = "⚠️ Uno de los archivos excede el tamaño máximo permitido.";
                 } else if (err.message.includes('Network') || err.message.includes('fetch')) {
-                    mensajeError = "⚠️ Error de conexión con el servidor. Verifica tu conexión a internet.";
+                    mensajeError = "⚠️ Error de conexión con el servidor.";
                 } else if (err.message.includes('timeout')) {
-                    mensajeError = "⚠️ La solicitud tardó demasiado. El archivo puede ser muy grande o el servidor está lento.";
+                    mensajeError = "⚠️ La solicitud tardó demasiado.";
                 } else {
                     mensajeError = `⚠️ ${err.message}`;
                 }
             }
             
             setError(mensajeError);
-            
-            // Auto-limpiar error después de 8 segundos
-            setTimeout(() => {
-                setError('');
-            }, 8000);
+            setTimeout(() => setError(''), 8000);
             
         } finally {
             setLoading(false);
         }
     };
+
     const volverInicio = () => {
         navigate('/');
     };
 
     const handleEliminarPDF = () => {
         setArchivoPDF(null);
-        // Limpiar el input file
         const fileInput = document.getElementById('basesPDF');
         if (fileInput) {
             fileInput.value = '';
@@ -274,7 +336,7 @@ function CrearTorneoWarmaster() {
                         type="text"
                         value={nombreTorneo}
                         onChange={(e) => setNombreTorneo(e.target.value)}
-                        placeholder="Ej: Copa de Primavera SAGA 2025"
+                        placeholder="Ej: Copa de Primavera Warmaster 2025"
                         required
                         disabled={loading}
                     />
@@ -302,7 +364,7 @@ function CrearTorneoWarmaster() {
                         ))}
                     </select>
 
-                    <label htmlFor="puntosBanda">Puntos de Ejercito:*</label>
+                    <label htmlFor="puntosBanda">Puntos de Ejército:*</label>
                     <input 
                         name="puntosBanda" 
                         id="puntosBanda" 
@@ -325,10 +387,11 @@ function CrearTorneoWarmaster() {
                         type="number"
                         min={PARTICIPANTES_RANGO.min}
                         max={PARTICIPANTES_RANGO.max}
-                         value={participantesMax}
+                        value={participantesMax}
                         onChange={(e) => setParticipantesMax(e.target.value)}
                         placeholder="Ej: 16, 24, 32"
                         required
+                        disabled={loading}
                     />
                     <small className="help-text">
                         Mínimo {PARTICIPANTES_RANGO.min}, máximo {PARTICIPANTES_RANGO.max} participantes
@@ -349,7 +412,7 @@ function CrearTorneoWarmaster() {
                                 checked={duracionTorneo === "1"}
                                 onChange={(e) => {
                                     setDuracionTorneo(e.target.value);
-                                    setFechaFin(""); // Limpiar fecha fin
+                                    setFechaFin("");
                                 }}
                                 disabled={loading}
                             />
@@ -364,7 +427,7 @@ function CrearTorneoWarmaster() {
                                 onChange={(e) => setDuracionTorneo(e.target.value)}
                                 disabled={loading}
                             />
-                            📅 Dos días o más días
+                            📅 Dos días o más
                         </label>
                     </div>
 
@@ -411,7 +474,7 @@ function CrearTorneoWarmaster() {
                                 disabled={loading}
                             />
                             <small className="help-text">
-                                🗓️ El torneo se celebrará durante 2 o más días.
+                                🗓️ El torneo se celebrará durante 2 o más días
                             </small>
                         </>
                     )}
@@ -428,6 +491,60 @@ function CrearTorneoWarmaster() {
                     />
                 </fieldset>
 
+                {/* CARTEL DEL TORNEO */}
+                <fieldset>
+                    <legend>🖼️ Cartel del Torneo (Opcional)</legend>
+                    
+                    {!imagenCartel ? (
+                        <>
+                            <label htmlFor="imagenCartel">Subir Imagen del Cartel:</label>
+                            <input 
+                                name="imagenCartel" 
+                                id="imagenCartel" 
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                onChange={handleImagenCartel}
+                                disabled={loading}
+                            />
+                            <small className="help-text-file">
+                                🖼️ Formatos: JPG, PNG, GIF, WEBP | Tamaño máximo: 5MB
+                            </small>
+                        </>
+                    ) : (
+                        <div className="archivo-seleccionado-container">
+                            <div className="archivo-info">
+                                <p className="archivo-nombre">
+                                    ✅ <strong>Imagen seleccionada:</strong> {imagenCartel.name}
+                                </p>
+                                <p className="archivo-tamaño">
+                                    📦 Tamaño: {(imagenCartel.size / 1024).toFixed(2)} KB 
+                                    ({(imagenCartel.size / 1024 / 1024).toFixed(2)} MB)
+                                </p>
+                            </div>
+                            
+                            {vistaPrevia && (
+                                <div className="imagen-preview">
+                                    <p className="preview-titulo">Vista previa:</p>
+                                    <img 
+                                        src={vistaPrevia} 
+                                        alt="Vista previa del cartel" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                            )}
+                            
+                            <button
+                                type="button"
+                                onClick={handleEliminarImagen}
+                                className="btn-eliminar-pdf"
+                                disabled={loading}
+                            >
+                                🗑️ Eliminar imagen
+                            </button>
+                        </div>
+                    )}
+                </fieldset>
+                
                 {/* BASES PDF */}
                 <fieldset>
                     <legend>📄 Bases del Torneo (Opcional)</legend>
@@ -470,7 +587,7 @@ function CrearTorneoWarmaster() {
                     )}
                 </fieldset>
 
-                 {/* 🆕 SECCIÓN DE ORGANIZADORES ADICIONALES */}
+                {/* ORGANIZADORES ADICIONALES */}
                 <fieldset>
                     <legend>👥 Organizadores Adicionales (Opcional)</legend>
                     
@@ -499,7 +616,6 @@ function CrearTorneoWarmaster() {
                         Presiona Enter o haz clic en "Añadir" para agregar un organizador. Máximo 5 organizadores adicionales.
                     </small>
 
-                    {/* LISTA DE ORGANIZADORES */}
                     {organizadorAdicional.length > 0 && (
                         <div className="organizadores-lista">
                             <p className="organizadores-titulo">
@@ -559,25 +675,20 @@ function CrearTorneoWarmaster() {
                         ))}
                     </select>
 
-                    {rondasMax >= 3 && (
-                        <>
-                            <label htmlFor="partidaRonda3">Ronda 3:*</label>
-                            <select
-                                name="partidaRonda3"
-                                id="partidaRonda3"
-                                value={partidaRonda3}
-                                onChange={(e) => setPartidaRonda3(e.target.value)}
-                                required={rondasMax >= 3}
-                                disabled={loading}
-                            >
-                                <option value="">Selecciona escenario</option>
-                                {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
-                                    <option key={tipo} value={tipo}>{tipo}</option>
-                                ))}
-                            </select>
-                        </>
-                    )}
-
+                    <label htmlFor="partidaRonda3">Ronda 3:*</label>
+                    <select
+                        name="partidaRonda3"
+                        id="partidaRonda3"
+                        value={partidaRonda3}
+                        onChange={(e) => setPartidaRonda3(e.target.value)}
+                        required
+                        disabled={loading}
+                    >
+                        <option value="">Selecciona escenario</option>
+                        {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
+                            <option key={tipo} value={tipo}>{tipo}</option>
+                        ))}
+                    </select>
 
                     {rondasMax >= 4 && (
                         <>

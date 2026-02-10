@@ -701,6 +701,64 @@ router.post('/convertirOrganizador', async (req, res) => {
   }
 });
 
+// ======OBTENER TODOS LOS TORNEOS DEL SISTEMA======
+
+router.get('/torneos', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                ts.*,
+                u.nombre as creador_nombre,
+                u.apellidos as creador_apellidos,
+                -- Contar según tipo de torneo (Individual o Por equipos)
+                CASE 
+                    WHEN ts.tipo_torneo = 'Individual' THEN
+                        CASE 
+                            WHEN ts.sistema = 'SAGA' THEN (
+                                SELECT COUNT(*) 
+                                FROM jugador_torneo_saga jts 
+                                WHERE jts.torneo_id = ts.id
+                            )
+                            WHEN ts.sistema = 'WARMASTER' THEN (
+                                SELECT COUNT(*) 
+                                FROM jugador_torneo_warmaster jtw 
+                                WHERE jtw.torneo_id = ts.id
+                            )
+                            WHEN ts.sistema = 'FOW' THEN (
+                                SELECT COUNT(*) 
+                                FROM jugador_torneo_fow jtf 
+                                WHERE jtf.torneo_id = ts.id
+                            )
+                            ELSE 0
+                        END
+                    WHEN ts.tipo_torneo = 'Por equipos' THEN
+                        CASE
+                            WHEN ts.sistema = 'SAGA' THEN (
+                                SELECT COUNT(*) 
+                                FROM torneo_saga_equipo tse 
+                                WHERE tse.torneo_id = ts.id
+                            )
+                            ELSE 0
+                        END
+                    ELSE 0
+                END as num_participantes
+            FROM torneos_sistemas ts
+            LEFT JOIN usuarios u ON ts.created_by = u.id
+            ORDER BY ts.created_at DESC
+        `;
+
+        const [torneos] = await pool.query(query);
+
+        res.json(torneos);
+    } catch (error) {
+        console.error('❌ Error al obtener todos los torneos:', error);
+        res.status(500).json({ 
+            mensaje: 'Error al obtener los torneos',
+            error: error.message 
+        });
+    }
+});
+
 // ===== OBTENER TORNEOS POR USUARIO======
 
 router.get('/:userId', verificarToken, async (req, res) => {

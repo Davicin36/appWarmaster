@@ -63,6 +63,10 @@ function App() {
             path='/torneosWarmaster/:torneoId/detalles'
             element={<VerTorneos />}
         />
+        <Route
+            path='/torneosFow/:torneoId/detalles'
+            element={<VerTorneos />}
+        />
          <Route
             path='/ranking'
             element={<Ranking />}
@@ -142,6 +146,14 @@ function App() {
         />
         <Route
             path='/torneosWarmaster/:torneoId/editar-inscripcion'
+           element={
+                <PrivateRoute>
+                    <Inscripcion />
+                </PrivateRoute>
+            } 
+        />
+         <Route
+            path='/torneosFow/:torneoId/editar-inscripcion'
            element={
                 <PrivateRoute>
                     <Inscripcion />

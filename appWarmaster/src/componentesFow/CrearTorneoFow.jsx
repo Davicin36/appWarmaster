@@ -29,6 +29,10 @@ function CrearTorneofow() {
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
+
+    const [imagenCartel, setImagenCartel] = useState(null);
+    const [vistaPrevia, setVistaPrevia] = useState(null);
+
     const [puntosEjercito, setPuntosEjercito] = useState(PUNTOS_EJERCITO_FOW.default);
     const [epocaHistorica, setEpocaHistorica] = useState("");
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
@@ -42,6 +46,58 @@ function CrearTorneofow() {
     //ESTADOS PARA LOS ORGANIZADORES DEL TORNEO
     const [organizadorAdicional, setOrganizadorAdicional] = useState([]);
     const [emailOrganizador, setEmailOrganizador] = useState("");
+
+     const handleImagenCartel = (e) => {
+        const file = e.target.files[0];
+        
+        if (!file) {
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            return;
+        }
+        
+        // Validar que sea imagen
+        const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!tiposPermitidos.includes(file.type)) {
+            setError('⚠️ Solo se permiten imágenes (JPG, PNG, GIF, WEBP)');
+            e.target.value = '';
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            setTimeout(() => setError(''), 4000);
+            return;
+        }
+        
+        // Validar tamaño (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
+            setError(`⚠️ La imagen (${tamañoMB}MB) supera el tamaño máximo de 5MB. Por favor, comprime la imagen.`);
+            e.target.value = '';
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            setTimeout(() => setError(''), 5000);
+            return;
+        }
+        
+        // Crear vista previa
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setVistaPrevia(reader.result);
+        };
+        reader.readAsDataURL(file);
+        
+        setImagenCartel(file);
+        setError('');
+    };
+
+    const handleEliminarImagen = () => {
+        setImagenCartel(null);
+        setVistaPrevia(null);
+        const fileInput = document.getElementById('imagenCartel');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    };
 
     // Función para manejar la selección de archivo PDF
     const handleArchivoPDF = (e) => {
@@ -133,14 +189,8 @@ function CrearTorneofow() {
             return;
         }
 
-        if (!partidaRonda1 || !partidaRonda2) {
-            setError("Debes seleccionar escenarios para las primeras 2 rondas");
-            setLoading(false);
-            return;
-        }
-
-        if (rondasMax >= 3 && !partidaRonda3) {
-            setError("Debes seleccionar el escenario para la ronda 3");
+        if (!partidaRonda1 || !partidaRonda2 || partidaRonda3) {
+            setError("Debes seleccionar escenarios para las primeras 3 rondas");
             setLoading(false);
             return;
         }
@@ -166,7 +216,7 @@ function CrearTorneofow() {
         try {
             let torneoData;
             
-            if (archivoPDF) {
+            if (archivoPDF || imagenCartel) {
                 console.log('📤 Preparando FormData con PDF...');
                 torneoData = new FormData();
                 torneoData.append('nombre_torneo', nombreTorneo);
@@ -183,8 +233,19 @@ function CrearTorneofow() {
                 torneoData.append('partida_ronda_3', rondasMax >= 3 ? partidaRonda3 : '');
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
-                torneoData.append('bases_pdf', archivoPDF);
                 torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional))
+
+                // Añadir PDF si existe
+                if (archivoPDF) {
+                    torneoData.append('bases_pdf', archivoPDF);
+                    console.log('📄 PDF añadido:', archivoPDF.name);
+                }
+                
+                // Añadir IMAGEN si existe
+                if (imagenCartel) {
+                    torneoData.append('imagen_cartel', imagenCartel);
+                    console.log('🖼️ Imagen añadida:', imagenCartel.name, imagenCartel.size, 'bytes');
+                }
                 
             } else {
                 torneoData = {
@@ -207,12 +268,17 @@ function CrearTorneofow() {
             }
 
             const result = await torneosFowApi.crearTorneo(torneoData);
-            
-            if (result.success || result.data) {
-                alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}\n🎉 Ahora eres un organizador.`);
-                navigate("/");
-                await refrescarUsusario()
-                navigate("/perfil")
+           if (result.success || result.data) {
+                const mensajeExito = [
+                    `✅ ¡Torneo "${nombreTorneo}" creado exitosamente!`,
+                    archivoPDF ? '📄 Bases PDF subidas correctamente.' : '',
+                    imagenCartel ? '🖼️ Cartel subido correctamente.' : '',
+                    '🎉 Ahora eres un organizador.'
+                ].filter(Boolean).join('\n');
+                
+                alert(mensajeExito);
+                await refrescarUsusario();
+                navigate("/perfil");
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
             }
@@ -224,13 +290,13 @@ function CrearTorneofow() {
             
             if (err.message) {
                 if (err.message.includes('max_allowed_packet')) {
-                    mensajeError = "⚠️ El archivo PDF es demasiado grande para el servidor. Por favor, comprime el PDF o contacta al administrador.";
+                    mensajeError = "⚠️ Los archivos son demasiado grandes para el servidor.";
                 } else if (err.message.includes('LIMIT_FILE_SIZE')) {
-                    mensajeError = "⚠️ El archivo PDF excede el tamaño máximo permitido (16MB). Por favor, comprime el archivo.";
+                    mensajeError = "⚠️ Uno de los archivos excede el tamaño máximo permitido.";
                 } else if (err.message.includes('Network') || err.message.includes('fetch')) {
-                    mensajeError = "⚠️ Error de conexión con el servidor. Verifica tu conexión a internet.";
+                    mensajeError = "⚠️ Error de conexión con el servidor.";
                 } else if (err.message.includes('timeout')) {
-                    mensajeError = "⚠️ La solicitud tardó demasiado. El archivo puede ser muy grande o el servidor está lento.";
+                    mensajeError = "⚠️ La solicitud tardó demasiado.";
                 } else {
                     mensajeError = `⚠️ ${err.message}`;
                 }
@@ -453,6 +519,60 @@ function CrearTorneofow() {
                     />
                 </fieldset>
 
+                {/* CARTEL DEL TORNEO */}
+                <fieldset>
+                    <legend>🖼️ Cartel del Torneo (Opcional)</legend>
+                    
+                    {!imagenCartel ? (
+                        <>
+                            <label htmlFor="imagenCartel">Subir Imagen del Cartel:</label>
+                            <input 
+                                name="imagenCartel" 
+                                id="imagenCartel" 
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                onChange={handleImagenCartel}
+                                disabled={loading}
+                            />
+                            <small className="help-text-file">
+                                🖼️ Formatos: JPG, PNG, GIF, WEBP | Tamaño máximo: 5MB
+                            </small>
+                        </>
+                    ) : (
+                        <div className="archivo-seleccionado-container">
+                            <div className="archivo-info">
+                                <p className="archivo-nombre">
+                                    ✅ <strong>Imagen seleccionada:</strong> {imagenCartel.name}
+                                </p>
+                                <p className="archivo-tamaño">
+                                    📦 Tamaño: {(imagenCartel.size / 1024).toFixed(2)} KB 
+                                    ({(imagenCartel.size / 1024 / 1024).toFixed(2)} MB)
+                                </p>
+                            </div>
+                            
+                            {vistaPrevia && (
+                                <div className="imagen-preview">
+                                    <p className="preview-titulo">Vista previa:</p>
+                                    <img 
+                                        src={vistaPrevia} 
+                                        alt="Vista previa del cartel" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                            )}
+                            
+                            <button
+                                type="button"
+                                onClick={handleEliminarImagen}
+                                className="btn-eliminar-pdf"
+                                disabled={loading}
+                            >
+                                🗑️ Eliminar imagen
+                            </button>
+                        </div>
+                    )}
+                </fieldset>
+
                 {/* BASES PDF */}
                 <fieldset>
                     <legend>📄 Bases del Torneo (Opcional)</legend>
@@ -584,24 +704,20 @@ function CrearTorneofow() {
                         ))}
                     </select>
 
-                    {rondasMax >= 3 && (
-                        <>
-                            <label htmlFor="partidaRonda3">Ronda 3:*</label>
-                            <select
-                                name="partidaRonda3"
-                                id="partidaRonda3"
-                                value={partidaRonda3}
-                                onChange={(e) => setPartidaRonda3(e.target.value)}
-                                required={rondasMax >= 3}
-                                disabled={loading}
-                            >
-                                <option value="">Selecciona escenario</option>
-                                {TIPOS_PARTIDA_FOW.map((tipo) => (
-                                    <option key={tipo} value={tipo}>{tipo}</option>
-                                ))}
-                            </select>
-                        </>
-                    )}
+                    <label htmlFor="partidaRonda3">Ronda 3:*</label>
+                    <select
+                        name="partidaRonda3"
+                        id="partidaRonda3"
+                        value={partidaRonda3}
+                        onChange={(e) => setPartidaRonda3(e.target.value)}
+                        required
+                        disabled={loading}
+                    >
+                        <option value="">Selecciona escenario</option>
+                        {TIPOS_PARTIDA_FOW.map((tipo) => (
+                            <option key={tipo} value={tipo}>{tipo}</option>
+                        ))}
+                    </select>
 
                     {rondasMax >= 4 && (
                         <>

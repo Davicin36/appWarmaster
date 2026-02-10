@@ -41,8 +41,16 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
     });
     const [loadingEdicion, setLoadingEdicion] = useState(false);
     const [errorEdicion, setErrorEdicion] = useState('');
+    
+    // Estados para PDF
     const [archivoPDF, setArchivoPDF] = useState(null);
     const [eliminarPDF, setEliminarPDF] = useState(false);
+    
+    // ⬅️ NUEVOS ESTADOS PARA IMAGEN
+    const [imagenActual, setImagenActual] = useState(null);
+    const [imagenNueva, setImagenNueva] = useState(null);
+    const [vistaPreviaImagen, setVistaPreviaImagen] = useState(null);
+    const [eliminarImagenFlag, setEliminarImagenFlag] = useState(false);
 
     const [organizadores, setOrganizadores] = useState({ activos: [], pendientes: [] });
     const [nuevoOrganizadorEmail, setNuevoOrganizadorEmail] = useState('');
@@ -62,9 +70,9 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             
             // Detectar duración automáticamente
             if (fechaFin && fechaFin !== fechaInicio) {
-                setDuracionTorneo("2"); // Varios días
+                setDuracionTorneo("2");
             } else {
-                setDuracionTorneo("1"); // Un día
+                setDuracionTorneo("1");
             }
            
             setDatosEdicion({
@@ -82,6 +90,11 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                 partida_ronda_4: torneo.partida_ronda_4 || '',
                 partida_ronda_5: torneo.partida_ronda_5 || ''
             });
+            
+            // ⬅️ ESTABLECER IMAGEN ACTUAL
+            if (torneo.imagen_url) {
+                setImagenActual(torneo.imagen_url);
+            }
         }
     }, [torneo]);
 
@@ -93,7 +106,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             const dataTorneo = response.data?.torneo || response.torneo || response;
             setTorneo(dataTorneo);
             
-            // Cargar jugadores
             try {
                 const dataJugadores = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
                 setJugadores(Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []);
@@ -143,6 +155,76 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         if (errorEdicion) setErrorEdicion('');
     };
 
+    // ========================================
+    // FUNCIONES PARA IMAGEN
+    // ========================================
+    
+    const handleNuevaImagenCartel = (e) => {
+        const file = e.target.files[0];
+        
+        if (!file) {
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            return;
+        }
+        
+        const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!tiposPermitidos.includes(file.type)) {
+            setErrorEdicion('⚠️ Solo se permiten imágenes (JPG, PNG, GIF, WEBP)');
+            e.target.value = '';
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setTimeout(() => setErrorEdicion(''), 4000);
+            return;
+        }
+        
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
+            setErrorEdicion(`⚠️ La imagen (${tamañoMB}MB) supera el tamaño máximo de 5MB.`);
+            e.target.value = '';
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setTimeout(() => setErrorEdicion(''), 5000);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setVistaPreviaImagen(reader.result);
+        };
+        reader.readAsDataURL(file);
+        
+        setImagenNueva(file);
+        setEliminarImagenFlag(false);
+        setErrorEdicion('');
+    };
+
+    const handleCancelarNuevaImagen = () => {
+        setImagenNueva(null);
+        setVistaPreviaImagen(null);
+        const fileInput = document.getElementById('nuevaImagenCartel');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    };
+
+    const handleEliminarImagenActual = () => {
+        if (window.confirm('¿Estás seguro de que quieres eliminar la imagen del cartel?')) {
+            setEliminarImagenFlag(true);
+            setImagenActual(null);
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+        }
+    };
+
+    const handleCancelarEliminacionImagen = () => {
+        setEliminarImagenFlag(false);
+        if (torneo?.imagen_url) {
+            setImagenActual(torneo.imagen_url);
+        }
+    };
+
     const handleGuardarCambios = async (e) => {
         e.preventDefault();
         
@@ -173,15 +255,28 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
             let dataToSend;
             
-            if (archivoPDF || eliminarPDF) {
+            // ⬅️ ACTUALIZADO: Incluir imagen en la condición
+            if (archivoPDF || eliminarPDF || imagenNueva || eliminarImagenFlag) {
                 dataToSend = new FormData();
                 Object.keys(datosLimpios).forEach(key => {
                    if (datosLimpios[key] !== null && datosLimpios[key] !== '') {
                         dataToSend.append(key, datosLimpios[key]);
                     }
                 });
+                
+                // PDF
                 if (archivoPDF) dataToSend.append('bases_pdf', archivoPDF);
                 if (eliminarPDF) dataToSend.append('eliminar_pdf', 'true');
+                
+                // ⬅️ IMAGEN
+                if (imagenNueva) {
+                    dataToSend.append('imagen_cartel', imagenNueva);
+                    console.log('🖼️ Nueva imagen añadida:', imagenNueva.name);
+                }
+                if (eliminarImagenFlag) {
+                    dataToSend.append('eliminar_imagen', 'true');
+                    console.log('🗑️ Imagen marcada para eliminar');
+                }
             } else {
                 dataToSend = {...datosLimpios};
             }
@@ -192,6 +287,9 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             setModoEdicion(false);
             setArchivoPDF(null);
             setEliminarPDF(false);
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setEliminarImagenFlag(false);
             await cargarDatos();
             if (onUpdate) onUpdate();
             
@@ -208,12 +306,14 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         setErrorEdicion('');
         setArchivoPDF(null);
         setEliminarPDF(false);
+        setImagenNueva(null);
+        setVistaPreviaImagen(null);
+        setEliminarImagenFlag(false);
         
         if (torneo) {
             const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
             const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
             
-            // Restaurar duración original
             if (fechaFin && fechaFin !== fechaInicio) {
                 setDuracionTorneo("2");
             } else {
@@ -235,6 +335,11 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                 partida_ronda_4: torneo.partida_ronda_4 || '',
                 partida_ronda_5: torneo.partida_ronda_5 || ''
             });
+            
+            // Restaurar imagen actual
+            if (torneo.imagen_url) {
+                setImagenActual(torneo.imagen_url);
+            }
         }
     };
 
@@ -244,7 +349,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             return;
         }
 
-        // Validaciones para iniciar el torneo
         if (nuevoEstado === 'en_curso') {
             try {
                 const jugadoresData = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
@@ -266,7 +370,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                     const nombresIncompletos = inscripcionesIncompletas
                         .map(j => {
                             const nombreJugador = `${j.jugador_nombre} ${j.jugador_apellidos} - ${j.nombre_alias}`
-
                             return `• ${nombreJugador}`;
                         })
                         .join('\n');
@@ -283,7 +386,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                     return;
                 }
 
-                // Verificar pagos de los jugadores
                 const response = await torneosWarmasterApi.verificarPagos(torneoId);
 
                 const todosPagados = response.mensaje.todosPagados;
@@ -302,7 +404,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                     return;
                 }
 
-                // Si todos están pagados, mostrar confirmación
                 if (!window.confirm(
                     `▶️ ¿Iniciar el torneo?\n\n` +
                     `✅ Todos los ${total} participantes están pagados.\n` +
@@ -318,18 +419,15 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             }
         }
 
-        // Mensajes de confirmación para otros estados
         const mensajes = {
             'pendiente': '⏸️ ¿Marcar torneo como PENDIENTE?',
             'finalizado': '🏁 ¿Finalizar el torneo?\n\n⚠️ Esta acción es DEFINITIVA.'
         };
 
-        // Confirmación normal para otros estados
         if (nuevoEstado !== 'en_curso' && mensajes[nuevoEstado]) {
             if (!window.confirm(mensajes[nuevoEstado])) return;
         }
 
-        // Confirmación extra para finalizar
         if (nuevoEstado === 'finalizado') {
             if (!window.confirm('⚠️ ÚLTIMA CONFIRMACIÓN:\n¿Estás completamente seguro?')) return;
         }
@@ -395,7 +493,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             return;
         }
 
-        // Validar formato de email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(nuevoOrganizadorEmail)) {
             alert('⚠️ Email inválido');
@@ -669,6 +766,110 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                         />
                     </fieldset>
 
+                    {/* ⬅️ NUEVA SECCIÓN: CARTEL DEL TORNEO */}
+                    <fieldset>
+                        <legend>🖼️ Cartel del Torneo</legend>
+                        
+                        {/* MOSTRAR IMAGEN ACTUAL */}
+                        {imagenActual && !eliminarImagenFlag && !imagenNueva && (
+                            <div className="imagen-actual-container">
+                                <p className="imagen-label">Imagen actual:</p>
+                                <div className="imagen-actual-preview">
+                                    <img 
+                                        src={imagenActual} 
+                                        alt="Cartel actual" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                                <div className="imagen-acciones">
+                                    <label htmlFor="nuevaImagenCartel" className="btn-cambiar-imagen">
+                                        🔄 Cambiar imagen
+                                    </label>
+                                    <input 
+                                        type="file"
+                                        id="nuevaImagenCartel"
+                                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                        onChange={handleNuevaImagenCartel}
+                                        style={{ display: 'none' }}
+                                        disabled={loadingEdicion}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleEliminarImagenActual}
+                                        className="btn-eliminar-imagen"
+                                        disabled={loadingEdicion}
+                                    >
+                                        🗑️ Eliminar imagen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* MOSTRAR NUEVA IMAGEN SELECCIONADA */}
+                        {imagenNueva && vistaPreviaImagen && (
+                            <div className="imagen-nueva-container">
+                                <p className="imagen-label">Nueva imagen seleccionada:</p>
+                                <div className="archivo-info">
+                                    <p className="archivo-nombre">✅ <strong>{imagenNueva.name}</strong></p>
+                                    <p className="archivo-tamaño">
+                                        📦 {(imagenNueva.size / 1024).toFixed(2)} KB ({(imagenNueva.size / 1024 / 1024).toFixed(2)} MB)
+                                    </p>
+                                </div>
+                                <div className="imagen-preview">
+                                    <img 
+                                        src={vistaPreviaImagen} 
+                                        alt="Vista previa" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelarNuevaImagen}
+                                    className="btn-cancelar-nueva-imagen"
+                                    disabled={loadingEdicion}
+                                >
+                                    ❌ Cancelar cambio
+                                </button>
+                            </div>
+                        )}
+                        
+                        {/* SI NO HAY IMAGEN O SE MARCÓ PARA ELIMINAR */}
+                        {(!imagenActual || eliminarImagenFlag) && !imagenNueva && (
+                            <div className="sin-imagen-container">
+                                {eliminarImagenFlag ? (
+                                    <>
+                                        <p className="aviso-eliminar">⚠️ La imagen se eliminará al guardar los cambios</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelarEliminacionImagen}
+                                            className="btn-cancelar-eliminacion"
+                                            disabled={loadingEdicion}
+                                        >
+                                            ↩️ Cancelar eliminación
+                                        </button>
+                                    </>
+                                ) : (
+                                    <p className="sin-imagen-texto">📷 Este torneo no tiene imagen de cartel</p>
+                                )}
+                                
+                                <label htmlFor="nuevaImagenCartel" className="btn-subir-imagen">
+                                    ➕ Subir imagen
+                                </label>
+                                <input 
+                                    type="file"
+                                    id="nuevaImagenCartel"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onChange={handleNuevaImagenCartel}
+                                    style={{ display: 'none' }}
+                                    disabled={loadingEdicion}
+                                />
+                                <small className="help-text-file">
+                                    🖼️ Formatos: JPG, PNG, GIF, WEBP | Tamaño máximo: 5MB
+                                </small>
+                            </div>
+                        )}
+                    </fieldset>
+
                     <fieldset>
                         <legend>🎲 Escenarios por Ronda</legend>
 
@@ -749,7 +950,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                     <fieldset>
                         <legend>👥 Organizadores del Torneo</legend>
 
-                        {/* ORGANIZADORES ACTIVOS */}
                         <div className="organizadores-section">
                             <h4>✅ Organizadores Activos</h4>
                             {organizadores.activos && organizadores.activos.length > 0 ? (
@@ -789,7 +989,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             )}
                         </div>
 
-                        {/* INVITACIONES PENDIENTES */}
                         {organizadores.pendientes && organizadores.pendientes.length > 0 && (
                             <div className="organizadores-section mt-20">
                                 <h4>⏳ Invitaciones Pendientes</h4>
@@ -797,9 +996,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                                     {organizadores.pendientes.map(org => (
                                         <div key={org.organizador_id} className="organizador-item pendiente">
                                             <div className="organizador-info">
-                                                <span className="organizador-email">
-                                                    📧 {org.email}
-                                                </span>
+                                                <span className="organizador-email">📧 {org.email}</span>
                                                 <span className="organizador-fecha">
                                                     Invitado el {new Date(org.fecha_asignacion).toLocaleDateString('es-ES')}
                                                 </span>
@@ -831,7 +1028,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             </div>
                         )}
 
-                        {/* FORMULARIO PARA AGREGAR NUEVO ORGANIZADOR */}
                         <div className="agregar-organizador-form mt-20">
                             <h4>➕ Agregar Nuevo Organizador</h4>
                             <div className="form-row">
@@ -896,14 +1092,12 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                                     </>
                                 )}
                                 
-                                {/* SOLO MOSTRAR EDITAR SI ESTÁ PENDIENTE */}
                                 {torneo.estado === 'pendiente' && (
                                     <button className="btn-primary" onClick={() => setModoEdicion(true)}>
                                         ✏️ Editar Torneo
                                     </button>
                                 )}
 
-                                {/* SOLO ELIMINAR SI ESTÁ PENDIENTE */}
                                 {torneo.estado === 'pendiente' && (
                                     <button onClick={eliminarTorneo} className="btn-danger">
                                         🗑️ Eliminar Torneo
@@ -912,7 +1106,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             </div>
                         </div>
 
-                        {/* MENSAJE PARA TORNEO FINALIZADO */}
                         {torneo.estado === 'finalizado' && (
                             <div className="advertencia-finalizado">
                                 <strong>🏁 Torneo FINALIZADO</strong>
@@ -920,11 +1113,22 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             </div>
                         )}
 
-                        {/* MENSAJE PARA TORNEO EN CURSO */}
                         {torneo.estado === 'en_curso' && (
                             <div className="advertencia-no-editable">
                                 <strong>▶️ Torneo EN CURSO</strong>
                                 <p>Para editar la configuración del torneo, primero debe volverse a estado PENDIENTE.</p>
+                            </div>
+                        )}
+
+                        {/* ⬅️ MOSTRAR IMAGEN EN MODO VISTA */}
+                        {torneo.imagen_url && (
+                            <div className="cartel-vista">
+                                <h3>🖼️ Cartel del Torneo</h3>
+                                <img 
+                                    src={torneo.imagen_url} 
+                                    alt="Cartel del torneo" 
+                                    className="cartel-imagen-vista"
+                                />
                             </div>
                         )}
 
@@ -983,9 +1187,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                                     <div key={ronda} className="ronda-item">
                                         <span className="ronda-numero">Ronda {ronda}:</span>
                                         <div className="partidas-container">
-                                            <span className="ronda-escenario">
-                                                {partidasStr}
-                                            </span>
+                                            <span className="ronda-escenario">{partidasStr}</span>
                                         </div>
                                     </div>
                                 );
@@ -1011,7 +1213,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                     <section className="seccion-organizadores">
                         <h2>👥 Organizadores del Torneo</h2>
                         
-                        {/* ORGANIZADORES ACTIVOS */}
                         {organizadores.activos && organizadores.activos.length > 0 ? (
                             <div className="organizadores-grid">
                                 {organizadores.activos.map(org => (
@@ -1038,7 +1239,6 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             <p className="info-text">Solo el creador está registrado como organizador</p>
                         )}
 
-                        {/* INVITACIONES PENDIENTES */}
                         {organizadores.pendientes && organizadores.pendientes.length > 0 && (
                             <div className="invitaciones-pendientes-vista mt-20">
                                 <h3>⏳ Invitaciones Pendientes ({organizadores.pendientes.length})</h3>

@@ -19,7 +19,8 @@ import '../estilos/crearTorneo.css';
 
 function CrearTorneoSaga() {
     const navigate = useNavigate();
-    const {refrescarUsuario} = useAuth()
+
+    const { refrescarUsusario } = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -33,6 +34,10 @@ function CrearTorneoSaga() {
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
     const [ubicacion, setUbicacion] = useState("");
+
+    const [imagenCartel, setImagenCartel] = useState(null);
+    const [vistaPrevia, setVistaPrevia] = useState(null);
+        
     const [puntosBanda, setPuntosBanda] = useState(PUNTOS_BANDA_RANGO.default);
     const [unidadesLegendarias, setUnidadesLegendarias] = useState (false)
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
@@ -54,6 +59,59 @@ function CrearTorneoSaga() {
         setParticipantesMax(equiposMax * numJugadoresEquipo);
     }
     }, [equiposMax, numJugadoresEquipo, tipoTorneo]);
+
+      const handleImagenCartel = (e) => {
+        const file = e.target.files[0];
+        
+        if (!file) {
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            return;
+        }
+        
+        // Validar que sea imagen
+        const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!tiposPermitidos.includes(file.type)) {
+            setError('⚠️ Solo se permiten imágenes (JPG, PNG, GIF, WEBP)');
+            e.target.value = '';
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            setTimeout(() => setError(''), 4000);
+            return;
+        }
+        
+        // Validar tamaño (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
+            setError(`⚠️ La imagen (${tamañoMB}MB) supera el tamaño máximo de 5MB. Por favor, comprime la imagen.`);
+            e.target.value = '';
+            setImagenCartel(null);
+            setVistaPrevia(null);
+            setTimeout(() => setError(''), 5000);
+            return;
+        }
+        
+        // Crear vista previa
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setVistaPrevia(reader.result);
+        };
+        reader.readAsDataURL(file);
+        
+        setImagenCartel(file);
+        setError('');
+    };
+
+    const handleEliminarImagen = () => {
+        setImagenCartel(null);
+        setVistaPrevia(null);
+        const fileInput = document.getElementById('imagenCartel');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    };
+
 
     const handleEpocaSeleccion = (epoca) => {
         if (tipoTorneo === "Individual") {
@@ -220,7 +278,8 @@ function CrearTorneoSaga() {
             let torneoData;
             
             //AÑADIENDO BASES PDF AL FORMDATA
-            if (archivoPDF) {
+            if (archivoPDF || imagenCartel) {
+
                 torneoData = new FormData();
                 torneoData.append('nombre_torneo', nombreTorneo);
                 torneoData.append('tipo_torneo', tipoTorneo);
@@ -241,8 +300,19 @@ function CrearTorneoSaga() {
                 torneoData.append('partida_ronda_3', partidaRonda3);
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
-                torneoData.append('bases_pdf', archivoPDF);
                 torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional))
+
+                // Añadir PDF si existe
+                if (archivoPDF) {
+                    torneoData.append('bases_pdf', archivoPDF);
+                    console.log('📄 PDF añadido:', archivoPDF.name);
+                }
+                
+                // Añadir IMAGEN si existe
+                if (imagenCartel) {
+                    torneoData.append('imagen_cartel', imagenCartel);
+                    console.log('🖼️ Imagen añadida:', imagenCartel.name, imagenCartel.size, 'bytes');
+                }
                 
             } else {
                 //CUANDO NO SE AÑADEN BASES PDF
@@ -268,32 +338,19 @@ function CrearTorneoSaga() {
                 };
             }
 
-            console.group('📤 FRONTEND - ENVIANDO TORNEO');
-console.log('Estado unidadesLegendarias:', unidadesLegendarias);
-console.log('Tipo:', typeof unidadesLegendarias); 
-
-if (archivoPDF) {
-  // Si usas FormData, el valor se convierte a string automáticamente
-  console.log('Modo: FormData (valores como strings)');
-} else {
-  console.log('Modo: JSON');
-  console.log('Valor que se enviará:', {
-    unidades_legendarias: unidadesLegendarias ? 1 : 0
-  });
-}
-console.groupEnd();
-
             const result = await torneosSagaApi.crearTorneo(torneoData);
             
-            if (result.success || result.data) {
-                const mensajeOrganizadores = organizadorAdicional.length > 0 
-                    ? `\n👥 ${organizadorAdicional.length} organizador(es) adicional(es) añadido(s).`
-                    : '';
-                    
-                alert(`✅ ¡Torneo "${nombreTorneo}" creado exitosamente!${archivoPDF ? '\n📄 Bases PDF subidas correctamente.' : ''}${mensajeOrganizadores}\n🎉 Ahora eres un organizador.`);
-                navigate("/");
-                await refrescarUsuario()
-                navigate("/perfil")
+             if (result.success || result.data) {
+                const mensajeExito = [
+                    `✅ ¡Torneo "${nombreTorneo}" creado exitosamente!`,
+                    archivoPDF ? '📄 Bases PDF subidas correctamente.' : '',
+                    imagenCartel ? '🖼️ Cartel subido correctamente.' : '',
+                    '🎉 Ahora eres un organizador.'
+                ].filter(Boolean).join('\n');
+                
+                alert(mensajeExito);
+                await refrescarUsusario();
+                navigate("/perfil");
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
             }
@@ -305,22 +362,20 @@ console.groupEnd();
             
             if (err.message) {
                 if (err.message.includes('max_allowed_packet')) {
-                    mensajeError = "⚠️ El archivo PDF es demasiado grande para el servidor. Por favor, comprime el PDF o contacta al administrador.";
+                    mensajeError = "⚠️ Los archivos son demasiado grandes para el servidor.";
                 } else if (err.message.includes('LIMIT_FILE_SIZE')) {
-                    mensajeError = "⚠️ El archivo PDF excede el tamaño máximo permitido (16MB). Por favor, comprime el archivo.";
+                    mensajeError = "⚠️ Uno de los archivos excede el tamaño máximo permitido.";
                 } else if (err.message.includes('Network') || err.message.includes('fetch')) {
-                    mensajeError = "⚠️ Error de conexión con el servidor. Verifica tu conexión a internet.";
+                    mensajeError = "⚠️ Error de conexión con el servidor.";
                 } else if (err.message.includes('timeout')) {
-                    mensajeError = "⚠️ La solicitud tardó demasiado. El archivo puede ser muy grande o el servidor está lento.";
+                    mensajeError = "⚠️ La solicitud tardó demasiado.";
                 } else {
                     mensajeError = `⚠️ ${err.message}`;
                 }
             }
             
             setError(mensajeError);
-            setTimeout(() => {
-                setError('');
-            }, 8000);
+            setTimeout(() => setError(''), 8000);
             
         } finally {
             setLoading(false);
@@ -653,6 +708,60 @@ console.groupEnd();
                         placeholder="Ciudad, Local, etc."
                         disabled={loading}
                     />
+                </fieldset>
+
+                {/* CARTEL DEL TORNEO */}
+                <fieldset>
+                    <legend>🖼️ Cartel del Torneo (Opcional)</legend>
+                    
+                    {!imagenCartel ? (
+                        <>
+                            <label htmlFor="imagenCartel">Subir Imagen del Cartel:</label>
+                            <input 
+                                name="imagenCartel" 
+                                id="imagenCartel" 
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                onChange={handleImagenCartel}
+                                disabled={loading}
+                            />
+                            <small className="help-text-file">
+                                🖼️ Formatos: JPG, PNG, GIF, WEBP | Tamaño máximo: 5MB
+                            </small>
+                        </>
+                    ) : (
+                        <div className="archivo-seleccionado-container">
+                            <div className="archivo-info">
+                                <p className="archivo-nombre">
+                                    ✅ <strong>Imagen seleccionada:</strong> {imagenCartel.name}
+                                </p>
+                                <p className="archivo-tamaño">
+                                    📦 Tamaño: {(imagenCartel.size / 1024).toFixed(2)} KB 
+                                    ({(imagenCartel.size / 1024 / 1024).toFixed(2)} MB)
+                                </p>
+                            </div>
+                            
+                            {vistaPrevia && (
+                                <div className="imagen-preview">
+                                    <p className="preview-titulo">Vista previa:</p>
+                                    <img 
+                                        src={vistaPrevia} 
+                                        alt="Vista previa del cartel" 
+                                        className="imagen-preview-img"
+                                    />
+                                </div>
+                            )}
+                            
+                            <button
+                                type="button"
+                                onClick={handleEliminarImagen}
+                                className="btn-eliminar-pdf"
+                                disabled={loading}
+                            >
+                                🗑️ Eliminar imagen
+                            </button>
+                        </div>
+                    )}
                 </fieldset>
 
                 {/* BASES PDF */}
