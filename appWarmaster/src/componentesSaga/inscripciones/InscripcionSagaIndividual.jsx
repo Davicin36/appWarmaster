@@ -502,24 +502,23 @@ useEffect (() => {
 };
 
   const handlePuntosChange = (e) => {
-    const { name, value } = e.target;
-    const valorNumerico = parseFloat(value) || 0;
-    
-    setPuntos((prev) => ({ ...prev, [name]: valorNumerico }));
+      const { name, value } = e.target;
+      // ← Convertir coma a punto para móviles en español
+      const valorLimpio = value.replace(',', '.');
+      const valorNumerico = parseFloat(valorLimpio) || 0;
+      
+      setPuntos((prev) => ({ ...prev, [name]: valorNumerico }));
 
-    if (name === "mercenarios" && valorNumerico === 0) {
-      setDetalleMercenarios("");
-    }
+      if (name === "mercenarios" && valorNumerico === 0) {
+          setDetalleMercenarios("");
+      }
   };
 
   const handleUnidadEspecialChange = (nombreUnidad, value) => {
-    const valorNumerico = parseFloat(value) || 0;
-    setUnidadesEspeciales(prev => ({
-      ...prev,
-      [nombreUnidad]: valorNumerico
-    }));
+      const valorNumerico = parseFloat(value.replace(',', '.')) || 0;
+      setUnidadesEspeciales(prev => ({ ...prev, [nombreUnidad]: valorNumerico }));
   };
-
+  
   const handleOpcionBandaChange = (idOpcion, valor) => {
     setOpcionesBanda(prev => ({
       ...prev,
@@ -528,11 +527,8 @@ useEffect (() => {
   };
 
   const handleTropaPersonalizadaChange = (idTropa, value) => {
-    const valorNumerico = parseFloat(value) || 0;
-    setTiposTropaPersonalizados(prev => ({
-      ...prev,
-      [idTropa]: valorNumerico
-    }));
+      const valorNumerico = parseFloat(value.replace(',', '.')) || 0;
+      setTiposTropaPersonalizados(prev => ({ ...prev, [idTropa]: valorNumerico }));
   };
 
   const eliminarInscripcion = async () => {
@@ -998,6 +994,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id={tipo.id}
                           name={tipo.id}
                           value={tiposTropaPersonalizados[tipo.id] || 0}
@@ -1022,6 +1019,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="guardias"
                           name="guardias"
                           value={puntos.guardias}
@@ -1045,6 +1043,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="berserkers"
                           name="berserkers"
                           value={puntos.berserkers}
@@ -1068,6 +1067,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="cerdos"
                           name="cerdos"
                           value={puntos.cerdos}
@@ -1091,6 +1091,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="elefantes"
                           name="elefantes"
                           value={puntos.elefantes}
@@ -1119,6 +1120,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="carros"
                           name="carros"
                           value={puntos.carros}
@@ -1147,6 +1149,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="tambor"
                           name="tambor"
                           value={puntos.tambor}
@@ -1170,6 +1173,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="curaids"
                           name="curaids"
                           value={puntos.curaids}
@@ -1193,6 +1197,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="perros"
                           name="perros"
                           value={puntos.perros}
@@ -1221,6 +1226,7 @@ useEffect (() => {
                             </label>
                             <input
                               type="number"
+                              inputMode="decimal"
                               id={key}
                               name={key}
                               value={unidadesEspeciales[key] || 0}
@@ -1249,6 +1255,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="guerreros"
                           name="guerreros"
                           value={puntos.guerreros}
@@ -1272,6 +1279,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="levas"
                           name="levas"
                           value={puntos.levas}
@@ -1295,6 +1303,7 @@ useEffect (() => {
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           id="mercenarios"
                           name="mercenarios"
                           value={puntos.mercenarios}

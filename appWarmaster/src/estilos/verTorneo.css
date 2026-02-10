@@ -50,16 +50,16 @@
     text-align: center;
     font-weight: 700;
     width: 100%;
-    order: -1; /* Fuerza que esté arriba */
+    order: -1;
 }
 
+/* ===== TORNEO CONTENT - LAYOUT COLUMNA ===== */
 .ver-torneo-container .torneo-content {
     display: flex;
-    flex-direction: row;
-    gap: 2rem;
-    align-items: flex-start;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 1.5rem;
     width: 100%;
+    background: transparent !important;
 }
 
 .ver-torneo-container .torneo-info {
@@ -69,13 +69,29 @@
     flex-wrap: wrap;
     gap: 0.75rem;
     align-items: center;
-}
-
-.ver-torneo-container .torneo-content,
-.ver-torneo-container .torneo-info {
     background: transparent !important;
 }
 
+/* Fila inferior: botones + bases */
+.ver-torneo-container .torneo-footer-row {
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+/* Agrupación de botones de acción */
+.ver-torneo-container .torneo-acciones {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* ===== INFO ITEMS ===== */
 .ver-torneo-container .info-item {
     display: inline-flex;
     background: rgba(255, 255, 255, 0.2) !important;
@@ -95,6 +111,7 @@
     transform: translateY(-2px);
 }
 
+/* ===== ESTADO BADGE ===== */
 .ver-torneo-container .estado-badge {
     display: inline-flex;
     padding: 0.6rem 1.2rem;
@@ -121,6 +138,7 @@
     color: white;
 }
 
+/* ===== BASES DEL TORNEO ===== */
 .ver-torneo-container .torneo-bases {
     flex-shrink: 0;
     min-width: 280px;
@@ -150,16 +168,130 @@
     width: 100%;
 }
 
-@media (max-width: 968px) {
-    .ver-torneo-container .torneo-content {
-        flex-direction: column;
-    }
-    
-    .ver-torneo-container .torneo-bases {
-        width: 100%;
-        max-width: 100%;
-        min-width: unset;
-    }
+/* ===== BOTÓN UNIRSE / INSCRITO ===== */
+.vt-btn-unirse,
+.vt-btn-inscrito {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 2.2rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vt-btn-unirse::before,
+.vt-btn-inscrito::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 255, 255, 0.25),
+        transparent
+    );
+    transition: left 0.5s ease;
+    pointer-events: none;
+}
+
+.vt-btn-unirse:hover::before,
+.vt-btn-inscrito:hover::before {
+    left: 150%;
+}
+
+.vt-btn-unirse {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7c59f 50%, #ff6b35 100%);
+    background-size: 200% auto;
+    color: #1a0a00;
+    box-shadow:
+        0 4px 15px rgba(255, 107, 53, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.vt-btn-unirse:hover {
+    background-position: right center;
+    transform: translateY(-3px) scale(1.03);
+    box-shadow:
+        0 10px 28px rgba(255, 107, 53, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.vt-btn-unirse:active {
+    transform: translateY(-1px) scale(1.01);
+}
+
+.vt-btn-inscrito {
+    background: rgba(255, 255, 255, 0.18);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.vt-btn-inscrito:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+.vt-btn-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* ===== BOTONES LISTAS OCULTAS / VISIBLES ===== */
+.vt-btn-listas-ocultas,
+.vt-btn-listas-visibles {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 2.2rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.vt-btn-listas-ocultas {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1.5px dashed rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+}
+
+.vt-btn-listas-ocultas:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+.vt-btn-listas-visibles {
+    background: rgba(16, 185, 129, 0.25);
+    color: white;
+    border: 1.5px solid rgba(16, 185, 129, 0.7);
+}
+
+.vt-btn-listas-visibles:hover {
+    background: rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
 }
 
 /* ===== NAVEGACIÓN TABS ===== */
@@ -365,7 +497,6 @@
     color: var(--color-texto-principal);
 }
 
-/* Composición dentro de miembros */
 .ver-torneo-container .miembro-header {
     display: flex;
     flex-direction: column;
@@ -438,54 +569,7 @@
     border-top: 2px solid var(--color-beige);
 }
 
-/* ===== RESPONSIVIDAD ===== */
-@media (max-width: 768px) {
-    .ver-torneo-container {
-        padding: 1rem 0.5rem;
-    }
-
-    .ver-torneo-container .torneo-header {
-        padding: 1.5rem;
-    }
-
-    .ver-torneo-container .torneo-header h1 {
-        font-size: 1.8rem;
-    }
-
-    .ver-torneo-container .vista-nav {
-        flex-direction: column;
-    }
-
-    .ver-torneo-container .vista-nav button {
-        min-width: 100%;
-    }
-
-    .ver-torneo-container .grid-inscritos,
-    .ver-torneo-container .grid-equipos {
-        grid-template-columns: 1fr;
-    }
-
-    .ver-torneo-container .contenido-principal {
-        padding: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .ver-torneo-container .torneo-header h1 {
-        font-size: 1.5rem;
-    }
-
-    .ver-torneo-container .torneo-info {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .ver-torneo-container .info-item {
-        text-align: center;
-    }
-}
-
-/* Botón para ver lista PDF */
+/* ===== PDF ===== */
 .btn-ver-lista {
     display: inline-block;
     padding: 8px 16px;
@@ -503,9 +587,9 @@
 }
 
 .lista-documento {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
 }
 
 .sin-lista {
@@ -515,8 +599,6 @@
     margin-top: 10px;
 }
 
-/* Agregar al final de tu archivo vistaInformacion.css o el CSS correspondiente */
-
 .error-message {
     background: #f8d7da;
     color: #721c24;
@@ -524,12 +606,6 @@
     border-radius: 6px;
     margin-bottom: 20px;
     border-left: 4px solid #dc3545;
-}
-
-.lista-documento {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #dee2e6;
 }
 
 .pdf-disponible {
@@ -596,171 +672,83 @@
     transform: none;
 }
 
-/* Responsive */
-@media (max-width: 480px) {
+/* ===== RESPONSIVIDAD ===== */
+@media (max-width: 968px) {
+    .ver-torneo-container .torneo-footer-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ver-torneo-container .torneo-acciones {
+        flex-direction: column;
+    }
+
+    .ver-torneo-container .torneo-bases {
+        width: 100%;
+        max-width: 100%;
+        min-width: unset;
+    }
+
+    .vt-btn-unirse,
+    .vt-btn-inscrito,
+    .vt-btn-listas-ocultas,
+    .vt-btn-listas-visibles {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .ver-torneo-container {
+        padding: 1rem 0.5rem;
+    }
+
+    .ver-torneo-container .torneo-header {
+        padding: 1.5rem;
+    }
+
+    .ver-torneo-container .torneo-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .ver-torneo-container .vista-nav {
+        flex-direction: column;
+    }
+
+    .ver-torneo-container .vista-nav button {
+        min-width: 100%;
+    }
+
+    .ver-torneo-container .grid-inscritos,
+    .ver-torneo-container .grid-equipos {
+        grid-template-columns: 1fr;
+    }
+
+    .ver-torneo-container .contenido-principal {
+        padding: 1rem;
+    }
+
     .botones-pdf {
         flex-direction: column;
     }
-    
+
     .btn-ver-pdf,
     .btn-descargar-pdf {
         width: 100%;
     }
 }
 
-/* ===== BOTÓN INSCRIBIRSE ===== */
-.ver-torneo-container .btn-apuntarse {
-    flex-shrink: 0;
-    align-self: center;
-    padding: 0.85rem 2rem;
-    background: linear-gradient(135deg, #f97316, #ea580c);
-    color: white;
-    border: none;
-    border-radius: 30px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
-    transition: all 0.3s ease;
-    white-space: nowrap;
-}
-
-.ver-torneo-container .btn-apuntarse:hover {
-    background: linear-gradient(135deg, #ea580c, #c2410c);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(249, 115, 22, 0.5);
-}
-
-.ver-torneo-container .btn-apuntarse:active {
-    transform: translateY(-1px);
-}
-
-/* Estado: ya inscrito */
-.ver-torneo-container .btn-inscrito {
-    flex-shrink: 0;
-    align-self: center;
-    padding: 0.85rem 2rem;
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    border-radius: 30px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    letter-spacing: 0.5px;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-    white-space: nowrap;
-}
-
-.ver-torneo-container .btn-inscrito:hover {
-    background: rgba(255, 255, 255, 0.35);
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-/* Responsive */
-@media (max-width: 968px) {
-    .ver-torneo-container .btn-apuntarse,
-    .ver-torneo-container .btn-inscrito {
-        width: 100%;
-        text-align: center;
+@media (max-width: 480px) {
+    .ver-torneo-container .torneo-header h1 {
+        font-size: 1.5rem;
     }
-}
 
-/* ===== BOTÓN UNIRSE AL TORNEO ===== */
-.vt-btn-unirse,
-.vt-btn-inscrito {
-    position: relative;
-    flex-shrink: 0;
-    align-self: center;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.9rem 2.2rem;
-    border: none;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    letter-spacing: 0.4px;
-    white-space: nowrap;
-    overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+    .ver-torneo-container .torneo-info {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
 
-/* Efecto brillo que cruza el botón */
-.vt-btn-unirse::before,
-.vt-btn-inscrito::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(
-        120deg,
-        transparent,
-        rgba(255, 255, 255, 0.25),
-        transparent
-    );
-    transition: left 0.5s ease;
-    pointer-events: none;
-}
-
-.vt-btn-unirse:hover::before,
-.vt-btn-inscrito:hover::before {
-    left: 150%;
-}
-
-/* Variante: aún no inscrito */
-.vt-btn-unirse {
-    background: linear-gradient(135deg, #3c18f2 0%, #64aef0 50%, #ff6b35 100%);
-    background-size: 200% auto;
-    color: #1a0a00;
-    box-shadow:
-        0 4px 15px rgba(255, 107, 53, 0.45),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.vt-btn-unirse:hover {
-    background-position: right center;
-    transform: translateY(-3px) scale(1.03);
-    box-shadow:
-        0 10px 28px rgba(168, 127, 1, 0.55),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.vt-btn-unirse:active {
-    transform: translateY(-1px) scale(1.01);
-}
-
-/* Variante: ya inscrito */
-.vt-btn-inscrito {
-    background: rgba(255, 255, 255, 0.18);
-    color: white;
-    border: 1.5px solid rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.vt-btn-inscrito:hover {
-    background: rgba(255, 255, 255, 0.28);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
-}
-
-.vt-btn-btn-icon {
-    font-size: 1.1rem;
-    line-height: 1;
-}
-
-/* Responsive */
-@media (max-width: 968px) {
-    .vt-btn-unirse,
-    .vt-btn-inscrito {
-        width: 100%;
-        justify-content: center;
+    .ver-torneo-container .info-item {
+        text-align: center;
     }
 }

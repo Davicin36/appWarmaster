@@ -124,6 +124,13 @@ class TorneosSagaApi {
     });
   }
 
+  async toggleListas(torneoId, listas_ocultas) {
+    return this.request (`/${torneoId}/toggleListas`, {
+      method: 'PATCH',
+      body: { listas_ocultas }
+    })
+  }
+
     async obtenerIncripcion (torneoId){
     return this.request(`/${torneoId}/obtenerInscripcion`);
   }

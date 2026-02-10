@@ -159,6 +159,22 @@ function VerTorneo( {onOpenLogin}) {
         }
     };
 
+    const toggleListas = async () => {
+    try {
+        
+        const nuevoEstado = !torneo.listas_ocultas;
+    
+        await torneosSagaApi.toggleListas(torneoId, nuevoEstado);
+     
+        setTorneo(prev => ({ ...prev, listas_ocultas: nuevoEstado }));
+    } catch (error) {
+        console.error('❌ Error completo:', error);
+        console.error('❌ Status:', error.response?.status);
+        console.error('❌ Mensaje servidor:', error.response?.data);
+        alert('❌ Error al cambiar visibilidad de listas');
+    }
+};
+
     const rutaEdicionPorSistema = {
         'SAGA': 'torneosSaga',
         'WARMASTER': 'torneosWarmaster',
@@ -247,60 +263,62 @@ function VerTorneo( {onOpenLogin}) {
                         <span className={`estado-badge estado-${torneo.estado || 'pendiente'}`}>
                             {(torneo.estado || 'pendiente').toUpperCase()}
                         </span>
-                        <span className="info-item">
-                            🎮 {torneo.sistema}
-                        </span>
-                        <span className="info-item">
-                            📅 {formatearFecha(torneo.fecha_inicio)}
-                        </span>
-                        <span className="info-item">
-                            {torneo.tipo_torneo || 'Tipo no especificado'}
-                        </span>
+                        <span className="info-item">🎮 {torneo.sistema}</span>
+                        <span className="info-item">📅 {formatearFecha(torneo.fecha_inicio)}</span>
+                        <span className="info-item">{torneo.tipo_torneo || 'Tipo no especificado'}</span>
                         <span className="info-item">
                             {torneo.tipo_torneo === 'Por equipos' ? '👥' : '👤'} {totalInscritos} / {maxInscritos}
                         </span>
                         {config.camposExtra}
-                        {torneo.ubicacion && (
-                            <span className="info-item">
-                                📍 {torneo.ubicacion}
-                            </span>
-                        )}
-                        <span className="info-item">
-                            {config.iconoPuntos} {config.labelPuntos} pts
-                        </span>
-                        <span className="info-item">
-                            🎲 {torneo.rondas_max || 0} rondas
-                        </span>
+                        {torneo.ubicacion && <span className="info-item">📍 {torneo.ubicacion}</span>}
+                        <span className="info-item">{config.iconoPuntos} {config.labelPuntos} pts</span>
+                        <span className="info-item">🎲 {torneo.rondas_max || 0} rondas</span>
                     </div>
 
-                    {torneo.estado === 'pendiente' && (
-                        <button 
-                            className={torneo.usuario_inscrito ? "vt-btn-inscrito" : "vt-btn-unirse"}
-                            onClick={() => {
-                                if (torneo.usuario_inscrito) {
-                                    const ruta = rutaEdicionPorSistema[torneo.sistema] || 'torneos';
-                                    navigate(`/${ruta}/${torneo.id}/editar-inscripcion`);
-                                } else {
-                                    apuntarseATorneo(torneo.id);
-                                }
-                            }}
-                        >
-                            {torneo.usuario_inscrito 
-                                ? <><span className="vt-btn-icon">✏️</span> Mi Inscripción</> 
-                                : <><span className="vt-btn-icon">⚔️</span> Unirse al Torneo</>
-                            }
-                        </button>
-                    )}
+                    <div className="torneo-footer-row">
+                        <div className="torneo-acciones">
+                            {torneo.estado === 'pendiente' && (
+                                <button
+                                    className={torneo.usuario_inscrito ? "vt-btn-inscrito" : "vt-btn-unirse"}
+                                    onClick={() => {
+                                        if (torneo.usuario_inscrito) {
+                                            const ruta = rutaEdicionPorSistema[torneo.sistema] || 'torneos';
+                                            navigate(`/${ruta}/${torneo.id}/editar-inscripcion`);
+                                        } else {
+                                            apuntarseATorneo(torneo.id);
+                                        }
+                                    }}
+                                >
+                                    {torneo.usuario_inscrito
+                                        ? <><span className="vt-btn-icon">✏️</span> Mi Inscripción</>
+                                        : <><span className="vt-btn-icon">⚔️</span> Unirse al Torneo</>
+                                    }
+                                </button>
+                            )}
 
-                    {torneo.bases_nombre && (
-                        <div className="torneo-bases">
-                            <h3>📄 Bases del Torneo</h3>
-                            <p className="bases-nombre">{torneo.bases_nombre}</p>
-                            <button onClick={descargarBases} className="btn-primary">
-                                ⬇️ Descargar Bases
-                            </button>
+                            {torneo.created_by === 1 && (
+                                <button
+                                    className={torneo.listas_ocultas ? "vt-btn-listas-ocultas" : "vt-btn-listas-visibles"}
+                                    onClick={toggleListas}
+                                >
+                                    {torneo.listas_ocultas
+                                        ? <><span className="vt-btn-icon">🔒</span> Listas Ocultas</>
+                                        : <><span className="vt-btn-icon">👁️</span> Listas Visibles</>
+                                    }
+                                </button>
+                            )}
                         </div>
-                    )}
+
+                        {torneo.bases_nombre && (
+                            <div className="torneo-bases">
+                                <h3>📄 Bases del Torneo</h3>
+                                <p className="bases-nombre">{torneo.bases_nombre}</p>
+                                <button onClick={descargarBases} className="btn-primary">
+                                    ⬇️ Descargar Bases
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -334,6 +352,7 @@ function VerTorneo( {onOpenLogin}) {
                         tipoTorneo={torneo.tipo_torneo}
                         estadoTorneo={torneo.estado}
                         torneoId={torneoId}
+                        listasOcultas = {torneo.estado === 'pendiente' ? (torneo.listas_ocultas ?? true) : false}
                     />
                 )}
 

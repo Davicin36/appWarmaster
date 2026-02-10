@@ -218,7 +218,7 @@ const MostrarComposicion = ({ composicion, torneo, inscrito, banda, mostrarWarlo
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
-function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo }) {
+function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo, listasOcultas}) {
     const tieneUnidadesLegendarias = torneo?.unidades_legendarias === 1;
 
     if (tipoTorneo === 'Individual') {
@@ -273,13 +273,15 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo }) {
                                         <p><strong>Puntos Totales:</strong> {totalPuntos.toFixed(1)} pts</p>
                                     </div>
 
-                                    <MostrarComposicion 
-                                        composicion={composicion} 
-                                        banda={inscrito.faccion}
-                                        mostrarWarlord={tieneUnidadesLegendarias}
-                                        torneo={torneo}
-                                        inscrito={inscrito}
-                                    />
+                                    {!listasOcultas && (
+                                        <MostrarComposicion 
+                                            composicion={composicion} 
+                                            banda={inscrito.faccion}
+                                            mostrarWarlord={tieneUnidadesLegendarias}
+                                            torneo={torneo}
+                                            inscrito={inscrito}
+                                        />
+                                    )}
                                 </div>
                             );
                         })}
@@ -347,7 +349,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo }) {
                                                         </span>
                                                     </div>
                                                     
-                                                    {Object.keys(composicion).length > 0 && (
+                                                    {Object.keys(composicion).length > 0 && !listasOcultas && (
                                                         <div className="miembro-composicion">
                                                             {tieneUnidadesLegendarias && warlord && (
                                                                 <div className="warlord-mini">

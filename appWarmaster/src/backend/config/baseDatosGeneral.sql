@@ -54,6 +54,7 @@ CREATE TABLE torneos_sistemas (
   base_tamaño INT,          
   created_by INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  listas_ocultas_saga TINYINT(1) DEFAULT 1
   FOREIGN KEY (created_by) REFERENCES usuarios(id)
 
   INDEX idx_elo_procesado (elo_procesado)

@@ -1917,6 +1917,27 @@ router.post('/:torneoId/inscripcion', async (req, res) => {
   }
 });
 
+//=====OCULTAR LISTAS=====
+
+router.patch('/:torneoId/toggleListas', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
+    try {
+        const { torneoId } = req.params;
+        const { listas_ocultas } = req.body;
+
+        const [result] = await pool.execute(
+            'UPDATE torneos_sistemas SET listas_ocultas_saga = ? WHERE id = ?',
+            [listas_ocultas ? 1 : 0, torneoId]
+        );
+        
+        console.log('✅ Update resultado:', result);
+
+        res.json(successResponse('Visibilidad de listas actualizada', { listas_ocultas }));
+    } catch (error) {
+        console.error('❌ Error toggle listas:', error);
+        res.status(500).json(errorResponse('Error al actualizar visibilidad'));
+    }
+});
+
 // =====OBTENER MI INSCRIPCIÓN=====
 
 router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => {
