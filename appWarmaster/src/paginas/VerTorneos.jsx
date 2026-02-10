@@ -273,22 +273,24 @@ function VerTorneo( {onOpenLogin}) {
                         </span>
                     </div>
 
-                     <button 
-                        className={torneo.usuario_inscrito ? "vt-btn-inscrito" : "vt-btn-unirse"}
-                        onClick={() => {
-                            if (torneo.usuario_inscrito) {
-                                const ruta = rutaEdicionPorSistema[torneo.sistema] || 'torneos';
-                                navigate(`/${ruta}/${torneo.id}/editar-inscripcion`);
-                            } else {
-                                apuntarseATorneo(torneo.id);
+                    {torneo.estado === 'pendiente' && (
+                        <button 
+                            className={torneo.usuario_inscrito ? "vt-btn-inscrito" : "vt-btn-unirse"}
+                            onClick={() => {
+                                if (torneo.usuario_inscrito) {
+                                    const ruta = rutaEdicionPorSistema[torneo.sistema] || 'torneos';
+                                    navigate(`/${ruta}/${torneo.id}/editar-inscripcion`);
+                                } else {
+                                    apuntarseATorneo(torneo.id);
+                                }
+                            }}
+                        >
+                            {torneo.usuario_inscrito 
+                                ? <><span className="vt-btn-icon">✏️</span> Mi Inscripción</> 
+                                : <><span className="vt-btn-icon">⚔️</span> Unirse al Torneo</>
                             }
-                        }}
-                    >
-                        {torneo.usuario_inscrito 
-                            ? <><span className="vt-btn-icon">✏️</span> Mi Inscripción</> 
-                            : <><span className="vt-btn-icon">⚔️</span> Unirse al Torneo</>
-                        }
-                    </button>
+                        </button>
+                    )}
 
                     {torneo.bases_nombre && (
                         <div className="torneo-bases">
