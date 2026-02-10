@@ -57,15 +57,15 @@ function App() {
         />
         <Route
             path='/torneosSaga/:torneoId/detalles'
-            element={<VerTorneos />}
+            element={<VerTorneos onOpenLogin={() => setIsLoginOpen(true)} />}
         />
         <Route
             path='/torneosWarmaster/:torneoId/detalles'
-            element={<VerTorneos />}
+            element={<VerTorneos onOpenLogin={() => setIsLoginOpen(true)} />}
         />
         <Route
             path='/torneosFow/:torneoId/detalles'
-            element={<VerTorneos />}
+            element={<VerTorneos onOpenLogin={() => setIsLoginOpen(true)} />}
         />
          <Route
             path='/ranking'

@@ -43,6 +43,7 @@ export const JUGADORES_EQUIPO_RANGO = {
 
 export const TIPOS_PARTIDA_SAGA = [
        "Choque de Bandas",
+       "Choque de Señores",
         "Conquista",
         "Avance",
         "Desacralización",

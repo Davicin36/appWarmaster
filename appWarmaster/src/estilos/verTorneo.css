@@ -607,3 +607,160 @@
         width: 100%;
     }
 }
+
+/* ===== BOTÓN INSCRIBIRSE ===== */
+.ver-torneo-container .btn-apuntarse {
+    flex-shrink: 0;
+    align-self: center;
+    padding: 0.85rem 2rem;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.ver-torneo-container .btn-apuntarse:hover {
+    background: linear-gradient(135deg, #ea580c, #c2410c);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(249, 115, 22, 0.5);
+}
+
+.ver-torneo-container .btn-apuntarse:active {
+    transform: translateY(-1px);
+}
+
+/* Estado: ya inscrito */
+.ver-torneo-container .btn-inscrito {
+    flex-shrink: 0;
+    align-self: center;
+    padding: 0.85rem 2rem;
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 30px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.ver-torneo-container .btn-inscrito:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+    .ver-torneo-container .btn-apuntarse,
+    .ver-torneo-container .btn-inscrito {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ===== BOTÓN UNIRSE AL TORNEO ===== */
+.vt-btn-unirse,
+.vt-btn-inscrito {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 2.2rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Efecto brillo que cruza el botón */
+.vt-btn-unirse::before,
+.vt-btn-inscrito::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 255, 255, 0.25),
+        transparent
+    );
+    transition: left 0.5s ease;
+    pointer-events: none;
+}
+
+.vt-btn-unirse:hover::before,
+.vt-btn-inscrito:hover::before {
+    left: 150%;
+}
+
+/* Variante: aún no inscrito */
+.vt-btn-unirse {
+    background: linear-gradient(135deg, #3c18f2 0%, #64aef0 50%, #ff6b35 100%);
+    background-size: 200% auto;
+    color: #1a0a00;
+    box-shadow:
+        0 4px 15px rgba(255, 107, 53, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.vt-btn-unirse:hover {
+    background-position: right center;
+    transform: translateY(-3px) scale(1.03);
+    box-shadow:
+        0 10px 28px rgba(168, 127, 1, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.vt-btn-unirse:active {
+    transform: translateY(-1px) scale(1.01);
+}
+
+/* Variante: ya inscrito */
+.vt-btn-inscrito {
+    background: rgba(255, 255, 255, 0.18);
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.vt-btn-inscrito:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+.vt-btn-btn-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+    .vt-btn-unirse,
+    .vt-btn-inscrito {
+        width: 100%;
+        justify-content: center;
+    }
+}

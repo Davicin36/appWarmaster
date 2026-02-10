@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+import { useAuth } from '../servicios/AuthContext';
+
 // Importar todas las APIs
 import torneosSagaApi from "@/servicios/apiSaga";
 import torneosWarmasterApi from "@/servicios/apiWarmaster";
+import torneosFowApi from "../servicios/apiFow";
 
 import Footer from '@/paginas/Footer.jsx'
 
@@ -14,9 +17,11 @@ import VistaClasificacionPublica from "@/componente/vistasVerTorneo/VistaClasifi
 
 import "@/estilos/verTorneo.css";
 
-function VerTorneo() {
+function VerTorneo( {onOpenLogin}) {
     const { torneoId } = useParams();
     const navigate = useNavigate();
+
+    const { isAuthenticated } = useAuth();
 
     const [torneo, setTorneo] = useState(null);
     const [inscritos, setInscritos] = useState([]);
@@ -29,6 +34,7 @@ function VerTorneo() {
     const APIS_POR_SISTEMA = {
         'SAGA': torneosSagaApi,
         'WARMASTER': torneosWarmasterApi,
+        'FOW':torneosFowApi
         // Agregar más sistemas aquí en el futuro
     };
 
@@ -96,6 +102,15 @@ function VerTorneo() {
         }
     };
 
+       const apuntarseATorneo = (torneoId) => {
+        if (!isAuthenticated) {
+            alert('Debes iniciar sesión para apuntarte a un torneo');
+            onOpenLogin()
+            return;
+        }
+        navigate(`/inscripcion/${torneoId}`);
+    };
+
     const cargarJugadoresIndividuales = async (sistema) => {
         try {
             const api = APIS_POR_SISTEMA[sistema];
@@ -142,6 +157,12 @@ function VerTorneo() {
             console.error('Error al descargar bases:', error);
             alert('❌ Error al descargar las bases del torneo');
         }
+    };
+
+    const rutaEdicionPorSistema = {
+        'SAGA': 'torneosSaga',
+        'WARMASTER': 'torneosWarmaster',
+        'FOW': 'torneosFow',
     };
 
     if (loading) {
@@ -251,6 +272,23 @@ function VerTorneo() {
                             🎲 {torneo.rondas_max || 0} rondas
                         </span>
                     </div>
+
+                     <button 
+                        className={torneo.usuario_inscrito ? "vt-btn-inscrito" : "vt-btn-unirse"}
+                        onClick={() => {
+                            if (torneo.usuario_inscrito) {
+                                const ruta = rutaEdicionPorSistema[torneo.sistema] || 'torneos';
+                                navigate(`/${ruta}/${torneo.id}/editar-inscripcion`);
+                            } else {
+                                apuntarseATorneo(torneo.id);
+                            }
+                        }}
+                    >
+                        {torneo.usuario_inscrito 
+                            ? <><span className="vt-btn-icon">✏️</span> Mi Inscripción</> 
+                            : <><span className="vt-btn-icon">⚔️</span> Unirse al Torneo</>
+                        }
+                    </button>
 
                     {torneo.bases_nombre && (
                         <div className="torneo-bases">
