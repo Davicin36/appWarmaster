@@ -504,8 +504,7 @@ useEffect (() => {
   const handlePuntosChange = (e) => {
       const { name, value } = e.target;
       // ← Convertir coma a punto para móviles en español
-      const valorLimpio = value.replace(',', '.');
-      const valorNumerico = parseFloat(valorLimpio) || 0;
+      const valorNumerico = parseFloat(value) || 0;
       
       setPuntos((prev) => ({ ...prev, [name]: valorNumerico }));
 
@@ -515,7 +514,7 @@ useEffect (() => {
   };
 
   const handleUnidadEspecialChange = (nombreUnidad, value) => {
-      const valorNumerico = parseFloat(value.replace(',', '.')) || 0;
+      const valorNumerico = parseFloat(value) || 0;
       setUnidadesEspeciales(prev => ({ ...prev, [nombreUnidad]: valorNumerico }));
   };
   
@@ -527,7 +526,7 @@ useEffect (() => {
   };
 
   const handleTropaPersonalizadaChange = (idTropa, value) => {
-      const valorNumerico = parseFloat(value.replace(',', '.')) || 0;
+      const valorNumerico = parseFloat(value) || 0;
       setTiposTropaPersonalizados(prev => ({ ...prev, [idTropa]: valorNumerico }));
   };
 

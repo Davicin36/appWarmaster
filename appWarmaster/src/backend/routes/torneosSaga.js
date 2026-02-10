@@ -322,6 +322,7 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
                         unidades_legendarias_raw === 'true' || 
                         unidades_legendarias_raw === 1 || 
                         unidades_legendarias_raw === '1';
+                        unidades_legendarias_raw === 'on';
     
       unidades_legendarias = esVerdadero ? 1 : 0;
     }
@@ -888,6 +889,16 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       camposActualizar.push('fecha_fin = ?');
       valores.push(limpiarFecha(fecha_fin));
     }
+
+    if (unidades_legendarias !== undefined) {
+    const esVerdadero = unidades_legendarias === true ||
+                        unidades_legendarias === 'true' ||
+                        unidades_legendarias === 1 ||
+                        unidades_legendarias === '1' ||
+                        unidades_legendarias === 'on'; // ← AÑADIR
+    camposActualizar.push('unidades_legendarias = ?');
+    valores.push(esVerdadero ? 1 : 0);
+}
     
     // ✅ IMPORTANTE: Guardar ubicacion
     if (ubicacion !== undefined) {
