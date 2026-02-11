@@ -891,7 +891,7 @@
 /* GRID: 1 columna centrada */
 .grid-torneos {
     display: grid;
-    grid-template-columns: repeat(1, 1fr);  /* 2 columnas */
+    grid-template-columns: repeat(1, 1fr);  
     max-width: 1400px;                       /* más ancho */
     margin: 2rem auto;
     gap: 3rem;

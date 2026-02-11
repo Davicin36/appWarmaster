@@ -20,7 +20,7 @@ import '../estilos/crearTorneo.css';
 function CrearTorneoSaga() {
     const navigate = useNavigate();
 
-    const { refrescarUsusario } = useAuth();
+    const { refrescarUsuario } = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -349,7 +349,7 @@ function CrearTorneoSaga() {
                 ].filter(Boolean).join('\n');
                 
                 alert(mensajeExito);
-                await refrescarUsusario();
+                await refrescarUsuario();
                 navigate("/perfil");
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");

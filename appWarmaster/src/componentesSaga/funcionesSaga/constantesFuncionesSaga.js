@@ -55,7 +55,8 @@ export const TIPOS_PARTIDA_SAGA = [
         "Mantener el botín",
         "Cambio de planes",
         "El cruce",
-        "Vieja Disputa"
+        "Vieja Disputa",
+        "Escenario Inventado"
     ];
 
     export const ESTADOS_TORNEO_SAGA = [

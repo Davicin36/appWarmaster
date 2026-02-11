@@ -552,7 +552,7 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
         partida_ronda_5 || null,
         basesPdf || null,
         basesNombre || null,
-        basesTamaño || null,
+        baseTamaño || null,
         req.usuario.userId
       ]
     );
@@ -701,7 +701,7 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
         num_jugadores_equipo: num_jugadores_equipo || null,
         epocas_disponibles: epocas_disponibles,
         ubicacion: ubicacion || null,
-        imagen_url: imageUrl || null,
+        imagen_url: imagenUrl || null,
         unidades_legendarias: unidades_legendarias,
         tiene_bases_pdf: !!req.file,
         created_by: req.usuario.userId,
