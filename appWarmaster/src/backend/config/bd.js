@@ -18,9 +18,9 @@ const baseConfigTorneos = {
   connectTimeout: 20000,        // ✅ Esta SÍ existe
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  charset: 'utf8mb4'
-  
-  // ❌ ELIMINADAS: acquireTimeout, timeout, idleTimeout, maxIdle
+  charset: 'utf8mb4',
+
+  idleTimeout: 60000
 };
 
 // ✅ Configuración base para ranking
@@ -61,6 +61,40 @@ const poolGeneral = mysql.createPool({
 const pool = poolTorneos;
 
 // ============================================
+// MANEJO AUTOMÁTICO DE RECONEXIÓN
+// ============================================
+
+const recreatePool = (name) => {
+  console.log(`🔄 Recreando pool ${name}...`);
+  if (name === 'torneos') poolTorneos = mysql.createPool(baseConfigTorneos);
+  if (name === 'ranking') poolRanking = mysql.createPool(baseConfigRanking);
+  if (name === 'general') poolGeneral = mysql.createPool(baseConfigGeneral);
+};
+
+export const safeQuery = async (poolInstance, sql, params = [], retries = 2) => {
+  try {
+    const [rows] = await poolInstance.query(sql, params);
+    return rows;
+  } catch (error) {
+    if (
+      retries > 0 &&
+      (error.code === 'PROTOCOL_CONNECTION_LOST' ||
+       error.code === 'ECONNRESET' ||
+       error.code === 'ECONNREFUSED')
+    ) {
+      console.warn('⚠️ Conexión perdida a MySQL, reintentando...');
+      // Identifica qué pool usar para recrear
+      if (poolInstance === poolTorneos) recreatePool('torneos');
+      else if (poolInstance === poolRanking) recreatePool('ranking');
+      else if (poolInstance === poolGeneral) recreatePool('general');
+
+      return safeQuery(poolInstance, sql, params, retries - 1);
+    }
+    throw error;
+  }
+};
+
+// ============================================
 // FUNCIONES DE TESTING
 // ============================================
 
@@ -71,7 +105,7 @@ const testConnection = async () => {
     console.log('✅  Conexión a MySQL establecida correctamente');
     console.log(`📊  Base de datos principal: ${process.env.DB_NAME || 'railway'}`);
     
-    const [rows1] = await connTorneos.execute('SELECT 1 as test');
+    await connTorneos.execute('SELECT 1 as test');
     console.log('✅  Query de prueba exitosa en BD torneos');
     connTorneos.release();
     
@@ -80,7 +114,7 @@ const testConnection = async () => {
       const connRanking = await poolRanking.getConnection();
       console.log(`📊  Base de datos ranking: ${process.env.DB_RANKING_NAME || 'railway'}`);
       
-      const [rows2] = await connRanking.execute('SELECT 1 as test');
+      await connRanking.execute('SELECT 1 as test');
       console.log('✅  Query de prueba exitosa en BD rankingTorneos');
       connRanking.release();
     } catch (rankingError) {
