@@ -13,14 +13,16 @@ const baseConfigTorneos = {
   
   // ✅ SOLO OPCIONES VÁLIDAS PARA MYSQL2
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 3,
   queueLimit: 0,
   connectTimeout: 20000,        // ✅ Esta SÍ existe
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   charset: 'utf8mb4',
 
-  idleTimeout: 60000
+  ssl: {
+    rejectUnauthorized: false
+  }
 };
 
 // ✅ Configuración base para ranking
@@ -32,12 +34,16 @@ const baseConfigRanking = {
   
   // ✅ SOLO OPCIONES VÁLIDAS PARA MYSQL2
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 3,
   queueLimit: 0,
   connectTimeout: 20000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+
+  ssl: {
+    rejectUnauthorized: false
+  }
 };
 
 // Pool para la base de datos principal 'torneos'
