@@ -2433,12 +2433,6 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
       );
     }
     
-    if (torneoExistente[0].created_by !== req.userId) {
-      return res.status(403).json(
-        errorResponse('Solo el creador del torneo puede eliminar participantes')
-      );
-    }
-    
     const [participante] = await pool.execute(
       `SELECT jtw.id, jtw.jugador_id, u.nombre, u.apellidos 
        FROM jugador_torneo_warmaster jtw
@@ -2450,6 +2444,16 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     if (participante.length === 0) {
       return res.status(404).json(
         errorResponse('El jugador no está inscrito en este torneo')
+      );
+    }
+
+     // VERIFICACIÓN DE PERMISOS: creador O el propio jugador
+    const esCreador = torneoExistente[0].created_by === req.userId;
+    const esPropiJugador = participante[0].jugador_id === req.userId;
+    
+    if (!esCreador && !esPropiJugador) {
+      return res.status(403).json(
+        errorResponse('No tienes permisos para eliminar esta inscripción')
       );
     }
     
