@@ -236,7 +236,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
-      WHERE ts.id = ?
+      WHERE ts.id = ? AND ts.sistema="WARMASTER"
       GROUP BY ts.id
     `, [userId, torneoId]);
     
@@ -2437,7 +2437,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
       `SELECT jtw.id, jtw.jugador_id, u.nombre, u.apellidos 
        FROM jugador_torneo_warmaster jtw
        INNER JOIN usuarios u ON jtw.jugador_id = u.id
-       WHERE jtw.torneo_id = ? AND jtw.id = ?`,
+       WHERE jtw.torneo_id = ? AND jtw.jugador_id = ?`,
       [torneoId, jugadorId]
     );
     
@@ -2474,7 +2474,7 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     }
     
     await pool.execute(
-      'DELETE FROM jugador_torneo_warmaster WHERE torneo_id = ? AND id = ?',
+      'DELETE FROM jugador_torneo_warmaster WHERE torneo_id = ? AND jugador_id = ?',
       [torneoId, jugadorId]
     );
     
