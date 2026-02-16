@@ -12,7 +12,7 @@ import {
     RONDAS_DISPONIBLES,
     PUNTOS_EJERCITO_FOW,
     PARTICIPANTES_RANGO
-} from '@/componentesFow/funcionesfow/constantesFuncionesFow.js';
+} from '@/componentesFow/funcionesFow/constantesFuncionesFow.js';
 
 function VistaGeneralFow({ torneoId: propTorneoId, onUpdate }) {
     const { torneoId: paramTorneoId } = useParams();
