@@ -112,6 +112,7 @@ function PrincipalWarmaster({ onOpenLogin }) {
                                     <th>Ubicación</th>
                                     <th>Organizador</th>
                                     <th>Participantes</th>
+                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -146,9 +147,10 @@ function PrincipalWarmaster({ onOpenLogin }) {
                                         </td>
                                         <td>
                                             <span className="participantes-badge">
-                                                {torneo.total_participantes || 0}
+                                                {torneo.total_participantes || 0}/{torneo.participantes_max}
                                             </span>
                                         </td>
+                                        <td>{torneo.estado}</td>
                                         <td className="acciones-cell">
                                             {torneo.created_by === userId && (
                                                 <button 

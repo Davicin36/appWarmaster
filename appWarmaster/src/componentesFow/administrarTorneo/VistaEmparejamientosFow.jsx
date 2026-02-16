@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-import torneosWarmasterApi from '@/servicios/apiWarmaster';
-import { generarEmparejamientosIndividuales } from '../funcionesWarmaster/emparejamientosIndividualesWarmaster';
+import torneosFowApi from '@/servicios/apiFow';
+import { generarEmparejamientosIndividuales } from '../funcionesFow/emparejamientosIndividualesFow';
 
-import ModalRegistroPartidaWarmaster from '../ModalRegistroPartidaWarmaster';
+import ModalRegistroPartidaFow from '../ModalRegistroPartidaFow';
 
 import '@/estilos/vistasTorneos/vistaEmparejamientos.css';
 
-function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica = false }) {
+function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = false }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
 
@@ -61,11 +61,11 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
             setLoading(true);
             setError(null);
             
-            const responseTorneo = await torneosWarmasterApi.obtenerTorneo(torneoId);
+            const responseTorneo = await torneosFowApi.obtenerTorneo(torneoId);
             const dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
             setTorneo(dataTorneo);
     
-            const responseJugadores = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
+            const responseJugadores = await torneosFowApi.obtenerJugadoresTorneo(torneoId);
             const dataJugadores = responseJugadores.data || responseJugadores || [];
             setJugadores(Array.isArray(dataJugadores) ? dataJugadores : []);
 
@@ -84,7 +84,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
     const cargarTodasLasPartidas = async (tId = torneoId) => {
         try {
-            const response = await torneosWarmasterApi.obtenerPartidasTorneo(tId);
+            const response = await torneosFowApi.obtenerPartidasTorneo(tId);
             const partidas = response?.data || response || [];
             const partidasArray = Array.isArray(partidas) ? partidas : [];
 
@@ -99,7 +99,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
         try {
             setCargandoPartidas(true);
             
-            const response = await torneosWarmasterApi.obtenerEmparejamientosIndividuales(tId, ronda);
+            const response = await torneosFowApi.obtenerEmparejamientosIndividuales(tId, ronda);
 
             const partidas = response?.data || response || [];
             const partidasArray = Array.isArray(partidas) ? partidas : [];
@@ -135,11 +135,11 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
     const handleGenerarEmparejamientos = async () => {
         try {
 
-            if( torneo.estado ==='en_curso') {
+            if( torneo.estado !=='en_curso') {
                  alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
                 return;
             }
-            
+
             if (!torneoId) {
                 alert('⚠️ Error: No se encontró el ID del torneo');
                 return;
@@ -151,7 +151,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                 return;
             }
 
-            const responseClasificacion = await torneosWarmasterApi.obtenerClasificacionIndividual(torneoId);
+            const responseClasificacion = await torneosFowApi.obtenerClasificacionIndividual(torneoId);
             const clasificacion = responseClasificacion.data || responseClasificacion || [];
 
             const participantes = jugadores.map(j => {
@@ -244,7 +244,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                 return;
             }
 
-            await torneosWarmasterApi.guardarEmparejamientosIndividuales(
+            await torneosFowApi.guardarEmparejamientosIndividuales(
                 torneo.id,
                 todasLasPartidas,
                 torneo.ronda_actual
@@ -285,7 +285,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
             if (!confirmar) return;
 
-            await torneosWarmasterApi.actualizarTorneo(torneo.id, {
+            await torneosFowApi.actualizarTorneo(torneo.id, {
                 ronda_actual: torneo.ronda_actual + 1
             });
 
@@ -349,7 +349,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
     const confirmarPartida = async (partidaId, confirmar) => {
         try {
-            await torneosWarmasterApi.confirmarResultado(torneo.id, partidaId, confirmar);
+            await torneosFowApi.confirmarResultado(torneo.id, partidaId, confirmar);
         
             alert(confirmar 
                 ? '✅ Resultado confirmado. Los puntos se han sumado a las clasificaciones.' 
@@ -518,7 +518,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                             <button 
                                 onClick={handleGenerarEmparejamientos}
                                 className="btn-primary"
-                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || torneo.estado !== 'en_curso'}
+                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || torneo.estado !=='en_curso'}
                             >
                                 🎲 Generar Emparejamientos
                             </button>
@@ -546,12 +546,6 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                     )}
                 </div>
             </div>
-
-            {torneo.estado === 'pendiente' && (
-                <div className="alerta-estado">
-                    <p>⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos</p>
-                </div>
-            )}
 
             {partidasGuardadas.length > 0 && !puedeEditarPartidas() && (
                 <div className="alerta-estado">
@@ -679,7 +673,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
             )}
 
             {modalAbierto && partidaSeleccionada && (
-                <ModalRegistroPartidaWarmaster
+                <ModalRegistroPartidaFow
                     partida={partidaSeleccionada}
                     esOrganizador={esOrganizador}
                     onClose={() => {
@@ -698,4 +692,4 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
     );
 }
 
-export default VistaEmparejamientosWarmaster;
+export default VistaEmparejamientosFow;

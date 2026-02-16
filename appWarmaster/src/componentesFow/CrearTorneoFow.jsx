@@ -17,7 +17,7 @@ import '../estilos/crearTorneo.css';
 
 function CrearTorneofow() {
     const navigate = useNavigate();
-    const {refrescarUsusario} = useAuth()
+    const {refrescarUsuario} = useAuth()
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -25,6 +25,7 @@ function CrearTorneofow() {
     const [nombreTorneo, setNombreTorneo] = useState("");
     const tipoTorneo = "Individual";
     const [rondasMax, setRondasMax] = useState(RONDAS_DISPONIBLES[0].valor);
+    const [epocasSeleccionadas, setEpocasSeleccionadas] = useState([]); 
     const [fechaInicio, setFechaInicio] = useState("");
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
@@ -34,7 +35,6 @@ function CrearTorneofow() {
     const [vistaPrevia, setVistaPrevia] = useState(null);
 
     const [puntosEjercito, setPuntosEjercito] = useState(PUNTOS_EJERCITO_FOW.default);
-    const [epocaHistorica, setEpocaHistorica] = useState("");
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
     const [archivoPDF, setArchivoPDF] = useState(null); 
     const [partidaRonda1, setPartidaRonda1] = useState("");
@@ -183,13 +183,13 @@ function CrearTorneofow() {
             return;
         }
 
-        if (!epocaHistorica) {
-            setError("Debes seleccionar una época histórica");
+        if (epocasSeleccionadas.length === 0) {
+            setError("Debes seleccionar una época");
             setLoading(false);
             return;
         }
 
-        if (!partidaRonda1 || !partidaRonda2 || partidaRonda3) {
+        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) {
             setError("Debes seleccionar escenarios para las primeras 3 rondas");
             setLoading(false);
             return;
@@ -226,11 +226,11 @@ function CrearTorneofow() {
                 torneoData.append('fecha_fin', fechaFin || '');
                 torneoData.append('ubicacion', ubicacion || '');
                 torneoData.append('puntos_ejercito', parseInt(puntosEjercito));
-                torneoData.append('epoca_historica', epocaHistorica);
+                torneoData.append('epocas_disponibles', JSON.stringify(epocasSeleccionadas));
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
                 torneoData.append('partida_ronda_2', partidaRonda2);
-                torneoData.append('partida_ronda_3', rondasMax >= 3 ? partidaRonda3 : '');
+                torneoData.append('partida_ronda_3', partidaRonda3 );
                 torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
                 torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
                 torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional))
@@ -252,15 +252,15 @@ function CrearTorneofow() {
                     nombre_torneo: nombreTorneo,
                     tipo_torneo: tipoTorneo,
                     rondas_max: parseInt(rondasMax),
+                    epocas_disponibles: epocasSeleccionadas,
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin || null,
                     ubicacion: ubicacion || null,
                     puntos_ejercito: parseInt(puntosEjercito),
-                    epoca_historica: epocaHistorica,
                     participantes_max: parseInt(participantesMax),
                     partida_ronda_1: partidaRonda1,
                     partida_ronda_2: partidaRonda2,
-                    partida_ronda_3: rondasMax >= 3 ? partidaRonda3 : null,
+                    partida_ronda_3: partidaRonda3,
                     partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
                     partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null,
                     organizadores_emails: organizadorAdicional
@@ -268,6 +268,7 @@ function CrearTorneofow() {
             }
 
             const result = await torneosFowApi.crearTorneo(torneoData);
+
            if (result.success || result.data) {
                 const mensajeExito = [
                     `✅ ¡Torneo "${nombreTorneo}" creado exitosamente!`,
@@ -277,7 +278,7 @@ function CrearTorneofow() {
                 ].filter(Boolean).join('\n');
                 
                 alert(mensajeExito);
-                await refrescarUsusario();
+                await refrescarUsuario();
                 navigate("/perfil");
             } else {
                 throw new Error(result.error || "Error desconocido al crear el torneo");
@@ -360,8 +361,8 @@ function CrearTorneofow() {
                     <select
                         name="epocaHistorica"
                         id="epocaHistorica"
-                        value={epocaHistorica}
-                        onChange={(e) => setEpocaHistorica(e.target.value)}
+                        value={epocasSeleccionadas}
+                        onChange={(e) => setEpocasSeleccionadas(e.target.value)}
                         required
                         disabled={loading}
                     >

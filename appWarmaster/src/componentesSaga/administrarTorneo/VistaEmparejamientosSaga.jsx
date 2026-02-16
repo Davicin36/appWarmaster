@@ -289,6 +289,12 @@ useEffect(() => {
 
     const handleGenerarEmparejamientos = async () => {
         try {
+
+            if( torneo.estado ==='en_curso') {
+                 alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
+                return;
+            }
+
             if (!torneoId) {
                 alert('⚠️ Error: No se encontró el ID del torneo');
                 return;
@@ -1191,7 +1197,7 @@ useEffect(() => {
                         <button 
                             onClick={handleGenerarEmparejamientos}
                             className="btn-primary"
-                            disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || modoEdicion}
+                            disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || modoEdicion || torneo.estado !=='en_curso'}
                         >
                             🎲 Generar Ronda
                         </button>

@@ -134,16 +134,18 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
+        GROUP_CONCAT(DISTINCT tef.epoca ORDER BY tef.epoca SEPARATOR '|') as epocas_disponibles,
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.club as creador_club,
         COUNT(DISTINCT jtf.id) as total_participantes,
-        SUM(CASE WHEN jtf.bandos_2gm = 'Eje' THEN 1 ELSE 0 END) as total_eje,
-        SUM(CASE WHEN jtf.bandos_2gm = 'Aliados' THEN 1 ELSE 0 END) as total_aliados,
+        SUM(CASE WHEN jtf.bando = 'Eje' THEN 1 ELSE 0 END) as total_eje,
+        SUM(CASE WHEN jtf.bando = 'Aliados' THEN 1 ELSE 0 END) as total_aliados,
         MAX(CASE WHEN jtf.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN jugador_torneo_fow jtf ON ts.id = jtf.torneo_id
+      LEFT JOIN torneo_epocas_fow tef ON ts.id = tef.torneo_id
       ${whereClause}
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
@@ -165,6 +167,9 @@ router.get('/obtenerTorneos', async (req, res) => {
     const [totalRows] = await pool.execute(`
       SELECT COUNT(DISTINCT ts.id) as total
       FROM torneos_sistemas ts 
+      LEFT JOIN usuarios u ON ts.created_by = u.id 
+      LEFT JOIN jugador_torneo_fow jts ON ts.id = jts.torneo_id
+      LEFT JOIN torneo_epocas_fow tse ON ts.id = tse.torneo_id
       ${countWhereClause}
     `, countParams);
     
@@ -189,11 +194,13 @@ router.get('/obtenerTorneos', async (req, res) => {
   }
 });
 
-//=====OBTENER TORNEO ESPECIFICO=====
+//=====OBTENER TORNEO ESPECIFICO FOW=====
 
 router.get('/torneo/:torneoId', async (req, res) => {
   try {
     const { torneoId } = req.params;
+    
+    console.log(`📖 GET /torneo/${torneoId} - FOW`);
     
     let userId = null;
     const authHeader = req.headers['authorization'];
@@ -214,6 +221,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.sistema,
         ts.nombre_torneo,
         ts.tipo_torneo,
+        ts.num_jugadores_equipo,
         ts.rondas_max,
         ts.ronda_actual,
         ts.fecha_inicio,
@@ -222,6 +230,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.imagen_url,
         ts.puntos_ejercito,
         ts.participantes_max,
+        ts.equipos_max,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -232,6 +241,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
+        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
         u.nombre as creador_nombre,
         u.apellidos as creador_apellidos,
         u.email as creador_email,
@@ -241,6 +251,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN jugador_torneo_fow jtf ON ts.id = jtf.torneo_id
+      LEFT JOIN torneo_epocas_fow tse ON ts.id = tse.torneo_id
       WHERE ts.id = ? AND ts.sistema = "FOW"
       GROUP BY ts.id
     `, [userId, torneoId]);
@@ -277,6 +288,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
           nombre_torneo, 
           tipo_torneo = 'Individual',
           rondas_max: rondas_max_raw,
+          epocas_disponibles: epocas_raw,
           fecha_inicio, 
           fecha_fin, 
           ubicacion,
@@ -296,6 +308,17 @@ router.get('/torneo/:torneoId', async (req, res) => {
         const puntos_ejercito = parseInt(puntos_ejercito_raw);
         const participantes_max = parseInt(participantes_max_raw);
 
+        let epocas_disponibles
+        if(typeof epocas_raw==='string') {
+          try {
+            epocas_disponibles =JSON.parse(epocas_raw)
+          } catch (e){
+            epocas_disponibles = epocas_raw.split('|').map(e=> e.trim()).filter(e=>e)
+          }
+        } else {
+          epocas_disponibles =epocas_raw
+        }
+
         let organizadores_emails = [];
         if (organizadores_raw) {
           if(typeof organizadores_raw === 'string') {
@@ -312,6 +335,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
     const camposFaltantes = validarCamposRequeridos(req.body, [
       'nombre_torneo', 
       'rondas_max',
+      'epocas_disponibles',
       'fecha_inicio',
       'puntos_ejercito',
       'participantes_max',
@@ -324,6 +348,12 @@ router.get('/torneo/:torneoId', async (req, res) => {
       return res.status(400).json(
         errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
       );
+    }
+
+    if(!Array.isArray(epocas_disponibles) || epocas_disponibles.length === 0) {
+      return res.status (400).json (
+        errorResponse ('Debe seleccionar al menos una época')
+      )
     }
 
     if (rondas_max < 3 || rondas_max > 5) {
@@ -446,7 +476,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?))`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         'FOW',
@@ -475,6 +505,13 @@ router.get('/torneo/:torneoId', async (req, res) => {
     );
 
     const torneoId = resultado.insertId;
+
+    for (const epoca of epocas_disponibles) {
+      await pool.execute (
+        `INSERT INTO torneo_epocas_fow (torneo_id, epoca) VALUE ( ?, ?)`,
+        [torneoId, epoca]
+      )
+    }
 
      //INSERTAR A LOS ORGANIZADORES DEL TORNEO EN SU BD.
         await pool.execute(
@@ -659,6 +696,7 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       nombre_torneo, 
       rondas_max,
       ronda_actual,
+      epoca_torneo: epoca_raw,
       fecha_inicio, 
       fecha_fin, 
       ubicacion,
@@ -682,6 +720,15 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
         
         if (torneoExistente.length === 0) {
           return res.status(404).json(errorResponse('Torneo no encontrado'));
+        }
+
+        let epocas_disponibles;
+        if (epoca_raw) {
+          if (typeof epoca_raw === 'string') {
+            epocas_disponibles = epoca_raw.split('|').map(e => e.trim()).filter(e => e);
+          } else if (Array.isArray(epoca_raw)) {
+            epocas_disponibles = epoca_raw;
+          }
         }
         
         // Validaciones
@@ -915,6 +962,24 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
         } else {
           console.log('ℹ️ No hay cambios para actualizar');
         }
+
+            // ✅ NUEVO: Actualizar épocas si se proporcionaron
+          if (epocas_disponibles && Array.isArray(epocas_disponibles)) {
+            
+            // Eliminar épocas antiguas
+            await pool.execute(
+              'DELETE FROM torneo_epocas_fow WHERE torneo_id = ?',
+              [torneoId]
+            );
+            
+            // Insertar nuevas épocas
+            for (const epoca of epocas_disponibles) {
+              await pool.execute(
+                `INSERT INTO torneo_epocas_fow (torneo_id, epoca) VALUES (?, ?)`,
+                [torneoId, epoca]
+              );
+            }
+          }
         
         // ========================================
         // RESPUESTA
@@ -926,6 +991,7 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
               ubicacion: ubicacion !== undefined,
               imagen_actualizada: imagenActualizada,
               imagen_eliminada: imagenEliminada,
+              epocas_actualizadas: !!epocas_disponibles,
               pdf_actualizado: pdfActualizado,
               pdf_eliminado: pdfEliminado,
               total_campos: camposActualizar.length
@@ -1532,6 +1598,14 @@ router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejerc
       )
     }
 
+     // ✅ CORRECCIÓN: Aceptar "ALIADOS"/"Aliados" y "EJE"/"Eje"
+    const bandoNormalizado = bando.toUpperCase();
+    if (!['ALIADOS', 'EJE'].includes(bandoNormalizado)) {
+      return res.status(400).json(
+        errorResponse('El bando debe ser "Aliados" o "Eje"')
+      );
+    }
+
     // Validar que el torneo existe 
     const [torneos] = await pool.execute(
       'SELECT nombre_torneo, puntos_ejercito FROM torneos_sistemas WHERE id = ?',
@@ -1568,6 +1642,17 @@ router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejerc
       listaTamaño = req.file.size;
       console.log(`📄 Lista recibida: ${listaNombre} (${listaTamaño} bytes)`);
     }
+
+    // ==========================================
+    // OBTENER ÉPOCA DEL TORNEO
+    // ==========================================
+    
+    const [epocas] = await pool.execute(
+      'SELECT epoca FROM torneo_epocas_fow WHERE torneo_id = ? LIMIT 1',
+      [torneoId]
+    );
+
+    const epoca = epocas.length > 0 ? epocas[0].epoca : null;
     
     // Insertar inscripción
     const [resultado] = await pool.execute(
@@ -1575,6 +1660,7 @@ router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejerc
         torneo_id, 
         jugador_id, 
         nombre_ejercito,
+        epoca,
         ejercito,
         bando,
         lista_ejercito,
@@ -1583,12 +1669,13 @@ router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejerc
         pagado,
         puntos_victoria,
         puntos_torneo,
-        pelotones_matados,
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)`,
+        pelotones_matados
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)`,
       [
         torneoId,
         usuarioId,
         nombre_ejercito,
+        epoca,
         ejercito,
         bando,
         listaEjercito,
@@ -1598,6 +1685,20 @@ router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejerc
     );
 
     console.log(`✅ Usuario ${usuarioId} inscrito en torneo ${torneoId}`);
+
+     await pool.execute(
+      `INSERT INTO clasificacion_jugadores_fow (
+        torneo_id,
+        jugador_id,
+        partidas_jugadas,
+        partidas_ganadas,
+        partidas_empatadas,
+        partidas_perdidas,
+        puntos_victoria_totales,
+        puntos_torneo_totales
+      ) VALUES (?, ?, 0, 0, 0, 0, 0, 0)`,
+      [torneoId, usuarioId]
+    );
 
     res.json(
       successResponse('Inscripción realizada exitosamente', {
@@ -1654,7 +1755,7 @@ router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => 
             jtf.puntos_victoria,
             jtf.puntos_torneo,
             jtf.pelotones_matados,
-            jtw.created_at
+            jtf.created_at
           FROM jugador_torneo_fow jtf
           WHERE jtf.torneo_id = ? AND jtf.jugador_id = ?
         `, [torneoId, jugadorId]);
@@ -1707,6 +1808,14 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('li
           )
         }
 
+        // ✅ CORRECCIÓN: Aceptar "ALIADOS"/"Aliados" y "EJE"/"Eje"
+        const bandoNormalizado = bando.toUpperCase();
+        if (!['ALIADOS', 'EJE'].includes(bandoNormalizado)) {
+          return res.status(400).json(
+            errorResponse('El bando debe ser "Aliados" o "Eje"')
+          );
+        }
+
         await connection.beginTransaction();
 
         // Verificar que está inscrito
@@ -1727,7 +1836,7 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('li
                 ts.estado,
                 ts.puntos_ejercito
             FROM torneos_sistemas ts
-            WHERE ts.id = ? AND ts.sistema = "WARMASTER"
+            WHERE ts.id = ? AND ts.sistema = "FOW"
         `, [torneoId]);
 
           if (torneos.length === 0) {
@@ -1782,7 +1891,7 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('li
                 pagado,
                 puntos_victoria,
                 puntos_torneo,
-                pelotones_matados
+                pelotones_matados,
                 created_at
             FROM jugador_torneo_fow
             WHERE torneo_id = ? AND jugador_id = ?
@@ -2473,14 +2582,8 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
       );
     }
     
-    if (torneoExistente[0].created_by !== req.userId) {
-      return res.status(403).json(
-        errorResponse('Solo el creador del torneo puede eliminar participantes')
-      );
-    }
-    
     const [participante] = await pool.execute(
-      `SELECT jtf.id, u.nombre, u.apellidos 
+      `SELECT jtf.id, jtf.jugador_id, u.nombre, u.apellidos 
        FROM jugador_torneo_fow jtf
        INNER JOIN usuarios u ON jtf.jugador_id = u.id
        WHERE jtf.torneo_id = ? AND jtf.jugador_id = ?`,
@@ -2492,14 +2595,25 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
         errorResponse('El jugador no está inscrito en este torneo')
       );
     }
+
+     // VERIFICACIÓN DE PERMISOS: creador O el propio jugador
+    const esCreador = torneoExistente[0].created_by === req.userId;
+    const esPropiJugador = participante[0].jugador_id === req.userId;
     
+    if (!esCreador && !esPropiJugador) {
+      return res.status(403).json(
+        errorResponse('No tienes permisos para eliminar esta inscripción')
+      );
+    }
+    
+    const jugadorInscritoId = participante[0].jugador_id
     const nombreJugador = `${participante[0].nombre} ${participante[0].apellidos || ''}`.trim();
     
     const [partidas] = await pool.execute(
       `SELECT COUNT(*) as total 
        FROM partidas_fow 
        WHERE torneo_id = ? AND (jugador1_id = ? OR jugador2_id = ?)`,
-      [torneoId, jugadorId, jugadorId]
+      [torneoId, jugadorInscritoId, jugadorInscritoId]
     );
     
     if (partidas[0].total > 0) {
@@ -2823,7 +2937,7 @@ router.get('/:torneoId/partidasTorneoFow', async (req, res) => {
         pf.mesa,
         pf.nombre_partida,
         pf.es_bye,
-        pf.resultado_pw,
+        pf.resultado_pf,
         pf.resultado_confirmado,
         pf.puntos_victoria_j1,
         pf.puntos_victoria_j2,
@@ -2886,7 +3000,7 @@ router.get('/:torneoId/partidasTorneoFow', async (req, res) => {
       mesa: p.mesa,
       nombre_partida: p.nombre_partida,
       es_bye: p.es_bye,
-      resultado_pw: p.resultado_pw,
+      resultado_pw: p.resultado_pf,
       resultado_confirmado: p.resultado_confirmado,
       puntos_victoria_j1: p.puntos_victoria_j1,
       puntos_victoria_j2: p.puntos_victoria_j2,
@@ -3450,7 +3564,7 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, asyn
       INNER JOIN usuarios u1 ON jt1.jugador_id = u1.id
       LEFT JOIN usuarios u2 ON jt2.jugador_id = u2.id
       ${whereClause}
-      ORDER BY pw.mesa, pw.id
+      ORDER BY pf.mesa, pf.id
     `;
     
     const [partidasConJoins] = await pool.execute(queryConJoins, params);
@@ -3535,7 +3649,7 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
           mesa, 
           nombre_partida,
           es_bye,
-          resultado_pw,
+          resultado_pf,
           puntos_victoria_j1,
           puntos_victoria_j2,
           puntos_torneo_j1,
@@ -3633,52 +3747,87 @@ router.delete('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (
   }
 });
 
-//=======OBTENER CLASIFICACION=========
+//=======OBTENER CLASIFICACION GENERAL + POR BANDOS=========
 
-router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
-
+router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) => {
   try {
+    const { torneoId } = req.params;
 
-     const { torneoId } = req.params;
+    // 🎯 QUERY PRINCIPAL: Clasificación completa con bando
+    const [clasificacion] = await pool.execute(`
+      SELECT 
+        cjf.id,
+        cjf.jugador_id,
+        u.nombre as jugador_nombre,
+        u.apellidos as jugador_apellidos,
+        u.club,
+        jtf.nombre_ejercito,
+        jtf.ejercito,
+        jtf.bando,
+        COALESCE(cjf.partidas_jugadas, 0) as partidas_jugadas,
+        COALESCE(cjf.partidas_ganadas, 0) as partidas_ganadas,
+        COALESCE(cjf.partidas_empatadas, 0) as partidas_empatadas,
+        COALESCE(cjf.partidas_perdidas, 0) as partidas_perdidas,
+        COALESCE(cjf.puntos_victoria_totales, 0) as puntos_victoria_totales,
+        COALESCE(cjf.puntos_torneo_totales, 0) as puntos_torneo_totales
+      FROM clasificacion_jugadores_fow cjf
+      INNER JOIN usuarios u 
+        ON cjf.jugador_id = u.id
+      LEFT JOIN jugador_torneo_fow jtf
+        ON cjf.jugador_id = jtf.jugador_id
+        AND cjf.torneo_id = jtf.torneo_id 
+      WHERE cjf.torneo_id = ?
+      ORDER BY 
+        puntos_victoria_totales DESC,
+        puntos_torneo_totales DESC
+    `, [torneoId]);
 
-        const [clasificacion] = await pool.execute(`
-            SELECT 
-                cjf.id,
-                cjf.jugador_id,
-                cjf.partidas_ganadas,
-                cjf.partidas_empatadas,
-                cjf.partidas_perdidas,
-                u.nombre as jugador_nombre,
-                u.apellidos as jugador_apellidos,
-                u.club,
-                jtf.nombre_ejercito,
-                jtf.ejercito,
-                jtf.bando,
-                COALESCE(cjf.partidas_jugadas, 0) as partidas_jugadas,
-                 COALESCE(cjf.partidas_ganadas, 0) as jugador_partidas_ganadas,
-                COALESCE(cjf.partidas_empatadas, 0) as jugador_partidas_empatadas,
-                COALESCE(cjf.partidas_perdidas, 0) as jugador_partidas_perdidas,
-                COALESCE(cjf.puntos_victoria_totales, 0) as puntos_victoria_totales,
-                COALESCE(cjf.puntos_torneo_totales, 0) as puntos_torneo_totales,
-              FROM clasificacion_jugadores_fow cjf
-                INNER JOIN usuarios u 
-                  ON cjf.jugador_id = u.id
-                LEFT JOIN jugador_torneo_fow jtf
-                  ON cjf.jugador_id = jtf.jugador_id
-                  AND cjf.torneo_id = jtf.torneo_id 
-              WHERE cjf.torneo_id = ?
-        `, [torneoId]);
+    // 🎯 SEPARAR POR BANDOS
+    const eje = clasificacion
+      .filter(j => j.bando === 'Eje')
+      .map((jugador, index) => ({
+        ...jugador,
+        posicion_bando: index + 1
+      }));
 
+    const aliados = clasificacion
+      .filter(j => j.bando === 'Aliados')
+      .map((jugador, index) => ({
+        ...jugador,
+        posicion_bando: index + 1
+      }));
 
-        res.json(successResponse('La clasificación obtenida es: ',  clasificacion))
+    // 🎯 CLASIFICACIÓN GENERAL CON POSICIONES
+    const general = clasificacion.map((jugador, index) => ({
+      ...jugador,
+      posicion_general: index + 1
+    }));
 
-  }catch(error){
-        console.error('❌ Error COMPLETO al obtener la clasificación:', error);
-        console.error('Error message:', error.message);
-        console.error('Error code:', error.code);
-        res.status(500).json(errorResponse('Error al obtener la clasificación'));
+    // 🎯 ESTADÍSTICAS ADICIONALES
+    const estadisticas = {
+      total_jugadores: clasificacion.length,
+      total_eje: eje.length,
+      total_aliados: aliados.length,
+      partidas_totales: clasificacion.reduce((sum, j) => sum + j.partidas_jugadas, 0)
+    };
+
+    res.json(
+      successResponse('Clasificación obtenida exitosamente', {
+        general,
+        eje,
+        aliados,
+        estadisticas
+      })
+    );
+
+  } catch (error) {
+    console.error('❌ Error COMPLETO al obtener la clasificación:', error);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error SQL:', error.sql);
+    res.status(500).json(errorResponse('Error al obtener la clasificación'));
   }
-})
+});
 
 // ======= ENDPOINTS PARA CORREOS - FOW =======
 

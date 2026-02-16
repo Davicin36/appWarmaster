@@ -33,13 +33,20 @@ class TorneosFowApi {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("❌ Error del servidor:", errorData);
+
+       if (response.status !== 404) {
+          console.error("❌ Error del servidor:", errorData);
+        }
+      
         throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       return await response.json();
     } catch (error) {
-      console.error('API Error:', error);
+      
+      if (!error.message.includes('404') && !error.message.includes('HTTP error! status: 404')) {
+        console.error('API Error:', error);
+      }
       throw error;
     }
   }
@@ -145,6 +152,19 @@ class TorneosFowApi {
     });
   }
 
+  async obtenerJugadoresCorreos(torneoId) {
+  return this.request(`/${torneoId}/jugadores-correos`, {
+    method: 'GET'
+  });
+}
+
+async enviarCorreoParticipantes(torneoId, datos) {
+  return this.request(`/${torneoId}/enviar-correo`, {
+    method: 'POST',
+    body: datos
+  });
+}
+
   // ====================================================
   // MÉTODOS PARA ACCEDER A JUGADORES DE LOS TORNEOS
   // ====================================================
@@ -165,8 +185,8 @@ class TorneosFowApi {
 
   async obtenerPartidasTorneo(torneoId, ronda) {
     const endpoint = ronda 
-      ? `/${torneoId}/partidasTorneoSaga?ronda=${ronda}`
-      : `/${torneoId}/partidasTorneoSaga`;
+      ? `/${torneoId}/partidasTorneoFow?ronda=${ronda}`
+      : `/${torneoId}/partidasTorneoFow`;
     
     const response = await this.request(endpoint);
     
@@ -178,18 +198,18 @@ class TorneosFowApi {
   }
 
   async obtenerPartida(torneoId, partidaId) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`);
+    return this.request(`/${torneoId}/partidasTorneoFow/${partidaId}`);
   }
 
   async registrarPartida(torneoId, partidaId, partida) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoFow/${partidaId}`, {
       method: 'PUT',
       body: partida
     });
   }
 
   async confirmarResultado(torneoId, partidaId, confirmar) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}/confirmar`, {
+    return this.request(`/${torneoId}/partidasTorneoFow/${partidaId}/confirmar`, {
       method: 'PATCH',
       body: { confirmar }
     });
@@ -217,14 +237,14 @@ class TorneosFowApi {
   }
 
   async actualizarPartida(partidaId, torneoId, partida) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoFow/${partidaId}`, {
       method: 'PUT',
       body: partida,
     });
   }
 
   async eliminarPartida(partidaId, torneoId) {
-    return this.request(`/${torneoId}/partidasTorneoSaga/${partidaId}`, {
+    return this.request(`/${torneoId}/partidasTorneoFow/${partidaId}`, {
       method: 'DELETE',
     });
   }

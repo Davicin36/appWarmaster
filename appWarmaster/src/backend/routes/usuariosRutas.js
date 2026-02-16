@@ -759,6 +759,22 @@ router.get('/torneos', async (req, res) => {
     }
 });
 
+// ======OBTENER SISTEMAS  DEL TORNEO======
+
+router.get('/torneos/sistema/:torneoId', async (req, res) => {
+  const { torneoId } = req.params;
+  const [result] = await pool.execute(
+    'SELECT sistema FROM torneos_sistemas WHERE id = ?',
+    [torneoId]
+  );
+  
+  if (result.length === 0) {
+    return res.status(404).json({ error: 'Torneo no encontrado' });
+  }
+  
+  res.json({ sistema: result[0].sistema });
+});
+
 // ===== OBTENER TORNEOS POR USUARIO======
 
 router.get('/:userId', verificarToken, async (req, res) => {

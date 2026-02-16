@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../servicios/AuthContext.jsx";
+import usuarioApi from "../servicios/apiUsuarios.js";
 
 import torneosSagaApi from '../servicios/apiSaga.js';
 import torneosWarmasterApi from '../servicios/apiWarmaster.js'
+import torneosFowApi from "../servicios/apiFow.js";
 
 // Componentes de inscripción
 import { REGISTRO_INSCRIPCIONES } from '../funciones/registroInscripciones.js';
@@ -25,57 +27,48 @@ function Inscripcion() {
   // CARGAR DATOS DEL TORNEO
   // ==========================================
   useEffect(() => {
-    const cargarTorneo = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  const cargarTorneo = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        let dataTorneo = null
-        let torneoData = null
+      // 1️⃣ Primero obtener el sistema del torneo
+      const { sistema } = await usuarioApi.obtenerSistema(torneoId);
 
-        try {
+      // 2️⃣ Mapeo de APIs
+      const APIS_POR_SISTEMA = {
+        'SAGA': torneosSagaApi,
+        'WARMASTER': torneosWarmasterApi,
+        'FOW': torneosFowApi
+      };
 
-          dataTorneo = await torneosSagaApi.obtenerTorneo(torneoId);
-          
-          if (dataTorneo.success && dataTorneo.data) {
-            torneoData = dataTorneo.data.torneo || dataTorneo.data
-          }
-        } catch (sagaError) {
-          console.error('No es un torneo SAGA, intentando WARMASTER...', sagaError);
-        }
+      // 3️⃣ Usar la API correcta según el sistema
+      const api = APIS_POR_SISTEMA[sistema];
+      
+      if (!api) {
+        throw new Error(`Sistema ${sistema} no soportado`);
+      }
 
-        if (!torneoData){
-          try {
-            dataTorneo = await torneosWarmasterApi.obtenerTorneo(torneoId)
-            if(dataTorneo.success && dataTorneo.data) {
-              torneoData = dataTorneo.data.torneo || dataTorneo.data
-            }
-          } catch (warmasterError) {
-            console.error('No es un torneo WARMASTER tampoco', warmasterError);
-          }
-        }
+      const dataTorneo = await api.obtenerTorneo(torneoId);
+      const torneoData = dataTorneo.data?.torneo || dataTorneo.data;
 
-        if (torneoData){
-          setTorneo(torneoData)
-        } else {
-          setError ("No se puedo cargar el torneo")
-        }
+      setTorneo(torneoData);
 
-      } catch (err) {
-          console.error("❌ Error al cargar torneo:", err);
-          setError(err.message || "Error al cargar el torneo");
-        } finally {
-          setLoading(false);
-        }
-    };
-
-    if (torneoId) {
-      cargarTorneo();
-    } else {
-      setError("ID de torneo no encontrado");
+    } catch (err) {
+      console.error("❌ Error al cargar torneo:", err);
+      setError(err.message || "Error al cargar el torneo");
+    } finally {
       setLoading(false);
     }
-  }, [torneoId]);
+  };
+
+  if (torneoId) {
+    cargarTorneo();
+  } else {
+    setError("ID de torneo no encontrado");
+    setLoading(false);
+  }
+}, [torneoId]);
 
   // ==========================================
   // ESTADOS DE CARGA Y ERROR

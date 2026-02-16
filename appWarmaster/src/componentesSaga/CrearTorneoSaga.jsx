@@ -53,12 +53,13 @@ function CrearTorneoSaga() {
     const [organizadorAdicional, setOrganizadorAdicional] = useState("");
     const [emailOrganizador, setEmailOrganizador] = useState("");
 
-
+//USEEFFECT PARA CARGAR TORNEO POR EQUIPOS
     useEffect(() => {
     if (tipoTorneo === "Por equipos") {
         setParticipantesMax(equiposMax * numJugadoresEquipo);
     }
     }, [equiposMax, numJugadoresEquipo, tipoTorneo]);
+    
 
       const handleImagenCartel = (e) => {
         const file = e.target.files[0];

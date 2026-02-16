@@ -23,7 +23,7 @@ import VistaEmparejamientosPublicaWarmaster from '../componentesWarmaster/verTor
 import VistaClasificacionPublicaWarmaster from '../componentesWarmaster/verTorneo/VistaClasificacionPublicaWarmaster';
 
 // FLAMES OF WAR - Importar todas las vistas
-/*
+
 import VistaGeneralFow from '../componentesFow/administrarTorneo/VistaGeneralFow';
 import VistaJugadoresFow from '../componentesFow/administrarTorneo/VistaJugadoresFow';
 import VistaEmparejamientosFow from '../componentesFow/administrarTorneo/VistaEmparejamientosFow';
@@ -32,7 +32,7 @@ import VistaClasificacionFow from '../componentesFow/administrarTorneo/VistaClas
 import VistaInformacionPublicaFow from '../componentesFow/verTorneo/VistaInformacionPublicaFow'
 import VistaEmparejamientosPublicaFow from '../componentesFow/verTorneo/VistaEmparejamientosPublicaFow';
 import VistaClasificacionPublicaFow from '../componentesFow/verTorneo/VistaClasificacionPublicaFow';
-*/
+
 
 // BOLT ACTION- Importar todas las vistas
 /*
@@ -60,20 +60,22 @@ export const REGISTRO_VISTAS_TORNEOS = {
         emparejamientos: VistaEmparejamientosWarmaster,
         clasificacion: VistaClasificacionWarmaster
     },
-    /*
+    
     "FOW": {
         general: VistaGeneralFow,
         jugadores: VistaJugadoresFow,
         emparejamientos: VistaEmparejamientosFow,
         clasificacion: VistaClasificacionFow
     },
+    /*
     "BOLT": {
         general: VistaGeneralBolt,
         jugadores: VistaJugadoresBolt,
         emparejamientos: VistaEmparejamientosBolt,
         clasificacion: VistaClasificacionBolt
     }
-    */
+        */
+    
 };
 
 // REGISTRO VISTAS PÚBLICAS (Ver Torneo)
@@ -89,12 +91,12 @@ export const REGISTRO_VISTAS_PUBLICAS = {
         emparejamientos: VistaEmparejamientosPublicaWarmaster,
         clasificacion: VistaClasificacionPublicaWarmaster
     },
-    /*
     "FOW": {
         informacion: VistaInformacionPublicaFow,
         emparejamientos: VistaEmparejamientosPublicaFow,
         clasificacion: VistaClasificacionPublicaFow
     },
+    /*
     "BOLT": {
         informacion: VistaInformacionPublicaBolt,
         emparejamientos: VistaEmparejamientosPublicaBolt,

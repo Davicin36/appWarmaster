@@ -1,0 +1,552 @@
+// componentesFow/inscripciones/InscripcionFowIndividual.jsx
+
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
+import torneosFowApi from '@/servicios/apiFow.js';
+import { obtenerBandasDisponibles, formatearEpocas } from '@/componentesFow/funcionesFow/constantesFuncionesFow';
+import Footer from '@/paginas/Footer.jsx'
+
+import '@/estilos/inscripcion.css';
+
+function InscripcionFowIndividual({ torneoId, torneo, user }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Detectar si es modo edición
+  const modoEdicion = location.pathname.includes('editar-inscripcion') || location.pathname.includes('actualizarInscripcion');
+  
+  // Estados
+  const [nombreEjercito, setNombreEjercito] = useState("");
+  const [ejercitoSeleccionado, setEjercitoSeleccionado] = useState("");
+  const [bando, setBando] = useState(""); // ✅ Estado del bando
+  const [archivoPDF, setArchivoPDF] = useState(null);
+  const [pdfActual, setPdfActual] = useState(null); 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [loadingPdf, setLoadingPdf] = useState(false);
+
+  // ✅ Obtener ejércitos disponibles según época del torneo
+  const ejercitosDisponibles = torneo?.epocas_disponibles 
+    ? obtenerBandasDisponibles(torneo.epocas_disponibles)
+    : [];
+
+  // ==========================================
+  // CARGAR INSCRIPCIÓN EXISTENTE (MODO EDICIÓN)
+  // ==========================================
+
+  useEffect(() => {
+    const cargarInscripcion = async () => {
+      if (!modoEdicion) return;
+
+      try {
+        setLoading(true);
+        const dataInscripcion = await torneosFowApi.obtenerIncripcion(torneoId);
+        
+        if (dataInscripcion.success && dataInscripcion.data) {
+          const inscripcion = dataInscripcion.data;
+          
+          setNombreEjercito(inscripcion.nombre_ejercito || "");
+          setEjercitoSeleccionado(inscripcion.ejercito || "");
+          setBando(inscripcion.bando || ""); // ✅ Cargar bando
+          
+          // Si hay lista PDF, guardar metadata
+          if (inscripcion.lista_nombre) {
+            setPdfActual({
+              nombre: inscripcion.lista_nombre,
+              tamaño: inscripcion.lista_tamaño
+            });
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error al cargar inscripción:", err);
+        setError("No se pudo cargar tu inscripción");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarInscripcion();
+  }, [modoEdicion, torneoId]);
+
+  // ==========================================
+  // HANDLERS
+  // ==========================================
+
+  const handleArchivoPDF = (e) => {
+    const file = e.target.files[0];
+    
+    if (!file) {
+      setArchivoPDF(null);
+      return;
+    }
+    
+    // Validar que sea PDF
+    if (file.type !== 'application/pdf') {
+      setError('⚠️ Solo se permiten archivos PDF');
+      e.target.value = '';
+      setArchivoPDF(null);
+      setTimeout(() => setError(''), 4000);
+      return;
+    }
+    
+    // Validar tamaño (máximo 16MB)
+    const maxSize = 16 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const tamañoMB = (file.size / 1024 / 1024).toFixed(2);
+      setError(`⚠️ El archivo PDF (${tamañoMB}MB) supera el tamaño máximo de 16MB`);
+      e.target.value = '';
+      setArchivoPDF(null);
+      setTimeout(() => setError(''), 5000);
+      return;
+    }
+    
+    setArchivoPDF(file);
+    setError('');
+  };
+
+  const handleEliminarPDF = () => {
+    setArchivoPDF(null);
+    const fileInput = document.getElementById('listaPDF');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  const handleVerPDF = async () => {
+    if (!user?.id) {
+      setError("No se pudo obtener tu ID de usuario");
+      return;
+    }
+
+    try {
+      setLoadingPdf(true);
+      setError("");
+      await torneosFowApi.verListaEjercito(torneoId, user.id);
+    } catch (err) {
+      console.error("❌ Error al ver PDF:", err);
+      setError(err.message || "Error al abrir el PDF");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
+
+  const handleDescargarPDF = async () => {
+    if (!user?.id) {
+      setError("No se pudo obtener tu ID de usuario");
+      return;
+    }
+
+    try {
+      setLoadingPdf(true);
+      setError("");
+      await torneosFowApi.descargarListaEjercito(torneoId, user.id);
+    } catch (err) {
+      console.error("❌ Error al descargar PDF:", err);
+      setError(err.message || "Error al descargar el PDF");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
+
+  const eliminarInscripcion = async () => {
+    if (!window.confirm('⚠️ ¿Estás seguro de que quieres eliminar tu inscripción?')) {
+      return;
+    }
+
+    if (!user?.id) {
+      setError("No se pudo obtener tu ID de usuario");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const resultado = await torneosFowApi.eliminarJugadorTorneo(torneoId, user.id);
+
+      if (resultado.success) {
+        alert("✅ Inscripción eliminada correctamente");
+        navigate('/');
+      }
+    } catch (error) {
+      console.error("❌ Error al eliminar inscripción:", error);
+      setError(error.message || "Error al eliminar la inscripción");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    
+    // ==========================================
+    // VALIDACIONES
+    // ==========================================
+    if (!user?.id) {
+      setError("No hay usuario autenticado");
+      return;
+    }
+
+    if (!nombreEjercito.trim()) {
+      setError("Debes indicar el nombre de tu ejército");
+      return;
+    }
+
+    if (!ejercitoSeleccionado) {
+      setError("Debes seleccionar un ejército");
+      return;
+    }
+
+    if (!bando) {
+      setError("No se pudo determinar el bando del ejército seleccionado");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // ==========================================
+      // PREPARAR DATOS PARA ENVIAR
+      // ==========================================
+      let inscripcionData;
+      
+      if (archivoPDF) {
+        // ✅ Si hay PDF, usar FormData
+        inscripcionData = new FormData();
+        inscripcionData.append('nombre_ejercito', nombreEjercito.trim());
+        inscripcionData.append('ejercito', ejercitoSeleccionado);
+        inscripcionData.append('bando', bando); // ✅ AGREGAR BANDO
+        inscripcionData.append('lista_ejercito', archivoPDF);
+      } else {
+        // ✅ Sin PDF, usar objeto JSON
+        inscripcionData = {
+          nombre_ejercito: nombreEjercito.trim(),
+          ejercito: ejercitoSeleccionado,
+          bando: bando // ✅ AGREGAR BANDO
+        };
+      }
+
+      let resultado;
+      
+      if (modoEdicion) {
+        resultado = await torneosFowApi.actualizarInscripcion(torneoId, inscripcionData);
+        alert("✅ ¡Inscripción actualizada con éxito!");
+      } else {
+        resultado = await torneosFowApi.inscribirse(torneoId, inscripcionData);
+        alert("✅ ¡Inscripción realizada con éxito!");
+      }
+      
+      if (resultado.success) {
+        navigate('/');
+      }
+      
+    } catch (err) {
+      console.error("❌ Error:", err);
+      setError(err.message || "Error al procesar la inscripción");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const puntosMaximos = torneo?.puntos_ejercito || 1750;
+
+  // ==========================================
+  // RENDER
+  // ==========================================
+
+  return (
+    <div className="inscripcion-container">
+      
+      {/* TÍTULO */}
+      <h1>
+        {modoEdicion ? '✏️ Editar Inscripción' : '📝 Inscripción'}: {torneo?.nombre_torneo}
+      </h1>
+      
+      {modoEdicion && (
+        <div className="info-message">
+          ℹ️ Editando tu inscripción actual
+        </div>
+      )}
+      
+      {/* DATOS DEL PARTICIPANTE */}
+      <section className="info-usuario">
+        <h2>👤 Datos del Participante</h2>
+        <div className="datos-grid">
+          <div className="dato-item">
+            <label>Nombre:</label>
+            <span>{user?.nombre} {user?.apellidos}</span>
+          </div>
+          
+          <div className="dato-item">
+            <label>Email:</label>
+            <span>{user?.email}</span>
+          </div>
+          
+          {user?.club && (
+            <div className="dato-item">
+              <label>Club:</label>
+              <span>{user.club}</span>
+            </div>
+          )}
+
+          {user?.localidad && (
+            <div className="dato-item">
+              <label>Localidad:</label>
+              <span>{user.localidad}</span>
+              <label>País:</label>
+              <span>{user.pais}</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* DATOS DEL TORNEO */}
+      <section className="info-torneo">
+        <h2>🎮 Detalles del Torneo</h2>
+        <div className="datos-grid">
+          <div className="dato-item">
+            <label>Puntos del Ejército:</label>
+            <span>{puntosMaximos} puntos</span>
+          </div>
+          
+          <div className="dato-item">
+            <label>Época(s) del Torneo:</label>
+            <span>{formatearEpocas(torneo.epocas_disponibles)}</span>
+          </div>
+          
+          <div className="dato-item">
+            <label>Fecha:</label>
+            <span>
+              {torneo?.fecha_inicio 
+                ? new Date(torneo.fecha_inicio).toLocaleDateString('es-ES')
+                : "N/A"}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* FORMULARIO */}
+      <form onSubmit={handleSubmit} className="inscripcion-form">
+        
+        {error && <div className="error-message">⚠️ {error}</div>}
+
+        {/* SELECCIÓN DE EJÉRCITO */}
+        <fieldset>
+          <legend>⚔️ Datos del Ejército</legend>
+          
+          {/* NOMBRE DEL EJÉRCITO */}
+          <div className="form-group">
+            <label htmlFor="nombreEjercito">Nombre del Ejército:*</label>
+            <input
+              type="text"
+              id="nombreEjercito"
+              value={nombreEjercito}
+              onChange={(e) => setNombreEjercito(e.target.value)}
+              placeholder="Ej: 1ª División Panzer"
+              maxLength={100}
+              required
+              disabled={loading}
+            />
+            <small className="help-text">
+              💡 Dale un nombre personalizado a tu ejército (máx. 100 caracteres)
+            </small>
+          </div>
+
+          {/* SELECCIÓN DE BANDO */}
+          <div className="form-group">
+            <label htmlFor="ejercito">Seleccione Bando:*</label>
+  
+            
+            <select
+              id="ejercito"
+              value={ejercitoSeleccionado}
+              onChange={(e) => {
+                const valorSeleccionado = e.target.value;
+                setEjercitoSeleccionado(valorSeleccionado);
+                
+                // ✅ Actualizar bando automáticamente
+                const ejercitoEncontrado = ejercitosDisponibles.find(
+                  ej => ej.nombre === valorSeleccionado
+                );
+                
+                if (ejercitoEncontrado) {
+                  setBando(ejercitoEncontrado.bando);
+                } else {
+                  setBando("");
+                }
+              }}
+              required
+              disabled={loading || ejercitosDisponibles.length === 0}
+            >
+              <option value="">-- Selecciona una facción --</option>
+              
+              {/* ✅ AGRUPAR POR BANDO */}
+              {ejercitosDisponibles.filter(ej => ej.bando === "ALIADOS").length > 0 && (
+                <optgroup label="🔵 Aliados">
+                  {ejercitosDisponibles
+                    .filter(ej => ej.bando === "ALIADOS")
+                    .map((ejercito, index) => (
+                      <option key={`aliados-${index}`} value={ejercito.nombre}>
+                        {ejercito.nombre}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              
+              {ejercitosDisponibles.filter(ej => ej.bando === "EJE").length > 0 && (
+                <optgroup label="🔴 Eje">
+                  {ejercitosDisponibles
+                    .filter(ej => ej.bando === "EJE")
+                    .map((ejercito, index) => (
+                      <option key={`eje-${index}`} value={ejercito.nombre}>
+                        {ejercito.nombre}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+            </select>
+            
+            {/* Mensaje si no hay ejércitos disponibles */}
+            {ejercitosDisponibles.length === 0 && (
+              <small className="error-text">
+                ⚠️ No se encontraron ejércitos para las épocas del torneo
+              </small>
+            )}
+            
+            {/* ✅ MOSTRAR BANDO SELECCIONADO */}
+            {bando && (
+              <div className="bando-seleccionado">
+                <small className="help-text">
+                  {bando === "ALIADOS" || bando === "Aliados" ? "🔵" : "🔴"} 
+                  <strong> Bando: {bando}</strong>
+                </small>
+              </div>
+            )}
+          </div>
+        </fieldset>
+
+        {/* SUBIR LISTA DE EJÉRCITO (OPCIONAL) */}
+        <fieldset>
+          <legend>📄 Lista de Ejército (Opcional)</legend>
+          
+          {/* MOSTRAR PDF ACTUAL CON BOTONES */}
+          {pdfActual && !archivoPDF && (
+            <div className="pdf-actual">
+              <div className="pdf-info">
+                <p className="pdf-nombre">
+                  📎 Lista actual: <strong>{pdfActual.nombre}</strong>
+                </p>
+                <p className="pdf-size">
+                  Tamaño: {(pdfActual.tamaño / 1024).toFixed(2)} KB
+                </p>
+              </div>
+              
+              {/* BOTONES DE ACCIÓN PARA EL PDF */}
+              <div className="pdf-actions">
+                <button
+                  type="button"
+                  className="btn-view-pdf"
+                  onClick={handleVerPDF}
+                  disabled={loadingPdf || loading}
+                  title="Abrir PDF en nueva pestaña"
+                >
+                  {loadingPdf ? '⏳' : '👁️'} Ver PDF
+                </button>
+                
+                <button
+                  type="button"
+                  className="btn-download-pdf"
+                  onClick={handleDescargarPDF}
+                  disabled={loadingPdf || loading}
+                  title="Descargar PDF"
+                >
+                  {loadingPdf ? '⏳' : '📥'} Descargar
+                </button>
+              </div>
+              
+              <small className="help-text">
+                💡 Sube un nuevo archivo para reemplazar la lista actual
+              </small>
+            </div>
+          )}
+
+          {/* INPUT PARA SUBIR NUEVO PDF */}
+          {!archivoPDF ? (
+            <>
+              <label htmlFor="listaPDF">
+                {pdfActual ? 'Subir Nueva Lista:' : 'Subir Lista en PDF:'}
+              </label>
+              <input 
+                id="listaPDF" 
+                type="file"
+                accept=".pdf"
+                onChange={handleArchivoPDF}
+                disabled={loading}
+              />
+              <small className="help-text-file">
+                📎 Formato: PDF | Tamaño máximo: 16MB
+              </small>
+            </>
+          ) : (
+            <div className="archivo-seleccionado-container">
+              <div className="archivo-info">
+                <p className="archivo-nombre">
+                  ✅ <strong>Nuevo archivo seleccionado:</strong> {archivoPDF.name}
+                </p>
+                <p className="archivo-tamaño">
+                  📦 Tamaño: {(archivoPDF.size / 1024).toFixed(2)} KB
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleEliminarPDF}
+                className="btn-eliminar-pdf"
+                disabled={loading}
+              >
+                🗑️ Quitar archivo
+              </button>
+            </div>
+          )}
+        </fieldset>
+        
+        {/* BOTONES */}
+        <div className="button-group">
+          <button 
+            type="submit" 
+            className="btn-primary" 
+            disabled={loading || !ejercitoSeleccionado || !nombreEjercito.trim() || !bando}
+          >
+            {loading 
+              ? '⏳ Procesando...' 
+              : (modoEdicion ? '✅ Guardar Cambios' : '✅ Inscribirme')}
+          </button>
+
+          {modoEdicion && (
+            <button 
+              type="button" 
+              className="btn-danger" 
+              onClick={eliminarInscripcion}
+              disabled={loading}
+            >
+              🗑️ Eliminar Inscripción
+            </button>
+          )}
+              
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => navigate(-1)} 
+            disabled={loading}
+          >
+            ← Cancelar
+          </button>
+        </div>
+      </form>
+      <Footer />
+    </div>
+  );
+}
+
+export default InscripcionFowIndividual;

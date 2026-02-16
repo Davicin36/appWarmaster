@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import torneosWarmasterApi from '@/servicios/apiWarmaster';
+import torneosFowApi from '@/servicios/apiFow';
 
 import '@/estilos/vistasTorneos/vistaGeneral.css';
 
 import {
-    TIPOS_PARTIDA_WARMASTER,
-    ESTADOS_TORNEO_WARMASTER,
+    TIPOS_PARTIDA_FOW,
+    ESTADOS_TORNEO_FOW,
+    EPOCAS_HISTORICA,
     RONDAS_DISPONIBLES,
-    PUNTOS_EJERCITO_WARMASTER,
+    PUNTOS_EJERCITO_FOW,
     PARTICIPANTES_RANGO
-} from '@/componentesWarmaster/funcionesWarmaster/constantesFuncionesWarmaster.js';
+} from '@/componentesFow/funcionesfow/constantesFuncionesFow.js';
 
-function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
+function VistaGeneralFow({ torneoId: propTorneoId, onUpdate }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
     const navigate = useNavigate();
@@ -26,8 +27,9 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [datosEdicion, setDatosEdicion] = useState({
         nombre_torneo: '',
+        epocas_disponibles: [],
         rondas_max: RONDAS_DISPONIBLES[0].valor,
-        puntos_ejercito: PUNTOS_EJERCITO_WARMASTER.default,
+        puntos_ejercito: PUNTOS_EJERCITO_FOW.default,
         participantes_max: PARTICIPANTES_RANGO.default,
         fecha_inicio: '',
         fecha_fin: '',
@@ -65,6 +67,12 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
     useEffect(() => {
         if (torneo) {
+
+            let epocas = [];
+            if (torneo.epocas_disponibles) {
+                epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
+            }
+
             const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
             const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
             
@@ -77,8 +85,9 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
            
             setDatosEdicion({
                 nombre_torneo: torneo.nombre_torneo || '',
+                epocas_disponibles: epocas,
                 rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
-                puntos_ejercito: torneo.puntos_ejercito || PUNTOS_EJERCITO_WARMASTER.default,
+                puntos_ejercito: torneo.puntos_ejercito || PUNTOS_EJERCITO_FOW.default,
                 participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
                 fecha_inicio: fechaInicio,
                 fecha_fin: fechaFin,
@@ -102,12 +111,12 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         try {
             setLoading(true);
             
-            const response = await torneosWarmasterApi.obtenerTorneo(torneoId);
+            const response = await torneosFowApi.obtenerTorneo(torneoId);
             const dataTorneo = response.data?.torneo || response.torneo || response;
             setTorneo(dataTorneo);
             
             try {
-                const dataJugadores = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
+                const dataJugadores = await torneosFowApi.obtenerJugadoresTorneo(torneoId);
                 setJugadores(Array.isArray(dataJugadores) ? dataJugadores : dataJugadores.data || []);
             } catch (err) {
                 console.log('No hay jugadores todavía', err);
@@ -123,7 +132,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
     const cargarOrganizadores = async () => {
         try {
-            const data = await torneosWarmasterApi.obtenerOrganizadores(torneoId);
+            const data = await torneosFowApi.obtenerOrganizadores(torneoId);
             setOrganizadores(data.data || { activos: [], pendientes: [] });
         } catch (error) {
             console.error('Error al cargar organizadores:', error);
@@ -140,7 +149,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         
         if (window.confirm(`¿Reenviar invitación a ${org.email}?`)) {
           try {
-            await torneosWarmasterApi.reenviarInvitacion(torneo.id, org.organizador_id);
+            await torneosFowApi.reenviarInvitacion(torneo.id, org.organizador_id);
             alert('✅ Invitación reenviada correctamente');
           } catch (error) {
             console.error('❌ Error:', error);
@@ -238,6 +247,11 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             return;
         }
 
+        if (!datosEdicion.epocas_disponibles || datosEdicion.epocas_disponibles.length === 0) {
+        setErrorEdicion('Debes seleccionar al menos una época');
+        return;
+    }
+
         if (!window.confirm('¿Deseas guardar los cambios en el torneo?')) return;
 
         try {
@@ -247,6 +261,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
             const datosLimpios = {
                 ...datosEdicion,
                 fecha_fin: duracionTorneo === "1" ? null : (datosEdicion.fecha_fin || null),
+                epocas_disponibles: datosEdicion.epocas,
                 ubicacion: datosEdicion.ubicacion || null,
                 partida_ronda_3: datosEdicion.partida_ronda_3 || null,
                 partida_ronda_4: datosEdicion.partida_ronda_4 || null,
@@ -281,7 +296,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                 dataToSend = {...datosLimpios};
             }
 
-            await torneosWarmasterApi.actualizarTorneo(torneoId, dataToSend);
+            await torneosFowApi.actualizarTorneo(torneoId, dataToSend);
             
             alert('✅ Torneo actualizado correctamente');
             setModoEdicion(false);
@@ -311,6 +326,11 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         setEliminarImagenFlag(false);
         
         if (torneo) {
+
+            let epocas = [];
+        if (torneo.epocas_disponibles) {
+            epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
+        }
             const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
             const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
             
@@ -322,8 +342,9 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
             setDatosEdicion({
                 nombre_torneo: torneo.nombre_torneo || '',
+                epocas_disponibles: epocas,
                 rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
-                puntos_ejercito: torneo.puntos_ejercito || PUNTOS_EJERCITO_WARMASTER.default,
+                puntos_ejercito: torneo.puntos_ejercito || PUNTOS_EJERCITO_FOW.default,
                 participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
                 fecha_inicio: fechaInicio,
                 fecha_fin: fechaFin,
@@ -351,7 +372,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
         if (nuevoEstado === 'en_curso') {
             try {
-                const jugadoresData = await torneosWarmasterApi.obtenerJugadoresTorneo(torneoId);
+                const jugadoresData = await torneosFowApi.obtenerJugadoresTorneo(torneoId);
                 const jugadoresList = Array.isArray(jugadoresData) ? jugadoresData : jugadoresData.data || [];
                 
                 if (jugadoresList.length === 0) {
@@ -361,7 +382,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
                 const inscripcionesIncompletas = jugadoresList.filter(jugador => {
                     const listaEjercito = !jugador.lista_ejercito;
-                    return  listaEjercito;
+                    return listaEjercito;
                 });
 
                 if (inscripcionesIncompletas.length > 0) {
@@ -379,12 +400,13 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                         `Todos los jugadores deben completar:\n` +
                         `✓ Nombre del ejército\n` +
                         `✓ Facción del ejército\n` +
-                        `✓ Lista del ejército`
+                        `✓ Lista del ejército\n` +
+                        `✓ Elegir bando`
                     );
                     return;
                 }
 
-                const response = await torneosWarmasterApi.verificarPagos(torneoId);
+                const response = await torneosFowApi.verificarPagos(torneoId);
 
                 const todosPagados = response.data.todosPagados;
                 const total = response.data.total || 0;
@@ -431,7 +453,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         }
 
         try {
-            await torneosWarmasterApi.cambiarEstadoTorneo(torneoId, nuevoEstado);
+            await torneosFowApi.cambiarEstadoTorneo(torneoId, nuevoEstado);
             alert('✅ Estado actualizado correctamente');
             await cargarDatos();
             if (onUpdate) onUpdate();
@@ -451,7 +473,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         if (!window.confirm('⚠️ ÚLTIMA CONFIRMACIÓN')) return;
 
         try {
-            await torneosWarmasterApi.eliminarTorneo(torneoId);
+            await torneosFowApi.eliminarTorneo(torneoId);
             alert('✅ Torneo eliminado correctamente');
             navigate('/');
         } catch (error) {
@@ -476,7 +498,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
 
     const descargarBases = async () => {
         try {
-            await torneosWarmasterApi.descargarBasesPDF(torneoId);
+            await torneosFowApi.descargarBasesPDF(torneoId);
         } catch (error) {
             console.error('Error:', error);
             alert('Error al descargar las bases');
@@ -500,7 +522,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         try {
             setLoadingOrganizadores(true);
             
-            const response = await torneosWarmasterApi.agregarOrganizador(torneoId, {
+            const response = await torneosFowApi.agregarOrganizador(torneoId, {
                 email: nuevoOrganizadorEmail.trim(),
                 rol: 'organizador'
             });
@@ -532,7 +554,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
         try {
             setLoadingOrganizadores(true);
             
-            await torneosWarmasterApi.eliminarOrganizador(torneoId, organizadorId);
+            await torneosFowApi.eliminarOrganizador(torneoId, organizadorId);
             
             alert('✅ Organizador eliminado correctamente');
             await cargarOrganizadores();
@@ -629,13 +651,77 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                                     name="puntos_ejercito"
                                     value={datosEdicion.puntos_ejercito}
                                     onChange={handleEdicionChange}
-                                    min={PUNTOS_EJERCITO_WARMASTER.min}
-                                    max={PUNTOS_EJERCITO_WARMASTER.max}
+                                    min={PUNTOS_EJERCITO_FOW.min}
+                                    max={PUNTOS_EJERCITO_FOW.max}
                                     required
                                     disabled={loadingEdicion}
                                 />
-                                <small>{PUNTOS_EJERCITO_WARMASTER.min}-{PUNTOS_EJERCITO_WARMASTER.max} pts</small>
+                                <small>{PUNTOS_EJERCITO_FOW.min}-{PUNTOS_EJERCITO_FOW.max} pts</small>
                             </div>
+
+                            <label htmlFor="epoca_selector">Épocas Disponibles:*</label>
+                                                    
+                            <div className="form-row">
+                                <select id="epoca_selector" disabled={loadingEdicion}>
+                                    <option value="">Selecciona una época</option>
+                                        {EPOCAS_HISTORICA.filter(epoca => !datosEdicion.epocas_disponibles.includes(epoca)).map(epoca => (
+                                            <option key={epoca} value={epoca}>{epoca}</option>
+                                        ))}
+                                </select>
+                                                        
+                                <button
+                                    type="button"
+                                    onClick={() => {
+
+                                        const select = document.getElementById('epoca_selector');
+                                        const epoca = select.value;
+
+                                        if (epoca && !datosEdicion.epocas_disponibles.includes(epoca)) {
+                                            setDatosEdicion(prev => ({
+                                                ...prev,
+                                                epocas_disponibles: [...prev.epocas_disponibles, epoca]
+                                            }));
+                                            select.value = '';
+                                            if (errorEdicion) setErrorEdicion('');
+                                        }
+                                    }}
+                                    className="btn-secondary"
+                                    disabled={loadingEdicion}
+                                >
+                                    ➕ Agregar
+                                </button>
+                            </div>
+
+                            {datosEdicion.epocas_disponibles.length > 0 ? (
+                                <div className="epocas-seleccionadas">
+                                    <strong>Épocas seleccionadas:</strong>
+                                    <div className="epocas-tags">
+                                        {datosEdicion.epocas_disponibles.map(epoca => (
+                                            <div key={epoca} className="epoca-tag">
+                                                <span>{epoca}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setDatosEdicion(prev => ({
+                                                            ...prev,
+                                                            epocas_disponibles: prev.epocas_disponibles.filter(e => e !== epoca)
+                                                        }));
+                                                    }}
+                                                    disabled={loadingEdicion}
+                                                    className="btn-remove-epoca"
+                                                    title="Eliminar época"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="info-text">
+                                    ℹ️ Aún no has seleccionado ninguna época
+                                </p>
+                            )}
 
                             <div className="form-group">
                                 <label htmlFor="participantes_max">Participantes:*</label>
@@ -663,7 +749,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             required
                             disabled={loadingEdicion}
                         >
-                            {ESTADOS_TORNEO_WARMASTER.map(estado => (
+                            {ESTADOS_TORNEO_FOW.map(estado => (
                                 <option key={estado.valor} value={estado.valor}>
                                     {estado.emoji} {estado.nombre}
                                 </option>
@@ -888,7 +974,7 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                                         disabled={loadingEdicion}
                                     >
                                         <option value="">Selecciona escenario</option>
-                                        {TIPOS_PARTIDA_WARMASTER.map(tipo => (
+                                        {TIPOS_PARTIDA_FOW.map(tipo => (
                                             <option key={tipo} value={tipo}>{tipo}</option>
                                         ))}
                                     </select>
@@ -1142,6 +1228,11 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
                             </div>
 
                             <div className="info-item">
+                                <label>🎭 Épocas Disponibles:</label>
+                                <p>{torneo.epocas_disponibles}</p>
+                            </div>
+
+                            <div className="info-item">
                                 <label>⚔️ Puntos de Ejército:</label>
                                 <p>{torneo.puntos_ejercito} puntos</p>
                             </div>
@@ -1259,4 +1350,4 @@ function VistaGeneralWarmaster({ torneoId: propTorneoId, onUpdate }) {
     );
 }
 
-export default VistaGeneralWarmaster;
+export default VistaGeneralFow;

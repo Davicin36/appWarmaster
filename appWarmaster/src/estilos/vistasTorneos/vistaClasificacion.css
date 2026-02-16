@@ -590,3 +590,175 @@
         flex: 1;
     }
 }
+
+/* ==========================================
+   ESTADÍSTICAS RÁPIDAS
+   ========================================== */
+
+.estadisticas-rapidas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.stat-card.eje {
+    border-color: #ff6b6b;
+    background: linear-gradient(135deg, #fff 0%, #ffe8e8 100%);
+}
+
+.stat-card.aliados {
+    border-color: #4dabf7;
+    background: linear-gradient(135deg, #fff 0%, #e7f5ff 100%);
+}
+
+.stat-icon {
+    font-size: 2em;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stat-valor {
+    font-size: 2em;
+    font-weight: bold;
+    color: #2c3e50;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.85em;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================
+   BADGES DE BANDO
+   ========================================== */
+
+.badge-bando {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-bando.eje {
+    background-color: #ffe8e8;
+    color: #c92a2a;
+    border: 1px solid #ffc9c9;
+}
+
+.badge-bando.aliados {
+    background-color: #e7f5ff;
+    color: #1971c2;
+    border: 1px solid #a5d8ff;
+}
+
+/* ==========================================
+   BOTONES SELECTOR DE VISTA
+   ========================================== */
+
+.btn-selector.btn-eje {
+    border-color: #ff6b6b;
+}
+
+.btn-selector.btn-eje.activo {
+    background: #ff6b6b;
+    color: white;
+    border-color: #ff6b6b;
+}
+
+.btn-selector.btn-aliados {
+    border-color: #4dabf7;
+}
+
+.btn-selector.btn-aliados.activo {
+    background: #4dabf7;
+    color: white;
+    border-color: #4dabf7;
+}
+
+/* ==========================================
+   HEADER ACTIONS
+   ========================================== */
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-actualizar-clasificacion,
+.btn-compartir-clasificacion {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-actualizar-clasificacion {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-actualizar-clasificacion:hover:not(:disabled) {
+    background: #45a049;
+    transform: translateY(-2px);
+}
+
+.btn-compartir-clasificacion {
+    background: #2196F3;
+    color: white;
+}
+
+.btn-compartir-clasificacion:hover:not(:disabled) {
+    background: #0b7dda;
+    transform: translateY(-2px);
+}
+
+/* ==========================================
+   NOMBRE DE EJÉRCITO
+   ========================================== */
+
+.nombre-ejercito {
+    font-style: italic;
+    color: #666;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ==========================================
+   PUNTOS DESTACADOS
+   ========================================== */
+
+.puntos-destacado {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.puntos-secundario {
+    color: #495057;
+}

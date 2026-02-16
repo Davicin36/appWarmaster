@@ -107,10 +107,12 @@ function PrincipalFow({ onOpenLogin }) {
                                     <th>Nombre del torneo</th>
                                     <th>Tipo torneo</th>
                                     <th>Puntos del Torneo</th>
+                                    <th>Época historica</th>
                                     <th>Fecha Inicio</th>
                                     <th>Ubicación</th>
                                     <th>Organizador</th>
                                     <th>Participantes</th>
+                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -130,6 +132,7 @@ function PrincipalFow({ onOpenLogin }) {
                                         <td>
                                             {torneo.puntos_ejercito}
                                         </td>
+                                        <td> {torneo.epoca}</td>
                                         <td>{formatearFecha(torneo.fecha_inicio)}</td>
                                         <td>{torneo.ubicacion || 'Por determinar'}</td>
                                         <td>
@@ -145,7 +148,7 @@ function PrincipalFow({ onOpenLogin }) {
                                         </td>
                                         <td>
                                             <span className="participantes-badge">
-                                                {torneo.total_participantes || 0} 
+                                                {torneo.total_participantes || 0}/{torneo.participantes_max}
                                             </span>
 
                                             {torneo.total_participantes > 0 && (
@@ -159,6 +162,7 @@ function PrincipalFow({ onOpenLogin }) {
                                                 </div>
                                             )}
                                         </td>
+                                        <td>{torneo.estado}</td>
                                         <td className="acciones-cell">
                                             {torneo.created_by === userId && (
                                                 <button 

@@ -165,8 +165,8 @@ function PrincipalSaga({ onOpenLogin }) {
                                         <td>
                                             <span className="participantes-badge">
                                                 {torneo.tipo_torneo === 'Por equipos' 
-                                                    ? (torneo.total_equipos_inscritos || 0)
-                                                    : (torneo.total_participantes || 0)
+                                                    ? `${torneo.total_equipos_inscritos || 0} / ${torneo.equipos_max}`
+                                                    : `${torneo.total_participantes || 0} / ${torneo.participantes_max}`
                                                 }
                                             </span>
                                         </td>

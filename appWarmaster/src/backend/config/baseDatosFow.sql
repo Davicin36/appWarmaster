@@ -58,7 +58,7 @@ CREATE TABLE partidas_fow (
   pelotones_destruidos_j2 INT DEFAULT 0,
   puntos_torneo_j1 INT DEFAULT 0,
   puntos_torneo_j2 INT DEFAULT 0,
-  resultado_ps ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
+  resultado_pf ENUM('victoria_j1', 'victoria_j2', 'empate', 'pendiente') DEFAULT 'pendiente',
   resultado_confirmado BOOLEAN DEFAULT FALSE,
   ronda INT DEFAULT 1,
   mesa INT,

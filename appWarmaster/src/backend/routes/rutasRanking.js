@@ -674,10 +674,18 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
     let faccionesJugadas = {};
     
     try {
-      epocasJugadas = stat.epocas_jugadas ? JSON.parse(stat.epocas_jugadas) : {};
-      faccionesJugadas = stat.facciones_jugadas ? JSON.parse(stat.facciones_jugadas) : {};
+      // Verificar si ya es un objeto o si es un string que necesita parsing
+      epocasJugadas = typeof stat.epocas_jugadas === 'string' 
+        ? JSON.parse(stat.epocas_jugadas) 
+        : (stat.epocas_jugadas || {});
+        
+      faccionesJugadas = typeof stat.facciones_jugadas === 'string' 
+        ? JSON.parse(stat.facciones_jugadas) 
+        : (stat.facciones_jugadas || {});
     } catch (e) {
       console.error('Error parsing JSON:', e);
+      epocasJugadas = {};
+      faccionesJugadas = {};
     }
     
     res.json({

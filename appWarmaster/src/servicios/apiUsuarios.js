@@ -7,44 +7,50 @@ class apiUsuarios {
     this.baseURL = `${API_BASE_URL}/usuarios`;
   }
 
-  async request(endpoint, options = {}) {
-  const url = `${this.baseURL}${endpoint}`;
-  const token = localStorage.getItem('token');
-  
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers,
-    },
-    credentials: 'include',
-    ...options,
-  };
-
-  if (config.body && typeof config.body !== 'string') {
-    config.body = JSON.stringify(config.body);
-  }
-
-  try {
-    const response = await fetch(url, config);
-
-    const data = await response.json().catch(() => ({}));
+   async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
     
-    if (!response.ok) {
-      console.error('❌ ERROR DEL SERVIDOR:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData: data
-      });
-      throw new Error(data.mensaje || data.error || data.message || `HTTP error! status: ${response.status}`);
+    const token = localStorage.getItem('token');
+    
+    const isFormData = options.body instanceof FormData;
+    
+    const config = {
+      headers: {
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers,
+      },
+      credentials: 'include',
+      ...options,
+    };
+
+    if (config.body && typeof config.body === 'object' && !isFormData) {
+      config.body = JSON.stringify(config.body);
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        
+        const errorData = await response.json().catch(() => ({}));
+
+       if (response.status !== 404) {
+          console.error("❌ Error del servidor:", errorData);
+        }
+      
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      
+      if (!error.message.includes('404') && !error.message.includes('HTTP error! status: 404')) {
+        console.error('API Error:', error);
+      }
+      throw error;
+    }
   }
-}
 
   //======REGISTRO===========
 
@@ -111,6 +117,12 @@ class apiUsuarios {
 
   async obtenerTodosTorneos() {
     return this.request('/torneos')
+  }
+
+  async obtenerSistema(torneoId) {
+    return this.request (`/torneos/sistema/${torneoId}`, {
+      method:'GET'
+    })
   }
 
   //====== OBTENER USUARIOS POR EMAIL=====

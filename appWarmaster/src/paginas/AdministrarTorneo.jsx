@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import torneosSagaApi from '@/servicios/apiSaga';
+import usuarioApi from "../servicios/apiUsuarios";
+
+import torneosSagaApi from "@/servicios/apiSaga";
+import torneosWarmasterApi from "@/servicios/apiWarmaster";
+import torneosFowApi from "../servicios/apiFow";
+
 
 import VistaJugadores from '@/componente/vistasAdministrarTorneos/VistaJugadores';
 import VistaClasificacion from '@/componente/vistasAdministrarTorneos/VistaClasificacion';
@@ -25,20 +30,38 @@ function AdministrarTorneo() {
         cargarTorneo();
     }, [torneoId]);
 
-    const cargarTorneo = async () => {
-        try {
-            setLoading(true);
-            
-            const response = await torneosSagaApi.obtenerTorneo(torneoId);
-            const dataTorneo = response.data?.torneo || response;
+const cargarTorneo = async () => {
+    try {
+        setLoading(true);
+        
+        // 1️⃣ Obtener el sistema del torneo
+        const { sistema } = await usuarioApi.obtenerSistema(torneoId);
 
-            setTorneo(dataTorneo);
-        } catch (error) {
-            console.error('Error al cargar torneo:', error);
-        } finally {
-            setLoading(false);
+        // 2️⃣ Mapeo de APIs por sistema
+        const APIS_POR_SISTEMA = {
+            'SAGA': torneosSagaApi,
+            'WARMASTER': torneosWarmasterApi,
+            'FOW': torneosFowApi
+        };
+
+        // 3️⃣ Usar la API correcta
+        const api = APIS_POR_SISTEMA[sistema];
+        
+        if (!api) {
+            throw new Error(`Sistema ${sistema} no soportado`);
         }
-    };
+
+        const response = await api.obtenerTorneo(torneoId);
+        const dataTorneo = response.data?.torneo || response;
+
+        setTorneo(dataTorneo);
+        
+    } catch (error) {
+        console.error('Error al cargar torneo:', error);
+    } finally {
+        setLoading(false);
+    }
+};
 
     // CHECK 1: Loading
     if (loading) {

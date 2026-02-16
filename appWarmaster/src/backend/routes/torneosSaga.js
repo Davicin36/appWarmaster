@@ -257,7 +257,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN torneo_saga_equipo eq ON ts.id = eq.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-      WHERE ts.id = ?
+      WHERE ts.id = ? AND ts.sistema="SAGA"
       GROUP BY ts.id
     `, [userId, torneoId]);
     

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useAuth } from '../servicios/AuthContext';
+import usuarioApi from "../servicios/apiUsuarios";
 
 // Importar todas las APIs
 import torneosSagaApi from "@/servicios/apiSaga";
@@ -62,36 +63,31 @@ function VerTorneo( {onOpenLogin}) {
         try {
             setLoading(true);
             
-            // Intentar detectar el sistema del torneo
-            let dataTorneo = null;
-            let sistemaDetectado = null;
+            // 1️⃣ Primero obtener el sistema del torneo
+            const { sistema } = await usuarioApi.obtenerSistema(torneoId)
 
-            // Probar cada API hasta encontrar el torneo
-            for (const [sistema, api] of Object.entries(APIS_POR_SISTEMA)) {
-                try {
-                    const responseTorneo = await api.obtenerTorneo(torneoId);
-                    dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
-                    
-                    if (dataTorneo && dataTorneo.sistema === sistema) {
-                        sistemaDetectado = sistema;
-                        break;
-                    }
-                } catch (error) {
-                    console.log(`No encontrado en ${sistema}, continuando...`, error);
-                }
+            // 2️⃣ Seleccionar la API correcta
+            const api = APIS_POR_SISTEMA[sistema];
+            
+            if (!api) {
+                throw new Error(`Sistema ${sistema} no soportado`);
             }
 
-            if (!dataTorneo || !sistemaDetectado) {
-                throw new Error('No se pudo cargar el torneo o identificar su sistema');
+            // 3️⃣ Cargar datos del torneo con la API correcta
+            const responseTorneo = await api.obtenerTorneo(torneoId);
+            const dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
+
+            if (!dataTorneo) {
+                throw new Error('No se pudo cargar el torneo');
             }
 
             setTorneo(dataTorneo);
 
             // Cargar datos específicos según el tipo
             if (dataTorneo.tipo_torneo === 'Individual') {
-                await cargarJugadoresIndividuales(sistemaDetectado);
+                await cargarJugadoresIndividuales(sistema);
             } else if (dataTorneo.tipo_torneo === 'Por equipos') {
-                await cargarEquipos(sistemaDetectado);
+                await cargarEquipos(sistema);
             }
 
         } catch (error) {
@@ -114,7 +110,9 @@ function VerTorneo( {onOpenLogin}) {
     const cargarJugadoresIndividuales = async (sistema) => {
         try {
             const api = APIS_POR_SISTEMA[sistema];
+            
             const responseInscritos = await api.obtenerJugadoresTorneo(torneoId);
+                        
             const dataInscritos = responseInscritos.data || responseInscritos || [];
 
             // Procesar datos específicos del sistema
@@ -134,7 +132,7 @@ function VerTorneo( {onOpenLogin}) {
 
             setInscritos(inscritosParseados);
         } catch (error) {
-            console.error("Error al cargar jugadores:", error);
+            console.error("❌ Error al cargar jugadores:", error);
         }
     };
 
@@ -243,6 +241,16 @@ function VerTorneo( {onOpenLogin}) {
                     labelPuntos: torneo.puntos_ejercito || 0,
                     camposExtra: null
                 };
+                case 'FOW':
+                return {
+                    iconoPuntos: '🏹',
+                    labelPuntos: torneo.puntos_ejercito || 0,
+                    camposExtra: torneo.epocas_disponibles && (
+                        <span className="info-item">
+                            🎭 {torneo.epocas_disponibles}
+                        </span>
+                    )
+                };
             default:
                 return {
                     iconoPuntos: '⚔️',
@@ -296,7 +304,7 @@ function VerTorneo( {onOpenLogin}) {
                                 </button>
                             )}
 
-                            {torneo.created_by === 1 && (
+                            {torneo.created_by === 1 && torneo.sistema ==='SAGA' && (
                                 <button
                                     className={torneo.listas_ocultas ? "vt-btn-listas-ocultas" : "vt-btn-listas-visibles"}
                                     onClick={toggleListas}
