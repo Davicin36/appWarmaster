@@ -300,44 +300,18 @@
     padding-right: 1rem !important;
     text-align: left !important;
   }
-  
-  /* Etiquetas específicas para cada columna */
-  .tabla-torneos td:nth-child(1)::before { content: "#"; }
-  .tabla-torneos td:nth-child(2)::before { content: "Torneo"; }
-  .tabla-torneos td:nth-child(3)::before { content: "Tipo"; }
-  .tabla-torneos td:nth-child(4)::before { content: "Época(s)"; }
-  .tabla-torneos td:nth-child(5)::before { content: "Fecha Inicio"; }
-  .tabla-torneos td:nth-child(6)::before { content: "Ubicación"; }
-  .tabla-torneos td:nth-child(7)::before { content: "Organizador"; }
-  .tabla-torneos td:nth-child(8)::before { content: "Participantes"; }
-  .tabla-torneos td:nth-child(9)::before { content: "Acciones"; }
-  
-  /* Nombre del torneo destacado */
-  .tabla-torneos td:nth-child(2) {
-    font-weight: 700 !important;
-    font-size: 1.1rem !important;
-    color: var(--color-verde-oscuro) !important;
-    margin-bottom: 0.5rem !important;
-    padding-top: 0 !important;
-  }
-  
-  /* Primera celda (número) más pequeña */
-  .tabla-torneos td:nth-child(1) {
-    font-size: 0.9rem !important;
-    color: #7F8C8D !important;
-  }
-  
-  /* Columna de acciones */
-  .tabla-torneos td:nth-child(9) {
+
+  /* En vez de nth-child para acciones */
+.tabla-torneos td.acciones-cell {
     padding-left: 0 !important;
     margin-top: 1.5rem !important;
     padding-top: 1.5rem !important;
     border-top: 2px solid var(--color-beige) !important;
-  }
-  
-  .tabla-torneos td:nth-child(9)::before {
-    display: none !important; /* Ocultar label de Acciones */
-  }
+}
+
+.tabla-torneos td.acciones-cell::before {
+    display: none !important;
+}
   
   /* Botones a ancho completo con buena separación */
   .acciones-cell {

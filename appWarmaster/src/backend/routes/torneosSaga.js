@@ -251,15 +251,18 @@ router.get('/torneo/:torneoId', async (req, res) => {
         COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jts.id ELSE NULL END) as total_participantes,
         COUNT(DISTINCT eq.id) as total_equipos_inscritos,
         COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Por equipos' THEN jts.jugador_id ELSE NULL END) as total_jugadores_en_equipos,
-        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito,
+        ts.listas_ocultas_saga,
+        MAX(CASE WHEN ot.usuario_id = ? THEN 1 ELSE 0 END) as soy_organizador
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
       LEFT JOIN torneo_saga_equipo eq ON ts.id = eq.torneo_id
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      LEFT JOIN organizadores_torneos ot ON ts.id = ot.torneo_id
       WHERE ts.id = ? AND ts.sistema="SAGA"
       GROUP BY ts.id
-    `, [userId, torneoId]);
+    `, [userId, userId, torneoId]);
     
     if (torneos.length === 0) {
       return res.status(404).json(
@@ -1941,7 +1944,6 @@ router.patch('/:torneoId/toggleListas', verificarToken, verificarOrganizadorTorn
         );
         
         console.log('✅ Update resultado:', result);
-
         res.json(successResponse('Visibilidad de listas actualizada', { listas_ocultas }));
     } catch (error) {
         console.error('❌ Error toggle listas:', error);

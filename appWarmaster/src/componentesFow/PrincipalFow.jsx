@@ -119,8 +119,8 @@ function PrincipalFow({ onOpenLogin }) {
                             <tbody>
                                 {torneosFow.map((torneo, index) => (
                                     <tr key={torneo.id}>
-                                        <td>{index + 1}</td>
-                                        <td>
+                                        <td data-label="#">{index + 1}</td>
+                                        <td data-label="Torneo">
                                             <strong>{torneo.nombre_torneo}</strong>
                                         </td>
                                         <td>
@@ -129,13 +129,13 @@ function PrincipalFow({ onOpenLogin }) {
                                                 ({torneo.participantes_max} participantes)  
                                             </small>
                                         </td>
-                                        <td>
+                                        <td data-label="Puntos">
                                             {torneo.puntos_ejercito}
                                         </td>
-                                        <td> {torneo.epoca}</td>
-                                        <td>{formatearFecha(torneo.fecha_inicio)}</td>
-                                        <td>{torneo.ubicacion || 'Por determinar'}</td>
-                                        <td>
+                                        <td data-label="Época(s)"> {torneo.epocas_disponibles}</td>
+                                        <td data-label="Fecha Inicio">{formatearFecha(torneo.fecha_inicio)}</td>
+                                        <td data-label="Ubicación">{torneo.ubicacion || 'Por determinar'}</td>
+                                        <td data-label="Organizador">
                                             {torneo.creador_nombre && torneo.creador_apellidos 
                                                 ? `${torneo.creador_nombre} ${torneo.creador_apellidos}`
                                                 : 'N/A'
@@ -146,7 +146,7 @@ function PrincipalFow({ onOpenLogin }) {
                                                 </small>
                                             )}
                                         </td>
-                                        <td>
+                                        <td data-label="Participantes">
                                             <span className="participantes-badge">
                                                 {torneo.total_participantes || 0}/{torneo.participantes_max}
                                             </span>
@@ -162,7 +162,7 @@ function PrincipalFow({ onOpenLogin }) {
                                                 </div>
                                             )}
                                         </td>
-                                        <td>{torneo.estado}</td>
+                                        <td data-label="Estado">{torneo.estado}</td>
                                         <td className="acciones-cell">
                                             {torneo.created_by === userId && (
                                                 <button 

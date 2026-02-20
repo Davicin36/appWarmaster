@@ -127,11 +127,11 @@ function PrincipalSaga({ onOpenLogin }) {
                             <tbody>
                                 {torneosSaga.map((torneo, index) => (
                                     <tr key={torneo.id}>
-                                        <td>{index + 1}</td>
-                                        <td>
+                                        <td data-label="#">{index + 1}</td>
+                                        <td data-label="Torneo">
                                             <strong>{torneo.nombre_torneo}</strong>
                                         </td>
-                                        <td>
+                                        <td data-label="Tipo">
                                             <strong>{torneo.tipo_torneo}</strong>
                                             {torneo.tipo_torneo === 'Por equipos' && (
                                                 <small className="torneo-info-extra">
@@ -144,14 +144,14 @@ function PrincipalSaga({ onOpenLogin }) {
                                                 </small>
                                             )}
                                         </td>
-                                        <td>
+                                        <td data-label="Época(s)">
                                             <span className="epocas-cell">
                                                 {formatearEpocas(torneo.epocas_disponibles)}
                                             </span>
                                         </td>
-                                        <td>{formatearFecha(torneo.fecha_inicio)}</td>
-                                        <td>{torneo.ubicacion || 'Por determinar'}</td>
-                                        <td>
+                                        <td data-label="Fecha Inicio">{formatearFecha(torneo.fecha_inicio)}</td>
+                                        <td data-label="Ubicación">{torneo.ubicacion || 'Por determinar'}</td>
+                                        <td data-label="Organizador">
                                             {torneo.creador_nombre && torneo.creador_apellidos 
                                                 ? `${torneo.creador_nombre} ${torneo.creador_apellidos}`
                                                 : 'N/A'
@@ -162,7 +162,7 @@ function PrincipalSaga({ onOpenLogin }) {
                                                 </small>
                                             )}
                                         </td>
-                                        <td>
+                                        <td data-label="Participantes">
                                             <span className="participantes-badge">
                                                 {torneo.tipo_torneo === 'Por equipos' 
                                                     ? `${torneo.total_equipos_inscritos || 0} / ${torneo.equipos_max}`
@@ -170,7 +170,7 @@ function PrincipalSaga({ onOpenLogin }) {
                                                 }
                                             </span>
                                         </td>
-                                        <td>
+                                        <td data-label="Estado">
                                             <span className="estado-torneos">
                                                 {obtenerTextoEstado(torneo.estado)}
                                             </span>

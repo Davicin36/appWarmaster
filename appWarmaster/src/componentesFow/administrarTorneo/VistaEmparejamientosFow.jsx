@@ -152,7 +152,9 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             }
 
             const responseClasificacion = await torneosFowApi.obtenerClasificacionIndividual(torneoId);
-            const clasificacion = responseClasificacion.data || responseClasificacion || [];
+            const clasificacion = responseClasificacion.data?.general || responseClasificacion.data || [];
+
+            console.log('Clasificación raw:', clasificacion);
 
             const participantes = jugadores.map(j => {
                 const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
@@ -301,9 +303,9 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
         if (partidasGuardadas.length === 0) return false;
         
         return partidasGuardadas.every(partida => 
-            partida.resultado_pw && 
-            partida.resultado_pw !== 'pendiente' &&
-            partida.resultado_pw !== null
+            partida.resultado_pf && 
+            partida.resultado_pf !== 'pendiente' &&
+            partida.resultado_pf !== null
         );
     };
 
@@ -320,9 +322,9 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             return true;
         }
         
-        return (partida.puntos_masacre_j1 > 0 || partida.puntos_masacre_j2 > 0) &&
-               partida.resultado_pw && 
-               partida.resultado_pw !== 'pendiente';
+        return (partida.puntos_victoria_j1 > 0 || partida.puntos_victoria_j2 > 0) &&
+               partida.resultado_pf && 
+               partida.resultado_pf !== 'pendiente';
     };
 
     const puedeEditarEstaPartida = (partida) => {
@@ -420,14 +422,14 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     <div className="jugador">
                         <div className="nombre">
                             {partida.jugador1_nombre}
-                            {partida.jugador1?.nombre_alias && ` "${partida.jugador1.nombre_alias}"`}
+                            {partida.jugador1_alias && ` "${partida.jugador1_alias}"`}
                         </div>
-                        {partida.jugador1?.ejercito && (
-                            <div className="faccion">⚔️ {partida.jugador1.ejercito}</div>
+                        {partida.jugador1_ejercito && (
+                            <div className="faccion">⚔️ {partida.jugador1_ejercito} - {partida.jugador1_nombreEjercito}</div>
                         )}
                         <div className="stats">
                             PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} | 
-                            PM: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)}
+                            PT: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)}
                         </div>
                     </div>
 
@@ -437,14 +439,14 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         <div className="jugador">
                             <div className="nombre">
                                 {partida.jugador2_nombre}
-                                {partida.jugador2?.nombre_alias && ` "${partida.jugador2.nombre_alias}"`}
+                                {partida.jugador2_alias && ` "${partida.jugador2_alias}"`}
                             </div>
-                            {partida.jugador2?.ejercito && (
-                                <div className="faccion">⚔️ {partida.jugador2.ejercito}</div>
+                            {partida.jugador2_ejercito && (
+                                <div className="faccion">⚔️{partida.jugador2_ejercito} - {partida.jugador2_nombreEjercito}</div>
                             )}
                             <div className="stats">
                                 PV: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} | 
-                                PM: {parseFloat(partida.puntos_masacre_j2 || 0).toFixed(1)}
+                                PT: {parseFloat(partida.puntos_torneo_j2 || 0).toFixed(1)}
                             </div>
                         </div>
                     ) : (
@@ -559,7 +561,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         {todasLasPartidasCompletas() ? (
                             <>✅ Todas las partidas completadas ({partidasGuardadas.length}/{partidasGuardadas.length})</>
                         ) : (
-                            <>⏳ Partidas completadas: {partidasGuardadas.filter(p => p.resultado_pw && p.resultado_pw !== 'pendiente').length}/{partidasGuardadas.length}</>
+                            <>⏳ Partidas completadas: {partidasGuardadas.filter(p => p.resultado_pf && p.resultado_pf !== 'pendiente').length}/{partidasGuardadas.length}</>
                         )}
                     </p>
                     {!todasLasPartidasCompletas() && puedeEditarPartidas() && (

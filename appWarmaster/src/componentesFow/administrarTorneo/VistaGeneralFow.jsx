@@ -975,7 +975,7 @@ function VistaGeneralFow({ torneoId: propTorneoId, onUpdate }) {
                                     >
                                         <option value="">Selecciona escenario</option>
                                         {TIPOS_PARTIDA_FOW.map(tipo => (
-                                            <option key={tipo} value={tipo}>{tipo}</option>
+                                             <option key={tipo.nombre} value={tipo.nombre}>[{tipo.tipo}] {tipo.nombre}</option>
                                         ))}
                                     </select>
                                 </div>

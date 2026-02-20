@@ -67,18 +67,18 @@ export const FACCIONES_EPOCAS_BANDO = {
 };
 
 export const TIPOS_PARTIDA_FOW = [
-    'Batalla Campal - Free for All',
-    'Batalla Imprevista - Encounter Battle',
-    'Zafarrancho - Dust up',
-    'Ni un paso atrás - No Retreat',
-    'Sostener la línea - Hold the Line',
-    'Tenaza - Pincer',
-    'Cercados - Surrounded',
-    'Retirada ordenada - Fighting Withdrawal',
-    'Ataque Precipitado - Hasty Attack',
-    'La Ratonera - Cauldron',
-    'Ruptura - Breakthrough',
-    'Contraataque - Counterattack',
+    {nombre:"Batalla Campal - Free for All", tipo: 'Batalla Equilibrada'},
+    {nombre:"Batalla Imprevista - Encounter Battle", tipo: 'Batalla Equilibrada'},
+    {nombre:"Zafarrancho - Dust up", tipo: 'Batalla Equilibrada'},
+    {nombre:"Ni un paso atrás - No Retreat", tipo: 'Misiones Defensivas'},
+    {nombre:"Sostener la línea - Hold the Line", tipo: 'Misiones Defensivas'},
+    {nombre:"Tenaza - Pincer", tipo: 'Misiones de Defensivas'},
+    {nombre:"Cercados - Surrounded", tipo: 'Misiones de Defensivas'},
+    {nombre:"Retirada ordenada - Fighting Withdrawal", tipo: 'Misiones de Defensivas'},
+    {nombre:"Ataque Precipitado - Hasty Attack", tipo: 'Misiones de Maniobra'},
+    {nombre:"La Ratonera - Cauldron", tipo: 'Misiones de Maniobra'},
+    {nombre:"Ruptura - Breakthrough", tipo: 'Misiones de Maniobra'},
+    {nombre:"Contraataque - Counterattack", tipo: 'Misiones de Maniobra'}
 ];
 
 export const ESTADOS_TORNEO_FOW = [
@@ -161,4 +161,24 @@ export const formatearEpocas = (epocas) => {
     .replace(/Early-war/g, 'Early War')
     .replace(/Mid-war/g, 'Mid War')
     .replace(/Late-war/g, 'Late War');
+};
+
+export const tablaPuntuacionFow = [
+  { rango: 0, vencedor: 6, perdedor: 1 },
+  { rango: 1, vencedor: 5, perdedor: 2 },
+  { rango: [2, Infinity], vencedor: 4, perdedor: 3 }
+];
+
+export const calcularPuntosTorneoFow = (pelotonesMuertosVencedor) => {
+  const fila = tablaPuntuacionFow.find(p => {
+    if (Array.isArray(p.rango)) {
+      const [min, max] = p.rango;
+      return pelotonesMuertosVencedor >= min && pelotonesMuertosVencedor <= max;
+    }
+    return p.rango === pelotonesMuertosVencedor;
+  });
+
+  return fila
+    ? { puntosVencedor: fila.vencedor, puntosPerdedor: fila.perdedor }
+    : { puntosVencedor: 0, puntosPerdedor: 0 };
 };

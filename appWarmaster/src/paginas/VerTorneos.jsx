@@ -160,11 +160,11 @@ function VerTorneo( {onOpenLogin}) {
     const toggleListas = async () => {
     try {
         
-        const nuevoEstado = !torneo.listas_ocultas;
+        const nuevoEstado = !torneo.listas_ocultas_saga;
     
         await torneosSagaApi.toggleListas(torneoId, nuevoEstado);
      
-        setTorneo(prev => ({ ...prev, listas_ocultas: nuevoEstado }));
+        setTorneo(prev => ({ ...prev, listas_ocultas_saga: nuevoEstado }));
     } catch (error) {
         console.error('❌ Error completo:', error);
         console.error('❌ Status:', error.response?.status);
@@ -304,12 +304,12 @@ function VerTorneo( {onOpenLogin}) {
                                 </button>
                             )}
 
-                            {torneo.created_by === 1 && torneo.sistema ==='SAGA' && (
+                            {torneo.soy_organizador === 1 && torneo.sistema ==='SAGA' && (
                                 <button
-                                    className={torneo.listas_ocultas ? "vt-btn-listas-ocultas" : "vt-btn-listas-visibles"}
+                                    className={torneo.listas_ocultas_saga ? "vt-btn-listas-ocultas" : "vt-btn-listas-visibles"}
                                     onClick={toggleListas}
                                 >
-                                    {torneo.listas_ocultas
+                                    {torneo.listas_ocultas_saga
                                         ? <><span className="vt-btn-icon">🔒</span> Listas Ocultas</>
                                         : <><span className="vt-btn-icon">👁️</span> Listas Visibles</>
                                     }
@@ -360,7 +360,7 @@ function VerTorneo( {onOpenLogin}) {
                         tipoTorneo={torneo.tipo_torneo}
                         estadoTorneo={torneo.estado}
                         torneoId={torneoId}
-                        listasOcultas = {torneo.estado === 'pendiente' ? (torneo.listas_ocultas ?? true) : false}
+                        listasOcultas={torneo.estado === 'pendiente' && !torneo.soy_organizador ? (torneo.listas_ocultas_saga ?? true) : false}
                     />
                 )}
 

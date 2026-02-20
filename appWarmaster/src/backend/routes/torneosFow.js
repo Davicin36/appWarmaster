@@ -1668,9 +1668,8 @@ router.post('/:torneoId/inscripcion', verificarToken, upload.single('lista_ejerc
         lista_tamaño,
         pagado,
         puntos_victoria,
-        puntos_torneo,
-        pelotones_matados
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)`,
+        puntos_torneo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
       [
         torneoId,
         usuarioId,
@@ -1754,7 +1753,6 @@ router.get('/:torneoId/obtenerInscripcion', verificarToken, async (req, res) => 
             jtf.pagado,
             jtf.puntos_victoria,
             jtf.puntos_torneo,
-            jtf.pelotones_matados,
             jtf.created_at
           FROM jugador_torneo_fow jtf
           WHERE jtf.torneo_id = ? AND jtf.jugador_id = ?
@@ -1891,7 +1889,6 @@ router.put('/:torneoId/actualizarInscripcion', verificarToken, upload.single('li
                 pagado,
                 puntos_victoria,
                 puntos_torneo,
-                pelotones_matados,
                 created_at
             FROM jugador_torneo_fow
             WHERE torneo_id = ? AND jugador_id = ?
@@ -2943,12 +2940,11 @@ router.get('/:torneoId/partidasTorneoFow', async (req, res) => {
         pf.puntos_victoria_j2,
         pf.puntos_torneo_j1,
         pf.puntos_torneo_j2,
-        pf.pelotones_destruidos_j1,
-        pf.pelotones_destruidos_j2,
+        pf.pelotones_destruidos_vencedor,
         pf.created_at,
         pf.fecha_partida,
         
-        -- IDs de participación (ya son jugador_torneo_warmaster.id)
+        -- IDs de participación (ya son jugador_torneo_fow.id)
         pf.jugador1_id,
         pf.jugador2_id,
 
@@ -3006,8 +3002,7 @@ router.get('/:torneoId/partidasTorneoFow', async (req, res) => {
       puntos_victoria_j2: p.puntos_victoria_j2,
       puntos_torneo_j1: p.puntos_torneo_j1,
       puntos_torneo_j2: p.puntos_torneo_j2,
-      pelotones_destruidos_j1: p.pelotones_destruidos_j1,
-      pelotones_destruidos_j2: p.pelotones_destruidos_j2,
+      pelotones_destruidos_vencedor: p.pelotones_destruidos_vencedor,
       created_at: p.created_at,
       fecha_partida: p.fecha_partida,
       
@@ -3071,7 +3066,7 @@ router.get('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req
       JOIN torneos_sistemas ts ON pf.torneo_id = ts.id
       LEFT JOIN jugador_torneo_fow jtf1 ON (pf.torneo_id = jtf1.torneo_id AND pf.jugador1_id = jtf1.jugador_id)
       LEFT JOIN jugador_torneo_fow jtf2 ON (pf.torneo_id = jtf2.torneo_id AND pf.jugador2_id = jtf2.jugador_id)
-      WHERE pw.id = ?
+      WHERE pf.id = ?
     `, [partidaId]);
     
     if (partidas.length === 0) {
@@ -3097,163 +3092,78 @@ router.get('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req
 router.put('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req, res) => {
   try {
     const { partidaId, torneoId } = req.params;
-    const { 
-      pelotones_destruidos_j1, 
-      pelotones_destruidos_j2  
+    const {
+      pelotones_destruidos_vencedor,
+      puntos_torneo_j1,
+      puntos_torneo_j2,
+      puntos_victoria_j1,
+      puntos_victoria_j2,
+      resultado_pf
     } = req.body;
-    
-    const camposFaltantes = validarCamposRequeridos(req.body, [
-      'pelotones_destruidos_j1',
-      'pelotones_destruidos_j2'
-    ]);
-    
-    if (camposFaltantes.length > 0) {
-      return res.status(400).json(
-        errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
-      );
+
+    // Validar campos requeridos
+    if (resultado_pf === undefined || puntos_torneo_j1 === undefined || puntos_torneo_j2 === undefined || puntos_victoria_j1 === undefined || puntos_victoria_j2 === undefined) {
+      return res.status(400).json(errorResponse('Faltan campos requeridos: resultado_pf, puntos_torneo_j1, puntos_torneo_j2, puntos_victoria_j1, puntos_victoria_j2'));
     }
-    
-    // Verificar que la partida existe
-    const [partida] = await pool.execute(`
-      SELECT 
-        pf.id,
-        pf.jugador1_id,                         -- Ya es jugador_torneo_fow.id
-        pf.jugador2_id,                         -- Ya es jugador_torneo_fow.id
-        pf.resultado_pf, 
-        pf.torneo_id, 
-        pf.ronda, 
-        pf.resultado_confirmado,
-        pf.nombre_partida,
-        pf.es_bye,
-        ts.tipo_torneo
-      FROM partidas_fow
-      INNER JOIN torneos_sistemas ts ON pf.torneo_id = ts.id
+
+    if (!['victoria_j1', 'victoria_j2', 'empate'].includes(resultado_pf)) {
+      return res.status(400).json(errorResponse('resultado_pf debe ser "victoria_j1",  "victoria_j2" o "empate"'));
+    }
+
+    // Verificar que la partida existe y pertenece al torneo
+    const [partidas] = await pool.execute(`
+      SELECT pf.id, pf.jugador2_id, pf.es_bye, pf.resultado_confirmado
+      FROM partidas_fow pf
       WHERE pf.id = ? AND pf.torneo_id = ?
     `, [partidaId, torneoId]);
-    
-    if (partida.length === 0) {
-      return res.status(404).json(
-        errorResponse('Partida no encontrada')
-      );
-    }
-    
-    const jugador1_id = partida[0].jugador1_id;  // jugador_torneo_fow.id
-    const jugador2_id = partida[0].jugador2_id;  // jugador_torneo_fow.id
-    const nombrePartida = partida[0].nombre_partida || '';
-    const esBye = !jugador2_id || partida[0].es_bye;
-    
-    if (esBye) {
-      return res.status(400).json(
-        errorResponse('No se puede actualizar una partida BYE. La victoria automática ya está registrada.')
-      );
+
+    if (partidas.length === 0) {
+      return res.status(404).json(errorResponse('Partida no encontrada'));
     }
 
-    if (partida[0].resultado_confirmado) {
-      return res.status(400).json(
-        errorResponse('No se puede actualizar una partida con resultado confirmado. El organizador debe desconfirmar el resultado primero.')
-      );
+    const partida = partidas[0];
+
+    if (!partida.jugador2_id || partida.es_bye) {
+      return res.status(400).json(errorResponse('No se puede registrar resultado en una partida BYE'));
     }
 
-    let puntosVictoriaJ1, puntosVictoriaJ2, resultado;
-    
-    if (esBatallaCampal) {
-      const diferencia = Math.abs(puntosMasacreJ1 - puntosMasacreJ2);
-      const diferenciaEmpate = 150;
-      
-      if (diferencia <= diferenciaEmpate) {
-        puntosVictoriaJ1 = 1;
-        puntosVictoriaJ2 = 1;
-        resultado = 'empate';
-      } else if (puntosMasacreJ1 > puntosMasacreJ2) {
-        puntosVictoriaJ1 = 3;
-        puntosVictoriaJ2 = 0;
-        resultado = 'victoria_j1';
-      } else {
-        puntosVictoriaJ1 = 0;
-        puntosVictoriaJ2 = 3;
-        resultado = 'victoria_j2';
-      }
-    } else {
-      if (puntos_torneo_j1 !== undefined && puntos_torneo_j2 !== undefined) {
-        const puntosPartidaJ1 = parseInt(puntos_torneo_j1) || 0;
-        const puntosPartidaJ2 = parseInt(puntos_torneo_j2) || 0;
-        
-        if (puntosPartidaJ1 > puntosPartidaJ2) {
-          puntosVictoriaJ1 = 3;
-          puntosVictoriaJ2 = 0;
-          resultado = 'victoria_j1';
-        } else if (puntosPartidaJ2 > puntosPartidaJ1) {
-          puntosVictoriaJ1 = 0;
-          puntosVictoriaJ2 = 3;
-          resultado = 'victoria_j2';
-        } else {
-          puntosVictoriaJ1 = 1;
-          puntosVictoriaJ2 = 1;
-          resultado = 'empate';
-        }
-      } else {
-        if (puntosMasacreJ1 > puntosMasacreJ2) {
-          puntosVictoriaJ1 = 3;
-          puntosVictoriaJ2 = 0;
-          resultado = 'victoria_j1';
-        } else if (puntosMasacreJ2 > puntosMasacreJ1) {
-          puntosVictoriaJ1 = 0;
-          puntosVictoriaJ2 = 3;
-          resultado = 'victoria_j2';
-        } else {
-          puntosVictoriaJ1 = 1;
-          puntosVictoriaJ2 = 1;
-          resultado = 'empate';
-        }
-      }
+    if (partida.resultado_confirmado) {
+      return res.status(400).json(errorResponse('Partida ya confirmada. El organizador debe desconfirmarla primero.'));
     }
 
     await pool.execute(`
       UPDATE partidas_fow SET
-        puntos_victoria_j1 = ?, 
+        puntos_victoria_j1 = ?,
         puntos_victoria_j2 = ?,
-        puntos_torneo_j1 = ?, 
+        puntos_torneo_j1 = ?,
         puntos_torneo_j2 = ?,
-        pelotones_destruidos_j1 = ?,
-        pelotones_destruidos_j2 = ?,
-        resultado_pf = ?, 
+        pelotones_destruidos_vencedor = ?,
+        resultado_pf = ?,
         resultado_confirmado = FALSE
       WHERE id = ?
     `, [
-      puntosVictoriaJ1, 
-      puntosVictoriaJ2,
-      puntos_torneo_j1, 
-      puntos_torneo_j2,
-      pelotones_destruidos_j1,
-      pelotones_destruidos_j2,
-      resultado,
+      parseInt(puntos_victoria_j1) || 0,
+      parseInt(puntos_victoria_j2) || 0,
+      parseInt(puntos_torneo_j1) || 0,
+      parseInt(puntos_torneo_j2) || 0,
+      pelotones_destruidos_vencedor ?? 0,
+      resultado_pf,
       partidaId
     ]);
-    
-    res.status(200).json(
-      successResponse('Partida registrada exitosamente (pendiente de confirmación)', {
-        partidaId,
-        resultado,
-        esBatallaCampal,
-        puntosVictoria: {
-          jugador1: puntosVictoriaJ1,
-          jugador2: puntosVictoriaJ2
-        },
-        puntosTorneo: {
-          jugador1: puntos_torneo_j1,
-          jugador2: puntos_torneo_j2
-        },
-        pelotonesMatados: {
-          jugador1PelotonesMatados: pelotones_destruidos_j1 ? true : false,
-          jugador2PelotonesMatados: pelotones_destruidos_j2 ? true : false
-        }
-      })
-    );
-    
+
+    res.status(200).json(successResponse('Partida registrada correctamente (pendiente de confirmación)', {
+      partidaId,
+      resultado_pf,
+      puntos_victoria_j1: parseInt(puntos_victoria_j1) || 0,
+      puntos_victoria_j2: parseInt(puntos_victoria_j2) || 0,
+      puntos_torneo_j1: parseInt(puntos_torneo_j1) || 0,
+      puntos_torneo_j2: parseInt(puntos_torneo_j2) || 0,
+      pelotones_destruidos_vencedor: pelotones_destruidos_vencedor ?? 0
+    }));
+
   } catch (error) {
-    console.error('❌ Error al registrar partida:', error);
-    const mensaje = manejarErrorDB(error);
-    res.status(500).json(errorResponse(mensaje));
+    console.error('❌ Error al registrar partida FOW:', error);
+    res.status(500).json(errorResponse(manejarErrorDB(error)));
   }
 });
 
@@ -3282,8 +3192,7 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
         pf.puntos_victoria_j2,
         pf.puntos_torneo_j1, 
         pf.puntos_torneo_j2,
-        COALESCE(pf.pelotones_destruidos_j1, 0) as pelotones_destruidos_j1,
-        COALESCE(pf.pelotones_destruidos_j2, 0) as pelotones_destruidos_j2,
+        COALESCE(pf.pelotones_destruidos_vencedor, 0) as pelotones_destruidos_vencedor,
         pf.resultado_confirmado,
         pf.resultado_pf,
         pf.es_bye
@@ -3294,6 +3203,8 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
       WHERE ts.id = ? AND pf.id = ?`,
       [torneoId, partidaId]
     );
+
+    console.log('🔍 Verificación partida:', verificacion[0]);
     
     if (verificacion.length === 0) {
       await connection.rollback();
@@ -3323,13 +3234,21 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
       return res.status(400).json(errorResponse('Esta partida no está confirmada'));
     }
 
+    const ptJ1 = partidaData.puntos_torneo_j1 || 0;
+    const ptJ2 = partidaData.puntos_torneo_j2 || 0;
+
+    // Puntos de torneo (3/1/0) ya calculados al registrar la partida
+    // Para BYE siempre es 3 PTpuntos_torneo_j1
+    const pvJ1 = esBye ? 3 : (partidaData.puntos_victoria_j1 || 0);
+    const pvJ2 = esBye ? 0 : (partidaData.puntos_victoria_j2 || 0);
+
     let j1Gana = 0, j1Empata = 0, j1Pierde = 0;
     let j2Gana = 0, j2Empata = 0, j2Pierde = 0;
 
     if (esBye) {
       j1Gana = 1;
     } else {
-      switch (partidaData.resultado_pw) {
+      switch (partidaData.resultado_pf) {
         case 'victoria_j1':
           j1Gana = 1;
           j2Pierde = 1;
@@ -3346,15 +3265,15 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
     }
     
     if (confirmar) {
-      // Actualizar jugador_torneo_fow (usa participacion_id)
+      // Actualizar jugador_torneo_fow  JUGADOR 1
       await connection.execute(`
         UPDATE jugador_torneo_fow 
-        SET puntos_victoria = puntos_victoria + ?,
-            puntos_torneo = puntos_torneo + ?,
+        SET puntos_victoria =  GREATEST(0, puntos_victoria + ?),
+                puntos_torneo   = GREATEST(0, puntos_torneo   + ?)
         WHERE id = ? AND torneo_id = ?
       `, [
-        partidaData.puntos_victoria_j1 || 0,
-        partidaData.puntos_torneo_j1 || 0,
+        pvJ1,
+        ptJ1,
         partidaData.participacion_j1_id,
         torneoId
       ]);
@@ -3378,26 +3297,26 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
           partidas_empatadas = partidas_empatadas + VALUES(partidas_empatadas), 
           partidas_perdidas = partidas_perdidas + VALUES(partidas_perdidas),
           puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
-          puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales),
+          puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales)
       `, [
         torneoId, 
         partidaData.jugador1_id,
         j1Gana,
         j1Empata,
         j1Pierde,
-        partidaData.puntos_victoria_j1 || 0,
-        partidaData.puntos_torneo_j1 || 0,
+        pvJ1,
+        ptJ1
       ]);
       
       if (!esBye) {
         await connection.execute(`
           UPDATE jugador_torneo_fow
-          SET puntos_victoria = puntos_victoria + ?,
-              puntos_torneo = puntos_torneo + ?,
+          SET puntos_victoria = GREATEST(0, puntos_victoria + ?),
+              puntos_torneo =GREATEST(0, puntos_torneo   + ?)
           WHERE id = ? AND torneo_id = ?
         `, [
-          partidaData.puntos_victoria_j2 || 0,
-          partidaData.puntos_torneo_j2 || 0,
+          pvJ2,
+          ptJ2,
           partidaData.participacion_j2_id,
           torneoId
         ]);
@@ -3415,15 +3334,15 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
             partidas_empatadas = partidas_empatadas + VALUES(partidas_empatadas), 
             partidas_perdidas = partidas_perdidas + VALUES(partidas_perdidas),
             puntos_victoria_totales = puntos_victoria_totales + VALUES(puntos_victoria_totales),
-            puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales),
+            puntos_torneo_totales = puntos_torneo_totales + VALUES(puntos_torneo_totales)
         `, [
           torneoId, 
           partidaData.jugador2_id,
           j2Gana,
           j2Empata,
           j2Pierde,
-          partidaData.puntos_victoria_j2 || 0,
-          partidaData.puntos_torneo_j2 || 0,
+          pvJ2,
+          ptJ2,
         ]);
       }
       
@@ -3432,11 +3351,11 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
       await connection.execute(`
         UPDATE jugador_torneo_fow
         SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
-            puntos_torneo = GREATEST(0, puntos_torneo - ?),
+            puntos_torneo = GREATEST(0, puntos_torneo - ?)
         WHERE id = ? AND torneo_id = ?
       `, [
-        partidaData.puntos_victoria_j1 || 0,
-        partidaData.puntos_torneo_j1 || 0,
+        pvJ1,
+        ptJ1,
         partidaData.participacion_j1_id,
         torneoId
       ]);
@@ -3449,14 +3368,14 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
           partidas_empatadas = GREATEST(0, partidas_empatadas - ?),
           partidas_perdidas = GREATEST(0, partidas_perdidas - ?),
           puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
-          puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?),
+          puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?)
         WHERE torneo_id = ? AND jugador_id = ?
       `, [
         j1Gana,
         j1Empata,
         j1Pierde,
-        partidaData.puntos_victoria_j1 || 0,
-        partidaData.puntos_torneo_j1 || 0,
+        pvJ1,
+        ptJ1,
         torneoId,
         partidaData.jugador1_id
       ]);
@@ -3465,11 +3384,11 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
         await connection.execute(`
           UPDATE jugador_torneo_fow
           SET puntos_victoria = GREATEST(0, puntos_victoria - ?),
-              puntos_torneo = GREATEST(0, puntos_torneo - ?),
+              puntos_torneo = GREATEST(0, puntos_torneo - ?)
           WHERE id = ? AND torneo_id = ?
         `, [
-          partidaData.puntos_victoria_j2 || 0,
-          partidaData.puntos_torneo_j2 || 0,
+          pvJ2,
+          ptJ2,
           partidaData.participacion_j2_id,
           torneoId
         ]);
@@ -3482,14 +3401,14 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
             partidas_empatadas = GREATEST(0, partidas_empatadas - ?),
             partidas_perdidas = GREATEST(0, partidas_perdidas - ?),
             puntos_victoria_totales = GREATEST(0, puntos_victoria_totales - ?),
-            puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?),
+            puntos_torneo_totales = GREATEST(0, puntos_torneo_totales - ?)
           WHERE torneo_id = ? AND jugador_id = ?
         `, [    
           j2Gana,
           j2Empata,
           j2Pierde,
-          partidaData.puntos_victoria_j2 || 0,
-          partidaData.puntos_torneo_j2 || 0,
+          pvJ2,
+          ptJ2,
           torneoId,
           partidaData.jugador2_id
         ]);
@@ -3529,7 +3448,6 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
         console.error('Error al liberar conexión:', releaseError.message);
       }
     }
-    
     res.status(500).json(errorResponse('Error al confirmar resultado'));
   }
 });
@@ -3554,11 +3472,17 @@ router.get('/:torneoId/obtenerEmparejamientosIndividuales', verificarToken, asyn
         pf.*,
         jt1.jugador_id as jugador1_usuario_id,
         jt2.jugador_id as jugador2_usuario_id,
+        jt1.ejercito as jugador1_ejercito,
+        jt2.ejercito as jugador2_ejercito,
+        jt1.nombre_ejercito jugador1_nombreEjercito,
+        jt2.nombre_ejercito as jugador2_nombreEjercito,
         u1.nombre as jugador1_nombre,
         u1.apellidos as jugador1_apellidos,
+        u1.nombre_alias as jugador1_alias,
         u2.nombre as jugador2_nombre,
-        u2.apellidos as jugador2_apellidos
-      FROM partidas_warmaster pf
+        u2.apellidos as jugador2_apellidos,
+        u2.nombre_alias as jugador2_alias
+      FROM partidas_fow pf
       INNER JOIN jugador_torneo_fow jt1 ON pf.jugador1_id = jt1.id
       LEFT JOIN jugador_torneo_fow jt2 ON pf.jugador2_id = jt2.id AND pf.es_bye = FALSE
       INNER JOIN usuarios u1 ON jt1.jugador_id = u1.id
@@ -3654,10 +3578,8 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
           puntos_victoria_j2,
           puntos_torneo_j1,
           puntos_torneo_j2,
-          pelotones_destruidos_j1,
-          pelotones_destruidos_j2
           resultado_confirmado
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       await connection.execute(insertQuery, [
@@ -3673,7 +3595,7 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
         0,
         es_bye ? 3 : 0,
         0,
-        false 
+        es_bye ? 1 : 0 
       ]);
     }
     

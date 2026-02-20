@@ -2,746 +2,386 @@ import React, { useState } from 'react';
 import torneosFowApi from '../servicios/apiFow.js';
 import '@/estilos/modalPartidas.css';
 
-function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = false }) {
-    const resultadoConfirmado = partida.resultado_confirmado || false;
+import { calcularPuntosTorneoFow, TIPOS_PARTIDA_FOW } from './funcionesFow/constantesFuncionesFow.js';
 
-    const tieneDatos = () => {
-        return (
-            (parseFloat(partida.puntos_partida_j1 || 0) > 0) ||
-            (parseFloat(partida.puntos_partida_j2 || 0) > 0) ||
-            (parseFloat(partida.puntos_torneo_j1 || 0) > 0) ||
-            (parseFloat(partida.puntos_torneo_j2 || 0) > 0)
-        );
+const MISIONES_EQUILIBRADAS = TIPOS_PARTIDA_FOW.filter(tipo => tipo.tipo === 'Batalla Equilibrada').map(tipo => tipo.nombre);
+
+function ModalRegistroPartidaFow({ partida, onClose, onGuardar, esOrganizador = false }) {
+
+  const resultadoConfirmado = partida.resultado_confirmado || false;
+  const esBye = !partida.jugador2_id || partida.es_bye === 1;
+
+  const permiteEmpate = MISIONES_EQUILIBRADAS.includes(partida.nombre_partida);
+
+  const [resultado, setResultado] = useState(null); // 'victoria_j1' | 'victoria_j2' | 'empate'
+  const [pelotonesVencedor, setPelotonesVencedor] = useState(0);
+   const [pelotonesJ1, setPelotonesJ1] = useState(0);             // para empate
+  const [pelotonesJ2, setPelotonesJ2] = useState(0); 
+  const [guardando, setGuardando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const nombreJ1 = partida.jugador1_nombre;
+  const nombreJ2 = partida.jugador2_nombre;
+
+ // puntosVencedor/puntosPerdedor = score real del juego (ej: 6 y 0)
+  // ptVencedor/ptPerdedor = puntos de torneo (3 victoria, 0 derrota)
+   const getPreview = () => {
+      if (!resultado) return null;
+
+      if (resultado === 'empate') {
+        const { puntosPerdedor: pvJ1 } = calcularPuntosTorneoFow(pelotonesJ1);
+        const { puntosPerdedor: pvJ2 } = calcularPuntosTorneoFow(pelotonesJ2);
+        return { esEmpate: true, pvJ1, pvJ2, ptJ1: 1, ptJ2: 1 };
+      }
+
+      const esJ1 = resultado === 'victoria_j1';
+      const { puntosVencedor, puntosPerdedor } = calcularPuntosTorneoFow(pelotonesVencedor);
+      return {
+        esEmpate: false,
+        nombreGanador: esJ1 ? nombreJ1 : nombreJ2,
+        nombrePerdedor: esJ1 ? nombreJ2 : nombreJ1,
+        ptVencedor: puntosVencedor,
+        ptPerdedor: puntosPerdedor,
+        pvVencedor: 3,
+        pvPerdedor: 0,
+      };
     };
 
-    const esBye = (!partida.jugador2_id || partida.es_bye === 1) && !tieneDatos();
+  const preview = getPreview();
 
-    const esTorneoEquipos = !!partida.equipo1_id; // Detectar si es torneo por equipos
-    
-    const [resultado, setResultado] = useState({
-        puntos_partida_j1: partida.puntos_partida_j1 || 0,
-        puntos_partida_j2: partida.puntos_partida_j2 || 0,
-        puntos_masacre_j1: partida.puntos_masacre_j1 || 0,
-        puntos_masacre_j2: partida.puntos_masacre_j2 || 0,
-        puntos_bonificacion_j1:  partida.puntos_bonificacion_j1 || 0,
-        puntos_bonificacion_j2:  partida.puntos_bonificacion_j2 || 0,
-        warlord_muerto_j1: partida.warlord_muerto_j1 || false,
-        warlord_muerto_j2: partida.warlord_muerto_j2 || false,
-        primer_jugador: partida.primer_jugador || null
-    });
+  const resetResultado = () => {
+    setResultado(null);
+    setPelotonesVencedor(0);
+    setPelotonesJ1(0);
+    setPelotonesJ2(0);
+  };
 
-    const elCruce = partida.nombre_partida?.toLowerCase() === 'el cruce'
-    
-    const [guardando, setGuardando] = useState(false);
-    const [confirmando, setConfirmando] = useState(false);
-    const [error, setError] = useState(null);
+  const handleGuardar = async () => {
+    try {
+      setGuardando(true);
+      setError(null);
 
-    const [sinDados, setSinDados] = useState({
-        activo: partida.sin_dados || false,
-        ganador: partida.ganador_sin_dados || null
-    });
+      if (!resultado) throw new Error('Debes seleccionar el ganador de la partida');
 
-    const handleChange = (campo, valor) => {
-        setResultado(prev => ({
-            ...prev,
-            [campo]: valor
-        }));
-    };
+      let datosPartida
 
-    const meQuedoSinDados = (ganador) => {
-            setSinDados({
-            activo: true,
-            ganador
-        });
-    };
+       if (resultado === 'empate') {
+        const { puntosPerdedor: ptJ1 } = calcularPuntosTorneoFow(pelotonesJ1);
+        const { puntosPerdedor: ptJ2 } = calcularPuntosTorneoFow(pelotonesJ2);
+        datosPartida = {
+          resultado_pf: 'empate',
+          puntos_victoria_j1: 1,
+          puntos_victoria_j2: 1,
+          puntos_torneo_j1: ptJ1,
+          puntos_torneo_j2: ptJ2,
+          pelotones_destruidos_vencedor: pelotonesJ1 + pelotonesJ2,
+        };
+      } else {
+        const esJ1 = resultado === 'victoria_j1';
+        const { puntosVencedor, puntosPerdedor } = calcularPuntosTorneoFow(pelotonesVencedor);
+        datosPartida = {
+          resultado_pf: resultado,
+          puntos_torneo_j1: esJ1 ? puntosVencedor : puntosPerdedor,
+          puntos_torneo_j2: esJ1 ? puntosPerdedor : puntosVencedor,
+          puntos_victoria_j1: esJ1 ? 3 : 0,
+          puntos_victoria_j2: esJ1 ? 0 : 3,
+          pelotones_destruidos_vencedor: pelotonesVencedor,
+        };
+      }
 
-    const handleGuardar = async () => {
-        try {
-            setGuardando(true);
-            setError(null);
+      await torneosFowApi.registrarPartida(partida.torneo_id, partida.id, datosPartida);
 
-            if (!resultado.primer_jugador) {
-                throw new Error('Debes asignar quién fue el primer jugador antes de guardar');
-            }
+      const resumen = resultado === 'empate'
+        ? `🤝 Empate\n${nombreJ1}: ${datosPartida.puntos_victoria_j1} PV | ${datosPartida.puntos_torneo_j1} PT\n${nombreJ2}: ${datosPartida.puntos_victoria_j2} PV | ${datosPartida.puntos_torneo_j2} PT`
+        : `🏆 ${preview.nombreGanador}: ${preview.pvVencedor} PV |  ${preview.ptVencedor} PT\n❌ ${preview.nombrePerdedor}: ${preview.pvPerdedor} PV |  ${preview.ptPerdedor} PT`;
 
-            if (!sinDados.activo && resultado.puntos_partida_j1 === 0 && resultado.puntos_partida_j2 === 0) {
-                throw new Error('Debes introducir al menos algunos puntos de partida');
-            }
+      alert(`✅ Resultado guardado\n\n${resumen}\n\n⚠️ Pendiente de confirmación del organizador`);
 
-            const datosPartida = {
-                puntos_partida_j1: parseInt(resultado.puntos_partida_j1) || 0,
-                puntos_partida_j2: parseInt(resultado.puntos_partida_j2) || 0,
-                puntos_masacre_j1: parseInt(resultado.puntos_masacre_j1 ?? 0),
-                puntos_masacre_j2: parseInt(resultado.puntos_masacre_j2 ?? 0),
-                puntos_bonificacion_j1: parseInt(resultado.puntos_bonificacion_j1 ?? 0),
-                puntos_bonificacion_j2: parseInt(resultado.puntos_bonificacion_j2 ?? 0),
-                warlord_muerto_j1: resultado.warlord_muerto_j1,
-                warlord_muerto_j2: resultado.warlord_muerto_j2,
-                primer_jugador: resultado.primer_jugador,
-                sin_dados: sinDados.activo,
-                ganador_sin_dados: sinDados.ganador
-            };
+      if (onGuardar) onGuardar();
+      onClose();
 
-            const response = await torneosFowApi.registrarPartida(
-                partida.torneo_id,
-                partida.id,
-                datosPartida
-            );
-
-            const nombreJ1 = partida.jugador1_nombre || partida.jugador1?.nombre;
-            const nombreJ2 = partida.jugador2_nombre || partida.jugador2?.nombre;   
-
-            const mensaje = response.data 
-                ?   `✅ Resultado guardado correctamente\n\n` +
-                    `⚠️ Pendiente de confirmación del organizador\n\n` +
-                    `Resultado: ${response.data.resultado}\n` +
-                    `Primer Jugador : ${nombreJ1}\n` +
-                    ` * Puntos Torneo J1: ${response.data.puntosTorneo?.jugador1 || 0}` + ' - ' +
-                    ` * Puntos Masacre J1: ${response.data.puntosMasacre?.jugador1 || 0}\n` +
-                    `Segundo Jugador : ${nombreJ2}\n` + 
-                    ` * Puntos Torneo J2: ${response.data.puntosTorneo?.jugador2 || 0}` + ' - ' +
-                    ` * Puntos Masacre J2: ${response.data.puntosMasacre?.jugador2 || 0}` 
-                :   '✅ Resultado guardado correctamente (pendiente de confirmación)';
-
-            alert(mensaje);
-            
-            if (onGuardar) {
-                onGuardar(response.data);
-            }
-            onClose();
-
-        } catch (err) {
-            console.error('❌ Error:', err);
-            setError(err.message || 'Error al guardar resultado');
-            alert(`❌ Error: ${err.message || 'Error al guardar resultado'}`);
-        } finally {
-            setGuardando(false);
-        }
-    };
-
-    const handleConfirmar = async (confirmar) => {
-        try {
-            setConfirmando(true);
-            
-            const mensaje = confirmar 
-                ? '¿Confirmar este resultado definitivamente?\n\nUna vez confirmado, no se podrá editar.'
-                : '¿Desconfirmar este resultado?\n\nPodrá ser editado nuevamente.';
-            
-            if (!window.confirm(mensaje)) {
-                return;
-            }
-
-            await torneosFowApi.confirmarResultado(
-                partida.torneo_id,
-                partida.id,
-                confirmar
-            );
-
-            alert(confirmar ? '✅ Resultado confirmado' : '⚠️ Resultado desconfirmado');
-            
-            if (onGuardar) {
-                onGuardar();
-            }
-            onClose();
-
-        } catch (err) {
-            console.error('❌ Error:', err);
-            alert(`❌ Error: ${err.message}`);
-        } finally {
-            setConfirmando(false);
-        }
-    };
-
-    const getResultadoPreview = () => {
-        const ppJ1 = parseInt(resultado.puntos_partida_j1) || 0;
-        const ppJ2 = parseInt(resultado.puntos_partida_j2) || 0;
-        const pbJ1 = parseInt (resultado.puntos_bonificacion_j1) || 0
-        const pbJ2 = parseInt (resultado.puntos_bonificacion_j2) || 0
-
-        // 🎲 PRIORIDAD: SIN DADOS
-        if (sinDados.activo && sinDados.ganador) {
-            const nombreGanador = sinDados.ganador === 1 ? partida.jugador1_nombre : partida.jugador2_nombre;
-            return `🏆 Victoria de ${nombreGanador} (3–0, sin dados)`;
-        }
-        
-        // 📊 TORNEOS POR EQUIPOS: Victoria si diferencia >= 3
-        if (esTorneoEquipos) {
-            const diferencia = Math.abs(ppJ1 - ppJ2);
-            const umbralDiferencia = 3; 
-            
-            if (diferencia >= umbralDiferencia) {
-                if (ppJ1 > ppJ2) {
-                    return `🏆 Victoria de ${partida.jugador1_nombre}`;
-                } else {
-                    return `🏆 Victoria de ${partida.jugador2_nombre}`;
-                }
-            } else {
-                if (elCruce && ppJ1 === ppJ2) {
-                    if (pbJ1 > pbJ2) {
-                        return `🏆 Victoria de ${partida.jugador1_nombre} (desempate por bonificación: ${pbJ1}-${pbJ2})`;
-                    } else if (pbJ2 > pbJ1) {
-                        return `🏆 Victoria de ${partida.jugador2_nombre} (desempate por bonificación: ${pbJ2}-${pbJ1})`;
-                    } else {
-                        return `🤝 Empate (${ppJ1}-${ppJ2}, bonificación ${pbJ1}-${pbJ2})`;
-                    }
-                }
-                // Diferencia < 3 = EMPATE
-                return `🤝 Empate (${ppJ1}-${ppJ2})`;
-            }
-            
-        } else {
-            // 📊 TORNEOS INDIVIDUALES: Victoria por más puntos
-            if (ppJ1 > ppJ2) {
-                return `🏆 Victoria de ${partida.jugador1_nombre}`;
-            }
-            if (ppJ2 > ppJ1) {
-                return `🏆 Victoria de ${partida.jugador2_nombre}`;
-            }
-
-            if (elCruce && ppJ1 === ppJ2) {
-                if (pbJ1 > pbJ2) {
-                    return `🏆 Victoria de ${partida.jugador1_nombre} (desempate por bonificación: ${pbJ1}-${pbJ2})`;
-                } else if (pbJ2 > pbJ1) {
-                    return `🏆 Victoria de ${partida.jugador2_nombre} (desempate por bonificación: ${pbJ2}-${pbJ1})`;
-                } else {
-                    return `🤝 Empate (${ppJ1}-${ppJ2}, bonificación ${pbJ1}-${pbJ2})`;
-                }
-            }
-            return `🤝 Empate (${ppJ1}-${ppJ2})`;
-        }
-    };
-
-    // Función auxiliar para obtener el nombre del jugador
-    const getNombreJugador = (jugadorNum) => {
-        if (esTorneoEquipos) {
-            return jugadorNum === 1 ? partida.jugador1_nombre : partida.jugador2_nombre;
-        }
-        return jugadorNum === 1 
-            ? (partida.jugador1_nombre || partida.jugador1?.nombre)
-            : (partida.jugador2_nombre || partida.jugador2?.nombre);
-    };
-
-    // SI ES BYE CONFIRMADO
-    if (esBye && resultadoConfirmado) {
-        return (
-            <div className="modal-overlay" onClick={onClose}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header confirmado">
-                        <h3>✅ Partida BYE Confirmada - Mesa {partida.mesa}</h3>
-                        <button className="btn-close confirmado" onClick={onClose}>✕</button>
-                    </div>
-
-                    <div className="modal-body">
-                        <div className="alerta-confirmado">
-                            <p>✅ Esta victoria BYE ha sido confirmada por el organizador</p>
-                        </div>
-
-                        <div className="bye-info">
-                            <h3>⭐ Victoria Automática</h3>
-                            {esTorneoEquipos ? (
-                                <>
-                                    <p><strong>Equipo:</strong> {partida.equipo1_nombre}</p>
-                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre} - {partida.jugador1_alias}</p>
-                                    <p><strong>Facción:</strong> {partida.jugador1_faccion}</p>
-                                </>
-                            ) : (
-                                <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
-                            )}
-                            <p className="puntos-bye">10 Puntos de Torneo</p>
-                            <p className="ronda-info">Ronda: {partida.ronda}</p>
-                        </div>
-                    </div>
-
-                    <div className="modal-footer">
-                        {esOrganizador && (
-                            <button 
-                                onClick={() => handleConfirmar(false)}
-                                disabled={confirmando}
-                                className="btn-desconfirmar"
-                            >
-                                {confirmando ? '⏳ Procesando...' : '🔓 Desconfirmar Victoria'}
-                            </button>
-                        )}
-                        
-                        <button className="btn-cerrar" onClick={onClose}>
-                            Cerrar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
+    } catch (err) {
+      console.error('❌ Error:', err);
+      setError(err.message);
+    } finally {
+      setGuardando(false);
     }
+  };
 
-    // SI ES BYE PENDIENTE
-    if (esBye) {
-        return (
-            <div className="modal-overlay" onClick={onClose}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <h3>⚠️ Partida BYE - Mesa {partida.mesa}</h3>
-                        <button className="btn-close" onClick={onClose}>✕</button>
-                    </div>
+  const handleConfirmar = async (confirmar) => {
+    try {
+      setConfirmando(true);
+      if (!window.confirm(
+        confirmar
+          ? '¿Confirmar resultado definitivamente?'
+          : '¿Desconfirmar este resultado?'
+      )) return;
 
-                    <div className="modal-body">
-                        <div className="alerta-pendiente">
-                            <p>⚠️ Esta victoria BYE está pendiente de confirmación del organizador</p>
-                        </div>
-
-                        <div className="bye-info">
-                            <h3>⭐ Victoria Automática</h3>
-                            {esTorneoEquipos ? (
-                                <>
-                                    <p><strong>Equipo:</strong> {partida.equipo1_nombre}</p>
-                                    <p><strong>Jugador:</strong> {partida.jugador1_nombre} - {partida.jugador1_alias}</p>
-                                </>
-                            ) : (
-                                <p><strong>{partida.jugador1_nombre || partida.jugador1?.nombre}</strong></p>
-                            )}
-                            <p className="puntos-bye">10 Puntos de Torneo</p>
-                            <p className="ronda-info">Ronda: {partida.ronda}</p>
-                        </div>
-
-                        <div className="info-bye-explicacion">
-                            <p>💡 Las partidas BYE otorgan automáticamente 10 puntos de torneo al jugador presente.</p>
-                            {esOrganizador && (
-                                <p className="nota-organizador">
-                                    Como organizador, debes confirmar esta victoria para que sea definitiva.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="modal-footer">
-                        <button className="btn-secondary" onClick={onClose} disabled={confirmando}>
-                            Cerrar
-                        </button>
-                        
-                        {esOrganizador && (
-                            <button 
-                                onClick={() => handleConfirmar(true)}
-                                disabled={confirmando}
-                                className="btn-confirmar-bye"
-                            >
-                                {confirmando ? '⏳ Confirmando...' : '✅ Confirmar Victoria BYE'}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
+      await torneosFowApi.confirmarResultado(partida.torneo_id, partida.id, confirmar);
+      alert(confirmar ? '✅ Resultado confirmado' : '⚠️ Resultado desconfirmado');
+      if (onGuardar) onGuardar();
+      onClose();
+    } catch (err) {
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setConfirmando(false);
     }
+  };
 
-    // SI ESTÁ CONFIRMADO (SOLO LECTURA)
-    if (resultadoConfirmado) {
-        return (
-            <div className="modal-overlay" onClick={onClose}>
-                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header confirmado">
-                        <h3>✅ Resultado Confirmado - Mesa {partida.mesa}</h3>
-                        <button className="btn-close confirmado" onClick={onClose}>✕</button>
-                    </div>
-
-                    <div className="modal-body">
-                        <div className="alerta-confirmado">
-                            <p>✅ Este resultado ha sido confirmado por el organizador</p>
-                            <p className="nota-no-editable">Los datos ya no se pueden modificar</p>
-                        </div>
-
-                        <div className="partida-info">
-                            <p><strong>Escenario:</strong> {partida.nombre_partida || 'Por definir'}</p>
-                            <p><strong>Ronda:</strong> {partida.ronda}</p>
-                            <p><strong>Resultado:</strong> {getResultadoPreview()}</p>
-                        </div>
-
-                        <div className="resultados-grid">
-                            <div className="jugador-stats">
-                                {esTorneoEquipos ? (
-                                    <>
-                                        <h4>{partida.equipo1_nombre}</h4>
-                                        <p className="jugador-equipo">
-                                            <strong>Jugador:</strong> {partida.jugador1_nombre}
-                                        </p>
-                                        {partida.jugador1_faccion && (
-                                            <p><strong>Facción:</strong> {partida.jugador1_faccion}</p>
-                                        )}
-                                        {partida.jugador1_epoca && (
-                                            <p><strong>Época:</strong> {partida.jugador1_epoca}</p>
-                                        )}
-                                    </>
-                                ) : (
-                                    <h4>{partida.jugador1_nombre}</h4>
-                                )}
-                                <p><strong>Puntos Partida:</strong> {partida.puntos_partida_j1}</p>
-                                <p><strong>Puntos Masacre:</strong> {partida.puntos_masacre_j1}</p>
-                                <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j1}</p>
-                                <p><strong>Warlord Eliminado:</strong> {partida.warlord_muerto_j1 ? 'Sí' : 'No'}</p>
-                            </div>
-
-                            <div className="vs-divider">VS</div>
-
-                            <div className="jugador-stats">
-                                {esTorneoEquipos ? (
-                                    <>
-                                        <h4>{partida.equipo2_nombre}</h4>
-                                        <p className="jugador-equipo">
-                                            <strong>Jugador:</strong> {partida.jugador2_nombre}
-                                        </p>
-                                        {partida.jugador2_faccion && (
-                                            <p><strong>Facción:</strong> {partida.jugador2_faccion}</p>
-                                        )}
-                                        {partida.jugador2_epoca && (
-                                            <p><strong>Época:</strong> {partida.jugador2_epoca}</p>
-                                        )}
-                                    </>
-                                ) : (
-                                    <h4>{partida.jugador2_nombre}</h4>
-                                )}
-                                <p><strong>Puntos Partida:</strong> {partida.puntos_partida_j2}</p>
-                                <p><strong>Puntos Masacre:</strong> {partida.puntos_masacre_j2}</p>
-                                <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j2}</p>
-                                <p><strong>Warlord Eliminado:</strong> {partida.warlord_muerto_j2 ? 'Sí' : 'No'}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="modal-footer">
-                        {esOrganizador && (
-                            <button 
-                                onClick={() => handleConfirmar(false)}
-                                disabled={confirmando}
-                                className="btn-desconfirmar"
-                            >
-                                {confirmando ? '⏳ Procesando...' : '🔓 Desconfirmar Resultado'}
-                            </button>
-                        )}
-                        
-                        <button className="btn-cerrar" onClick={onClose}>
-                            Cerrar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // MODO EDICIÓN
+  // ─── BYE ────────────────────────────────────────────────────────────────────
+  if (esBye) {
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content modal-edicion" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>📝 Registrar Resultado - Mesa {partida.mesa}</h3>
-                    <button className="btn-close" onClick={onClose}>✕</button>
-                </div>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className={`modal-header ${resultadoConfirmado ? 'confirmado' : ''}`}>
+            <h3>{resultadoConfirmado ? '✅' : '⚠️'} Partida BYE — Mesa {partida.mesa}</h3>
+            <button className="btn-close" onClick={onClose}>✕</button>
+          </div>
 
-                <div className="modal-body">
-                    <div className="alerta-pendiente">
-                        <p>⚠️ Este resultado está pendiente de confirmación del organizador</p>
-                    </div>
-
-                    {error && (
-                        <div className="error-message">
-                            <p>❌ {error}</p>
-                        </div>
-                    )}
-
-                    <div className="partida-info">
-                        <p><strong>Escenario:</strong> {partida.nombre_partida || partida.escenario || 'Por definir'}</p>
-                        <p><strong>Ronda:</strong> {partida.ronda}</p>
-                        {esTorneoEquipos && (
-                            <p className="info-equipos">
-                                🛡️ <strong>Torneo por Equipos</strong> - Los puntos se suman a la clasificación del equipo
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="seccion-primer-jugador">
-                        <h4>🎲 Primer Jugador</h4>
-                        {resultado.primer_jugador ? (
-                            <div className="primer-jugador-seleccionado">
-                                <p>
-                                    ✅ <strong>{getNombreJugador(resultado.primer_jugador === partida.jugador1_id ? 1 : 2)}</strong> fue el primer jugador
-                                </p>
-                                {/* 🆕 Botón para deseleccionar */}
-                                <button
-                                    type="button"
-                                    onClick={() => setResultado(prev => ({ ...prev, primer_jugador: null }))}
-                                    className="btn-limpiar-seleccion"
-                                >
-                                    ✕ Cambiar selección
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <p className="instruccion">⚠️ Selecciona quién fue el primer jugador:</p>
-                                <div className="botones-primer-jugador">
-                                    <button
-                                        onClick={() => setResultado(prev => ({ 
-                                            ...prev, 
-                                            primer_jugador: partida.jugador1_id 
-                                        }))}
-                                        className="btn-seleccionar-jugador"
-                                    >
-                                        {getNombreJugador(1)}
-                                    </button>
-                                    <button
-                                        onClick={() => setResultado(prev => ({ 
-                                            ...prev, 
-                                            primer_jugador: partida.jugador2_id 
-                                        }))}
-                                        className="btn-seleccionar-jugador"
-                                    >
-                                        {getNombreJugador(2)}
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    <div className="formulario-grid">
-                        <div className="jugador-resultado">
-                            {esTorneoEquipos ? (
-                                <>
-                                    <h4>{partida.equipo1_nombre}</h4>
-                                    <p className="info-jugador-equipo">
-                                        👤 <strong>{partida.jugador1_nombre} - {partida.jugador1_alias}</strong>
-                                    </p>
-                                    {partida.jugador1_faccion && (
-                                        <p className="info-extra">⚔️ {partida.jugador1_faccion}</p>
-                                    )}
-                                    {partida.jugador1_epoca && (
-                                        <p className="info-extra">📅 {partida.jugador1_epoca}</p>
-                                    )}
-                                </>
-                            ) : (
-                                <h4>{partida.jugador1_nombre || partida.jugador1?.nombre}</h4>
-                            )}
-                            
-                            <div className="form-group">
-                                <label>
-                                    {esTorneoEquipos ? 'Puntos de Torneo:*' : 'Puntos de Partida:*'}
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={resultado.puntos_partida_j1}
-                                    onChange={(e) => handleChange('puntos_partida_j1', e.target.value)}
-                                    disabled={guardando}
-                                />
-                                {esTorneoEquipos && (
-                                    <small className="nota-equipos">
-                                        💡 Introduce directamente los puntos de torneo
-                                    </small>
-                                )}
-                            </div>
-
-                            <div className="form-group">
-                                <label>Puntos de Masacre:</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={resultado.puntos_masacre_j1}
-                                    onChange={(e) => handleChange('puntos_masacre_j1', e.target.value)}
-                                    disabled={guardando}
-                                />
-                            </div>
-                            {elCruce && (
-                                <div className="form-group">
-                                    <label>Puntos de bonificación</label>
-                                    <input 
-                                        type="number"
-                                        min="0"
-                                        value={resultado.puntos_bonificacion_j1}
-                                        onChange={(e) => handleChange('puntos_bonificacion_j1', e.target.value)}
-                                        disabled={guardando}
-                                    />
-                                    <small className="nota-equipos">
-                                        Se usarán en caso de empate para desempatar.
-                                    </small>
-                                </div>
-                            )}
-                            <div className="form-group checkbox">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={resultado.warlord_muerto_j1}
-                                        onChange={(e) => handleChange('warlord_muerto_j1', e.target.checked)}
-                                        disabled={guardando}
-                                    />
-                                    Eliminó al Warlord enemigo
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="vs-divider">VS</div>
-
-                        <div className="jugador-resultado">
-                            {esTorneoEquipos ? (
-                                <>
-                                    <h4>{partida.equipo2_nombre} </h4>
-                                    <p className="info-jugador-equipo">
-                                        👤 <strong>{partida.jugador2_nombre} - {partida.jugador2_alias}</strong>
-                                    </p>
-                                    {partida.jugador2_faccion && (
-                                        <p className="info-extra">⚔️ {partida.jugador2_faccion}</p>
-                                    )}
-                                    {partida.jugador2_epoca && (
-                                        <p className="info-extra">📅 {partida.jugador2_epoca}</p>
-                                    )}
-                                </>
-                            ) : (
-                                <h4>{partida.jugador2_nombre || partida.jugador2?.nombre}</h4>
-                            )}
-                            
-                            <div className="form-group">
-                                <label>
-                                    {esTorneoEquipos ? 'Puntos de Torneo:*' : 'Puntos de Partida:*'}
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={resultado.puntos_partida_j2}
-                                    onChange={(e) => handleChange('puntos_partida_j2', e.target.value)}
-                                    disabled={guardando}
-                                />
-                                {esTorneoEquipos && (
-                                    <small className="nota-equipos">
-                                        💡 Introduce directamente los puntos de torneo
-                                    </small>
-                                )}
-                            </div>
-
-                            <div className="form-group">
-                                <label>Puntos de Masacre:</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={resultado.puntos_masacre_j2}
-                                    onChange={(e) => handleChange('puntos_masacre_j2', e.target.value)}
-                                    disabled={guardando}
-                                />
-                            </div>
-                             {elCruce && (
-                                <div className="form-group">
-                                    <label>Puntos de bonificación</label>
-                                    <input 
-                                        type="number"
-                                        min="0"
-                                        value={resultado.puntos_bonificacion_j2}
-                                        onChange={(e) => handleChange('puntos_bonificacion_j2', e.target.value)}
-                                        disabled={guardando}
-                                    />
-                                    <small className="nota-equipos">
-                                        Se usarán en caso de empate para desempatar.
-                                    </small>
-                                </div>
-                            )}
-                            <div className="form-group checkbox">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={resultado.warlord_muerto_j2}
-                                        onChange={(e) => handleChange('warlord_muerto_j2', e.target.checked)}
-                                        disabled={guardando}
-                                    />
-                                    Eliminó al Warlord enemigo
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="seccion-sin-dados">
-                        <h4>
-                            {sinDados.activo && sinDados.ganador ? (
-                                <>
-                                    {getNombreJugador(sinDados.ganador === 1 ? 2 : 1)} se QUEDO SIN DADOS
-                                </>
-                            ) : (
-                                'El jugador se quedo sin DADOS'
-                            )}
-                        </h4>
-
-                        {sinDados.activo ? (
-                            <>
-                                <div className="info-sin-dados">
-                                    <p>
-                                        🏆 Victoria 3–0 de <strong>{getNombreJugador(sinDados.ganador)}</strong> por quedarse sin dados
-                                    </p>
-                                </div>
-                                {/* 🆕 Botón para deseleccionar */}
-                                <button
-                                    type="button"
-                                    onClick={() => setSinDados({ activo: false, ganador: null })}
-                                    className="btn-limpiar-sin-dados"
-                                >
-                                    ✕ Cancelar victoria sin dados
-                                </button>
-                            </>
-                        ) : (
-                            <div className="botones-sin-dados">
-                                <button
-                                    type="button"
-                                    onClick={() => meQuedoSinDados(1)}
-                                    className="btn-sin-dados"
-                                >
-                                    🚫 {getNombreJugador(2)} sin dados
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => meQuedoSinDados(2)}
-                                    className="btn-sin-dados"
-                                >
-                                    🚫 {getNombreJugador(1)} sin dados
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="resultado-preview">
-                        <h4>Resultado:</h4>
-                        <div className="resultado-badge">
-                            {getResultadoPreview()}
-                        </div>
-                        <p className="nota-calculo">
-                            {esTorneoEquipos 
-                                ? '💡 Los puntos de masacre y victoria se calcularán automáticamente'
-                                : '💡 Los puntos de victoria y torneo se calcularán automáticamente'
-                            }
-                        </p>
-                    </div>
-                </div>
-
-                <div className="modal-footer">
-                    <button 
-                        className="btn-secondary" 
-                        onClick={onClose}
-                        disabled={guardando}
-                    >
-                        Cancelar
-                    </button>
-                    
-                    <div className="botones-accion">
-                        {esOrganizador && partida.puntos_partida_j1 > 0 && (
-                            <button 
-                                onClick={() => handleConfirmar(true)}
-                                disabled={guardando || confirmando || !resultado.primer_jugador}
-                                className="btn-confirmar-definitivo"
-                            >
-                                {confirmando ? '⏳ Confirmando...' : '✅ Confirmar Definitivamente'}
-                            </button>
-                        )}
-                        
-                        <button 
-                            onClick={handleGuardar}
-                            disabled={guardando || !resultado.primer_jugador}
-                            className="btn-guardar"
-                        >
-                            {guardando ? '⏳ Guardando...' : '💾 Guardar Resultado'}
-                        </button>
-                    </div>
-                </div>
+          <div className="modal-body">
+            <div className="bye-info">
+              <h3>⭐ Victoria Automática</h3>
+              <p><strong>{nombreJ1}</strong></p>
+              <p className="puntos-bye">2 Puntos de Victoria</p>
+              <p className="puntos-bye">3 Puntos de Torneo</p>
+              <p className="ronda-info">Ronda: {partida.ronda}</p>
             </div>
+            {!resultadoConfirmado && esOrganizador && (
+              <div className="info-bye-explicacion">
+                <p>💡 Como organizador debes confirmar esta victoria para que sea definitiva.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            {esOrganizador && (
+              <button
+                onClick={() => handleConfirmar(!resultadoConfirmado)}
+                disabled={confirmando}
+                className={resultadoConfirmado ? 'btn-desconfirmar' : 'btn-confirmar-bye'}
+              >
+                {confirmando
+                  ? '⏳ Procesando...'
+                  : resultadoConfirmado
+                    ? '🔓 Desconfirmar'
+                    : '✅ Confirmar BYE'}
+              </button>
+            )}
+            <button className="btn-cerrar" onClick={onClose}>Cerrar</button>
+          </div>
         </div>
+      </div>
     );
+  }
+
+  // ─── CONFIRMADO (solo lectura) ───────────────────────────────────────────────
+  if (resultadoConfirmado) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-header confirmado">
+            <h3>✅ Resultado Confirmado — Mesa {partida.mesa}</h3>
+            <button className="btn-close confirmado" onClick={onClose}>✕</button>
+          </div>
+
+          <div className="modal-body">
+            <div className="alerta-confirmado">
+              <p>✅ Confirmado por el organizador</p>
+              <p className="nota-no-editable">Los datos ya no se pueden modificar</p>
+            </div>
+
+            <div className="partida-info">
+              <p><strong>Escenario:</strong> {partida.nombre_partida || 'Por definir'}</p>
+              <p><strong>Ronda:</strong> {partida.ronda}</p>
+              <p><strong>Resultado:</strong> {
+                  partida.resultado_pf === 'empate' ? '🤝 Empate'
+                  : partida.resultado_pf === 'victoria_j1' ? `🏆 Victoria de ${nombreJ1}`
+                  : `🏆 Victoria de ${nombreJ2}`
+              }</p>
+            </div>
+
+            <div className="resultados-grid">
+              <div className="jugador-stats">
+                <h4>{nombreJ1}</h4>
+                <p><strong>Puntos de Victoria:</strong> {partida.puntos_victoria_j1 ?? '—'}</p>
+                <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j1 ?? '-'}</p>
+              </div>
+              <div className="vs-divider">VS</div>
+              <div className="jugador-stats">
+                <h4>{nombreJ2}</h4>
+               <p><strong>Puntos de Victoria:</strong> {partida.puntos_victoria_j2 ?? '—'}</p>
+                <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j2 ?? '-'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            {esOrganizador && (
+              <button
+                onClick={() => handleConfirmar(false)}
+                disabled={confirmando}
+                className="btn-desconfirmar"
+              >
+                {confirmando ? '⏳ Procesando...' : '🔓 Desconfirmar Resultado'}
+              </button>
+            )}
+            <button className="btn-cerrar" onClick={onClose}>Cerrar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── EDICIÓN ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content modal-edicion" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>📝 Registrar Resultado — Mesa {partida.mesa}</h3>
+          <button className="btn-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="modal-body">
+          {error && (
+            <div className="error-message">
+              <p>❌ {error}</p>
+            </div>
+          )}
+
+          <div className="partida-info">
+            <p><strong>Escenario:</strong> {partida.nombre_partida || 'Por definir'}</p>
+            <p><strong>Ronda:</strong> {partida.ronda}</p>
+            {permiteEmpate && (
+              <p className="info-empate">🤝 Misión de Batalla Equilibrada — el empate es posible</p>
+            )}
+          </div>
+
+          {/* PASO 1: Resultado */}
+          <div className="seccion-primer-jugador">
+            <h4>🏆 Paso 1 — ¿Resultado de la partida?</h4>
+            {resultado ? (
+              <div className="primer-jugador-seleccionado">
+                <p>
+                  {resultado === 'empate'
+                    ? '🤝 Empate'
+                    : <> ✅ Gana: <strong>{resultado === 'victoria_j1' ? nombreJ1 : nombreJ2}</strong></>
+                  }
+                </p>
+                <button type="button" onClick={resetResultado} className="btn-limpiar-seleccion">
+                  ✕ Cambiar
+                </button>
+              </div>
+            ) : (
+              <div className="botones-primer-jugador">
+                <button onClick={() => setResultado('victoria_j1')} className="btn-seleccionar-jugador">
+                  🏆 {nombreJ1}
+                </button>
+                {permiteEmpate && (
+                  <button onClick={() => setResultado('empate')} className="btn-seleccionar-jugador">
+                    🤝 Empate
+                  </button>
+                )}
+                <button onClick={() => setResultado('victoria_j2')} className="btn-seleccionar-jugador">
+                  🏆 {nombreJ2}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* PASO 2: Pelotones del vencedor */}
+          {resultado && resultado !== 'empate' && (
+            <div className="seccion-pelotones">
+              <h4>💥 Paso 2 — Pelotones perdidos por {resultado === 'victoria_j1' ? nombreJ1 : nombreJ2}</h4>
+              <div className="form-group">
+                <input
+                  type="number"
+                  min="0"
+                  value={pelotonesVencedor}
+                  onChange={e => setPelotonesVencedor(parseInt(e.target.value) || 0)}
+                  disabled={guardando}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* PASO 2: Pelotones — Empate (uno por jugador) */}
+          {resultado === 'empate' && (
+            <div className="seccion-pelotones">
+              <h4>💥 Paso 2 — Pelotones perdidos por el rival</h4>
+              <div className="empate-pelotones-grid">
+                <div className="form-group">
+                  <label>{nombreJ1} perdió:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pelotonesJ2}
+                    onChange={e => setPelotonesJ2(parseInt(e.target.value) || 0)}
+                    disabled={guardando}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{nombreJ2} perdió:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pelotonesJ1}
+                    onChange={e => setPelotonesJ1(parseInt(e.target.value) || 0)}
+                    disabled={guardando}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+         {/* PREVIEW : */}
+        {preview && (
+          <div className="resultado-preview">
+            <h4>Resultado calculado:</h4>
+            {preview.esEmpate ? (
+              <div className="resultados-grid">
+                <div className="jugador-stats empate">
+                  <h4>🤝 {nombreJ1}</h4>
+                  <strong>PT:</strong> {preview.pvJ1} / <strong>PV:</strong> {preview.ptJ1}
+                </div>
+                <div className="vs-divider">VS</div>
+                <div className="jugador-stats empate">
+                  <h4>🤝 {nombreJ2}</h4>
+                  <strong>PT:</strong> {preview.pvJ2} / <strong>PV:</strong> {preview.ptJ2}
+                </div>
+              </div>
+            ) : (
+              <div className="resultados-grid">
+                <div className="jugador-stats ganador">
+                  <h4>🏆 {preview.nombreGanador}</h4>
+                  <strong>PT:</strong> {preview.ptVencedor} / <strong>PV:</strong> {preview.pvVencedor}
+                </div>
+                <div className="vs-divider">VS</div>
+                <div className="jugador-stats perdedor">
+                  <h4>❌ {preview.nombrePerdedor}</h4>
+                  <p><strong>PT:</strong> {preview.ptPerdedor} / <strong>PV:</strong> {preview.pvPerdedor}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose} disabled={guardando}>
+            Cancelar
+          </button>
+          <button
+            onClick={handleGuardar}
+            disabled={guardando || !resultado}
+            className="btn-guardar"
+          >
+            {guardando ? '⏳ Guardando...' : '💾 Guardar Resultado'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default ModalRegistroPartida;
+export default ModalRegistroPartidaFow;

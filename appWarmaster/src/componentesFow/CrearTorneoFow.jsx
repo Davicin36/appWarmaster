@@ -25,7 +25,7 @@ function CrearTorneofow() {
     const [nombreTorneo, setNombreTorneo] = useState("");
     const tipoTorneo = "Individual";
     const [rondasMax, setRondasMax] = useState(RONDAS_DISPONIBLES[0].valor);
-    const [epocasSeleccionadas, setEpocasSeleccionadas] = useState([]); 
+    const [epocasSeleccionadas, setEpocasSeleccionadas] = useState(""); 
     const [fechaInicio, setFechaInicio] = useState("");
     const [duracionTorneo, setDuracionTorneo] = useState("1");
     const [fechaFin, setFechaFin] = useState("");
@@ -226,7 +226,7 @@ function CrearTorneofow() {
                 torneoData.append('fecha_fin', fechaFin || '');
                 torneoData.append('ubicacion', ubicacion || '');
                 torneoData.append('puntos_ejercito', parseInt(puntosEjercito));
-                torneoData.append('epocas_disponibles', JSON.stringify(epocasSeleccionadas));
+                torneoData.append('epocas_disponibles', JSON.stringify([epocasSeleccionadas]));
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
                 torneoData.append('partida_ronda_2', partidaRonda2);
@@ -252,7 +252,7 @@ function CrearTorneofow() {
                     nombre_torneo: nombreTorneo,
                     tipo_torneo: tipoTorneo,
                     rondas_max: parseInt(rondasMax),
-                    epocas_disponibles: epocasSeleccionadas,
+                    epocas_disponibles: [epocasSeleccionadas],
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin || null,
                     ubicacion: ubicacion || null,
@@ -686,7 +686,7 @@ function CrearTorneofow() {
                     >
                         <option value="">Selecciona escenario</option>
                         {TIPOS_PARTIDA_FOW.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
+                            <option key={tipo.nombre} value={tipo.nombre}>[{tipo.tipo}] {tipo.nombre}</option>
                         ))}
                     </select>
 
@@ -701,7 +701,7 @@ function CrearTorneofow() {
                     >
                         <option value="">Selecciona escenario</option>
                         {TIPOS_PARTIDA_FOW.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
+                            <option key={tipo.nombre} value={tipo.nombre}>[{tipo.tipo}] {tipo.nombre}</option>
                         ))}
                     </select>
 
@@ -716,7 +716,7 @@ function CrearTorneofow() {
                     >
                         <option value="">Selecciona escenario</option>
                         {TIPOS_PARTIDA_FOW.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
+                            <option key={tipo.nombre} value={tipo.nombre}>[{tipo.tipo}] {tipo.nombre}</option>
                         ))}
                     </select>
 
@@ -733,7 +733,7 @@ function CrearTorneofow() {
                             >
                                 <option value="">Selecciona escenario</option>
                                 {TIPOS_PARTIDA_FOW.map((tipo) => (
-                                    <option key={tipo} value={tipo}>{tipo}</option>
+                                    <option key={tipo.nombre} value={tipo.nombre}>[{tipo.tipo}] {tipo.nombre}</option>
                                 ))}
                             </select>
                         </>
@@ -752,7 +752,7 @@ function CrearTorneofow() {
                             >
                                 <option value="">Selecciona escenario</option>
                                 {TIPOS_PARTIDA_FOW.map((tipo) => (
-                                    <option key={tipo} value={tipo}>{tipo}</option>
+                                    <option key={tipo.nombre} value={tipo.nombre}>[{tipo.tipo}] {tipo.nombre}</option>
                                 ))}
                             </select>
                         </>

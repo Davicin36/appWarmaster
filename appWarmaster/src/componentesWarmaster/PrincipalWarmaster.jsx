@@ -119,21 +119,21 @@ function PrincipalWarmaster({ onOpenLogin }) {
                             <tbody>
                                 {torneosWarmaster.map((torneo, index) => (
                                     <tr key={torneo.id}>
-                                        <td>{index + 1}</td>
-                                        <td>
+                                        <td data-label="#">{index + 1}</td>
+                                        <td data-label="Torneo">
                                             <strong>{torneo.nombre_torneo}</strong>
                                         </td>
-                                        <td>
+                                        <td data-label="Tipo">
                                             <strong>{torneo.tipo_torneo}</strong>
                                             <small className="torneo-info-extra">
                                                 ({torneo.participantes_max} participantes)  
                                             </small>
                                         </td>
-                                        <td>
+                                        <td data-label="Puntos del Torneo">
                                             {torneo.puntos_ejercito}
                                         </td>
-                                        <td>{formatearFecha(torneo.fecha_inicio)}</td>
-                                        <td>{torneo.ubicacion || 'Por determinar'}</td>
+                                        <td data-label="Fecha Inicio">{formatearFecha(torneo.fecha_inicio)}</td>
+                                        <td data-label="Ubicación">{torneo.ubicacion || 'Por determinar'}</td>
                                         <td>
                                             {torneo.creador_nombre && torneo.creador_apellidos 
                                                 ? `${torneo.creador_nombre} ${torneo.creador_apellidos}`
@@ -145,12 +145,12 @@ function PrincipalWarmaster({ onOpenLogin }) {
                                                 </small>
                                             )}
                                         </td>
-                                        <td>
+                                        <td data-label="Participantes">
                                             <span className="participantes-badge">
                                                 {torneo.total_participantes || 0}/{torneo.participantes_max}
                                             </span>
                                         </td>
-                                        <td>{torneo.estado}</td>
+                                        <td data-label="Estado">{torneo.estado}</td>
                                         <td className="acciones-cell">
                                             {torneo.created_by === userId && (
                                                 <button 
