@@ -107,6 +107,15 @@ class apiUsuarios {
     });
   }
 
+  //======CONTACTO===========
+
+  async enviarContacto(datos) {
+    return this.request('/contacto', {
+      method: 'POST',
+      body: datos
+    });
+  }
+
   //======OBTENER TORNEOS DE CADA USUARIO==========
 
   async obtenerTorneosUsuario(userId) {

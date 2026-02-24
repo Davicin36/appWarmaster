@@ -1,7 +1,8 @@
-// routes/authRutas.js
+// routes/usuariosRutas.js
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { transporter } from "../utils/emailHelpers.js";
 import { promisify } from 'util';
 import { verificarToken } from '../middleware/auth.js';
 import crypto from 'crypto';
@@ -759,6 +760,36 @@ router.get('/torneos', async (req, res) => {
     }
 });
 
+// ====== CORREO PARA CONTACTO======
+
+router.post('/contacto', async (req, res) => {
+  const { nombre, email, asunto, mensaje } = req.body;
+
+  if (!nombre || !email || !asunto || !mensaje) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
+
+  try {
+    await transporter.sendMail({
+      from: '"GestionaTusTorneos" <warmastermadrid23@gmail.com>',
+      to: 'warmastermadrid23@gmail.com',
+      replyTo: email,
+      subject: `[Contacto Web] ${asunto}`,
+      html: `
+        <h3>Nuevo mensaje de contacto</h3>
+        <p><strong>Nombre:</strong> ${nombre}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Mensaje:</strong><br>${mensaje.replace(/\n/g, '<br>')}</p>
+      `
+    });
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error('❌ Error al enviar email de contacto:', err);
+    res.status(500).json({ error: 'No se pudo enviar el mensaje' });
+  }
+});
 // ======OBTENER SISTEMAS  DEL TORNEO======
 
 router.get('/torneos/sistema/:torneoId', async (req, res) => {
@@ -957,7 +988,6 @@ router.get('/:torneoId/verificar-organizador', verificarToken, async (req, res) 
 // ===== RECUPERACIÓN DE CONTRASEÑA =====
 
 router.post('/recuperar-password', async (req, res) => {
-  console.log('🔥 INICIO recuperar-password');
   
   const { email } = req.body;
 

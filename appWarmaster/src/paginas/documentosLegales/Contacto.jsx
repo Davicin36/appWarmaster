@@ -1,20 +1,32 @@
 import { useState } from 'react';
+
+import usuarioApi from '@/servicios/apiUsuarios';
 import '@/estilos/legalPages.css';
 
 const Contacto = () => {
   const [formData, setFormData] = useState({ nombre: '', email: '', asunto: '', mensaje: '' });
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const { nombre, email, asunto, mensaje } = formData;
-    const mailtoLink = `mailto:warmastermadrid23@gmail.com?subject=${encodeURIComponent('[Contacto Web] ' + asunto)}&body=${encodeURIComponent('Nombre: ' + nombre + '\nEmail: ' + email + '\n\n' + mensaje)}`;
-    window.location.href = mailtoLink;
-    setEnviado(true);
+    setEnviando(true);
+    setError(null);
+
+    try {
+      await usuarioApi.enviarContacto(formData);
+      setEnviado(true);
+    } catch (err) {
+      setError('No se pudo enviar el mensaje. Inténtalo de nuevo o escríbenos directamente a warmastermadrid23@gmail.com', err);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -41,10 +53,17 @@ const Contacto = () => {
 
           {enviado ? (
             <div className="contacto-exito">
-              <p>✅ Se ha abierto tu cliente de correo con el mensaje preparado. ¡Gracias por contactarnos!</p>
+              <p>✅ Mensaje enviado correctamente. Te responderemos en un plazo de 48 horas.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="contacto-form">
+
+              {error && (
+                <div className="contacto-error">
+                  <p>❌ {error}</p>
+                </div>
+              )}
+
               <div className="contacto-form-row">
                 <div className="contacto-form-group">
                   <label>Nombre *</label>
@@ -55,6 +74,7 @@ const Contacto = () => {
                     value={formData.nombre}
                     onChange={handleChange}
                     placeholder="Tu nombre"
+                    disabled={enviando}
                   />
                 </div>
                 <div className="contacto-form-group">
@@ -66,6 +86,7 @@ const Contacto = () => {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="tu@email.com"
+                    disabled={enviando}
                   />
                 </div>
               </div>
@@ -79,6 +100,7 @@ const Contacto = () => {
                   value={formData.asunto}
                   onChange={handleChange}
                   placeholder="¿En qué puedo ayudarte?"
+                  disabled={enviando}
                 />
               </div>
 
@@ -91,11 +113,12 @@ const Contacto = () => {
                   onChange={handleChange}
                   placeholder="Escribe tu mensaje aquí..."
                   rows={6}
+                  disabled={enviando}
                 />
               </div>
 
-              <button type="submit" className="contacto-btn-enviar">
-                📧 Enviar Mensaje
+              <button type="submit" className="contacto-btn-enviar" disabled={enviando}>
+                {enviando ? '⏳ Enviando...' : '📧 Enviar Mensaje'}
               </button>
             </form>
           )}
