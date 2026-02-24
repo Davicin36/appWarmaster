@@ -19,10 +19,10 @@ export function obtenerTablas(sistemaJuego) {
  */
 export function validarSistemaJuego(sistemaJuego) {
   const sistemasValidos = [
-    'saga',
-    'warmaster',
-    'fow', // flames of war
-    'bolt_action',
+    'saga' || 'SAGA',
+    'warmaster' || 'WARMASTER',
+    'fow' || 'FOW', // flames of war
+    'bolt_action' || 'BOLT_ACTION',
     // Añade aquí los sistemas que tengas
   ];
   

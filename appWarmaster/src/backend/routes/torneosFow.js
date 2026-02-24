@@ -2723,7 +2723,7 @@ router.get('/:torneoId/jugadores/:jugadorId/lista-pdf', verificarToken, async (r
     }
 });
 
-/// =====CAMBIAR ESTADO DEL TORNEO WARMASTER=====
+/// =====CAMBIAR ESTADO DEL TORNEO FOW=====
 
 router.put('/:torneoId/estado', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   const { torneoId } = req.params;

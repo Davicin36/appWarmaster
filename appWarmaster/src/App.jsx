@@ -20,6 +20,7 @@ import AvisoLegal from './paginas/documentosLegales/AvisoLegal.jsx';
 import PoliticaCokies from './paginas/documentosLegales/PoliticaCokies.jsx';
 import PoliticaPrivacidad from './paginas/documentosLegales/PoliticaPrivacidad.jsx';
 import TerminosCondiciones from './paginas/documentosLegales/TerminosCondiciones.jsx';
+import Contacto from './paginas/documentosLegales/Contacto.jsx';
 
 import AdminPanel from './paginas/administrador/AdminPanel.jsx'
 import PrivateRoute from './servicios/RutasPrivadas.jsx';
@@ -86,6 +87,10 @@ function App() {
          <Route
             path='/terminos-condiciones'
             element={<TerminosCondiciones />}
+        />
+        <Route
+            path='/contacto'
+            element={<Contacto />}
         />
         {/**RUTAS PRIVADAS, SOLO LOGUEADOS*/}
         <Route 

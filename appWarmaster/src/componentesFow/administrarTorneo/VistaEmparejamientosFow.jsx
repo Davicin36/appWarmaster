@@ -314,7 +314,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     };
 
     const esBye = (partida) => {
-        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye;
+        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye ==1;
     };
 
     const tieneDatos = (partida) => {
@@ -328,14 +328,12 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     };
 
     const puedeEditarEstaPartida = (partida) => {
-        if (partida.resultado_confirmado) {
+        if (partida.resultado_confirmado == 1 ) {
             return false;
         }
-        
         if (esBye(partida)) {
             return false;
         }
-        
         return puedeEditarPartidas();
     };
 
@@ -368,7 +366,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     };
 
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
-        const estaConfirmado = partida.resultado_confirmado;
+        const estaConfirmado = partida.resultado_confirmado == 1;
         const puedeEditar = esRondaActual && puedeEditarEstaPartida(partida) && !esBye(partida);
 
         return (

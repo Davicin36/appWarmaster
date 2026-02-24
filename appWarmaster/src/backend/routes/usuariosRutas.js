@@ -791,35 +791,19 @@ router.get('/:userId', verificarToken, async (req, res) => {
     // ✅ CONSULTA 1: Torneos CREADOS por el usuario (solo los que organizó)
     const [torneosCreados] = await pool.execute(`
       SELECT 
-        ts.id,
-        ts.sistema,
-        ts.nombre_torneo,
-        ts.tipo_torneo,
-        ts.num_jugadores_equipo,
-        ts.rondas_max,
-        ts.fecha_inicio,
-        ts.fecha_fin,
-        ts.ubicacion,
-        ts.puntos_banda,
-        ts.participantes_max,
-        ts.equipos_max,
-        ts.ronda_actual,
-        ts.estado,
-        ts.partida_ronda_1,
-        ts.partida_ronda_2,
-        ts.partida_ronda_3,
-        ts.partida_ronda_4,
-        ts.partida_ronda_5,
-        ts.bases_nombre,
-        ts.base_tamaño,
-        ts.created_by,
-        ts.created_at,
+        ts.*,
         GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
-        COUNT(DISTINCT jts.id) as total_participantes,
-        COUNT (DISTINCT tseq.id) as total_equipos
-      FROM torneos_sistemas ts 
-      LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
+        (
+          SELECT COUNT(*) FROM jugador_torneo_saga WHERE torneo_id = ts.id
+        ) + (
+          SELECT COUNT(*) FROM jugador_torneo_fow WHERE torneo_id = ts.id
+        ) + (
+          SELECT COUNT(*) FROM jugador_torneo_warmaster WHERE torneo_id = ts.id
+        ) as total_participantes,
+        COUNT(DISTINCT tseq.id) as total_equipos
+      FROM torneos_sistemas ts
       LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      LEFT JOIN torneo_epocas_fow tef ON ts.id = tef.torneo_id
       LEFT JOIN torneo_saga_equipo tseq ON ts.id = tseq.torneo_id
       WHERE ts.created_by = ?
       GROUP BY ts.id
@@ -830,42 +814,63 @@ router.get('/:userId', verificarToken, async (req, res) => {
     // 🔥 CAMBIO: Se ELIMINÓ el filtro "ts.created_by != ?"
     const [torneosParticipando] = await pool.execute(`
       SELECT 
-        ts.id,
-        ts.sistema,
-        ts.nombre_torneo,
+        ts.id, 
+        ts.sistema, 
+        ts.nombre_torneo, 
         ts.tipo_torneo,
-        ts.num_jugadores_equipo,
-        ts.rondas_max,
-        ts.ronda_actual,
-        ts.fecha_inicio,
+        ts.rondas_max, 
+        ts.ronda_actual, 
+        ts.fecha_inicio, 
         ts.fecha_fin,
-        ts.ubicacion,
-        ts.puntos_banda,
+        ts.ubicacion, 
+        ts.puntos_banda, 
         ts.participantes_max,
-        ts.equipos_max,
-        ts.estado,
-        ts.partida_ronda_1,
-        ts.partida_ronda_2,
-        ts.partida_ronda_3,
-        ts.partida_ronda_4,
-        ts.partida_ronda_5,
-        ts.bases_nombre,
-        ts.base_tamaño,
-        ts.created_by,
+        ts.equipos_max, 
+        ts.estado, 
+        ts.created_by, 
         ts.created_at,
-        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
-        jts.faccion,
-        jts.composicion_ejercito,
-        (SELECT COUNT(DISTINCT jts2.id) FROM jugador_torneo_saga jts2 WHERE jts2.torneo_id = ts.id) as total_participantes,
-        (SELECT COUNT(DISTINCT tseq2.id) FROM torneo_saga_equipo tseq2 WHERE tseq2.torneo_id = ts.id) as total_equipos
-      FROM torneos_sistemas ts 
-      INNER JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-      LEFT JOIN torneo_saga_equipo tseq ON ts.id = tseq.torneo_id
-      WHERE jts.jugador_id = ?
-      GROUP BY ts.id, jts.id, jts.faccion, jts.composicion_ejercito
+        p.faccion,
+        p.composicion_ejercito,
+        epocas.epocas_disponibles
+      FROM torneos_sistemas ts
+      INNER JOIN (
+        SELECT 
+          torneo_id, jugador_id, 
+          faccion, 
+          epoca AS epoca_inscripcion,
+          composicion_ejercito
+        FROM jugador_torneo_saga 
+        WHERE jugador_id = ?
+        
+        UNION ALL
+        
+        SELECT 
+          torneo_id, jugador_id,
+          ejercito AS faccion,
+          epoca AS epoca_inscripcion,
+          NULL AS composicion_ejercito    -- no tienen composición de banda
+        FROM jugador_torneo_fow 
+        WHERE jugador_id = ?
+        
+        UNION ALL
+        
+        SELECT 
+          torneo_id, jugador_id,
+          ejercito AS faccion,
+          NULL AS epoca_inscripcion,
+          NULL AS composicion_ejercito    -- no tienen composición de banda
+        FROM jugador_torneo_warmaster 
+        WHERE jugador_id = ?
+      ) p ON ts.id = p.torneo_id
+      LEFT JOIN (
+        SELECT torneo_id, GROUP_CONCAT(DISTINCT epoca ORDER BY epoca SEPARATOR '|') as epocas_disponibles
+        FROM torneo_saga_epocas GROUP BY torneo_id
+        UNION ALL
+        SELECT torneo_id, GROUP_CONCAT(DISTINCT epoca ORDER BY epoca SEPARATOR '|') as epocas_disponibles
+        FROM torneo_epocas_fow GROUP BY torneo_id
+      ) epocas ON ts.id = epocas.torneo_id
       ORDER BY ts.fecha_inicio ASC
-    `, [userId]);
+    `, [userId, userId, userId]);
     
     res.json(
       successResponse('Torneos del usuario obtenidos exitosamente', {

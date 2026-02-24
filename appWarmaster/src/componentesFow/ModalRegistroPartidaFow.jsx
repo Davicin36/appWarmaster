@@ -8,7 +8,7 @@ const MISIONES_EQUILIBRADAS = TIPOS_PARTIDA_FOW.filter(tipo => tipo.tipo === 'Ba
 
 function ModalRegistroPartidaFow({ partida, onClose, onGuardar, esOrganizador = false }) {
 
-  const resultadoConfirmado = partida.resultado_confirmado || false;
+  const resultadoConfirmado = partida.resultado_confirmado === 1;
   const esBye = !partida.jugador2_id || partida.es_bye === 1;
 
   const permiteEmpate = MISIONES_EQUILIBRADAS.includes(partida.nombre_partida);

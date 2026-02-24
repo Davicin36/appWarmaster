@@ -1,12 +1,16 @@
-/* LegalPages.css */
+/* ================================================
+   ESTILOS PARA DOCUMENTOS LEGALES Y CONTACTO
+   ================================================ */
 
-.legal-page {
+.legal-page,
+.documento-legal-container {
   min-height: calc(100vh - 200px);
   background-color: #f8f9fa;
   padding: 40px 20px;
 }
 
-.legal-container {
+.legal-container,
+.documento-legal-content {
   max-width: 900px;
   margin: 0 auto;
   background-color: white;
@@ -16,7 +20,12 @@
   line-height: 1.8;
 }
 
-.legal-container h1 {
+/* ================================================
+   TÍTULOS
+   ================================================ */
+
+.legal-container h1,
+.documento-legal-titulo {
   color: #2c3e50;
   font-size: 2.5em;
   margin-bottom: 10px;
@@ -24,7 +33,8 @@
   padding-bottom: 15px;
 }
 
-.legal-container h2 {
+.legal-container h2,
+.documento-legal-seccion h2 {
   color: #34495e;
   font-size: 1.8em;
   margin-top: 40px;
@@ -47,32 +57,42 @@
   margin-bottom: 10px;
 }
 
-.legal-container p {
+/* ================================================
+   TEXTOS Y LISTAS
+   ================================================ */
+
+.legal-container p,
+.documento-legal-seccion p {
   color: #495057;
   margin-bottom: 15px;
   text-align: justify;
 }
 
 .legal-container ul,
-.legal-container ol {
+.legal-container ol,
+.documento-legal-seccion ul,
+.documento-legal-seccion ol {
   margin-bottom: 20px;
   padding-left: 30px;
 }
 
-.legal-container li {
+.legal-container li,
+.documento-legal-seccion li {
   color: #495057;
   margin-bottom: 10px;
   line-height: 1.6;
 }
 
-.legal-container a {
+.legal-container a,
+.documento-legal-seccion a {
   color: #3498db;
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: border-color 0.3s ease;
 }
 
-.legal-container a:hover {
+.legal-container a:hover,
+.documento-legal-seccion a:hover {
   border-bottom-color: #3498db;
 }
 
@@ -81,7 +101,12 @@
   font-weight: 600;
 }
 
-.last-updated {
+/* ================================================
+   FECHA / SUBTÍTULO
+   ================================================ */
+
+.last-updated,
+.documento-legal-fecha {
   color: #6c757d;
   font-style: italic;
   font-size: 0.95em;
@@ -89,6 +114,24 @@
   border-bottom: 1px solid #e9ecef;
   padding-bottom: 15px;
 }
+
+/* ================================================
+   SECCIONES
+   ================================================ */
+
+.documento-legal-seccion,
+section {
+  margin-bottom: 40px;
+}
+
+.documento-legal-seccion:last-child,
+section:last-child {
+  margin-bottom: 0;
+}
+
+/* ================================================
+   CAJAS INFORMATIVAS
+   ================================================ */
 
 .info-box {
   background-color: #e3f2fd;
@@ -144,6 +187,10 @@
   color: #3498db;
 }
 
+/* ================================================
+   GRID DE DERECHOS
+   ================================================ */
+
 .rights-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -175,6 +222,10 @@
   font-size: 0.95em;
 }
 
+/* ================================================
+   FIRMA / PIE DE DOCUMENTO
+   ================================================ */
+
 .signature {
   margin-top: 40px;
   padding-top: 20px;
@@ -193,61 +244,103 @@
   color: #e74c3c !important;
 }
 
-section {
-  margin-bottom: 40px;
+/* ================================================
+   FORMULARIO DE CONTACTO
+   ================================================ */
+
+.contacto-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-section:last-child {
-  margin-bottom: 0;
+.contacto-form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .legal-page {
-    padding: 20px 10px;
-  }
-
-  .legal-container {
-    padding: 30px 20px;
-  }
-
-  .legal-container h1 {
-    font-size: 2em;
-  }
-
-  .legal-container h2 {
-    font-size: 1.5em;
-  }
-
-  .legal-container h3 {
-    font-size: 1.2em;
-  }
-
-  .rights-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .legal-container p,
-  .legal-container li {
-    text-align: left;
-  }
+.contacto-form-group {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-@media (max-width: 480px) {
-  .legal-container {
-    padding: 20px 15px;
-  }
-
-  .legal-container h1 {
-    font-size: 1.7em;
-  }
-
-  .legal-container h2 {
-    font-size: 1.3em;
-  }
+.contacto-form-group label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #2c3e50;
 }
 
-/* Tablas (si las hubiera en el markdown) */
+.contacto-form-group input,
+.contacto-form-group textarea {
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+  resize: vertical;
+  color: #495057;
+}
+
+.contacto-form-group input:focus,
+.contacto-form-group textarea:focus {
+  border-color: #3498db;
+}
+
+.contacto-form-group input::placeholder,
+.contacto-form-group textarea::placeholder {
+  color: #bbb;
+}
+
+.contacto-btn-enviar {
+  align-self: flex-start;
+  padding: 14px 30px;
+  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.contacto-btn-enviar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+}
+
+.contacto-btn-enviar:active {
+  transform: translateY(0);
+}
+
+.contacto-exito {
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: #2e7d32;
+  font-size: 1.05rem;
+}
+
+.contacto-exito p {
+  margin: 0;
+  color: #2e7d32;
+  text-align: center;
+}
+
+/* ================================================
+   TABLAS
+   ================================================ */
+
 .legal-container table {
   width: 100%;
   border-collapse: collapse;
@@ -271,7 +364,10 @@ section:last-child {
   background-color: #f8f9fa;
 }
 
-/* Código (si hubiera bloques de código) */
+/* ================================================
+   CÓDIGO
+   ================================================ */
+
 .legal-container code {
   background-color: #f8f9fa;
   padding: 2px 6px;
@@ -293,4 +389,69 @@ section:last-child {
   background-color: transparent;
   padding: 0;
   color: #495057;
+}
+
+/* ================================================
+   RESPONSIVE
+   ================================================ */
+
+@media (max-width: 768px) {
+  .legal-page,
+  .documento-legal-container {
+    padding: 20px 10px;
+  }
+
+  .legal-container,
+  .documento-legal-content {
+    padding: 30px 20px;
+  }
+
+  .legal-container h1,
+  .documento-legal-titulo {
+    font-size: 2em;
+  }
+
+  .legal-container h2,
+  .documento-legal-seccion h2 {
+    font-size: 1.5em;
+  }
+
+  .legal-container h3 {
+    font-size: 1.2em;
+  }
+
+  .rights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .legal-container p,
+  .legal-container li {
+    text-align: left;
+  }
+
+  .contacto-form-row {
+    flex-direction: column;
+  }
+
+  .contacto-btn-enviar {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .legal-container,
+  .documento-legal-content {
+    padding: 20px 15px;
+  }
+
+  .legal-container h1,
+  .documento-legal-titulo {
+    font-size: 1.7em;
+  }
+
+  .legal-container h2,
+  .documento-legal-seccion h2 {
+    font-size: 1.3em;
+  }
 }

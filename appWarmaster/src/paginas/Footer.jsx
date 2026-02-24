@@ -11,6 +11,7 @@ export default function Footer() {
           <Link to="/politica-privacidad">Política de Privacidad</Link>
           <Link to="/terminos-condiciones">Términos y Condiciones</Link>
           <Link to="/politica-cookies">Política de Cokies</Link>
+          <Link to="/contacto">Contacto</Link>
         </nav>
         <div className="footer-divider"></div>
         <p className="copyright">© 2026 Gestiona Tus Torneos - David Álvarez Roca</p>
