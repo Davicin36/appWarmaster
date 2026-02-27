@@ -46,6 +46,14 @@ function NavbarLogin() {
                         ➕ Crear Torneo
                     </Link>
 
+                    <Link 
+                        to="/ranking" 
+                        className="navbar-link"
+                        onClick={cerrarMenu}
+                    >
+                        📋 Ranking
+                    </Link>
+
                     {/* Mostrar si es superadmin */}
                     {isSuperAdmin() && (
                         <>

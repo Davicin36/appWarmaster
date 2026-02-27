@@ -5,7 +5,7 @@ import { obtenerCategoria, obtenerMedalla } from '@/funciones/rankingHelper';
 
 import '@/estilos/ranking.css';
 
-const TarjetaJugador = ({ jugador, mostrarSistema = false }) => {
+const TarjetaJugador = ({ jugador }) => {
   //const navigate = useNavigate();
   const categoria = obtenerCategoria(jugador.elo_actual);
   const esSaga = jugador.sistema_juego?.toLowerCase() === 'saga'
@@ -17,11 +17,11 @@ const TarjetaJugador = ({ jugador, mostrarSistema = false }) => {
     navigate(`/perfil`);
   }
     */
-
-  return (
-    <div 
-      className={`tarjeta-jugador categoria-${categoria.clase}`}
-    >
+return (
+  <div className={`tarjeta-jugador categoria-${categoria.clase}`}>
+    
+    {/* ✅ FILA SUPERIOR: posición + info + elo + categoría */}
+    <div className="tarjeta-top-row">
       <div className="jugador-posicion">
         {obtenerMedalla(jugador.posicion)}
       </div>
@@ -30,13 +30,7 @@ const TarjetaJugador = ({ jugador, mostrarSistema = false }) => {
         <h3 className="jugador-nombre">
           {`${jugador.nombre} ${jugador.apellidos}${jugador.nombre_alias ? ` - ${jugador.nombre_alias}` : ''}`}
         </h3>
-
-        {jugador.club && (
-          <p className="jugador-club">{jugador.club}</p>
-        )}
-        {mostrarSistema && (
-          <span className="jugador-sistema">{jugador.sistema_juego.toUpperCase()}</span>
-        )}
+        {jugador.club && <p className="jugador-club">{jugador.club}</p>}
       </div>
 
       <div className="jugador-elo">
@@ -53,78 +47,70 @@ const TarjetaJugador = ({ jugador, mostrarSistema = false }) => {
         <span className="categoria-icono">{categoria.icono}</span>
         <span className="categoria-nombre">{categoria.nombre}</span>
       </div>
-
-      <div className="jugador-estadisticas">
-        <div className="stat">
-          <span className="stat-label">Partidas</span>
-          <span className="stat-valor">{jugador.partidas_jugadas}</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">V/D/E</span>
-          <span className="stat-valor">
-            <span className="victoria">{jugador.victorias}</span>/
-            <span className="derrota">{jugador.derrotas}</span>/
-            <span className="empate">{jugador.empates}</span>
-          </span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">% Victoria</span>
-          <span className="stat-valor">{jugador.porcentaje_victorias}%</span>
-        </div>
-        {esSaga && (
-          <div className="stat">
-            <span className="stat-label">Él más sanguinario</span>
-            <span className="stat-valor">{jugador.warlords_muertos}</span>
-          </div>
-        )}
-         {esSaga && (
-          <div className="stat">
-            <span className="stat-label">Epoca más usada</span>
-            <span className="stat-valor epoca-stat">
-                {jugador.epoca_favorita || 'Sin Datos'}
-            </span>
-          </div>
-        )}
-        {esSaga && (
-          <div className="stat">
-            <span className="stat-label">Banda más usado</span>
-            <span className="stat-valor epoca-stat">
-                {jugador.faccion_favorita || 'Sin Datos'}
-            </span>
-          </div>
-        )}
-         {esWarmaster && (
-          <div className="stat">
-            <span className="stat-label">Él más sanguinario</span>
-            <span className="stat-valor">{jugador.warlords_muertos}</span>
-          </div>
-        )}
-         {esWarmaster && (
-          <div className="stat">
-            <span className="stat-label">Ejercito más usado</span>
-            <span className="stat-valor epoca-stat">
-                {jugador.faccion_favorita  || 'Sin Datos'}
-            </span>
-          </div>
-        )}
-        {esFow && (
-          <div className="stat">
-            <span className="stat-label">Epoca más usada</span>
-            <span className="stat-valor epoca-stat">
-                {jugador.epoca_favorita || 'Sin Datos'}
-            </span>
-          </div>
-        )}
-         {esFow && (
-          <div className="stat">
-            <span className="stat-label">Ejercito más usado</span>
-            <span className="stat-valor epoca-stat">
-                {jugador.faccion_favorita  || 'Sin Datos'}
-            </span>
-          </div>
-        )}
-      </div>
     </div>
+
+    {/* ✅ FILA INFERIOR: estadísticas */}
+    <div className="jugador-estadisticas">
+      <div className="stat">
+        <span className="stat-label">Partidas</span>
+        <span className="stat-valor">{jugador.partidas_jugadas}</span>
+      </div>
+      <div className="stat">
+        <span className="stat-label">V/D/E</span>
+        <span className="stat-valor">
+          <span className="victoria">{jugador.victorias}</span>/
+          <span className="derrota">{jugador.derrotas}</span>/
+          <span className="empate">{jugador.empates}</span>
+        </span>
+      </div>
+      <div className="stat">
+        <span className="stat-label">% Victoria</span>
+        <span className="stat-valor">{jugador.porcentaje_victorias}%</span>
+      </div>
+      {esSaga && (
+        <div className="stat">
+          <span className="stat-label">Él más sanguinario</span>
+          <span className="stat-valor">{jugador.warlords_muertos}</span>
+        </div>
+      )}
+      {esSaga && (
+        <div className="stat">
+          <span className="stat-label">Época más usada</span>
+          <span className="stat-valor epoca-stat">{jugador.epoca_favorita || 'Sin Datos'}</span>
+        </div>
+      )}
+      {esSaga && (
+        <div className="stat">
+          <span className="stat-label">Banda más usada</span>
+          <span className="stat-valor epoca-stat">{jugador.faccion_favorita || 'Sin Datos'}</span>
+        </div>
+      )}
+      {esWarmaster && (
+        <div className="stat">
+          <span className="stat-label">Él más sanguinario</span>
+          <span className="stat-valor">{jugador.warlords_muertos}</span>
+        </div>
+      )}
+      {esWarmaster && (
+        <div className="stat">
+          <span className="stat-label">Ejército más usado</span>
+          <span className="stat-valor epoca-stat">{jugador.faccion_favorita || 'Sin Datos'}</span>
+        </div>
+      )}
+      {esFow && (
+        <div className="stat">
+          <span className="stat-label">Época más usada</span>
+          <span className="stat-valor epoca-stat">{jugador.epoca_favorita || 'Sin Datos'}</span>
+        </div>
+      )}
+      {esFow && (
+        <div className="stat">
+          <span className="stat-label">Ejército más usado</span>
+          <span className="stat-valor epoca-stat">{jugador.faccion_favorita || 'Sin Datos'}</span>
+        </div>
+      )}
+    </div>
+  </div>
   );
 };
 

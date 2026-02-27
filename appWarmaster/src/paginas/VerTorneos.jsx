@@ -158,20 +158,20 @@ function VerTorneo( {onOpenLogin}) {
     };
 
     const toggleListas = async () => {
-    try {
+        try {
+            
+            const nuevoEstado = !torneo.listas_ocultas_saga;
         
-        const nuevoEstado = !torneo.listas_ocultas_saga;
-    
-        await torneosSagaApi.toggleListas(torneoId, nuevoEstado);
-     
-        setTorneo(prev => ({ ...prev, listas_ocultas_saga: nuevoEstado }));
-    } catch (error) {
-        console.error('❌ Error completo:', error);
-        console.error('❌ Status:', error.response?.status);
-        console.error('❌ Mensaje servidor:', error.response?.data);
-        alert('❌ Error al cambiar visibilidad de listas');
-    }
-};
+            await torneosSagaApi.toggleListas(torneoId, nuevoEstado);
+        
+            setTorneo(prev => ({ ...prev, listas_ocultas_saga: nuevoEstado }));
+        } catch (error) {
+            console.error('❌ Error completo:', error);
+            console.error('❌ Status:', error.response?.status);
+            console.error('❌ Mensaje servidor:', error.response?.data);
+            alert('❌ Error al cambiar visibilidad de listas');
+        }
+    };
 
     const rutaEdicionPorSistema = {
         'SAGA': 'torneosSaga',

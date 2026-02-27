@@ -261,15 +261,21 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo, listasOc
                                     </div>
 
                                     <div className="banda-info">
-                                        <p>
-                                            <strong>Facción:</strong> {inscrito.faccion || "Sin definir"}
-                                            {warlord?.bandaDesbloqueada && (
-                                                <span className="banda-desbloqueada-small">
-                                                    ✨ {warlord.bandaDesbloqueada}
-                                                </span>
-                                            )}
-                                        </p>
                                         <p><strong>Época:</strong> {inscrito.epoca || "Sin definir"}</p>
+                                        {!listasOcultas ? (
+                                            <>
+                                                <p>
+                                                    <strong>Facción:</strong> {inscrito.faccion || "Sin definir"}
+                                                    {warlord?.bandaDesbloqueada && (
+                                                        <span className="banda-desbloqueada-small">
+                                                            ✨ {warlord.bandaDesbloqueada}
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </>
+                                        ): (
+                                            <p><strong>Facción:</strong> {'-'}</p>
+                                        )}           
                                         <p><strong>Puntos Totales:</strong> {totalPuntos.toFixed(1)} pts</p>
                                     </div>
 
@@ -340,11 +346,14 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo, listasOc
                                                             {miembro.nombre} {miembro.alias && `(${miembro.alias})`}
                                                         </span>
                                                         <span className="miembro-epoca-banda">
-                                                            {miembro.epoca || 'Sin época'} - {miembro.faccion || 'Sin banda'}
-                                                            {warlord?.bandaDesbloqueada && (
-                                                                <span className="banda-desbloqueada-inline">
-                                                                    ✨ {warlord.bandaDesbloqueada}
-                                                                </span>
+                                                            {miembro.epoca || 'Sin época'}
+                                                            {!listasOcultas && (
+                                                                <> - {miembro.faccion || 'Sin banda'}
+                                                                {warlord?.bandaDesbloqueada && (
+                                                                    <span className="banda-desbloqueada-inline">
+                                                                        ✨ {warlord.bandaDesbloqueada}
+                                                                    </span>
+                                                                )}</>
                                                             )}
                                                         </span>
                                                     </div>
