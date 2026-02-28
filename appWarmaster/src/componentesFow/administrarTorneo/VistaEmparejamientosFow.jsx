@@ -5,6 +5,7 @@ import torneosFowApi from '@/servicios/apiFow';
 import { generarEmparejamientosIndividuales } from '../funcionesFow/emparejamientosIndividualesFow';
 
 import ModalRegistroPartidaFow from '../ModalRegistroPartidaFow';
+import ModalEdicionEmparejamientos from '@/componente/ModalEdicionEmparejamientos';
 
 import '@/estilos/vistasTorneos/vistaEmparejamientos.css';
 
@@ -28,6 +29,11 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     const [partidaSeleccionada, setPartidaSeleccionada] = useState(null);
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [esOrganizador, setEsOrganizador] = useState(false);
+
+    // Estados para edición de emparejamientos
+    const [modoEdicion, setModoEdicion] = useState(false);
+    const [emparejamientoEditando, setEmparejamientoEditando] = useState(null);
+    const [modalEdicionAbierto, setModalEdicionAbierto] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -87,7 +93,6 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             const response = await torneosFowApi.obtenerPartidasTorneo(tId);
             const partidas = response?.data || response || [];
             const partidasArray = Array.isArray(partidas) ? partidas : [];
-
             setTodasLasPartidas(partidasArray);
         } catch (err) {
             console.error('Error al cargar todas las partidas:', err);
@@ -100,10 +105,8 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             setCargandoPartidas(true);
             
             const response = await torneosFowApi.obtenerEmparejamientosIndividuales(tId, ronda);
-
             const partidas = response?.data || response || [];
             const partidasArray = Array.isArray(partidas) ? partidas : [];
-
             setPartidasGuardadas(partidasArray);
              
         } catch (err) {
@@ -134,9 +137,8 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
     const handleGenerarEmparejamientos = async () => {
         try {
-
-            if( torneo.estado !=='en_curso') {
-                 alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
+            if (torneo.estado !== 'en_curso') {
+                alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
                 return;
             }
 
@@ -147,14 +149,12 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
             const minParticipantes = jugadores.length;
             if (minParticipantes < 2) {
-                alert(`⚠️ Se necesitan al menos 2 jugadores para generar emparejamientos`);
+                alert('⚠️ Se necesitan al menos 2 jugadores para generar emparejamientos');
                 return;
             }
 
             const responseClasificacion = await torneosFowApi.obtenerClasificacionIndividual(torneoId);
             const clasificacion = responseClasificacion.data?.general || responseClasificacion.data || [];
-
-            console.log('Clasificación raw:', clasificacion);
 
             const participantes = jugadores.map(j => {
                 const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
@@ -172,6 +172,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             );
             
             setEmparejamientos(Array.isArray(nuevosEmparejamientos) ? nuevosEmparejamientos : []);
+            setModoEdicion(false);
             alert(`✅ ${nuevosEmparejamientos.length} emparejamientos generados correctamente`);
             
         } catch (error) {
@@ -180,6 +181,77 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             setEmparejamientos([]);
         }
     };
+
+    // ==========================================
+    // FUNCIONES EDICIÓN DE EMPAREJAMIENTOS
+    // ==========================================
+
+    const eliminarEmparejamiento = (index) => {
+        if (window.confirm('¿Eliminar este emparejamiento?')) {
+            const nuevosEmp = [...emparejamientos];
+            nuevosEmp.splice(index, 1);
+            // Reasignar números de mesa
+            nuevosEmp.forEach((emp, i) => { emp.mesa = i + 1; });
+            setEmparejamientos(nuevosEmp);
+            alert('✅ Emparejamiento eliminado');
+        }
+    };
+
+    const abrirEdicion = (emparejamiento, index) => {
+        setEmparejamientoEditando({ ...emparejamiento, index });
+        setModalEdicionAbierto(true);
+    };
+
+    const guardarEdicion = (nuevosDatos) => {
+        const nuevosEmp = [...emparejamientos];
+
+        const jugador1 = jugadores.find(j => (j.jugador_id || j.id) === nuevosDatos.jugador1_id);
+        const jugador2 = nuevosDatos.jugador2_id
+            ? jugadores.find(j => (j.jugador_id || j.id) === nuevosDatos.jugador2_id)
+            : null;
+
+        nuevosEmp[emparejamientoEditando.index] = {
+            ...nuevosEmp[emparejamientoEditando.index],
+            ...nuevosDatos,
+            jugador1: jugador1
+                ? {
+                    id: jugador1.id || jugador1.jugador_id,
+                    jugador_id: jugador1.jugador_id || jugador1.id,
+                    nombre: jugador1.jugador_nombre || jugador1.nombre,
+                    jugador_nombre: jugador1.jugador_nombre || jugador1.nombre,
+                    apellidos: jugador1.jugador_apellidos || jugador1.apellidos || '',
+                    club: jugador1.club || '-',
+                    ejercito: jugador1.ejercito || '-',
+                    bando: jugador1.bando || null,
+                    puntos_victoria: jugador1.puntos_victoria || 0,
+                    puntos_torneo: jugador1.puntos_torneo || 0
+                }
+                : nuevosEmp[emparejamientoEditando.index].jugador1,
+            jugador2: jugador2
+                ? {
+                    id: jugador2.id || jugador2.jugador_id,
+                    jugador_id: jugador2.jugador_id || jugador2.id,
+                    nombre: jugador2.jugador_nombre || jugador2.nombre,
+                    jugador_nombre: jugador2.jugador_nombre || jugador2.nombre,
+                    apellidos: jugador2.jugador_apellidos || jugador2.apellidos || '',
+                    club: jugador2.club || '-',
+                    ejercito: jugador2.ejercito || '-',
+                    bando: jugador2.bando || null,
+                    puntos_victoria: jugador2.puntos_victoria || 0,
+                    puntos_torneo: jugador2.puntos_torneo || 0
+                }
+                : null
+        };
+
+        setEmparejamientos(nuevosEmp);
+        setModalEdicionAbierto(false);
+        setEmparejamientoEditando(null);
+        alert('✅ Emparejamiento actualizado');
+    };
+
+    // ==========================================
+    // GUARDAR EN BD
+    // ==========================================
 
     const guardarResultados = async () => {
         try {
@@ -205,13 +277,13 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             
             if (!confirmar) return;
 
-            const todasLasPartidas = [];
+            const todasLasPartidasGuardar = [];
             let mesaCounter = 1;
 
             emparejamientos.forEach((emp) => {
                 if (emp.partidas && Array.isArray(emp.partidas)) {
                     emp.partidas.forEach((partida) => {
-                        todasLasPartidas.push({
+                        todasLasPartidasGuardar.push({
                             mesa: mesaCounter++,
                             jugador1_id: partida.jugador1_id,
                             jugador2_id: partida.jugador2_id,
@@ -221,7 +293,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         });
                     });
                 } else {
-                    todasLasPartidas.push({
+                    todasLasPartidasGuardar.push({
                         mesa: mesaCounter++,
                         jugador1_id: emp.jugador1_id,
                         jugador2_id: emp.jugador2_id,
@@ -233,7 +305,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             });
 
             const errores = [];
-            todasLasPartidas.forEach((partida, index) => {
+            todasLasPartidasGuardar.forEach((partida, index) => {
                 if (!partida.jugador1_id) {
                     errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID (partida ${index + 1})`);
                 }
@@ -241,20 +313,20 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
             if (errores.length > 0) {
                 console.error('Errores de validación:', errores);
-                console.error('Partidas con error:', todasLasPartidas);
                 alert('Error: Faltan IDs:\n' + errores.join('\n'));
                 return;
             }
 
             await torneosFowApi.guardarEmparejamientosIndividuales(
                 torneo.id,
-                todasLasPartidas,
+                todasLasPartidasGuardar,
                 torneo.ronda_actual
             );
 
             alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}\nEscenario: ${nombreEscenario}`);
 
             setEmparejamientos([]);
+            setModoEdicion(false);
 
             await cargarPartidasRonda();
             await cargarTodasLasPartidas();
@@ -314,21 +386,20 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     };
 
     const esBye = (partida) => {
-        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye ==1;
+        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye == 1;
     };
 
     const tieneDatos = (partida) => {
         if (esBye(partida)) {
             return true;
         }
-        
         return (partida.puntos_victoria_j1 > 0 || partida.puntos_victoria_j2 > 0) &&
                partida.resultado_pf && 
                partida.resultado_pf !== 'pendiente';
     };
 
     const puedeEditarEstaPartida = (partida) => {
-        if (partida.resultado_confirmado == 1 ) {
+        if (partida.resultado_confirmado == 1) {
             return false;
         }
         if (esBye(partida)) {
@@ -342,7 +413,6 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             alert('⚠️ El torneo debe estar "En Curso" para poder introducir resultados.\n\nCambia el estado del torneo primero.');
             return;
         }
-
         setPartidaSeleccionada(partida);
         setModalAbierto(true);
     };
@@ -468,9 +538,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     if (loading) {
         return (
             <div className="vista-emparejamientos">
-                <div className="loading-message">
-                    ⏳ Cargando emparejamientos...
-                </div>
+                <div className="loading-message">⏳ Cargando emparejamientos...</div>
             </div>
         );
     }
@@ -515,24 +583,56 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     
                     {!esVistaPublica && (
                         <div className="botones-grupo">
+                            {/* BOTÓN GENERAR */}
                             <button 
                                 onClick={handleGenerarEmparejamientos}
                                 className="btn-primary"
-                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || torneo.estado !=='en_curso'}
+                                disabled={
+                                    minParticipantes < 2 || 
+                                    guardando || 
+                                    partidasGuardadas.length > 0 || 
+                                    modoEdicion ||
+                                    torneo.estado !== 'en_curso'
+                                }
                             >
                                 🎲 Generar Emparejamientos
                             </button>
 
+                            {/* BOTONES EDICIÓN / GUARDAR */}
                             {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
-                                <button 
-                                    onClick={guardarResultados}
-                                    className="btn-success"
-                                    disabled={guardando}
-                                >
-                                    {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
-                                </button>
+                                <>
+                                    {!modoEdicion ? (
+                                        <>
+                                            <button 
+                                                onClick={() => setModoEdicion(true)}
+                                                className="btn-warning"
+                                            >
+                                                ✏️ Editar Emparejamientos
+                                            </button>
+                                            
+                                            <button 
+                                                onClick={guardarResultados}
+                                                className="btn-success"
+                                                disabled={guardando}
+                                            >
+                                                {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button 
+                                            onClick={() => {
+                                                setModoEdicion(false);
+                                                alert('✅ Modo edición desactivado. Ahora puedes guardar los emparejamientos.');
+                                            }}
+                                            className="btn-success"
+                                        >
+                                            ✅ Finalizar Edición
+                                        </button>
+                                    )}
+                                </>
                             )}
 
+                            {/* BOTÓN SIGUIENTE RONDA */}
                             {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
                                 <button 
                                     onClick={generarSiguienteRonda}
@@ -575,9 +675,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             )}
 
             {cargandoPartidas && (
-                <div className="loading-message">
-                    ⏳ Cargando partidas...
-                </div>
+                <div className="loading-message">⏳ Cargando partidas...</div>
             )}
 
             {minParticipantes < 2 ? (
@@ -595,8 +693,11 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                             {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
                                 <div className="info-box">
                                     <p>
-                                        ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong> 
-                                        {' '}Haz clic en "Guardar en BD" para crear las partidas en la base de datos.
+                                        ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong>
+                                        {modoEdicion
+                                            ? ' Modo edición activo: usa ✏️ para cambiar rivales y 🗑️ para eliminar mesas.'
+                                            : ' Haz clic en "Guardar en BD" para crear las partidas en la base de datos.'
+                                        }
                                     </p>
                                 </div>
                             )}
@@ -607,23 +708,51 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                 ) : (
                                     emparejamientos.map((emp, index) => {
                                         const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
-                                        const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
+                                        const jugador2Nombre = emp.jugador2 
+                                            ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) 
+                                            : null;
                                         
                                         return (
                                             <div key={index} className="emparejamiento-card">
+                                                {/* BOTONES EDICIÓN */}
+                                                {modoEdicion && (
+                                                    <div className="botones-edicion">
+                                                        <button
+                                                            onClick={() => abrirEdicion(emp, index)}
+                                                            className="btn-editar-small"
+                                                            title="Editar emparejamiento"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                        <button
+                                                            onClick={() => eliminarEmparejamiento(index)}
+                                                            className="btn-eliminar-small"
+                                                            title="Eliminar emparejamiento"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+                                                )}
+
                                                 <div className="mesa-numero preview">
                                                     Mesa {emp.mesa || index + 1}
-                                                    {emp.es_bye && ' ⭐ BYE'}
+                                                    {emp.es_bye === 1 && ' ⭐ BYE'}
                                                 </div>
                                                 <div className="enfrentamiento">
                                                     <div className="jugador">
                                                         <div className="nombre">{jugador1Nombre}</div>
+                                                        {emp.jugador1?.bando && (
+                                                            <div className="faccion"> {emp.jugador1.bando}</div>
+                                                        )}
                                                     </div>
                                                     <div className="vs">VS</div>
                                                     <div className="jugador">
                                                         <div className="nombre">
-                                                            {emp.es_bye ? '⭐ BYE' : jugador2Nombre}
+                                                            {emp.es_bye === 1 ? '⭐ BYE' : jugador2Nombre}
                                                         </div>
+                                                        {emp.jugador2?.bando && (
+                                                            <div className="faccion"> {emp.jugador2.bando}</div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -672,6 +801,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                 </>
             )}
 
+            {/* MODAL REGISTRO PARTIDA */}
             {modalAbierto && partidaSeleccionada && (
                 <ModalRegistroPartidaFow
                     partida={partidaSeleccionada}
@@ -686,6 +816,21 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         setModalAbierto(false);
                         setPartidaSeleccionada(null);
                     }}
+                />
+            )}
+
+            {/* MODAL EDICIÓN EMPAREJAMIENTOS */}
+            {modalEdicionAbierto && emparejamientoEditando && (
+                <ModalEdicionEmparejamientos
+                    emparejamiento={emparejamientoEditando}
+                    jugadores={jugadores}
+                    equipos={[]}
+                    esTorneoEquipos={false}
+                    onClose={() => {
+                        setModalEdicionAbierto(false);
+                        setEmparejamientoEditando(null);
+                    }}
+                    onGuardar={guardarEdicion}
                 />
             )}
         </div>
