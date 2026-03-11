@@ -15,6 +15,7 @@ import RankingRoutes from './routes/rutasRanking.js'
 import torneosSagaRoutes from './routes/torneosSaga.js';
 import torneosWarmasterRoutes from './routes/torneosWarmaster.js';
 import torneosFowRoutes from './routes/torneosFow.js';
+import torneosEpicRoutes from './routes/torneosEpic.js';
 /*
 import torneosBoltRoutes from './routes/torneosBolt.js';
 */
@@ -127,6 +128,7 @@ app.use('/api/ranking', RankingRoutes)
 app.use('/api/torneosSaga', torneosSagaRoutes)
 app.use('/api/torneosWarmaster', torneosWarmasterRoutes)
 app.use('/api/torneosFow', torneosFowRoutes)
+app.use('/api/torneosEpic', torneosEpicRoutes)
 /*
 app.use('/api/torneosBolt', torneosBoltRoutes)
 */

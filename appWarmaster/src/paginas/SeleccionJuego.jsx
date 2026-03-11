@@ -7,6 +7,7 @@ import logoSaga from '../assets/logoSaga.webp'
 import logoWarmaster from '../assets/logoWarmaster.webp'
 import logoFow from '../assets/logoFow.webp'
 import logoBolt from '../assets/logoBolt.webp'
+import logoEpic from '../assets/logoEpic.webp'
 
 import Footer from '@/paginas/Footer.jsx'
 
@@ -76,6 +77,16 @@ function SeleccionJuego() {
                     soportaEquipos: false,
                     ruta: '/crearTorneo/bolt',
                     activo: false
+                },
+                 {
+                    id: 5,
+                    nombre: 'Epic Armageddon',
+                    descripcion: 'Juego de batallas épicas en el universo de Warhammer 40K con miniaturas a escala 6mm',
+                    imagen: logoEpic,
+                    soportaIndividual: true,
+                    soportaEquipos: false,
+                    ruta: '/crearTorneo/epic',
+                    activo: true
                 }
             ];
             

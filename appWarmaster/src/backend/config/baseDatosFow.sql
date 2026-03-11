@@ -12,6 +12,7 @@ CREATE TABLE jugador_torneo_fow (
     id INT PRIMARY KEY AUTO_INCREMENT,
     torneo_id INT NOT NULL,
     jugador_id INT NOT NULL,
+    frente_id INT NULL,
     ejercito VARCHAR(100) NOT NULL,
     epoca VARCHAR (100),
     nombre_ejercito VARCHAR(200) NULL DEFAULT NULL,
@@ -25,6 +26,7 @@ CREATE TABLE jugador_torneo_fow (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
     FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (frente_id) REFERENCES fow_frentes(id) ON DELETE SET NULL; 
     UNIQUE KEY unique_participante (torneo_id, jugador_id)
     UNIQUE KEY unique_epoca (jugador_id, epoca)
 );
@@ -48,6 +50,7 @@ CREATE TABLE clasificacion_jugadores_fow (
 CREATE TABLE partidas_fow (
   id INT PRIMARY KEY AUTO_INCREMENT,
   torneo_id INT NOT NULL,
+  frente VARCHAR(100) NULL,
   nombre_partida VARCHAR(100) NOT NULL,
   jugador1_id INT NOT NULL,
   jugador2_id INT NOT NULL,
@@ -78,6 +81,25 @@ CREATE TABLE torneo_epocas_fow (
   UNIQUE KEY unique_epoca_torneo (torneo_id, epoca)
 ); 
 
+CREATE TABLE fow_frentes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  torneo_id INT NOT NULL,
+  nombre_frente VARCHAR(100) NOT NULL,
+  orden INT DEFAULT 1, -- para mostrarlos ordenados en la UI
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_frente_torneo (torneo_id, nombre_frente)
+);
+
+-- Escenarios por frente y ronda
+CREATE TABLE fow_frentes_escenarios (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  frente_id INT NOT NULL,
+  ronda INT NOT NULL,          -- 1 a 5
+  nombre_partida VARCHAR(100) NOT NULL,
+  FOREIGN KEY (frente_id) REFERENCES fow_frentes(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_frente_ronda (frente_id, ronda)
+);
+
 /**
 CREATE TABLE torneo_fow_equipo(
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -88,7 +110,7 @@ CREATE TABLE torneo_fow_equipo(
   puntos_masacre_equipo INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   pagado ENUM ('pendiente', 'pagado') DEFAULT 'pendiente',
- FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE
+ FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE
  FOREIGN KEY (capitan_id) REFERENCES usuarios(id) ON DELETE CASCADE,
 )
 
@@ -98,9 +120,9 @@ CREATE TABLE  equipo_miembros (
   usuario_id INT NOT NULL,
   jugador_eq_id INT NOT NULL,
   fecha_union TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE,
+  FOREIGN KEY (equipo_id) REFERENCES torneo_fow_equipo(id) ON DELETE CASCADE,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  FOREIGN KEY (jugador_eq_id) REFERENCES jugador_torneo_saga(id) ON DELETE CASCADE,
+  FOREIGN KEY (jugador_eq_id) REFERENCES jugador_torneo_fow(id) ON DELETE CASCADE,
   UNIQUE KEY unique_equipo_usuario_jugador (equipo_id, usuario_id, jugador_eq_id)
 );
 
@@ -115,8 +137,8 @@ CREATE TABLE clasificacion_equipos_fow (
   partidas_perdidas INT DEFAULT 0,
   puntos_victoria_eq_totales INT DEFAULT 0,
   puntos_masacre_eq_totales INT DEFAULT 0,
-  FOREIGN KEY (torneo_id) REFERENCES torneo_saga(id) ON DELETE CASCADE,
-  FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_torneo_equipo (torneo_id, equipo_id);
-)
+  FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
+  FOREIGN KEY (equipo_id) REFERENCES torneo_fow_equipo(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_torneo_equipo (torneo_id, equipo_id)
+);
 */

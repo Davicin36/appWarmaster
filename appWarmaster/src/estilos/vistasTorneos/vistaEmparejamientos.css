@@ -251,6 +251,10 @@
     background: linear-gradient(135deg, var(--color-exito), #1E8449);
 }
 
+.emparejamiento-card .mesa-numero.por-confirmar {
+    background: linear-gradient(135deg, #068cbd, #0606d1);
+}
+
 .emparejamiento-card .mesa-numero.pendiente {
     background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
 }

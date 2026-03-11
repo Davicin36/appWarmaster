@@ -6,6 +6,7 @@ import usuarioApi from '@/servicios/apiUsuarios';
 import PrincipalSaga from '@/componentesSaga/PrincipalSaga';
 import PrincipalWarmaster from '@/componentesWarmaster/PrincipalWarmaster';
 import PrincipalFow from '@/componentesFow/PrincipalFow';
+import PrincipalEpic from '@/componentesEpic/PrincipalEpic';
 import Footer from '@/paginas/Footer.jsx'
 
 import vikingo from '../assets/vikingo.png';
@@ -152,6 +153,12 @@ function Principal({ onOpenLogin }) {
                 >
                     FLAMES OF WAR
                 </button>
+                <button 
+                    className={juegoActivo === 'epic' ? 'activo' : ''}
+                    onClick={() => setJuegoActivo('epic')}
+                >
+                    EPIC ARMAGEDON
+                </button>
                 {/*}
                 <button 
                     className={juegoActivo === 'bolt' ? 'activo' : ''}
@@ -208,6 +215,8 @@ function Principal({ onOpenLogin }) {
                                             navigate(`/torneosWarmaster/${torneo.id}/detalles`);
                                         } else if (torneo.sistema === 'FOW') {
                                             navigate(`/torneosFow/${torneo.id}/detalles`);
+                                        } else if (torneo.sistema === 'EPIC') {
+                                            navigate(`/torneosEpic/${torneo.id}/detalles`);
                                         }
                                     }}
                                 >
@@ -282,6 +291,7 @@ function Principal({ onOpenLogin }) {
             {juegoActivo === 'saga' && <PrincipalSaga onOpenLogin={onOpenLogin} />}
             {juegoActivo === 'warmaster' && <PrincipalWarmaster onOpenLogin={onOpenLogin} />}
             {juegoActivo === 'fow' && <PrincipalFow onOpenLogin={onOpenLogin} />}
+            {juegoActivo === 'epic' && <PrincipalEpic onOpenLogin={onOpenLogin} />}
 
             {/* NUEVA SECCIÓN: INFORMACIÓN DEL RANKING */}
             <section id="info-ranking" className="seccion-info-ranking">

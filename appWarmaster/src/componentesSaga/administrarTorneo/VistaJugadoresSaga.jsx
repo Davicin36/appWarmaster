@@ -526,6 +526,50 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
         }
     };
 
+    const confirmarTodosLosPagos = async () => {
+        if (tipoTorneo === 'Individual') {
+            const pendientes = jugadores.filter(j => j.pagado !== 'pagado');
+            if (pendientes.length === 0) {
+                alert('✅ Todos los jugadores ya tienen el pago confirmado');
+                return;
+            }
+            if (!window.confirm(`¿Marcar como PAGADO a los ${pendientes.length} jugadores pendientes?`)) return;
+            try {
+                setLoading(true);
+                await Promise.all(
+                    pendientes.map(j => torneosSagaApi.actualizarPagoJugador(torneoId, j.id, 'pagado'))
+                );
+                setJugadores(prev => prev.map(j => ({ ...j, pagado: 'pagado' })));
+                if (onUpdate) onUpdate();
+                alert(`✅ ${pendientes.length} pagos confirmados`);
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            const pendientes = equipos.filter(e => e.pagado !== 'pagado');
+            if (pendientes.length === 0) {
+                alert('✅ Todos los equipos ya tienen el pago confirmado');
+                return;
+            }
+            if (!window.confirm(`¿Marcar como PAGADO a los ${pendientes.length} equipos pendientes?`)) return;
+            try {
+                setLoading(true);
+                await Promise.all(
+                    pendientes.map(e => torneosSagaApi.actualizarPagoEquipo(torneoId, e.id, 'pagado'))
+                );
+                setEquipos(prev => prev.map(e => ({ ...e, pagado: 'pagado' })));
+                if (onUpdate) onUpdate();
+                alert(`✅ ${pendientes.length} pagos confirmados`);
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="vista-jugadores">
@@ -556,6 +600,13 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                 disabled={loadingReenvio}
                             >
                                 {loadingReenvio ? '⏳ Enviando...' : '📧 Reenviar Invitaciones'}
+                            </button>
+                            <button
+                                className="btn-secondary-small"
+                                onClick={confirmarTodosLosPagos}
+                                disabled={loading}
+                            >
+                                {loading ? '⏳ Procesando...' : '💰 Confirmar Todos los Pagos'}
                             </button>
                         </>
                     )}
@@ -708,6 +759,13 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                             disabled={loadingReenvio}
                         >
                             {loadingReenvio ? '⏳ Enviando...' : '📧 Reenviar Invitaciones'}
+                        </button>
+                        <button
+                            className="btn-secondary-small"
+                            onClick={confirmarTodosLosPagos}
+                            disabled={loading}
+                        >
+                            {loading ? '⏳ Procesando...' : '💰 Confirmar Todos los Pagos'}
                         </button>
                     </>
                 )}

@@ -19,6 +19,15 @@ export const EPOCAS_HISTORICA = [
     'Late-war'
 ];
 
+export const FRENTES_HISTORICOS= [
+    'Frente Occidental',
+    'Frente Oriental',
+    'Frente del Pacífico',
+    'Operacion Market Garden',
+    'Operacion Overlord',
+    'Frente de África',
+]
+
 // ✅ CORRECCIONES HISTÓRICAS DE BANDOS
 export const FACCIONES_EPOCAS_BANDO = {
     "Early_war": [

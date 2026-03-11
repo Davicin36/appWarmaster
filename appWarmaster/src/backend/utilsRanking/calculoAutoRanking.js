@@ -220,7 +220,6 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
       LEFT JOIN ${tablas.jugadorTorneo} jt2 ON p.jugador2_id = jt2.id
       WHERE p.torneo_id = ? 
       AND p.resultado_confirmado = 1
-      AND p.es_bye = 0
       ORDER BY p.ronda, p.mesa
     `;
   } else if (sistemaJuego === 'warmaster') {
@@ -236,10 +235,9 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         jt2.ejercito AS ejercito_j2
       FROM ${tablas.partidas} p
       INNER JOIN ${tablas.jugadorTorneo} jt1 ON p.jugador1_id = jt1.id
-      INNER JOIN ${tablas.jugadorTorneo} jt2 ON p.jugador2_id = jt2.id
+      LEFT JOIN ${tablas.jugadorTorneo} jt2 ON p.jugador2_id = jt2.id
       WHERE p.torneo_id = ? 
       AND p.resultado_confirmado = 1
-      AND (p.es_bye IS NULL OR p.es_bye = 0)
       ORDER BY p.ronda, p.mesa
     `;
   } else if (sistemaJuego === 'fow') {
@@ -255,12 +253,29 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         jt2.epoca AS epoca_j2
       FROM ${tablas.partidas} p
       INNER JOIN ${tablas.jugadorTorneo} jt1 ON p.jugador1_id = jt1.id
-      INNER JOIN ${tablas.jugadorTorneo} jt2 ON p.jugador2_id = jt2.id
+      LEFT JOIN ${tablas.jugadorTorneo} jt2 ON p.jugador2_id = jt2.id
       WHERE p.torneo_id = ? 
       AND p.resultado_confirmado = 1
-      AND (p.es_bye IS NULL OR p.es_bye = 0)
       ORDER BY p.ronda, p.mesa
-      `;
+    `;
+  } else if (sistemaJuego === 'epic') {
+    // ✅ Epic: LEFT JOIN para incluir BYEs (jugador2_id puede ser NULL)
+    queryPartidas = `
+      SELECT 
+        p.id,
+        p.es_bye,
+        jt1.jugador_id AS jugador1_id,
+        jt2.jugador_id AS jugador2_id,
+        p.resultado_pe AS resultado,
+        jt1.ejercito AS ejercito_j1,
+        jt2.ejercito AS ejercito_j2
+      FROM ${tablas.partidas} p
+      INNER JOIN ${tablas.jugadorTorneo} jt1 ON p.jugador1_id = jt1.id
+      LEFT JOIN ${tablas.jugadorTorneo} jt2 ON p.jugador2_id = jt2.id
+      WHERE p.torneo_id = ? 
+      AND p.resultado_confirmado = 1
+      ORDER BY p.ronda, p.mesa
+    `;
   } else {
     throw new Error(`Sistema de juego no soportado: ${sistemaJuego}`);
   }
@@ -288,7 +303,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
 
     let jugador1Id, jugador2Id;
 
-    if (sistemaJuego === 'warmaster' || sistemaJuego === 'fow') {
+    if (sistemaJuego === 'warmaster' || sistemaJuego === 'fow' || sistemaJuego === 'epic') {
       // IDs directos de usuario
       jugador1Id = partida.jugador1_id;
       jugador2Id = partida.jugador2_id;
@@ -307,18 +322,33 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
     }
 
     if (!jugador1Id || !jugador2Id) {
-      console.warn(`⚠️  Partida ${partida.id}: No se pudieron obtener los IDs de jugadores`);
+      // ✅ BYE para todos los sistemas: victoria automática contra fantasma 1500
+      if (jugador1Id && partida.es_bye) {
+        const jugador1 = await obtenerOCrearElo(connRanking, jugador1Id, temporadaId, sistemaJuego, eloInicial);
+        const cambios = eloSystem.procesarPartida(
+          { elo: jugador1.elo_actual, partidasJugadas: jugador1.partidas_jugadas },
+          { elo: eloInicial, partidasJugadas: 0 },
+          1 // victoria para jugador1
+        );
+        await actualizarEloJugador(connRanking, jugador1Id, temporadaId, sistemaJuego, cambios.jugador1.eloNuevo, 'victoria');
+        console.log(`  BYE J1 (${jugador1Id}): ${cambios.jugador1.eloAnterior} → ${cambios.jugador1.eloNuevo} (+${cambios.jugador1.cambio})`);
+        partidasProcesadas++;
+      } else {
+        console.warn(`⚠️  Partida ${partida.id}: No se pudieron obtener los IDs de jugadores`);
+      }
       continue;
     }
 
     // Inicializar estadísticas del jugador si no existen
-  if (!estadisticasJugadores.has(jugador1Id)) {
+    if (!estadisticasJugadores.has(jugador1Id)) {
       estadisticasJugadores.set(jugador1Id,
         sistemaJuego === 'saga'
           ? { epocas: {}, facciones: {}, warlords_muertos: 0 }
           : sistemaJuego === 'fow'
             ? { ejercitos: {}, epocas: {} }
-            : { ejercitos: {}, generales_muertos: 0 }
+            : sistemaJuego === 'epic'
+              ? { ejercitos: {}, facciones: {} }           // ✅ Epic: con facciones, sin generales_muertos
+              : { ejercitos: {}, generales_muertos: 0 }   // Warmaster
       );
     }
     if (!estadisticasJugadores.has(jugador2Id)) {
@@ -327,7 +357,9 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
           ? { epocas: {}, facciones: {}, warlords_muertos: 0 }
           : sistemaJuego === 'fow'
             ? { ejercitos: {}, epocas: {} }
-            : { ejercitos: {}, generales_muertos: 0 }
+            : sistemaJuego === 'epic'
+              ? { ejercitos: {}, facciones: {} }           // ✅ Epic: con facciones, sin generales_muertos
+              : { ejercitos: {}, generales_muertos: 0 }   // Warmaster
       );
     }
 
@@ -353,10 +385,15 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
 
     } else if (sistemaJuego === 'fow') {
       if (partida.ejercito_j1) stats1.ejercitos[partida.ejercito_j1] = (stats1.ejercitos[partida.ejercito_j1] || 0) + 1;
-      if (partida.epoca_j1)   stats1.epocas[partida.epoca_j1]     = (stats1.epocas[partida.epoca_j1]     || 0) + 1;
+      if (partida.epoca_j1) stats1.epocas[partida.epoca_j1] = (stats1.epocas[partida.epoca_j1] || 0) + 1;
 
       if (partida.ejercito_j2) stats2.ejercitos[partida.ejercito_j2] = (stats2.ejercitos[partida.ejercito_j2] || 0) + 1;
-      if (partida.epoca_j2)   stats2.epocas[partida.epoca_j2]     = (stats2.epocas[partida.epoca_j2]     || 0) + 1;
+      if (partida.epoca_j2) stats2.epocas[partida.epoca_j2] = (stats2.epocas[partida.epoca_j2] || 0) + 1;
+
+    } else if (sistemaJuego === 'epic') {
+      // ✅ Epic: ejército y facción
+      if (partida.ejercito_j1) stats1.ejercitos[partida.ejercito_j1] = (stats1.ejercitos[partida.ejercito_j1] || 0) + 1;
+      if (partida.ejercito_j2) stats2.ejercitos[partida.ejercito_j2] = (stats2.ejercitos[partida.ejercito_j2] || 0) + 1;
     }
 
     // Obtener o crear ELO
@@ -387,7 +424,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
     await actualizarEloJugador(connRanking, jugador1Id, temporadaId, sistemaJuego, cambios.jugador1.eloNuevo, cambios.jugador1.resultado);
     await actualizarEloJugador(connRanking, jugador2Id, temporadaId, sistemaJuego, cambios.jugador2.eloNuevo, cambios.jugador2.resultado);
 
-    // Actualizar warlords/generales muertos (solo SAGA y Warmaster)
+    // ✅ Warlords/generales muertos solo para SAGA y Warmaster (NO Epic)
     if (sistemaJuego === 'saga' || sistemaJuego === 'warmaster') {
       if (partida.warlord_muerto_j1) {
         await connRanking.query(
@@ -406,9 +443,11 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
     }
 
     // Guardar en historial
-    const epocaOEjercito_j1 = sistemaJuego === 'saga' ? (partida.epoca_j1 || null)
+    const epocaOEjercito_j1 = sistemaJuego === 'saga'
+      ? (partida.epoca_j1 || null)
       : (partida.ejercito_j1 || null);
-    const epocaOEjercito_j2 = sistemaJuego === 'saga' ? (partida.epoca_j2 || null)
+    const epocaOEjercito_j2 = sistemaJuego === 'saga'
+      ? (partida.epoca_j2 || null)
       : (partida.ejercito_j2 || null);
     const faccion_j1 = sistemaJuego === 'saga' ? (partida.faccion_j1 || null) : null;
     const faccion_j2 = sistemaJuego === 'saga' ? (partida.faccion_j2 || null) : null;
@@ -422,7 +461,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         jugador1Id, temporadaId, sistemaJuego, partida.id, torneoId,
         cambios.jugador1.eloAnterior, cambios.jugador1.eloNuevo, cambios.jugador1.cambio,
         jugador2Id, jugador2.elo_actual, cambios.jugador1.resultado,
-        epocaOEjercito_j1, faccion_j1, partida.warlord_muerto_j1 || false
+        epocaOEjercito_j1, faccion_j1, false
       ]
     );
 
@@ -435,7 +474,7 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         jugador2Id, temporadaId, sistemaJuego, partida.id, torneoId,
         cambios.jugador2.eloAnterior, cambios.jugador2.eloNuevo, cambios.jugador2.cambio,
         jugador1Id, jugador1.elo_actual, cambios.jugador2.resultado,
-        epocaOEjercito_j2, faccion_j2, partida.warlord_muerto_j2 || false
+        epocaOEjercito_j2, faccion_j2, false
       ]
     );
 
@@ -451,8 +490,6 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
         .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
       const faccionFavorita = Object.entries(stats.facciones)
         .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-
-      console.log(`  Jugador ${jugadorId}: época=${epocaFavorita}, facción=${faccionFavorita}`);
 
       await connRanking.query(
         `INSERT INTO estadisticas_jugador 
@@ -474,35 +511,39 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
       );
     }
 
-  } else if (sistemaJuego === 'warmaster' || sistemaJuego === 'fow') {
-      for (const [jugadorId, stats] of estadisticasJugadores) {
-        const ejercitoFavorito = Object.entries(stats.ejercitos)
-          .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-        const epocaFavorita = Object.entries(stats.epocas || {})
-          .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  } else if (sistemaJuego === 'warmaster' || sistemaJuego === 'fow' || sistemaJuego === 'epic') {
+    for (const [jugadorId, stats] of estadisticasJugadores) {
+      const ejercitoFavorito = Object.entries(stats.ejercitos)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      const epocaFavorita = Object.entries(stats.epocas || {})
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      // ✅ Epic usa facciones propias; warmaster/fow usan ejercito como faccion
+      const faccionFavorita = sistemaJuego === 'epic'
+        ? (Object.entries(stats.ejercitos || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || null)
+        : ejercitoFavorito;
 
-        await connRanking.query(
-          `INSERT INTO estadisticas_jugador 
-          (jugador_id, temporada_id, sistema_juego, epoca_favorita, faccion_favorita,
-            epocas_jugadas, facciones_jugadas, torneos_participados)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-          ON DUPLICATE KEY UPDATE
-            epoca_favorita = VALUES(epoca_favorita),
-            faccion_favorita = VALUES(faccion_favorita),
-            epocas_jugadas = JSON_MERGE_PRESERVE(COALESCE(epocas_jugadas, '{}'), VALUES(epocas_jugadas)),
-            facciones_jugadas = JSON_MERGE_PRESERVE(COALESCE(facciones_jugadas, '{}'), VALUES(facciones_jugadas)),
-            torneos_participados = torneos_participados + 1,
-            updated_at = CURRENT_TIMESTAMP`,
-          [
-            jugadorId, temporadaId, sistemaJuego,
-            epocaFavorita,      // ← ahora se guarda para FOW también
-            ejercitoFavorito,
-            JSON.stringify(stats.epocas || {}),
-            JSON.stringify(stats.ejercitos)
-          ]
-        );
-      }
+      await connRanking.query(
+        `INSERT INTO estadisticas_jugador 
+         (jugador_id, temporada_id, sistema_juego, epoca_favorita, faccion_favorita,
+          epocas_jugadas, facciones_jugadas, torneos_participados)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE
+           epoca_favorita = VALUES(epoca_favorita),
+           faccion_favorita = VALUES(faccion_favorita),
+           epocas_jugadas = JSON_MERGE_PRESERVE(COALESCE(epocas_jugadas, '{}'), VALUES(epocas_jugadas)),
+           facciones_jugadas = JSON_MERGE_PRESERVE(COALESCE(facciones_jugadas, '{}'), VALUES(facciones_jugadas)),
+           torneos_participados = torneos_participados + 1,
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          jugadorId, temporadaId, sistemaJuego,
+          epocaFavorita,
+          faccionFavorita,
+          JSON.stringify(stats.epocas || {}),
+          JSON.stringify(stats.ejercitos)
+        ]
+      );
     }
+  }
 
   // 8. Marcar torneo como procesado
   await connTorneos.query(

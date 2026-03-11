@@ -730,6 +730,11 @@ router.get('/torneos', async (req, res) => {
                                 FROM jugador_torneo_fow jtf 
                                 WHERE jtf.torneo_id = ts.id
                             )
+                                 WHEN ts.sistema = 'EPIC' THEN (
+                                SELECT COUNT(*) 
+                                FROM jugador_torneo_epic jte 
+                                WHERE jte.torneo_id = ts.id
+                            )
                             ELSE 0
                         END
                     WHEN ts.tipo_torneo = 'Por equipos' THEN
@@ -830,6 +835,8 @@ router.get('/:userId', verificarToken, async (req, res) => {
           SELECT COUNT(*) FROM jugador_torneo_fow WHERE torneo_id = ts.id
         ) + (
           SELECT COUNT(*) FROM jugador_torneo_warmaster WHERE torneo_id = ts.id
+        ) + (
+          SELECT COUNT(*) FROM jugador_torneo_epic WHERE torneo_id = ts.id
         ) as total_participantes,
         COUNT(DISTINCT tseq.id) as total_equipos
       FROM torneos_sistemas ts
@@ -892,6 +899,17 @@ router.get('/:userId', verificarToken, async (req, res) => {
           NULL AS composicion_ejercito    -- no tienen composición de banda
         FROM jugador_torneo_warmaster 
         WHERE jugador_id = ?
+
+        UNION ALL
+        
+        SELECT 
+          torneo_id, jugador_id,
+          ejercito AS faccion,
+          NULL AS epoca_inscripcion,
+          NULL AS composicion_ejercito    -- no tienen composición de banda
+        FROM jugador_torneo_epic
+        WHERE jugador_id = ?
+        
       ) p ON ts.id = p.torneo_id
       LEFT JOIN (
         SELECT torneo_id, GROUP_CONCAT(DISTINCT epoca ORDER BY epoca SEPARATOR '|') as epocas_disponibles
@@ -901,7 +919,7 @@ router.get('/:userId', verificarToken, async (req, res) => {
         FROM torneo_epocas_fow GROUP BY torneo_id
       ) epocas ON ts.id = epocas.torneo_id
       ORDER BY ts.fecha_inicio ASC
-    `, [userId, userId, userId]);
+    `, [userId, userId, userId, userId]);
     
     res.json(
       successResponse('Torneos del usuario obtenidos exitosamente', {

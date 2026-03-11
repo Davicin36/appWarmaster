@@ -28,6 +28,7 @@ CREATE TABLE usuarios (
 CREATE TABLE torneos_sistemas (
   id INT PRIMARY KEY AUTO_INCREMENT,
   sistema VARCHAR (50) DEFAULT 'SAGA',
+  usa_frentes TINYINT(1) DEFAULT 0,
   nombre_torneo VARCHAR(200) NOT NULL,
   tipo_torneo ENUM ('Individual', 'Por equipos') DEFAULT 'Individual',
   num_jugadores_equipo INT DEFAULT 3 CHECK (num_jugadores_equipo BETWEEN 2 AND 6),

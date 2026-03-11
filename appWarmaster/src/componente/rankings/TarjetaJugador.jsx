@@ -11,6 +11,7 @@ const TarjetaJugador = ({ jugador }) => {
   const esSaga = jugador.sistema_juego?.toLowerCase() === 'saga'
   const esWarmaster = jugador.sistema_juego?.toLowerCase() === 'warmaster'
   const esFow = jugador.sistema_juego?.toLowerCase() === 'fow'
+  const esEpic = jugador.sistema_juego?.toLowerCase() ==='epic'
 
   /*
   const handleClick = () => {
@@ -104,6 +105,12 @@ return (
         </div>
       )}
       {esFow && (
+        <div className="stat">
+          <span className="stat-label">Ejército más usado</span>
+          <span className="stat-valor epoca-stat">{jugador.faccion_favorita || 'Sin Datos'}</span>
+        </div>
+      )}
+       {esEpic && (
         <div className="stat">
           <span className="stat-label">Ejército más usado</span>
           <span className="stat-valor epoca-stat">{jugador.faccion_favorita || 'Sin Datos'}</span>

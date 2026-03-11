@@ -13,6 +13,9 @@ import InscripcionFowIndividual from '@/componentesFow/InscripcionFowIndividual'
 import inscripcionBoltIndividual from '../componentesBolt/inscripciones/inscripcionBoltIndividual';
 */
 
+//EPIC ARMAGEDON
+import InscripcionEpicIndividual from '@/componentesEpic/InscripcionEpicIndividual';
+
 
 export const REGISTRO_INSCRIPCIONES ={
     "SAGA": {
@@ -25,6 +28,10 @@ export const REGISTRO_INSCRIPCIONES ={
     },
     "FOW": {
         "Individual": InscripcionFowIndividual,
+        "Por equipos": null
+    },
+     "EPIC": {
+        "Individual": InscripcionEpicIndividual,
         "Por equipos": null
     },
     /*

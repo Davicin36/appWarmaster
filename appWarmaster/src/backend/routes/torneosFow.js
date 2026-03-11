@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import cloudinary from 'cloudinary'
@@ -73,9 +74,9 @@ cloudinary.v2.config({
 });
 
 
-//========================
-//RUTAS TORNEOS WARMASTER
-//========================
+//==================
+//RUTAS TORNEOS FOW
+//==================
 
 //=====OBTENER TORNEOS CON PAGINACIÓN=====
 
@@ -194,14 +195,14 @@ router.get('/obtenerTorneos', async (req, res) => {
   }
 });
 
-//=====OBTENER TORNEO ESPECIFICO FOW=====
+/// =====OBTENER TORNEO ESPECIFICO FOW=====
 
 router.get('/torneo/:torneoId', async (req, res) => {
   try {
     const { torneoId } = req.params;
-    
+
     console.log(`📖 GET /torneo/${torneoId} - FOW`);
-    
+
     let userId = null;
     const authHeader = req.headers['authorization'];
     if (authHeader) {
@@ -215,6 +216,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
       }
     }
 
+    // ── 1. Datos principales del torneo ──────────────────────────
     const [torneos] = await pool.execute(`
       SELECT 
         ts.id,
@@ -232,6 +234,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.participantes_max,
         ts.equipos_max,
         ts.estado,
+        ts.usa_frentes,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
         ts.partida_ronda_3,
@@ -241,795 +244,771 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
-        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
-        u.nombre as creador_nombre,
-        u.apellidos as creador_apellidos,
-        u.email as creador_email,
-        u.club as creador_club,
-        COUNT(DISTINCT jtf.id) as total_participantes,
-        MAX(CASE WHEN jtf.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
-      FROM torneos_sistemas ts 
-      LEFT JOIN usuarios u ON ts.created_by = u.id 
-      LEFT JOIN jugador_torneo_fow jtf ON ts.id = jtf.torneo_id
-      LEFT JOIN torneo_epocas_fow tse ON ts.id = tse.torneo_id
-      WHERE ts.id = ? AND ts.sistema = "FOW"
+        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') AS epocas_disponibles,
+        u.nombre    AS creador_nombre,
+        u.apellidos AS creador_apellidos,
+        u.email     AS creador_email,
+        u.club      AS creador_club,
+        COUNT(DISTINCT jtf.id)                                        AS total_participantes,
+        MAX(CASE WHEN jtf.jugador_id = ? THEN 1 ELSE 0 END)          AS usuario_inscrito
+      FROM torneos_sistemas ts
+      LEFT JOIN usuarios          u   ON ts.created_by  = u.id
+      LEFT JOIN jugador_torneo_fow jtf ON ts.id          = jtf.torneo_id
+      LEFT JOIN torneo_epocas_fow  tse ON ts.id          = tse.torneo_id
+      WHERE ts.id = ? AND ts.sistema = 'FOW'
       GROUP BY ts.id
     `, [userId, torneoId]);
-    
+
     if (torneos.length === 0) {
-      return res.status(404).json(
-        errorResponse('Torneo no encontrado')
-      );
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
     }
-    
+
     const torneo = torneos[0];
-    
+
+    // ── 2. Frentes + escenarios (solo si usa_frentes = 1) ────────
+    let frentes = [];
+
+    if (torneo.usa_frentes) {
+      // Traer todos los frentes del torneo
+      const [frentesRows] = await pool.execute(`
+        SELECT id, nombre_frente, orden
+        FROM fow_frentes
+        WHERE torneo_id = ?
+        ORDER BY orden ASC
+      `, [torneoId]);
+
+      if (frentesRows.length > 0) {
+        // Traer todos los escenarios de esos frentes de una sola query
+        const frenteIds = frentesRows.map(f => f.id);
+        const placeholders = frenteIds.map(() => '?').join(', ');
+
+        const [escenariosRows] = await pool.execute(`
+          SELECT frente_id, ronda, nombre_partida
+          FROM fow_frentes_escenarios
+          WHERE frente_id IN (${placeholders})
+          ORDER BY frente_id, ronda ASC
+        `, frenteIds);
+
+        // Agrupar escenarios por frente_id
+        const escenariosPorFrente = escenariosRows.reduce((acc, e) => {
+          if (!acc[e.frente_id]) acc[e.frente_id] = {};
+          acc[e.frente_id][e.ronda] = e.nombre_partida;
+          return acc;
+        }, {});
+
+        frentes = frentesRows.map(f => ({
+          id:            f.id,
+          nombre_frente: f.nombre_frente,
+          orden:         f.orden,
+          escenarios:    escenariosPorFrente[f.id] || {},
+        }));
+      }
+    }
+
+    // ── 3. Respuesta ─────────────────────────────────────────────
     res.json(
       successResponse('Torneo obtenido exitosamente', {
-        torneo: torneo
+        torneo: {
+          ...torneo,
+          frentes,   // [] si usa_frentes=0, array con datos si usa_frentes=1
+        }
       })
     );
-    
+
   } catch (error) {
     console.error('❌ Error al obtener torneo FOW:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
 
-// =====CREAR NUEVO TORNEO=====
+// =====CREAR NUEVO TORNEO FOW=====
 
-    router.post('/creandoTorneo', verificarToken,uploadMultiple.fields([
-        { name: 'bases_pdf', maxCount: 1 },
-        { name: 'imagen_cartel', maxCount: 1 }
-    ]), async (req, res) => {
-      try {
-        
-        const { 
-          nombre_torneo, 
-          tipo_torneo = 'Individual',
-          rondas_max: rondas_max_raw,
-          epocas_disponibles: epocas_raw,
-          fecha_inicio, 
-          fecha_fin, 
-          ubicacion,
-          puntos_ejercito: puntos_ejercito_raw,
-          participantes_max: participantes_max_raw,
-          estado = 'pendiente',
-          partida_ronda_1,
-          partida_ronda_2,
-          partida_ronda_3,
-          partida_ronda_4,
-          partida_ronda_5,
-          organizadores_emails: organizadores_raw
+router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
+    { name: 'bases_pdf', maxCount: 1 },
+    { name: 'imagen_cartel', maxCount: 1 }
+]), async (req, res) => {
+    try {
+
+        const {
+            nombre_torneo,
+            usa_frentes: usa_frentes_raw,       // ✅ corregido: era uso_frentes
+            frentes: frentes_raw,                // ✅ nuevo: para torneos con frentes
+            tipo_torneo = 'Individual',
+            rondas_max: rondas_max_raw,
+            epocas_disponibles: epocas_raw,
+            fecha_inicio,
+            fecha_fin,
+            ubicacion,
+            puntos_ejercito: puntos_ejercito_raw,
+            participantes_max: participantes_max_raw,
+            estado = 'pendiente',
+            partida_ronda_1,
+            partida_ronda_2,
+            partida_ronda_3,
+            partida_ronda_4,
+            partida_ronda_5,
+            organizadores_emails: organizadores_raw
         } = req.body;
-    
 
+        const usa_frentes = parseInt(usa_frentes_raw) === 1 || usa_frentes_raw === true || usa_frentes_raw === 'true';
         const rondas_max = parseInt(rondas_max_raw);
         const puntos_ejercito = parseInt(puntos_ejercito_raw);
         const participantes_max = parseInt(participantes_max_raw);
 
-        let epocas_disponibles
-        if(typeof epocas_raw==='string') {
-          try {
-            epocas_disponibles =JSON.parse(epocas_raw)
-          } catch (e){
-            epocas_disponibles = epocas_raw.split('|').map(e=> e.trim()).filter(e=>e)
-          }
+        // Parsear épocas
+        let epocas_disponibles;
+        if (typeof epocas_raw === 'string') {
+            try {
+                epocas_disponibles = JSON.parse(epocas_raw);
+            } catch (e) {
+                epocas_disponibles = epocas_raw.split('|').map(e => e.trim()).filter(e => e);
+            }
         } else {
-          epocas_disponibles =epocas_raw
+            epocas_disponibles = epocas_raw;
         }
 
+        // Parsear organizadores
         let organizadores_emails = [];
         if (organizadores_raw) {
-          if(typeof organizadores_raw === 'string') {
-              try {
-                organizadores_emails = JSON.parse(organizadores_raw)
-              }catch (e) {
-                organizadores_emails = organizadores_raw.split(', ').map(e => e.trim()).filter(e => e);
-              }
-          } else if (Array.isArray(organizadores_raw)) {
-            organizadores_emails = organizadores_raw;
-          }
-        } 
-
-    const camposFaltantes = validarCamposRequeridos(req.body, [
-      'nombre_torneo', 
-      'rondas_max',
-      'epocas_disponibles',
-      'fecha_inicio',
-      'puntos_ejercito',
-      'participantes_max',
-      'partida_ronda_1',
-      'partida_ronda_2',
-      'partida_ronda_3'
-    ]);
-    
-   if (camposFaltantes.length > 0) {
-      return res.status(400).json(
-        errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`)
-      );
-    }
-
-    if(!Array.isArray(epocas_disponibles) || epocas_disponibles.length === 0) {
-      return res.status (400).json (
-        errorResponse ('Debe seleccionar al menos una época')
-      )
-    }
-
-    if (rondas_max < 3 || rondas_max > 5) {
-      return res.status(400).json(
-        errorResponse('El número de rondas debe estar entre 3 y 5')
-      );
-    }
-
-    if (puntos_ejercito < 1000 || puntos_ejercito > 3000) {
-      return res.status(400).json(
-        errorResponse('Los puntos de ejercit deben estar entre 1000 y 3000')
-      );
-    }
-
-    if (participantes_max < 4 || participantes_max > 100) {
-      return res.status(400).json(
-        errorResponse('El número de participantes debe estar entre 4 y 100')
-      );
-    }
-    
-    if (!validarFecha(fecha_inicio)) {
-      return res.status(400).json(
-        errorResponse('La fecha de inicio no puede ser en el pasado')
-      );
-    }
-    
-    if (fecha_fin && new Date(fecha_fin) <= new Date(fecha_inicio)) {
-      return res.status(400).json(
-        errorResponse('La fecha de fin debe ser posterior a la fecha de inicio')
-      );
-    }
-
-    if (organizadores_emails.length > 5) {
-      return res.status(400).json(
-        errorResponse('Máximo 5 organizadores adicionales permitidos')
-      );
-    }
-
-    const [usuarios] = await pool.execute(
-      'SELECT rol, nombre, apellidos FROM usuarios WHERE id = ?',
-      [req.usuario.userId]
-    );
-
-    let rolActualizado = usuarios[0].rol;
-        const creadorNombre = `${usuarios[0].nombre} ${usuarios[0].apellidos}`;
-    
-        if (usuarios[0].rol !== 'organizador') {
-          await pool.execute(
-            'UPDATE usuarios SET rol = ? WHERE id = ?',
-            ['organizador', req.usuario.userId]
-          );
-          rolActualizado = 'organizador';
+            if (typeof organizadores_raw === 'string') {
+                try {
+                    organizadores_emails = JSON.parse(organizadores_raw);
+                } catch (e) {
+                    organizadores_emails = organizadores_raw.split(',').map(e => e.trim()).filter(e => e);
+                }
+            } else if (Array.isArray(organizadores_raw)) {
+                organizadores_emails = organizadores_raw;
+            }
         }
-        
+
+        // Parsear frentes (solo si usa_frentes=true)
+        let frentes = [];
+        if (usa_frentes && frentes_raw) {
+            try {
+                frentes = typeof frentes_raw === 'string' ? JSON.parse(frentes_raw) : frentes_raw;
+            } catch (e) {
+                return res.status(400).json(errorResponse('El formato de los frentes no es válido', e));
+            }
+        }
+
+        // ── VALIDACIONES ──────────────────────────────────────────
+
+        // Campos básicos siempre requeridos
+        const camposBase = ['nombre_torneo', 'rondas_max', 'epocas_disponibles', 'fecha_inicio', 'puntos_ejercito', 'participantes_max'];
+        const camposFaltantes = validarCamposRequeridos(req.body, camposBase);
+        if (camposFaltantes.length > 0) {
+            return res.status(400).json(errorResponse(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`));
+        }
+
+        // Validar escenarios según modo
+        if (!usa_frentes) {
+            // Flujo normal: exigir partidas en los campos de siempre
+            if (!partida_ronda_1 || !partida_ronda_2 || !partida_ronda_3) {
+                return res.status(400).json(errorResponse('Debes seleccionar escenarios para las primeras 3 rondas'));
+            }
+            if (rondas_max >= 4 && !partida_ronda_4) {
+                return res.status(400).json(errorResponse('Debes seleccionar el escenario para la ronda 4'));
+            }
+            if (rondas_max >= 5 && !partida_ronda_5) {
+                return res.status(400).json(errorResponse('Debes seleccionar el escenario para la ronda 5'));
+            }
+        } else {
+            // Modo frentes: validar estructura
+            if (!Array.isArray(frentes) || frentes.length === 0) {
+                return res.status(400).json(errorResponse('Debes añadir al menos un frente'));
+            }
+            if (frentes.length > 6) {
+                return res.status(400).json(errorResponse('Máximo 6 frentes por torneo'));
+            }
+            const nombresFrente = frentes.map(f => f.nombre?.trim().toLowerCase()).filter(Boolean);
+            if (new Set(nombresFrente).size !== nombresFrente.length) {
+                return res.status(400).json(errorResponse('Los nombres de los frentes deben ser únicos'));
+            }
+            for (let i = 0; i < frentes.length; i++) {
+                const f = frentes[i];
+                if (!f.nombre?.trim()) {
+                    return res.status(400).json(errorResponse(`El frente ${i + 1} no tiene nombre`));
+                }
+                for (let r = 1; r <= rondas_max; r++) {
+                    if (!f.escenarios?.[r]) {
+                        return res.status(400).json(errorResponse(`Falta el escenario de la ronda ${r} en el frente "${f.nombre}"`));
+                    }
+                }
+            }
+        }
+
+        if (!Array.isArray(epocas_disponibles) || epocas_disponibles.length === 0) {
+            return res.status(400).json(errorResponse('Debe seleccionar al menos una época'));
+        }
+        if (isNaN(rondas_max) || rondas_max < 3 || rondas_max > 5) {
+            return res.status(400).json(errorResponse('El número de rondas debe estar entre 3 y 5'));
+        }
+        if (isNaN(puntos_ejercito) || puntos_ejercito < 1000 || puntos_ejercito > 3000) {
+            return res.status(400).json(errorResponse('Los puntos de ejército deben estar entre 1000 y 3000'));
+        }
+        if (isNaN(participantes_max) || participantes_max < 4 || participantes_max > 100) {
+            return res.status(400).json(errorResponse('El número de participantes debe estar entre 4 y 100'));
+        }
+        if (!validarFecha(fecha_inicio)) {
+            return res.status(400).json(errorResponse('La fecha de inicio no puede ser en el pasado'));
+        }
+        if (fecha_fin && new Date(fecha_fin) <= new Date(fecha_inicio)) {
+            return res.status(400).json(errorResponse('La fecha de fin debe ser posterior a la fecha de inicio'));
+        }
+        if (organizadores_emails.length > 5) {
+            return res.status(400).json(errorResponse('Máximo 5 organizadores adicionales permitidos'));
+        }
+
+        // ── ROL DEL CREADOR ───────────────────────────────────────
+
+        const [usuarios] = await pool.execute(
+            'SELECT rol, nombre, apellidos FROM usuarios WHERE id = ?',
+            [req.usuario.userId]
+        );
+
+        const creadorNombre = `${usuarios[0].nombre} ${usuarios[0].apellidos}`;
+
+        if (usuarios[0].rol !== 'organizador') {
+            await pool.execute(
+                'UPDATE usuarios SET rol = ? WHERE id = ?',
+                ['organizador', req.usuario.userId]
+            );
+        }
+
+        // ── PDF ────────────────────────────────────────────────────
+
         let basesPdf = null;
         let basesNombre = null;
         let baseTamaño = null;
-        
-        if (req.files && req.files['bases_pdf']) {
-          const pdfFile = req.files['bases_pdf'][0];
-          basesPdf = pdfFile.buffer;
-          basesNombre = pdfFile.originalname;
-          baseTamaño = pdfFile.size;
-          console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
+
+        if (req.files && req.files['bases_pdf']) {   // ✅ corregido: era req.file
+            const pdfFile = req.files['bases_pdf'][0];
+            basesPdf = pdfFile.buffer;
+            basesNombre = pdfFile.originalname;
+            baseTamaño = pdfFile.size;
+            console.log(`📄 PDF recibido: ${basesNombre} (${baseTamaño} bytes)`);
         }
-    
+
+        // ── IMAGEN CLOUDINARY ─────────────────────────────────────
+
         let imagenUrl = null;
-    
-            if (req.files && req.files['imagen_cartel']) {
-              const imagenFile = req.files['imagen_cartel'][0];
-              
-              console.log('📤 Subiendo imagen a Cloudinary...');
-              console.log('   Nombre:', imagenFile.originalname);
-              console.log('   Tamaño:', imagenFile.size, 'bytes');
-              console.log('   Tipo:', imagenFile.mimetype);
-              
-              try {
-                // Convertir buffer a base64
+
+        if (req.files && req.files['imagen_cartel']) {
+            const imagenFile = req.files['imagen_cartel'][0];
+            try {
                 const b64 = Buffer.from(imagenFile.buffer).toString('base64');
                 const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
-                
-                // Subir a Cloudinary
                 const resultado = await cloudinary.v2.uploader.upload(dataURI, {
-                  folder: 'torneos_warmaster',
-                  resource_type: 'auto',
-                  public_id: `torneo_${Date.now()}` // nombre único
+                    folder: 'torneos_fow',
+                    resource_type: 'auto',
+                    public_id: `torneo_${Date.now()}`
                 });
-                
                 imagenUrl = resultado.secure_url;
                 console.log('✅ Imagen subida a Cloudinary:', imagenUrl);
-              } catch (cloudinaryError) {
+            } catch (cloudinaryError) {
                 console.error('❌ Error al subir a Cloudinary:', cloudinaryError);
-                // No bloquear la creación del torneo si falla Cloudinary
-                // pero podrías retornar error si lo consideras crítico
-              }
+                // No bloqueamos la creación del torneo
             }
-
-    const [resultado] = await pool.execute(
-      `INSERT INTO torneos_sistemas 
-       (nombre_torneo, 
-        sistema,
-        tipo_torneo,
-        num_jugadores_equipo,
-        rondas_max, 
-        fecha_inicio, 
-        fecha_fin, 
-        ubicacion,
-        imagen_url,
-        puntos_banda,
-        puntos_ejercito, 
-        participantes_max, 
-        equipos_max,
-        estado, 
-        partida_ronda_1, 
-        partida_ronda_2, 
-        partida_ronda_3, 
-        partida_ronda_4, 
-        partida_ronda_5, 
-        bases_torneo, 
-        bases_nombre, 
-        base_tamaño, 
-        created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        nombre_torneo, 
-        'FOW',
-        tipo_torneo,
-        null,
-        rondas_max, 
-        fecha_inicio, 
-        fecha_fin || null, 
-        ubicacion || null, 
-        imagenUrl,
-        0,
-        puntos_ejercito,
-        participantes_max,
-        0,
-        estado,
-        partida_ronda_1,
-        partida_ronda_2,
-        partida_ronda_3,
-        partida_ronda_4 || null,
-        partida_ronda_5 || null,
-        req.file ? req.file.buffer : null,
-        req.file ? req.file.originalname : null,
-        req.file ? req.file.size : null,
-        req.usuario.userId
-      ]
-    );
-
-    const torneoId = resultado.insertId;
-
-    for (const epoca of epocas_disponibles) {
-      await pool.execute (
-        `INSERT INTO torneo_epocas_fow (torneo_id, epoca) VALUE ( ?, ?)`,
-        [torneoId, epoca]
-      )
-    }
-
-     //INSERTAR A LOS ORGANIZADORES DEL TORNEO EN SU BD.
-        await pool.execute(
-          `INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)`,
-          [torneoId, req.usuario.userId]
-        )
-    
-        let organizadoresRegistrados = []
-        let organizadoresNoRegistrados = []
-    
-        if(organizadores_emails.length > 0){
-    
-          for (const email of organizadores_emails) {
-            const emailLower = email.toLowerCase().trim();
-    
-            // Verificar si el usuario ya existe
-            const [usuarioExistente] = await pool.execute(
-              'SELECT id, nombre, apellidos, email FROM usuarios WHERE LOWER(email) = ?',
-              [emailLower]
-            );
-    
-            if (usuarioExistente.length > 0) {
-              const usuario = usuarioExistente[0];
-    
-              const [yaEsOrganizador] = await pool.execute (
-                'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND  usuario_id = ?',
-                [torneoId, usuario.id]
-              )
-    
-              if(yaEsOrganizador.length === 0){
-                  await pool.execute(
-                    'INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)',
-                    [torneoId, usuario.id]
-                  );
-    
-                  if (usuario.estado_cuenta === 'activo') {
-                    await pool.execute(
-                      `UPDATE usuarios SET rol = 'organizador' WHERE id = ? AND rol != 'organizador'`,
-                      [usuario.id]
-                    );
-    
-                  organizadoresRegistrados.push ({
-                      email: usuario.email,
-                      nombre: `${usuario.nombre} ${usuario.apellidos }`,
-                      estado: usuario.estado_cuenta
-                  })
-                }  else {
-                      organizadoresNoRegistrados.push({
-                      email: usuario.email
-                    });
-                }
-              }
-          } else {
-    
-              try {
-                // Crear usuario pendiente
-                const [nuevoUsuario] = await pool.execute(
-                  `INSERT INTO usuarios (email, nombre, apellidos, password, estado_cuenta, rol) VALUES (?, ?, ?, ?, 'pendiente_registro', 'organizador')`,
-                  [emailLower, 'Pendiente', 'de Registro', crypto.randomBytes(32).toString('hex')]
-                );
-    
-                const usuarioId = nuevoUsuario.insertId;
-    
-                // Añadir como organizador del torneo
-                await pool.execute(
-                  'INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)',
-                  [torneoId, usuarioId]
-                );
-    
-                organizadoresNoRegistrados.push({
-                  email: emailLower,
-                  usuarioId: usuarioId
-                });
-    
-                organizadoresNoRegistrados.push({
-                  email: emailLower,
-                  usuarioId: usuarioId
-                });
-    
-              } catch (dbError) {
-                console.error(`  ❌ Error creando usuario pendiente para ${emailLower}:`, dbError);
-              }
-            }
-          }
-    
-        // ✅ ENVIAR EMAILS
-          if (organizadoresRegistrados.length > 0 || organizadoresNoRegistrados.length > 0) {
-    
-            // Enviar emails a organizadores activos
-            for (const org of organizadoresRegistrados) {
-              try {
-                await enviarInvitacionOrganizadorRegistrado({
-                  destinatario: org.email,
-                  nombreDestinatario: org.nombre,
-                  creadorNombre,
-                  nombreTorneo: nombre_torneo,
-                  fechaInicio: fecha_inicio,
-                  fechaFin: fecha_fin,
-                  ubicacion,
-                  tipoTorneo: tipo_torneo,
-                  rondasMax: rondas_max
-                });
-              } catch (emailError) {
-                console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
-              }
-            }
-    
-            // Enviar emails a organizadores pendientes
-            for (const org of organizadoresNoRegistrados) {
-              try {
-                await enviarInvitacionOrganizadorNoRegistrado({
-                  destinatario: org.email,
-                  creadorNombre,
-                  nombreTorneo: nombre_torneo,
-                  fechaInicio: fecha_inicio,
-                  fechaFin: fecha_fin,
-                  ubicacion,
-                  tipoTorneo: tipo_torneo,
-                  rondasMax: rondas_max
-                });
-              } catch (emailError) {
-                console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
-              }
-            }
-          }
         }
-        
-        res.status(201).json(
-          successResponse('Torneo creado exitosamente', {
-            torneoId: resultado.insertId,
-            nombre_torneo,
-            tipo_torneo,
-            ubicacion: ubicacion || null,
-            imagen_url: imagenUrl,
-            tiene_bases_pdf: !!req.file,
-            created_by: req.usuario.userId,
-            organizadores: {
-              activos: organizadoresRegistrados.length,
-              pendientes: organizadoresNoRegistrados.length,
-              emails_enviados: organizadoresRegistrados.length + organizadoresNoRegistrados.length
-            }
-          })
+
+        // ── INSERT TORNEO ─────────────────────────────────────────
+
+        const [resultado] = await pool.execute(
+            `INSERT INTO torneos_sistemas 
+             (nombre_torneo, sistema, tipo_torneo, num_jugadores_equipo,
+              rondas_max, fecha_inicio, fecha_fin, ubicacion, imagen_url,
+              puntos_banda, puntos_ejercito, participantes_max, equipos_max,
+              estado, usa_frentes,
+              partida_ronda_1, partida_ronda_2, partida_ronda_3,
+              partida_ronda_4, partida_ronda_5,
+              bases_torneo, bases_nombre, base_tamaño, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                nombre_torneo,
+                'FOW',
+                tipo_torneo,
+                null,
+                rondas_max,
+                fecha_inicio,
+                fecha_fin || null,
+                ubicacion || null,
+                imagenUrl,
+                0,
+                puntos_ejercito,
+                participantes_max,
+                0,
+                estado,
+                usa_frentes ? 1 : 0,                // ✅ nuevo campo
+                usa_frentes ? 'se usan frentes' : partida_ronda_1,
+                usa_frentes ? 'se usan frentes' : partida_ronda_2,
+                usa_frentes ? 'se usan frentes' : partida_ronda_3,
+                usa_frentes ? 'se usan frentes' : (partida_ronda_4 || null),
+                usa_frentes ? 'se usan frentes' : (partida_ronda_5 || null),
+                basesPdf,                            // ✅ corregido: era req.file
+                basesNombre,
+                baseTamaño,
+                req.usuario.userId
+            ]
         );
-      
-      } catch (error) {
-        console.error('❌ Error al crear torneo:', error);
-        
-        if (error instanceof multer.MulterError) {
-          if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json(
-              errorResponse('El archivo PDF excede el tamaño máximo de 16MB')
+
+        const torneoId = resultado.insertId;
+
+        // ── ÉPOCAS ────────────────────────────────────────────────
+
+        for (const epoca of epocas_disponibles) {
+            await pool.execute(
+                `INSERT INTO torneo_epocas_fow (torneo_id, epoca) VALUES (?, ?)`,
+                [torneoId, epoca]
             );
-          }
-          return res.status(400).json(errorResponse(error.message));
         }
-        
+
+        // ── FRENTES Y ESCENARIOS (solo si usa_frentes=true) ───────
+
+        if (usa_frentes) {
+            for (let orden = 0; orden < frentes.length; orden++) {
+                const f = frentes[orden];
+
+                const [frenteResult] = await pool.execute(
+                    `INSERT INTO fow_frentes (torneo_id, nombre_frente, orden) VALUES (?, ?, ?)`,
+                    [torneoId, f.nombre.trim(), orden + 1]
+                );
+
+                const frenteId = frenteResult.insertId;
+
+                for (let r = 1; r <= rondas_max; r++) {
+                    await pool.execute(
+                        `INSERT INTO fow_frentes_escenarios (frente_id, ronda, nombre_partida) VALUES (?, ?, ?)`,
+                        [frenteId, r, f.escenarios[r]]
+                    );
+                }
+            }
+        }
+
+        // ── ORGANIZADOR CREADOR ───────────────────────────────────
+
+        await pool.execute(
+            `INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)`,
+            [torneoId, req.usuario.userId]
+        );
+
+        // ── ORGANIZADORES ADICIONALES ─────────────────────────────
+
+        let organizadoresRegistrados = [];
+        let organizadoresNoRegistrados = [];
+
+        if (organizadores_emails.length > 0) {
+            for (const email of organizadores_emails) {
+                const emailLower = email.toLowerCase().trim();
+
+                const [usuarioExistente] = await pool.execute(
+                    'SELECT id, nombre, apellidos, email, estado_cuenta FROM usuarios WHERE LOWER(email) = ?',
+                    [emailLower]
+                );
+
+                if (usuarioExistente.length > 0) {
+                    const usuario = usuarioExistente[0];
+
+                    const [yaEsOrganizador] = await pool.execute(
+                        'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+                        [torneoId, usuario.id]
+                    );
+
+                    if (yaEsOrganizador.length === 0) {
+                        await pool.execute(
+                            'INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)',
+                            [torneoId, usuario.id]
+                        );
+
+                        if (usuario.estado_cuenta === 'activo') {
+                            await pool.execute(
+                                `UPDATE usuarios SET rol = 'organizador' WHERE id = ? AND rol != 'organizador'`,
+                                [usuario.id]
+                            );
+                            organizadoresRegistrados.push({
+                                email: usuario.email,
+                                nombre: `${usuario.nombre} ${usuario.apellidos}`,
+                                estado: usuario.estado_cuenta
+                            });
+                        } else {
+                            organizadoresNoRegistrados.push({ email: usuario.email });
+                        }
+                    }
+                } else {
+                    try {
+                        const [nuevoUsuario] = await pool.execute(
+                            `INSERT INTO usuarios (email, nombre, apellidos, password, estado_cuenta, rol)
+                             VALUES (?, ?, ?, ?, 'pendiente_registro', 'organizador')`,
+                            [emailLower, 'Pendiente', 'de Registro', crypto.randomBytes(32).toString('hex')]
+                        );
+
+                        const usuarioId = nuevoUsuario.insertId;
+
+                        await pool.execute(
+                            'INSERT INTO organizadores_torneos (torneo_id, usuario_id) VALUES (?, ?)',
+                            [torneoId, usuarioId]
+                        );
+
+                        organizadoresNoRegistrados.push({ email: emailLower, usuarioId });
+                        // ✅ corregido: eliminado el push duplicado que había aquí
+
+                    } catch (dbError) {
+                        console.error(`❌ Error creando usuario pendiente para ${emailLower}:`, dbError);
+                    }
+                }
+            }
+
+            // Enviar emails
+            for (const org of organizadoresRegistrados) {
+                try {
+                    await enviarInvitacionOrganizadorRegistrado({
+                        destinatario: org.email,
+                        nombreDestinatario: org.nombre,
+                        creadorNombre,
+                        nombreTorneo: nombre_torneo,
+                        fechaInicio: fecha_inicio,
+                        fechaFin: fecha_fin,
+                        ubicacion,
+                        tipoTorneo: tipo_torneo,
+                        rondasMax: rondas_max
+                    });
+                } catch (emailError) {
+                    console.error(`❌ Error enviando email a ${org.email}:`, emailError.message);
+                }
+            }
+
+            for (const org of organizadoresNoRegistrados) {
+                try {
+                    await enviarInvitacionOrganizadorNoRegistrado({
+                        destinatario: org.email,
+                        creadorNombre,
+                        nombreTorneo: nombre_torneo,
+                        fechaInicio: fecha_inicio,
+                        fechaFin: fecha_fin,
+                        ubicacion,
+                        tipoTorneo: tipo_torneo,
+                        rondasMax: rondas_max
+                    });
+                } catch (emailError) {
+                    console.error(`❌ Error enviando email a ${org.email}:`, emailError.message);
+                }
+            }
+        }
+
+        res.status(201).json(
+            successResponse('Torneo creado exitosamente', {
+                torneoId,
+                nombre_torneo,
+                tipo_torneo,
+                ubicacion: ubicacion || null,
+                imagen_url: imagenUrl,
+                usa_frentes,
+                frentes_creados: usa_frentes ? frentes.length : 0,
+                tiene_bases_pdf: !!basesPdf,
+                created_by: req.usuario.userId,
+                organizadores: {
+                    activos: organizadoresRegistrados.length,
+                    pendientes: organizadoresNoRegistrados.length,
+                    emails_enviados: organizadoresRegistrados.length + organizadoresNoRegistrados.length
+                }
+            })
+        );
+
+    } catch (error) {
+        console.error('❌ Error al crear torneo:', error);
+
+        if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json(errorResponse('El archivo excede el tamaño máximo de 16MB'));
+            }
+            return res.status(400).json(errorResponse(error.message));
+        }
         if (error.message === 'Solo se permiten archivos PDF') {
-          return res.status(400).json(errorResponse(error.message));
+            return res.status(400).json(errorResponse(error.message));
         }
-    
         if (error.code === 'ER_DUP_ENTRY') {
-          return res.status(400).json(
-            errorResponse('Ya existe un torneo con esa época')
-          );
+            return res.status(400).json(errorResponse('Ya existe un torneo con esa época'));
         }
-        
+
         const mensaje = manejarErrorDB(error);
         res.status(500).json(errorResponse(mensaje));
-      }
-    });
+    }
+});
 
-// ======ACTUALIZAR TORNEO=====
+// ======ACTUALIZAR TORNEO FOW=====
 
 router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTorneo, uploadMultiple.fields([
     { name: 'bases_pdf', maxCount: 1 },
     { name: 'imagen_cartel', maxCount: 1 }
 ]), async (req, res) => {
-  try {
-    const { torneoId } = req.params;
-    
-    const { 
-      nombre_torneo, 
-      rondas_max,
-      ronda_actual,
-      epoca_torneo: epoca_raw,
-      fecha_inicio, 
-      fecha_fin, 
-      ubicacion,
-      puntos_ejercito,
-      participantes_max,
-      estado,
-      partida_ronda_1,
-      partida_ronda_2,
-      partida_ronda_3,
-      partida_ronda_4,
-      partida_ronda_5,
-      eliminar_pdf,
-      eliminar_imagen
-    } = req.body;
+    try {
+        const { torneoId } = req.params;
 
-    // ⬅️ TAMBIÉN TRAER imagen_url actual para poder eliminarla de Cloudinary
+        const {
+            nombre_torneo,
+            rondas_max,
+            ronda_actual,
+            epoca_torneo: epoca_raw,
+            fecha_inicio,
+            fecha_fin,
+            ubicacion,
+            puntos_ejercito,
+            participantes_max,
+            estado,
+            usa_frentes: usa_frentes_raw,
+            frentes: frentes_raw,              // ✅ nuevo
+            partida_ronda_1,
+            partida_ronda_2,
+            partida_ronda_3,
+            partida_ronda_4,
+            partida_ronda_5,
+            eliminar_pdf,
+            eliminar_imagen
+        } = req.body;
+
         const [torneoExistente] = await pool.execute(
-          'SELECT created_by, imagen_url FROM torneos_sistemas WHERE id = ?',
-          [torneoId]
+            'SELECT created_by, imagen_url, usa_frentes FROM torneos_sistemas WHERE id = ?',
+            [torneoId]
         );
-        
+
         if (torneoExistente.length === 0) {
-          return res.status(404).json(errorResponse('Torneo no encontrado'));
+            return res.status(404).json(errorResponse('Torneo no encontrado'));
         }
 
+        // Determinar modo frentes: si viene en el body, usarlo; si no, respetar el valor actual
+        const usa_frentes = usa_frentes_raw !== undefined
+            ? (parseInt(usa_frentes_raw) === 1 || usa_frentes_raw === true || usa_frentes_raw === 'true')
+            : !!torneoExistente[0].usa_frentes;
+
+        // Parsear frentes si se envían
+        let frentes = null;
+        if (usa_frentes && frentes_raw) {
+            try {
+                frentes = typeof frentes_raw === 'string' ? JSON.parse(frentes_raw) : frentes_raw;
+            } catch (e) {
+                return res.status(400).json(errorResponse('El formato de los frentes no es válido', e));
+            }
+        }
+
+        // Parsear épocas
         let epocas_disponibles;
         if (epoca_raw) {
-          if (typeof epoca_raw === 'string') {
-            epocas_disponibles = epoca_raw.split('|').map(e => e.trim()).filter(e => e);
-          } else if (Array.isArray(epoca_raw)) {
-            epocas_disponibles = epoca_raw;
-          }
-        }
-        
-        // Validaciones
-        if (rondas_max && (rondas_max < 3 || rondas_max > 5)) {
-          return res.status(400).json(
-            errorResponse('El número de rondas debe estar entre 3 y 5')
-          );
-        }
-    
-        if (puntos_ejercito && (puntos_ejercito < 1000 || puntos_ejercito > 3000)) {
-          return res.status(400).json(
-            errorResponse('Los puntos de ejército deben estar entre 1000 y 3000')
-          );
-        }
-    
-        if (participantes_max && (participantes_max < 4 || participantes_max > 100)) {
-          return res.status(400).json(
-            errorResponse('El número de participantes debe estar entre 4 y 100')
-          );
-        }
-        
-        if (fecha_inicio && !validarFecha(fecha_inicio)) {
-          return res.status(400).json(
-            errorResponse('La fecha de inicio no puede ser en el pasado')
-          );
-        }
-        
-        if (fecha_fin && fecha_inicio && new Date(fecha_fin) < new Date(fecha_inicio)) {
-          return res.status(400).json(
-            errorResponse('La fecha de fin debe ser posterior o igual a la fecha de inicio')
-          );
-        }
-    
-        if (estado && !['pendiente', 'en_curso', 'finalizado'].includes(estado)) {
-          return res.status(400).json(
-            errorResponse('Estado inválido. Debe ser: pendiente, en_curso o finalizado')
-          );
-        }
-        
-        const camposActualizar = [];
-        const valores = [];
-        
-        // Campos básicos
-        if (nombre_torneo !== undefined) {
-          camposActualizar.push('nombre_torneo = ?');
-          valores.push(nombre_torneo);
-        }
-    
-        if (rondas_max !== undefined) {
-          camposActualizar.push('rondas_max = ?');
-          valores.push(rondas_max);
-        }
-    
-        if (ronda_actual !== undefined) {
-          camposActualizar.push('ronda_actual = ?');
-          valores.push(ronda_actual);
-        }
-        
-        if (fecha_inicio !== undefined) {
-          camposActualizar.push('fecha_inicio = ?');
-          valores.push(fecha_inicio);
-        }
-    
-        if (fecha_fin !== undefined) {
-          camposActualizar.push('fecha_fin = ?');
-          valores.push(fecha_fin);
-        }
-        
-        if (ubicacion !== undefined) {
-          camposActualizar.push('ubicacion = ?');
-          valores.push(ubicacion || null);
-        }
-    
-        // ========================================
-        // MANEJAR IMAGEN DEL CARTEL
-        // ========================================
-        let imagenActualizada = false;
-        let imagenEliminada = false;
-    
-        // Si se sube una nueva imagen
-        if (req.files && req.files['imagen_cartel']) {
-          const imagenFile = req.files['imagen_cartel'][0];
-          
-          try {
-            console.log('📤 Subiendo nueva imagen a Cloudinary...');
-            console.log('   Archivo:', imagenFile.originalname);
-            console.log('   Tamaño:', (imagenFile.size / 1024).toFixed(2), 'KB');
-            
-            // Convertir buffer a base64
-            const b64 = Buffer.from(imagenFile.buffer).toString('base64');
-            const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
-            
-            // Subir a Cloudinary
-            const resultado = await cloudinary.v2.uploader.upload(dataURI, {
-              folder: 'torneos_fow',
-              resource_type: 'auto',
-              public_id: `torneo_${torneoId}_${Date.now()}`
-            });
-            
-            // Eliminar imagen anterior de Cloudinary si existe
-            if (torneoExistente[0].imagen_url) {
-              try {
-                // Extraer public_id de la URL
-                const urlParts = torneoExistente[0].imagen_url.split('/');
-                const publicIdWithExt = urlParts.slice(-2).join('/');
-                const publicId = publicIdWithExt.replace(/\.[^/.]+$/, "");
-                
-                await cloudinary.v2.uploader.destroy(publicId);
-                console.log('🗑️ Imagen anterior eliminada de Cloudinary');
-              } catch (deleteError) {
-                console.warn('⚠️ No se pudo eliminar imagen anterior:', deleteError.message);
-              }
+            if (typeof epoca_raw === 'string') {
+                epocas_disponibles = epoca_raw.split('|').map(e => e.trim()).filter(e => e);
+            } else if (Array.isArray(epoca_raw)) {
+                epocas_disponibles = epoca_raw;
             }
-            
-            camposActualizar.push('imagen_url = ?');
-            valores.push(resultado.secure_url);
-            imagenActualizada = true;
-            
-            console.log('✅ Nueva imagen subida:', resultado.secure_url);
-            
-          } catch (cloudinaryError) {
-            console.error('❌ Error al subir imagen a Cloudinary:', cloudinaryError);
-            return res.status(500).json(
-              errorResponse('Error al subir la imagen a Cloudinary: ' + cloudinaryError.message)
-            );
-          }
-        }
-        // Si se solicita eliminar la imagen existente
-        else if (eliminar_imagen === 'true' || eliminar_imagen === true) {
-          if (torneoExistente[0].imagen_url) {
-            try {
-              // Extraer public_id de la URL
-              const urlParts = torneoExistente[0].imagen_url.split('/');
-              const publicIdWithExt = urlParts.slice(-2).join('/');
-              const publicId = publicIdWithExt.replace(/\.[^/.]+$/, "");
-              
-              await cloudinary.v2.uploader.destroy(publicId);
-              console.log('🗑️ Imagen eliminada de Cloudinary');
-            } catch (deleteError) {
-              console.warn('⚠️ No se pudo eliminar imagen de Cloudinary:', deleteError.message);
-            }
-          }
-          
-          camposActualizar.push('imagen_url = NULL');
-          imagenEliminada = true;
-          console.log('🗑️ Eliminando referencia de imagen en BD');
-        }
-        
-        // Campos de puntuación
-        if (puntos_ejercito !== undefined) {
-          camposActualizar.push('puntos_ejercito = ?');
-          valores.push(puntos_ejercito);
-        }
-    
-        if (participantes_max !== undefined) {
-          camposActualizar.push('participantes_max = ?');
-          valores.push(participantes_max);
-        }
-    
-        if (estado !== undefined) {
-          camposActualizar.push('estado = ?');
-          valores.push(estado);
-        }
-    
-        // Partidas por ronda
-        if (partida_ronda_1 !== undefined) {
-          camposActualizar.push('partida_ronda_1 = ?');
-          valores.push(partida_ronda_1);
-        }
-        if (partida_ronda_2 !== undefined) {
-          camposActualizar.push('partida_ronda_2 = ?');
-          valores.push(partida_ronda_2);
-        }
-        if (partida_ronda_3 !== undefined) {
-          camposActualizar.push('partida_ronda_3 = ?');
-          valores.push(partida_ronda_3);
-        }
-        if (partida_ronda_4 !== undefined) {
-          camposActualizar.push('partida_ronda_4 = ?');
-          valores.push(partida_ronda_4);
-        }
-        if (partida_ronda_5 !== undefined) {
-          camposActualizar.push('partida_ronda_5 = ?');
-          valores.push(partida_ronda_5);
-        }
-        
-        // ========================================
-        // MANEJAR PDF DE BASES
-        // ========================================
-        let pdfActualizado = false;
-        let pdfEliminado = false;
-    
-        // Si se sube un nuevo PDF - ⬅️ CAMBIO: usar req.files en lugar de req.file
-        if (req.files && req.files['bases_pdf']) {
-          const pdfFile = req.files['bases_pdf'][0];
-          
-          camposActualizar.push('bases_torneo = ?');
-          valores.push(pdfFile.buffer);
-          
-          camposActualizar.push('bases_nombre = ?');
-          valores.push(pdfFile.originalname);
-          
-          camposActualizar.push('base_tamaño = ?');
-          valores.push(pdfFile.size);
-          
-          pdfActualizado = true;
-          console.log('📄 Nuevo PDF recibido:', pdfFile.originalname);
-        }
-        // Si se solicita eliminar el PDF existente
-        else if (eliminar_pdf === 'true' || eliminar_pdf === true) {
-          camposActualizar.push('bases_torneo = NULL');
-          camposActualizar.push('bases_nombre = NULL');
-          camposActualizar.push('base_tamaño = NULL');
-          pdfEliminado = true;
-          console.log('🗑️ Eliminando PDF existente');
-        }
-        
-        // ========================================
-        // EJECUTAR UPDATE SI HAY CAMBIOS
-        // ========================================
-        if (camposActualizar.length > 0) {
-          valores.push(torneoId);
-          
-          const query = `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`;
-          
-          console.log('📝 Ejecutando UPDATE con', camposActualizar.length, 'campos');
-          
-          await pool.execute(query, valores);
-          
-          console.log('✅ Torneo actualizado correctamente');
-        } else {
-          console.log('ℹ️ No hay cambios para actualizar');
         }
 
-            // ✅ NUEVO: Actualizar épocas si se proporcionaron
-          if (epocas_disponibles && Array.isArray(epocas_disponibles)) {
-            
-            // Eliminar épocas antiguas
+        // ── VALIDACIONES ──────────────────────────────────────────
+
+        const rondasNum = rondas_max ? parseInt(rondas_max) : null;
+
+        if (rondasNum && (rondasNum < 3 || rondasNum > 5)) {
+            return res.status(400).json(errorResponse('El número de rondas debe estar entre 3 y 5'));
+        }
+        if (puntos_ejercito && (puntos_ejercito < 1000 || puntos_ejercito > 3000)) {
+            return res.status(400).json(errorResponse('Los puntos de ejército deben estar entre 1000 y 3000'));
+        }
+        if (participantes_max && (participantes_max < 4 || participantes_max > 100)) {
+            return res.status(400).json(errorResponse('El número de participantes debe estar entre 4 y 100'));
+        }
+        if (fecha_inicio && !validarFecha(fecha_inicio)) {
+            return res.status(400).json(errorResponse('La fecha de inicio no puede ser en el pasado'));
+        }
+        if (fecha_fin && fecha_inicio && new Date(fecha_fin) < new Date(fecha_inicio)) {
+            return res.status(400).json(errorResponse('La fecha de fin debe ser posterior o igual a la fecha de inicio'));
+        }
+        if (estado && !['pendiente', 'en_curso', 'finalizado'].includes(estado)) {
+            return res.status(400).json(errorResponse('Estado inválido. Debe ser: pendiente, en_curso o finalizado'));
+        }
+
+        // ── BUILD UPDATE ──────────────────────────────────────────
+
+        const camposActualizar = [];
+        const valores = [];
+
+        if (nombre_torneo !== undefined)   { camposActualizar.push('nombre_torneo = ?');  valores.push(nombre_torneo); }
+        if (rondasNum !== null)            { camposActualizar.push('rondas_max = ?');      valores.push(rondasNum); }
+        if (ronda_actual !== undefined)    { camposActualizar.push('ronda_actual = ?');    valores.push(ronda_actual); }
+        if (fecha_inicio !== undefined)    { camposActualizar.push('fecha_inicio = ?');    valores.push(fecha_inicio); }
+        if (fecha_fin !== undefined)       { camposActualizar.push('fecha_fin = ?');       valores.push(fecha_fin); }
+        if (ubicacion !== undefined)       { camposActualizar.push('ubicacion = ?');       valores.push(ubicacion || null); }
+        if (puntos_ejercito !== undefined) { camposActualizar.push('puntos_ejercito = ?'); valores.push(puntos_ejercito); }
+        if (participantes_max !== undefined){ camposActualizar.push('participantes_max = ?'); valores.push(participantes_max); }
+        if (estado !== undefined)          { camposActualizar.push('estado = ?');          valores.push(estado); }
+
+        if (usa_frentes_raw !== undefined) {
+            camposActualizar.push('usa_frentes = ?');
+            valores.push(usa_frentes ? 1 : 0);
+        }
+
+        // Escenarios solo si NO usa frentes
+        if (!usa_frentes) {
+            if (partida_ronda_1 !== undefined) { camposActualizar.push('partida_ronda_1 = ?'); valores.push(partida_ronda_1); }
+            if (partida_ronda_2 !== undefined) { camposActualizar.push('partida_ronda_2 = ?'); valores.push(partida_ronda_2); }
+            if (partida_ronda_3 !== undefined) { camposActualizar.push('partida_ronda_3 = ?'); valores.push(partida_ronda_3); }
+            if (partida_ronda_4 !== undefined) { camposActualizar.push('partida_ronda_4 = ?'); valores.push(partida_ronda_4); }
+            if (partida_ronda_5 !== undefined) { camposActualizar.push('partida_ronda_5 = ?'); valores.push(partida_ronda_5); }
+        }
+
+        // ── IMAGEN ────────────────────────────────────────────────
+
+        let imagenActualizada = false;
+        let imagenEliminada = false;
+
+        if (req.files && req.files['imagen_cartel']) {
+            const imagenFile = req.files['imagen_cartel'][0];
+            try {
+                const b64 = Buffer.from(imagenFile.buffer).toString('base64');
+                const dataURI = `data:${imagenFile.mimetype};base64,${b64}`;
+                const resultado = await cloudinary.v2.uploader.upload(dataURI, {
+                    folder: 'torneos_fow',
+                    resource_type: 'auto',
+                    public_id: `torneo_${torneoId}_${Date.now()}`
+                });
+
+                // Eliminar imagen anterior de Cloudinary
+                if (torneoExistente[0].imagen_url) {
+                    try {
+                        const urlParts = torneoExistente[0].imagen_url.split('/');
+                        const publicId = urlParts.slice(-2).join('/').replace(/\.[^/.]+$/, '');
+                        await cloudinary.v2.uploader.destroy(publicId);
+                    } catch (deleteError) {
+                        console.warn('⚠️ No se pudo eliminar imagen anterior:', deleteError.message);
+                    }
+                }
+
+                camposActualizar.push('imagen_url = ?');
+                valores.push(resultado.secure_url);
+                imagenActualizada = true;
+            } catch (cloudinaryError) {
+                console.error('❌ Error al subir imagen a Cloudinary:', cloudinaryError);
+                return res.status(500).json(errorResponse('Error al subir la imagen: ' + cloudinaryError.message));
+            }
+        } else if (eliminar_imagen === 'true' || eliminar_imagen === true) {
+            if (torneoExistente[0].imagen_url) {
+                try {
+                    const urlParts = torneoExistente[0].imagen_url.split('/');
+                    const publicId = urlParts.slice(-2).join('/').replace(/\.[^/.]+$/, '');
+                    await cloudinary.v2.uploader.destroy(publicId);
+                } catch (deleteError) {
+                    console.warn('⚠️ No se pudo eliminar imagen de Cloudinary:', deleteError.message);
+                }
+            }
+            camposActualizar.push('imagen_url = NULL');
+            imagenEliminada = true;
+        }
+
+        // ── PDF ────────────────────────────────────────────────────
+
+        let pdfActualizado = false;
+        let pdfEliminado = false;
+
+        if (req.files && req.files['bases_pdf']) {
+            const pdfFile = req.files['bases_pdf'][0];
+            camposActualizar.push('bases_torneo = ?');  valores.push(pdfFile.buffer);
+            camposActualizar.push('bases_nombre = ?');  valores.push(pdfFile.originalname);
+            camposActualizar.push('base_tamaño = ?');   valores.push(pdfFile.size);
+            pdfActualizado = true;
+        } else if (eliminar_pdf === 'true' || eliminar_pdf === true) {
+            camposActualizar.push('bases_torneo = NULL');
+            camposActualizar.push('bases_nombre = NULL');
+            camposActualizar.push('base_tamaño = NULL');
+            pdfEliminado = true;
+        }
+
+        // ── EJECUTAR UPDATE ───────────────────────────────────────
+
+        if (camposActualizar.length > 0) {
+            valores.push(torneoId);
             await pool.execute(
-              'DELETE FROM torneo_epocas_fow WHERE torneo_id = ?',
-              [torneoId]
+                `UPDATE torneos_sistemas SET ${camposActualizar.join(', ')} WHERE id = ?`,
+                valores
             );
-            
-            // Insertar nuevas épocas
+        }
+
+        // ── ÉPOCAS ────────────────────────────────────────────────
+
+        if (epocas_disponibles && Array.isArray(epocas_disponibles)) {
+            await pool.execute('DELETE FROM torneo_epocas_fow WHERE torneo_id = ?', [torneoId]);
             for (const epoca of epocas_disponibles) {
-              await pool.execute(
-                `INSERT INTO torneo_epocas_fow (torneo_id, epoca) VALUES (?, ?)`,
-                [torneoId, epoca]
-              );
+                await pool.execute(
+                    `INSERT INTO torneo_epocas_fow (torneo_id, epoca) VALUES (?, ?)`,
+                    [torneoId, epoca]
+                );
             }
-          }
-        
-        // ========================================
-        // RESPUESTA
-        // ========================================
+        }
+
+        // ── FRENTES (solo si se envían y usa_frentes=true) ────────
+
+        let frentesActualizados = false;
+
+        if (usa_frentes && frentes && Array.isArray(frentes) && frentes.length > 0) {
+            // Borrar frentes y escenarios anteriores (CASCADE borra escenarios)
+            await pool.execute('DELETE FROM fow_frentes WHERE torneo_id = ?', [torneoId]);
+
+            const rondasActuales = rondasNum || torneoExistente[0].rondas_max;
+
+            for (let orden = 0; orden < frentes.length; orden++) {
+                const f = frentes[orden];
+
+                const [frenteResult] = await pool.execute(
+                    `INSERT INTO fow_frentes (torneo_id, nombre_frente, orden) VALUES (?, ?, ?)`,
+                    [torneoId, f.nombre.trim(), orden + 1]
+                );
+
+                const frenteId = frenteResult.insertId;
+
+                for (let r = 1; r <= rondasActuales; r++) {
+                    if (f.escenarios?.[r]) {
+                        await pool.execute(
+                            `INSERT INTO fow_frentes_escenarios (frente_id, ronda, nombre_partida) VALUES (?, ?, ?)`,
+                            [frenteId, r, f.escenarios[r]]
+                        );
+                    }
+                }
+            }
+            frentesActualizados = true;
+        }
+
+        // ── RESPUESTA ─────────────────────────────────────────────
+
         res.json(
-          successResponse('Torneo actualizado exitosamente', {
-            torneoId: parseInt(torneoId),
-            cambios: {
-              ubicacion: ubicacion !== undefined,
-              imagen_actualizada: imagenActualizada,
-              imagen_eliminada: imagenEliminada,
-              epocas_actualizadas: !!epocas_disponibles,
-              pdf_actualizado: pdfActualizado,
-              pdf_eliminado: pdfEliminado,
-              total_campos: camposActualizar.length
-            }
-          })
+            successResponse('Torneo actualizado exitosamente', {
+                torneoId: parseInt(torneoId),
+                cambios: {
+                    ubicacion: ubicacion !== undefined,
+                    imagen_actualizada: imagenActualizada,
+                    imagen_eliminada: imagenEliminada,
+                    epocas_actualizadas: !!epocas_disponibles,
+                    frentes_actualizados: frentesActualizados,
+                    pdf_actualizado: pdfActualizado,
+                    pdf_eliminado: pdfEliminado,
+                    total_campos: camposActualizar.length
+                }
+            })
         );
-        
-      } catch (error) {
+
+    } catch (error) {
         console.error('❌ Error al actualizar torneo:', error);
-        console.error('Stack:', error.stack);
-        
-        // Manejo de errores de Multer
+
         if (error instanceof multer.MulterError) {
-          if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json(
-              errorResponse('Uno de los archivos excede el tamaño máximo de 16MB')
-            );
-          }
-          return res.status(400).json(errorResponse(error.message));
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json(errorResponse('Uno de los archivos excede el tamaño máximo de 16MB'));
+            }
+            return res.status(400).json(errorResponse(error.message));
         }
-        
-        // Errores de validación de archivos
         if (error.message && error.message.includes('Solo se permiten')) {
-          return res.status(400).json(errorResponse(error.message));
+            return res.status(400).json(errorResponse(error.message));
         }
-    
-        // Error de duplicado
         if (error.code === 'ER_DUP_ENTRY') {
-          return res.status(400).json(
-            errorResponse('Ya existe un torneo con ese nombre')
-          );
+            return res.status(400).json(errorResponse('Ya existe un torneo con ese nombre'));
         }
-        
-        // Error genérico
+
         const mensaje = manejarErrorDB(error);
         res.status(500).json(errorResponse(mensaje));
-      }
-    });
+    }
+});
 
 // ===== OBTENER ORGANIZADORES DEL TORNEO =====
 
@@ -1521,6 +1500,14 @@ router.post('/:torneoId/organizadores/:organizadorId/reenviar', verificarToken, 
       );
     }
 
+    const [usuarioInvitador] = await pool.execute(
+      'SELECT nombre, apellidos, nombre_alias FROM usuarios WHERE id = ?',
+      [req.usuario.userId]
+    );
+    const nombreInvitador = usuarioInvitador[0].nombre_alias || 
+      `${usuarioInvitador[0].nombre} ${usuarioInvitador[0].apellidos}`.trim();
+    
+
     const nombreCompleto = info.nombre_alias || 
                           `${info.nombre || ''} ${info.apellidos || ''}`.trim() || 
                           info.email;
@@ -1977,6 +1964,12 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
       });
     }
 
+    const [epocas] = await connection.query(
+      'SELECT epoca FROM torneo_epocas_fow WHERE torneo_id = ? LIMIT 1',
+      [torneoId]
+    );
+    const epoca = epocas.length > 0 ? epocas[0].epoca : null;
+
     const torneo = torneoCheck[0];
 
     let usuarioId;
@@ -2214,7 +2207,7 @@ router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarTo
       banda: jugador.faccion
     };
 
-    const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+    const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
 
     if (resultado.success) {
       res.json({
@@ -2326,7 +2319,7 @@ router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrgani
           banda: jugador.faccion
         };
 
-        const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
 
         if (resultado.success) {
           totalEnviados++;

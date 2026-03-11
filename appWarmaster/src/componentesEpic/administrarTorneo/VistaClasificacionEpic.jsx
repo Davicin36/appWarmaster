@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-import torneosWarmasterApi from '@/servicios/apiWarmaster';
+import torneosEpicApi from '@/servicios/apiEpic';
 
 import '@/estilos/vistasTorneos/vistaClasificacion.css';
 
-function VistaClasificacionWarmaster({ torneoId: propTorneoId }) {
+function VistaClasificacionEpic({ torneoId: propTorneoId }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
 
@@ -37,7 +37,7 @@ function VistaClasificacionWarmaster({ torneoId: propTorneoId }) {
 
     const cargarClasificacionIndividual = async () => {
         try {
-            const response = await torneosWarmasterApi.obtenerClasificacionIndividual(torneoId);
+            const response = await torneosEpicApi.obtenerClasificacionIndividual(torneoId);
             
             let dataClasificacion = [];
             if (Array.isArray(response)) {
@@ -85,7 +85,6 @@ function VistaClasificacionWarmaster({ torneoId: propTorneoId }) {
                     <th>PE</th>
                      <th>PP</th>
                     <th>Pts Masacre</th>
-                    <th>Generales Muertos</th>
                     <th>Pts Victoria</th>
                 </tr>
             </thead>
@@ -109,7 +108,6 @@ function VistaClasificacionWarmaster({ torneoId: propTorneoId }) {
                         <td>{jugador.partidas_empatadas || 0}</td>
                         <td>{jugador.partidas_perdidas || 0}</td>
                         <td>{jugador.puntos_masacre_totales || 0}</td>
-                        <td>{jugador.general_muerto_total || 0}</td>
                         <td className="puntos-destacado">{jugador.puntos_victoria_totales || 0}</td>
                     </tr>
                 ))}
@@ -160,4 +158,4 @@ function VistaClasificacionWarmaster({ torneoId: propTorneoId }) {
     );
 }
 
-export default VistaClasificacionWarmaster;
+export default VistaClasificacionEpic;

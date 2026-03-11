@@ -11,7 +11,7 @@ import { enviarInvitacionOrganizadorNoRegistrado, enviarInvitacionOrganizadorReg
 import { enviarInvitacionEquipo } from '../utils/emailInscripcionEquipos.js';
 import  { emailTorneo }  from '../utils/emailComunicaciones.js';
 import { actualizarEloAutomatico } from '../utilsRanking/calculoAutoRanking.js';
-import { verificarToken, verificarOrganizadorTorneo, verificarSuperAdmin } from '../middleware/auth.js';
+import { verificarToken, verificarOrganizadorTorneo } from '../middleware/auth.js';
 import { 
   calcularPuntosTorneo,
   validarFecha,
@@ -28,20 +28,6 @@ const router = express.Router();
 // =====CONFIGURACIÓN DE MULTER PARA SUBIDA DE PDF=====
 
 const storage = multer.memoryStorage();
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 16 * 1024 * 1024 // 16MB máximo
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Solo se permiten archivos PDF'), false);
-    }
-  }
-});
 
 const uploadMultiple = multer({
   storage: storage,
@@ -95,7 +81,7 @@ router.get('/obtenerTorneos', async (req, res) => {
         userId = decoded.userId;
         console.log(`✅ Usuario autenticado: ${userId}`);
       } catch (err) {
-        console.log('ℹ️ Sin autenticación o token inválido');
+        console.log('ℹ️ Sin autenticación o token inválido', err);
       }
     }
     
@@ -105,7 +91,7 @@ router.get('/obtenerTorneos', async (req, res) => {
     if (buscar.trim()) {
       whereClause = 'WHERE ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?';
       const searchTerm = `%${buscar}%`;
-      params = [searchTerm, searchTerm];
+      queryParams = [searchTerm, searchTerm];
     }
 
     queryParams.push(parseInt(limitNum), parseInt(offset))
@@ -212,7 +198,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         userId = decoded.userId;
         console.log(`✅ Usuario: ${userId}`);
       } catch (err) {
-        console.log('ℹ️ Sin autenticación');
+        console.log('ℹ️ Sin autenticación', err);
       }
     }
 
@@ -1629,6 +1615,16 @@ router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verifica
       );
     }
 
+    // Obtener datos del usuario que está invitando (para el email)
+    const [usuarioInvitador] = await pool.execute(
+      'SELECT nombre, apellidos, nombre_alias, email FROM usuarios WHERE id = ?',
+      [req.usuario.userId]
+    );
+
+    const nombreInvitador = usuarioInvitador[0].nombre_alias || 
+                           `${usuarioInvitador[0].nombre || ''} ${usuarioInvitador[0].apellidos || ''}`.trim() || 
+                           usuarioInvitador[0].email;
+
     const nombreCompleto = info.nombre_alias || 
                           `${info.nombre || ''} ${info.apellidos || ''}`.trim() || 
                           info.email;
@@ -2358,7 +2354,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
          puntos_masacre, 
          warlord_muerto) 
          VALUES (?, ?, NULL, NULL, NULL, 0, 0, 0, 0, 0)`,
-        [torneoId, miembro.usuarioId])
+        [torneoId, usuarioId])
 
     
 
@@ -2519,7 +2515,7 @@ router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarTo
       banda: jugador.faccion
     };
 
-    const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+    const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
 
     if (resultado.success) {
       res.json({
@@ -2631,7 +2627,7 @@ router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrgani
           banda: jugador.faccion
         };
 
-        const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
 
         if (resultado.success) {
           totalEnviados++;
@@ -3612,7 +3608,6 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
   try {
     const { torneoId } = req.params;
     const { nombreEquipo, miembros } = req.body;
-    const organizadorId = req.usuario.userId;
 
     // Validaciones básicas
     if (!nombreEquipo || !nombreEquipo.trim()) {
@@ -3743,6 +3738,7 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
     }
 
     // ===== PROCESAR CADA MIEMBRO DEL EQUIPO =====
+
     const miembrosCreados = [];
     const usuariosNuevos = [];
 
@@ -4654,11 +4650,6 @@ router.delete('/:torneoId/equipo/:equipoId', verificarToken, verificarOrganizado
     }
 
     const equipo = equipos[0]
-
-    const [torneos] = await connection.execute(
-      'SELECT created_by FROM torneos_sistemas WHERE id = ?',
-      [torneoId]
-    )
 
     const esCapitan = equipo.capitan_id === userId
 
@@ -6805,10 +6796,7 @@ router.delete('/:torneoId/partidasTorneoSaga/:partidaId', verificarToken, verifi
       return res.status(404).json(
         errorResponse('Partida no encontrada')
       );
-    }
-    
-    const partida = partidaExistente[0];
-  
+    }  
     
     // Eliminar la partida
     await pool.execute('DELETE FROM partidas_saga WHERE id = ?', [partidaId]);

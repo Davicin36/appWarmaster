@@ -620,3 +620,153 @@
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(229, 57, 53, 0.3);
 }
+
+/* ==========================================
+   CONDICIONES DE VICTORIA (EPIC)
+   ========================================== */
+
+.condiciones-group {
+    background: linear-gradient(135deg, #F3E5F5, #E1BEE7);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #8E24AA;
+    margin-top: 10px;
+}
+
+.condiciones-titulo {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px !important;
+    color: #6A1B9A !important;
+    font-weight: 700 !important;
+    font-size: 0.9em !important;
+}
+
+.condiciones-contador {
+    background: #8E24AA;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    margin-bottom: 5px;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88em;
+    color: #4A148C;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.checkbox-label:hover {
+    background: #F8EBF8;
+    border-color: #CE93D8;
+    transform: translateX(2px);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #8E24AA;
+    flex-shrink: 0;
+}
+
+.checkbox-label:has(input:checked) {
+    background: linear-gradient(135deg, #E8D5F5, #D7BDE2);
+    border-color: #8E24AA;
+    font-weight: 600;
+}
+
+/* ==========================================
+   PARTIDA INFO Y TIPO ESCENARIO
+   ========================================== */
+
+.partida-info {
+    background: linear-gradient(135deg, #E8EAF6, #C5CAE9);
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #3F51B5;
+}
+
+.partida-info p {
+    margin: 4px 0;
+    font-size: 0.9em;
+    color: #1A237E;
+}
+
+.tipo-escenario {
+    font-size: 0.85em !important;
+    color: #283593 !important;
+    font-style: italic;
+    margin-top: 4px !important;
+}
+
+.leyenda-condiciones {
+    background: linear-gradient(135deg, #EDE7F6, #D1C4E9);
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-top: 15px;
+    border-left: 4px solid #7B1FA2;
+}
+
+.leyenda-condiciones h4 {
+    margin: 0 0 12px 0;
+    color: #4A148C;
+    font-size: 1.3em;
+}
+
+.leyenda-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: white;
+    padding: 10px 12px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.leyenda-numero {
+    background: #7B1FA2;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.leyenda-texto strong {
+    display: block;
+    color: #4A148C;
+    font-size: 1.1em;
+    margin-bottom: 2px;
+}
+
+.leyenda-texto p {
+    margin: 0;
+    font-size: 1em;
+    color: #555;
+    line-height: 1.4;
+}

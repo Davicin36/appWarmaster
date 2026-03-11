@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-import torneosFowApi from '@/servicios/apiFow';
+import torneosEpicApi from '@/servicios/apiEpic';
 import AnadirParticipantesTorneos from '@/componente/vistasAdministrarTorneos/AnadirParticipantesTorneos';
 
 import '@/estilos/vistasTorneos/vistaJugadores.css';
 
-function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJugadores, onUpdate }) {
+function VistaJugadoresEpic({ torneoId: propTorneoId, torneo, jugadores: propJugadores, onUpdate }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
     
@@ -36,7 +36,7 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
     const cargarDatos = async () => {
         try {
             setLoading(true);
-            const { data } = await torneosFowApi.obtenerJugadoresTorneo(torneoId);
+            const { data } = await torneosEpicApi.obtenerJugadoresTorneo(torneoId);
             
             const jugadoresNormalizados = data.map(jugador => ({
                 ...jugador,
@@ -55,7 +55,7 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
         try {
             setLoadingLista(prev => ({ ...prev, [jugadorId]: true }));
             
-            await torneosFowApi.verListaPDFJugador(torneoId, jugadorId);
+            await torneosEpicApi.verListaPDFJugador(torneoId, jugadorId);
             
         } catch (error) {
             console.error('Error al visualizar lista:', error);
@@ -77,7 +77,7 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
         try {
             setLoadingPago(prev => ({ ...prev, [`jugador-${jugadorId}`]: true }));
             
-            await torneosFowApi.actualizarPagoJugador(torneoId, jugadorId, nuevoEstado);
+            await torneosEpicApi.actualizarPagoJugador(torneoId, jugadorId, nuevoEstado);
             
             setJugadores(prev => prev.map(j => 
                 j.id === jugadorId 
@@ -101,7 +101,7 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
         if (!window.confirm('¿Eliminar este jugador del torneo?')) return;
         
         try {
-            await torneosFowApi.eliminarJugadorTorneo(torneoId, jugadorId);
+            await torneosEpicApi.eliminarJugadorTorneo(torneoId, jugadorId);
             alert('✅ Jugador eliminado');
             await cargarDatos();
             if (onUpdate) onUpdate();
@@ -130,7 +130,7 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
         try {
             setLoadingReenvio(true);
 
-            const response = await torneosFowApi.reenviarInscripcionTodosJugadores(torneoId);
+            const response = await torneosEpicApi.reenviarInscripcionTodosJugadores(torneoId);
 
             if (response.success) {
                 const { totales, resultadosPorJugador } = response.data;
@@ -175,7 +175,7 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
         try {
             setLoadingReenvio(true);
 
-            const response = await torneosFowApi.reenviarInscripcionJugador(torneoId, jugador.id);
+            const response = await torneosEpicApi.reenviarInscripcionJugador(torneoId, jugador.id);
 
             if (response.success) {
                 alert(`✅ Invitación reenviada correctamente a ${jugador.jugador_nombre} ${jugador.jugador_apellidos}`);
@@ -189,37 +189,37 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
             setLoadingReenvio(false);
         }
     };
-    
+
     const confirmarTodosLosPagos = async () => {
-            const jugadoresPendientes = jugadores.filter(j => j.pagado !== 'pagado');
-            
-            if (jugadoresPendientes.length === 0) {
-                alert('✅ Todos los jugadores ya tienen el pago confirmado');
-                return;
-            }
-    
-            const confirmar = window.confirm(
-                `¿Marcar como PAGADO a los ${jugadoresPendientes.length} jugadores pendientes?`
+        const jugadoresPendientes = jugadores.filter(j => j.pagado !== 'pagado');
+        
+        if (jugadoresPendientes.length === 0) {
+            alert('✅ Todos los jugadores ya tienen el pago confirmado');
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `¿Marcar como PAGADO a los ${jugadoresPendientes.length} jugadores pendientes?`
+        );
+        if (!confirmar) return;
+
+        try {
+            setLoading(true);
+            await Promise.all(
+                jugadoresPendientes.map(j =>
+                    torneosEpicApi.actualizarPagoJugador(torneoId, j.id, 'pagado')
+                )
             );
-            if (!confirmar) return;
-    
-            try {
-                setLoading(true);
-                await Promise.all(
-                    jugadoresPendientes.map(j =>
-                        torneosFowApi.actualizarPagoJugador(torneoId, j.id, 'pagado')
-                    )
-                );
-                setJugadores(prev => prev.map(j => ({ ...j, pagado: 'pagado' })));
-                if (onUpdate) onUpdate();
-                alert(`✅ ${jugadoresPendientes.length} pagos confirmados`);
-            } catch (error) {
-                console.error('Error:', error);
-                alert(`❌ Error: ${error.message}`);
-            } finally {
-                setLoading(false);
-            }
-        };
+            setJugadores(prev => prev.map(j => ({ ...j, pagado: 'pagado' })));
+            if (onUpdate) onUpdate();
+            alert(`✅ ${jugadoresPendientes.length} pagos confirmados`);
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`❌ Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -388,4 +388,4 @@ function VistaJugadoresFow({ torneoId: propTorneoId, torneo, jugadores: propJuga
     );
 }
 
-export default VistaJugadoresFow;
+export default VistaJugadoresEpic;

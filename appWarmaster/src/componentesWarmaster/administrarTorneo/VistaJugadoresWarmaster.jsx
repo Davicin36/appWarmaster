@@ -190,6 +190,37 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, torneo, jugadores: pr
         }
     };
 
+    const confirmarTodosLosPagos = async () => {
+        const jugadoresPendientes = jugadores.filter(j => j.pagado !== 'pagado');
+                
+        if (jugadoresPendientes.length === 0) {
+            alert('✅ Todos los jugadores ya tienen el pago confirmado');
+            return;
+        }
+        
+        const confirmar = window.confirm(
+            `¿Marcar como PAGADO a los ${jugadoresPendientes.length} jugadores pendientes?`
+        );
+        if (!confirmar) return;
+        
+            try {
+                setLoading(true);
+                await Promise.all(
+                    jugadoresPendientes.map(j =>                            
+                        torneosWarmasterApi.actualizarPagoJugador(torneoId, j.id, 'pagado')
+                    )
+                );
+                setJugadores(prev => prev.map(j => ({ ...j, pagado: 'pagado' })));
+                if (onUpdate) onUpdate();
+                alert(`✅ ${jugadoresPendientes.length} pagos confirmados`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`❌ Error: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
+        };
+
     if (loading) {
         return (
             <div className="vista-jugadores">
@@ -218,6 +249,13 @@ function VistaJugadoresWarmaster({ torneoId: propTorneoId, torneo, jugadores: pr
                             disabled={loadingReenvio}
                         >
                             {loadingReenvio ? '⏳ Enviando...' : '📧 Reenviar Invitaciones'}
+                        </button>
+                        <button 
+                            className="btn-secondary-small"
+                            onClick={confirmarTodosLosPagos}
+                            disabled={loading}
+                        >
+                            {loading ? '⏳ Procesando...' : '💰 Confirmar Todos los Pagos'}
                         </button>
                     </>
                 )}

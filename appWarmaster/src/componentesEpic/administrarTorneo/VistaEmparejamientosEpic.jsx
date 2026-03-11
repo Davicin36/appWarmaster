@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-import torneosFowApi from '@/servicios/apiFow';
-import { generarEmparejamientosIndividuales } from '../funcionesFow/emparejamientosIndividualesFow';
+import torneosEpicApi from '@/servicios/apiEpic';
+import { generarEmparejamientosIndividuales } from '../funcionesEpic/emparejamientosIndividualesEpic';
 
-import ModalRegistroPartidaFow from '../ModalRegistroPartidaFow';
+import ModalRegistroPartidaEpic from '../ModalRegistroPartidaEpic';
 import ModalEdicionEmparejamientos from '@/componente/ModalEdicionEmparejamientos';
 
 import '@/estilos/vistasTorneos/vistaEmparejamientos.css';
 
-function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = false }) {
+function VistaEmparejamientosEpic({ torneoId: propTorneoId, esVistaPublica = false }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
 
@@ -19,12 +19,12 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     const [partidasGuardadas, setPartidasGuardadas] = useState([]);
     const [todasLasPartidas, setTodasLasPartidas] = useState([]);
     const [rondasExpandidas, setRondasExpandidas] = useState({});
-    
+
     const [loading, setLoading] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [cargandoPartidas, setCargandoPartidas] = useState(false);
     const [error, setError] = useState(null);
-    
+
     const [modalAbierto, setModalAbierto] = useState(false);
     const [partidaSeleccionada, setPartidaSeleccionada] = useState(null);
     const [usuarioActual, setUsuarioActual] = useState(null);
@@ -34,10 +34,6 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     const [modoEdicion, setModoEdicion] = useState(false);
     const [emparejamientoEditando, setEmparejamientoEditando] = useState(null);
     const [modalEdicionAbierto, setModalEdicionAbierto] = useState(false);
-
-    // ── Frentes por mesa ─────────────────────────────────────────
-    // { [mesaIndex]: nombreFrente }
-    const [frentePorMesa, setFrentePorMesa] = useState({});
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -70,20 +66,20 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
         try {
             setLoading(true);
             setError(null);
-            
-            const responseTorneo = await torneosFowApi.obtenerTorneo(torneoId);
+
+            const responseTorneo = await torneosEpicApi.obtenerTorneo(torneoId);
             const dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
             setTorneo(dataTorneo);
-    
-            const responseJugadores = await torneosFowApi.obtenerJugadoresTorneo(torneoId);
+
+            const responseJugadores = await torneosEpicApi.obtenerJugadoresTorneo(torneoId);
             const dataJugadores = responseJugadores.data || responseJugadores || [];
             setJugadores(Array.isArray(dataJugadores) ? dataJugadores : []);
 
             await cargarTodasLasPartidas(dataTorneo.id);
-            
+
             if (dataTorneo.ronda_actual) {
                 await cargarPartidasRonda(dataTorneo.id, dataTorneo.ronda_actual);
-            }       
+            }
         } catch (err) {
             console.error('Error al cargar datos:', err);
             setError('No se pudieron cargar los datos del torneo');
@@ -94,25 +90,26 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
     const cargarTodasLasPartidas = async (tId = torneoId) => {
         try {
-            const response = await torneosFowApi.obtenerPartidasTorneo(tId);
+            const response = await torneosEpicApi.obtenerPartidasTorneo(tId);
             const partidas = response?.data || response || [];
-            const partidasArray = Array.isArray(partidas) ? partidas : [];
-            setTodasLasPartidas(partidasArray);
+            setTodasLasPartidas(Array.isArray(partidas) ? partidas : []);
         } catch (err) {
             console.error('Error al cargar todas las partidas:', err);
             setTodasLasPartidas([]);
         }
     };
 
-    const cargarPartidasRonda = async (tId = torneoId, ronda = torneo?.ronda_actual) => {
+    const cargarPartidasRonda = async (tId, ronda) => {
+        const idFinal = tId ?? torneoId;
+        const rondaFinal = ronda ?? torneo?.ronda_actual;
+
+        if (!idFinal || !rondaFinal) return;
+
         try {
             setCargandoPartidas(true);
-            
-            const response = await torneosFowApi.obtenerEmparejamientosIndividuales(tId, ronda);
+            const response = await torneosEpicApi.obtenerEmparejamientosIndividuales(idFinal, rondaFinal);
             const partidas = response?.data || response || [];
-            const partidasArray = Array.isArray(partidas) ? partidas : [];
-            setPartidasGuardadas(partidasArray);
-             
+            setPartidasGuardadas(Array.isArray(partidas) ? partidas : []);
         } catch (err) {
             console.error('Error al cargar partidas:', err);
             setPartidasGuardadas([]);
@@ -139,31 +136,6 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
         }));
     };
 
-    // ── Helper: obtener escenario de un frente para la ronda actual ──
-    const getEscenarioFrente = (nombreFrente) => {
-        if (!torneo?.frentes || !nombreFrente) return null;
-        const frente = torneo.frentes.find(f => (f.nombre_frente || f.nombre) === nombreFrente);
-        if (!frente) return null;
-        const escenarios = Array.isArray(frente.escenarios)
-            ? Object.fromEntries(frente.escenarios.map(e => [e.ronda, e.nombre_partida]))
-            : (frente.escenarios || {});
-        return escenarios[torneo.ronda_actual] || null;
-    };
-
-    // ── Helper: obtener lista de frentes normalizados ──
-    const getFrentesDisponibles = () => {
-        if (!torneo?.frentes) return [];
-        return torneo.frentes.map(f => ({
-            nombre: f.nombre_frente || f.nombre,
-            escenario: (() => {
-                const escenarios = Array.isArray(f.escenarios)
-                    ? Object.fromEntries(f.escenarios.map(e => [e.ronda, e.nombre_partida]))
-                    : (f.escenarios || {});
-                return escenarios[torneo.ronda_actual] || '—';
-            })()
-        }));
-    };
-
     const handleGenerarEmparejamientos = async () => {
         try {
             if (torneo.estado !== 'en_curso') {
@@ -176,21 +148,20 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                 return;
             }
 
-            const minParticipantes = jugadores.length;
-            if (minParticipantes < 2) {
+            if (jugadores.length < 2) {
                 alert('⚠️ Se necesitan al menos 2 jugadores para generar emparejamientos');
                 return;
             }
 
-            const responseClasificacion = await torneosFowApi.obtenerClasificacionIndividual(torneoId);
-            const clasificacion = responseClasificacion.data?.general || responseClasificacion.data || [];
+            const responseClasificacion = await torneosEpicApi.obtenerClasificacionIndividual(torneoId);
+            const clasificacion = responseClasificacion.data || responseClasificacion || [];
 
             const participantes = jugadores.map(j => {
                 const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
                 return {
                     ...j,
                     puntos_victoria: stats?.puntos_victoria_totales || 0,
-                    puntos_masacre: stats?.puntos_masacre_totales || 0,                
+                    puntos_masacre: stats?.puntos_masacre_totales || 0,
                 };
             });
 
@@ -199,12 +170,11 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                 torneo.ronda_actual || 1,
                 participantes
             );
-            
+
             setEmparejamientos(Array.isArray(nuevosEmparejamientos) ? nuevosEmparejamientos : []);
-            setFrentePorMesa({});  // ← resetear frentes al generar nuevos emparejamientos
             setModoEdicion(false);
             alert(`✅ ${nuevosEmparejamientos.length} emparejamientos generados correctamente`);
-            
+
         } catch (error) {
             console.error('❌ Error al generar emparejamientos:', error);
             alert(`Error al generar emparejamientos: ${error.message}`);
@@ -222,16 +192,6 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
             nuevosEmp.splice(index, 1);
             nuevosEmp.forEach((emp, i) => { emp.mesa = i + 1; });
             setEmparejamientos(nuevosEmp);
-
-            // Reasignar frentePorMesa tras eliminación
-            const nuevoFrentes = {};
-            Object.entries(frentePorMesa).forEach(([idx, val]) => {
-                const idxNum = parseInt(idx);
-                if (idxNum < index) nuevoFrentes[idxNum] = val;
-                else if (idxNum > index) nuevoFrentes[idxNum - 1] = val;
-            });
-            setFrentePorMesa(nuevoFrentes);
-
             alert('✅ Emparejamiento eliminado');
         }
     };
@@ -261,9 +221,8 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     apellidos: jugador1.jugador_apellidos || jugador1.apellidos || '',
                     club: jugador1.club || '-',
                     ejercito: jugador1.ejercito || '-',
-                    bando: jugador1.bando || null,
                     puntos_victoria: jugador1.puntos_victoria || 0,
-                    puntos_torneo: jugador1.puntos_torneo || 0
+                    puntos_masacre: jugador1.puntos_masacre || 0,
                 }
                 : nuevosEmp[emparejamientoEditando.index].jugador1,
             jugador2: jugador2
@@ -275,9 +234,8 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     apellidos: jugador2.jugador_apellidos || jugador2.apellidos || '',
                     club: jugador2.club || '-',
                     ejercito: jugador2.ejercito || '-',
-                    bando: jugador2.bando || null,
                     puntos_victoria: jugador2.puntos_victoria || 0,
-                    puntos_torneo: jugador2.puntos_torneo || 0
+                    puntos_masacre: jugador2.puntos_masacre || 0,
                 }
                 : null
         };
@@ -293,101 +251,49 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     // ==========================================
 
     const guardarResultados = async () => {
+        if (!emparejamientos || emparejamientos.length === 0) {
+            alert('⚠️ Primero debes generar los emparejamientos');
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?`
+        );
+        if (!confirmar) return;
+
         try {
             setGuardando(true);
             setError(null);
 
-            if (!emparejamientos || emparejamientos.length === 0) {
-                alert('⚠️ Primero debes generar los emparejamientos');
-                return;
-            }
-
-            // ── Validación escenarios ──────────────────────────────
-            if (torneo.usa_frentes) {
-                // Con frentes: cada mesa debe tener su frente asignado
-                const sinFrente = emparejamientos
-                    .map((_, i) => i)
-                    .filter(i => !frentePorMesa[i]);
-
-                if (sinFrente.length > 0) {
-                    alert(
-                        `⚠️ Debes asignar un frente a todas las mesas.\n\n` +
-                        `Mesas sin frente: ${sinFrente.map(i => i + 1).join(', ')}`
-                    );
-                    return;
-                }
-            } else {
-                // Sin frentes: escenario global de la ronda
-                const nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
-                if (!nombreEscenario) {
-                    alert(`⚠️ No se encontró el escenario configurado para la Ronda ${torneo.ronda_actual}`);
-                    return;
-                }
-            }
-
-            // ── Resumen confirmación ───────────────────────────────
-            let resumenConfirm;
-            if (torneo.usa_frentes) {
-                const frentesUsados = [...new Set(Object.values(frentePorMesa))];
-                resumenConfirm =
-                    `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?\n\n` +
-                    `Frentes asignados:\n` +
-                    frentesUsados.map(f => {
-                        const esc = getEscenarioFrente(f);
-                        const mesas = Object.entries(frentePorMesa)
-                            .filter(([, v]) => v === f)
-                            .map(([k]) => parseInt(k) + 1);
-                        return `• ${f} → ${esc || '—'} (mesas: ${mesas.join(', ')})`;
-                    }).join('\n');
-            } else {
-                const nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
-                resumenConfirm =
-                    `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?\n\n` +
-                    `Escenario: ${nombreEscenario}`;
-            }
-
-            if (!window.confirm(resumenConfirm)) return;
-
-            // ── Construir array de partidas ────────────────────────
-            const todasLasPartidasGuardar = [];
+            const partidasAGuardar = [];
             let mesaCounter = 1;
 
-            emparejamientos.forEach((emp, empIndex) => {
-                // Determinar escenario para esta mesa
-                const nombreEscenario = torneo.usa_frentes
-                    ? getEscenarioFrente(frentePorMesa[empIndex])
-                    : torneo[`partida_ronda_${torneo.ronda_actual}`];
-
+            emparejamientos.forEach((emp) => {
                 if (emp.partidas && Array.isArray(emp.partidas)) {
                     emp.partidas.forEach((partida) => {
-                        todasLasPartidasGuardar.push({
+                        partidasAGuardar.push({
                             mesa: mesaCounter++,
                             jugador1_id: partida.jugador1_id,
                             jugador2_id: partida.jugador2_id,
                             es_bye: partida.es_bye || 0,
-                            nombre_partida: nombreEscenario,
-                            frente: torneo.usa_frentes ? frentePorMesa[empIndex] : null,
                             ronda: torneo.ronda_actual,
                         });
                     });
                 } else {
-                    todasLasPartidasGuardar.push({
+                    partidasAGuardar.push({
                         mesa: mesaCounter++,
                         jugador1_id: emp.jugador1_id,
                         jugador2_id: emp.jugador2_id,
                         es_bye: emp.es_bye || 0,
-                        nombre_partida: nombreEscenario,
-                        frente: torneo.usa_frentes ? frentePorMesa[empIndex] : null,
                         ronda: torneo.ronda_actual,
                     });
                 }
             });
 
-            // ── Validar IDs ────────────────────────────────────────
             const errores = [];
-            todasLasPartidasGuardar.forEach((partida) => {
+            partidasAGuardar.forEach((partida, index) => {
                 if (!partida.jugador1_id) {
-                    errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID`);
+                    errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID (partida ${index + 1})`);
                 }
             });
 
@@ -397,21 +303,19 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                 return;
             }
 
-            await torneosFowApi.guardarEmparejamientosIndividuales(
+            await torneosEpicApi.guardarEmparejamientosIndividuales(
                 torneo.id,
-                todasLasPartidasGuardar,
+                partidasAGuardar,
                 torneo.ronda_actual
             );
 
             alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}`);
 
             setEmparejamientos([]);
-            setFrentePorMesa({});
             setModoEdicion(false);
+            await cargarPartidasRonda(torneo.id, torneo.ronda_actual);
+            await cargarTodasLasPartidas(torneo.id);
 
-            await cargarPartidasRonda();
-            await cargarTodasLasPartidas();
-        
         } catch (err) {
             console.error('❌ Error completo al guardar:', err);
             setError(err.message || 'No se pudieron guardar los emparejamientos');
@@ -437,10 +341,9 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                 `¿Generar emparejamientos para la Ronda ${torneo.ronda_actual + 1}?\n\n` +
                 `Se calcularán los emparejamientos basados en los resultados actuales.`
             );
-
             if (!confirmar) return;
 
-            await torneosFowApi.actualizarTorneo(torneo.id, {
+            await torneosEpicApi.actualizarTorneo(torneo.id, {
                 ronda_actual: torneo.ronda_actual + 1
             });
 
@@ -454,11 +357,10 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
     const todasLasPartidasCompletas = () => {
         if (partidasGuardadas.length === 0) return false;
-        
-        return partidasGuardadas.every(partida => 
-            partida.resultado_pf && 
-            partida.resultado_pf !== 'pendiente' &&
-            partida.resultado_pf !== null
+        return partidasGuardadas.every(partida =>
+            partida.resultado_pe &&
+            partida.resultado_pe !== 'pendiente' &&
+            partida.resultado_pe !== null
         );
     };
 
@@ -467,25 +369,19 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     };
 
     const esBye = (partida) => {
-        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye == 1;
+        return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye;
     };
 
     const tieneDatos = (partida) => {
-        if (esBye(partida)) {
-            return true;
-        }
-        return (partida.puntos_victoria_j1 > 0 || partida.puntos_victoria_j2 > 0) &&
-               partida.resultado_pf && 
-               partida.resultado_pf !== 'pendiente';
+        if (esBye(partida)) return true;
+        return (partida.puntos_masacre_j1 > 0 || partida.puntos_masacre_j2 > 0) &&
+            partida.resultado_pe &&
+            partida.resultado_pe !== 'pendiente';
     };
 
     const puedeEditarEstaPartida = (partida) => {
-        if (partida.resultado_confirmado == 1) {
-            return false;
-        }
-        if (esBye(partida)) {
-            return false;
-        }
+        if (partida.resultado_confirmado) return false;
+        if (esBye(partida)) return false;
         return puedeEditarPartidas();
     };
 
@@ -500,16 +396,13 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
     const confirmarPartida = async (partidaId, confirmar) => {
         try {
-            await torneosFowApi.confirmarResultado(torneo.id, partidaId, confirmar);
-        
-            alert(confirmar 
-                ? '✅ Resultado confirmado. Los puntos se han sumado a las clasificaciones.' 
+            await torneosEpicApi.confirmarResultado(torneo.id, partidaId, confirmar);
+            alert(confirmar
+                ? '✅ Resultado confirmado. Los puntos se han sumado a las clasificaciones.'
                 : '⚠️ Resultado desconfirmado. Los puntos se han restado de las clasificaciones.'
             );
-            
-            await cargarPartidasRonda();
-            await cargarTodasLasPartidas();
-            
+            await cargarPartidasRonda(torneo.id, torneo.ronda_actual);
+            await cargarTodasLasPartidas(torneo.id);
         } catch (error) {
             console.error('Error al confirmar resultado:', error);
             alert(`❌ Error: ${error.message}`);
@@ -569,12 +462,6 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                 <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : (tieneDatos(partida) ? 'por-confirmar' : 'pendiente')} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
                     Mesa {partida.mesa || index + 1}
                     {esBye(partida) ? ' ⭐ BYE' : ''}
-                    {partida.nombre_partida && (
-                        <div className="escenario-partida">📋 {partida.nombre_partida}</div>
-                    )}
-                    {partida.frente && (
-                        <div className="frente-partida">🗺️ {partida.frente}</div>
-                    )}
                 </div>
 
                 <div className="enfrentamiento">
@@ -588,7 +475,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         )}
                         <div className="stats">
                             PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} |
-                            PT: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)}
+                            PM: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)}
                         </div>
                     </div>
 
@@ -605,7 +492,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                             )}
                             <div className="stats">
                                 PV: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} |
-                                PT: {parseFloat(partida.puntos_torneo_j2 || 0).toFixed(1)}
+                                PM: {parseFloat(partida.puntos_masacre_j2 || 0).toFixed(1)}
                             </div>
                         </div>
                     ) : (
@@ -621,7 +508,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     };
 
     const renderPartidas = (partidas, esRondaActual = false) => {
-        return partidas.map((partida, index) => 
+        return partidas.map((partida, index) =>
             renderPartidaIndividual(partida, index, esRondaActual)
         );
     };
@@ -648,14 +535,10 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     }
 
     const grupos = partidasPorRonda();
-    const rondasAnteriores = Object.keys(grupos).filter(r => parseInt(r) < torneo.ronda_actual).sort((a, b) => b - a);
+    const rondasAnteriores = Object.keys(grupos)
+        .filter(r => parseInt(r) < torneo.ronda_actual)
+        .sort((a, b) => b - a);
     const minParticipantes = jugadores.length;
-    const frentesDisponibles = getFrentesDisponibles();
-
-    // Cuántas mesas tienen frente asignado (para el indicador)
-    const mesasConFrente = emparejamientos.length > 0
-        ? emparejamientos.filter((_, i) => !!frentePorMesa[i]).length
-        : 0;
 
     return (
         <div className="vista-emparejamientos">
@@ -664,35 +547,21 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     <div>
                         <h2>🎲 Emparejamientos</h2>
                         <p>Ronda {torneo.ronda_actual} de {torneo.rondas_max}</p>
-                        
-                        {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
-                            <>
-                                {/* Sin frentes: mostrar escenario global */}
-                                {!torneo.usa_frentes && torneo[`partida_ronda_${torneo.ronda_actual}`] && (
-                                    <p>📋 {torneo[`partida_ronda_${torneo.ronda_actual}`]}</p>
-                                )}
-                                {/* Con frentes: indicar que cada mesa tiene su escenario */}
-                                {torneo.usa_frentes && (
-                                    <p>🗺️ Torneo por frentes — el escenario se asigna por mesa</p>
-                                )}
-                            </>
-                        )}
-
                         {torneo.estado === 'pendiente' && (
-                            <p>⏳ Los escenarios se mostrarán cuando el torneo esté en curso</p>
+                            <p>⏳ Los emparejamientos se generarán cuando el torneo esté en curso</p>
                         )}
                     </div>
-                    
+
                     {!esVistaPublica && (
                         <div className="botones-grupo">
                             {/* BOTÓN GENERAR */}
-                            <button 
+                            <button
                                 onClick={handleGenerarEmparejamientos}
                                 className="btn-primary"
                                 disabled={
-                                    minParticipantes < 2 || 
-                                    guardando || 
-                                    partidasGuardadas.length > 0 || 
+                                    minParticipantes < 2 ||
+                                    guardando ||
+                                    partidasGuardadas.length > 0 ||
                                     modoEdicion ||
                                     torneo.estado !== 'en_curso'
                                 }
@@ -705,37 +574,23 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                 <>
                                     {!modoEdicion ? (
                                         <>
-                                            <button 
+                                            <button
                                                 onClick={() => setModoEdicion(true)}
                                                 className="btn-warning"
                                             >
                                                 ✏️ Editar Emparejamientos
                                             </button>
-                                            
-                                            <button 
+
+                                            <button
                                                 onClick={guardarResultados}
                                                 className="btn-success"
-                                                disabled={
-                                                    guardando ||
-                                                    // Con frentes: deshabilitar si faltan frentes
-                                                    (torneo.usa_frentes && mesasConFrente < emparejamientos.length)
-                                                }
-                                                title={
-                                                    torneo.usa_frentes && mesasConFrente < emparejamientos.length
-                                                        ? `Asigna frente a todas las mesas (${mesasConFrente}/${emparejamientos.length})`
-                                                        : ''
-                                                }
+                                                disabled={guardando}
                                             >
-                                                {guardando
-                                                    ? '⏳ Guardando...'
-                                                    : torneo.usa_frentes
-                                                        ? `💾 Guardar en BD (${mesasConFrente}/${emparejamientos.length} frentes)`
-                                                        : '💾 Guardar en BD'
-                                                }
+                                                {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
                                             </button>
                                         </>
                                     ) : (
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 setModoEdicion(false);
                                                 alert('✅ Modo edición desactivado. Ahora puedes guardar los emparejamientos.');
@@ -750,7 +605,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
                             {/* BOTÓN SIGUIENTE RONDA */}
                             {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
-                                <button 
+                                <button
                                     onClick={generarSiguienteRonda}
                                     disabled={torneo.ronda_actual >= torneo.rondas_max}
                                     className="btn-warning"
@@ -762,6 +617,12 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     )}
                 </div>
             </div>
+
+            {torneo.estado === 'pendiente' && (
+                <div className="alerta-estado">
+                    <p>⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos</p>
+                </div>
+            )}
 
             {partidasGuardadas.length > 0 && !puedeEditarPartidas() && (
                 <div className="alerta-estado">
@@ -775,7 +636,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         {todasLasPartidasCompletas() ? (
                             <>✅ Todas las partidas completadas ({partidasGuardadas.length}/{partidasGuardadas.length})</>
                         ) : (
-                            <>⏳ Partidas completadas: {partidasGuardadas.filter(p => p.resultado_pf && p.resultado_pf !== 'pendiente').length}/{partidasGuardadas.length}</>
+                            <>⏳ Partidas completadas: {partidasGuardadas.filter(p => p.resultado_pe && p.resultado_pe !== 'pendiente').length}/{partidasGuardadas.length}</>
                         )}
                     </p>
                     {!todasLasPartidasCompletas() && puedeEditarPartidas() && (
@@ -812,9 +673,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                         ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong>
                                         {modoEdicion
                                             ? ' Modo edición activo: usa ✏️ para cambiar rivales y 🗑️ para eliminar mesas.'
-                                            : torneo.usa_frentes
-                                                ? ` Asigna el frente a cada mesa y haz clic en "Guardar en BD".`
-                                                : ' Haz clic en "Guardar en BD" para crear las partidas en la base de datos.'
+                                            : ' Haz clic en "Guardar en BD" para crear las partidas en la base de datos.'
                                         }
                                     </p>
                                 </div>
@@ -826,15 +685,10 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                 ) : (
                                     emparejamientos.map((emp, index) => {
                                         const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
-                                        const jugador2Nombre = emp.jugador2 
-                                            ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) 
+                                        const jugador2Nombre = emp.jugador2
+                                            ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre)
                                             : null;
 
-                                        const frenteSeleccionado = frentePorMesa[index] || '';
-                                        const escenarioFrente = frenteSeleccionado
-                                            ? getEscenarioFrente(frenteSeleccionado)
-                                            : null;
-                                        
                                         return (
                                             <div key={index} className="emparejamiento-card">
                                                 {/* BOTONES EDICIÓN */}
@@ -861,12 +715,11 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                                     Mesa {emp.mesa || index + 1}
                                                     {emp.es_bye === 1 && ' ⭐ BYE'}
                                                 </div>
-
                                                 <div className="enfrentamiento">
                                                     <div className="jugador">
                                                         <div className="nombre">{jugador1Nombre}</div>
-                                                        {emp.jugador1?.bando && (
-                                                            <div className="faccion"> {emp.jugador1.bando}</div>
+                                                        {emp.jugador1?.ejercito && (
+                                                            <div className="faccion">⚔️ {emp.jugador1.ejercito}</div>
                                                         )}
                                                     </div>
                                                     <div className="vs">VS</div>
@@ -874,65 +727,11 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                                         <div className="nombre">
                                                             {emp.es_bye === 1 ? '⭐ BYE' : jugador2Nombre}
                                                         </div>
-                                                        {emp.jugador2?.bando && (
-                                                            <div className="faccion"> {emp.jugador2.bando}</div>
+                                                        {emp.jugador2?.ejercito && (
+                                                            <div className="faccion">⚔️ {emp.jugador2.ejercito}</div>
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                {/* ── SELECTOR DE FRENTE ── */}
-                                                {torneo.usa_frentes && frentesDisponibles.length > 0 && (
-                                                    <div
-                                                        className="frente-selector-container"
-                                                        style={{
-                                                            marginTop: '10px',
-                                                            padding: '8px',
-                                                            background: frenteSeleccionado ? '#e8f5e9' : '#fff3e0',
-                                                            borderRadius: '6px',
-                                                            border: `1px solid ${frenteSeleccionado ? '#4caf50' : '#ff9800'}`
-                                                        }}
-                                                        onClick={e => e.stopPropagation()}
-                                                    >
-                                                        <label
-                                                            htmlFor={`frente-mesa-${index}`}
-                                                            style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px', fontSize: '0.85em' }}
-                                                        >
-                                                            🗺️ Frente:{frenteSeleccionado ? '' : ' ⚠️ Sin asignar'}
-                                                        </label>
-                                                        <select
-                                                            id={`frente-mesa-${index}`}
-                                                            value={frenteSeleccionado}
-                                                            onChange={(e) =>
-                                                                setFrentePorMesa(prev => ({
-                                                                    ...prev,
-                                                                    [index]: e.target.value
-                                                                }))
-                                                            }
-                                                            style={{ width: '100%', padding: '4px 6px', borderRadius: '4px' }}
-                                                        >
-                                                            <option value="">— Selecciona frente —</option>
-                                                            {frentesDisponibles.map(f => (
-                                                                <option key={f.nombre} value={f.nombre}>
-                                                                    {f.nombre}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-
-                                                        {/* Mostrar la misión resultante */}
-                                                        {escenarioFrente && (
-                                                            <div
-                                                                style={{
-                                                                    marginTop: '4px',
-                                                                    fontSize: '0.82em',
-                                                                    color: '#2e7d32',
-                                                                    fontWeight: '500'
-                                                                }}
-                                                            >
-                                                                📋 Misión: <strong>{escenarioFrente}</strong>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
                                             </div>
                                         );
                                     })
@@ -944,14 +743,14 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                     {rondasAnteriores.length > 0 && (
                         <div className="rondas-anteriores">
                             <h3>📜 Rondas Anteriores</h3>
-                            
+
                             {rondasAnteriores.map(ronda => {
                                 const partidasRonda = grupos[ronda] || [];
                                 const expandida = rondasExpandidas[ronda];
-                                
+
                                 return (
                                     <div key={ronda} className="acordeon-ronda">
-                                        <div 
+                                        <div
                                             className="acordeon-header"
                                             onClick={() => toggleRonda(ronda)}
                                         >
@@ -963,7 +762,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                                                 {expandida ? '▼' : '▶'}
                                             </div>
                                         </div>
-                                        
+
                                         {expandida && (
                                             <div className="acordeon-body">
                                                 <div className="emparejamientos-grid">
@@ -981,7 +780,7 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
             {/* MODAL REGISTRO PARTIDA */}
             {modalAbierto && partidaSeleccionada && (
-                <ModalRegistroPartidaFow
+                <ModalRegistroPartidaEpic
                     partida={partidaSeleccionada}
                     esOrganizador={esOrganizador}
                     onClose={() => {
@@ -989,8 +788,8 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
                         setPartidaSeleccionada(null);
                     }}
                     onGuardar={() => {
-                        cargarPartidasRonda();
-                        cargarTodasLasPartidas();
+                        cargarPartidasRonda(torneo.id, torneo.ronda_actual);
+                        cargarTodasLasPartidas(torneo.id);
                         setModalAbierto(false);
                         setPartidaSeleccionada(null);
                     }}
@@ -1015,4 +814,4 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
     );
 }
 
-export default VistaEmparejamientosFow;
+export default VistaEmparejamientosEpic;

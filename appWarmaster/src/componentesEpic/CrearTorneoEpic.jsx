@@ -2,19 +2,18 @@ import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import { useAuth } from "../servicios/AuthContext.jsx";
 
-import torneosWarmasterApi from '../servicios/apiWarmaster.js';
+import torneosEpicApi from '../servicios/apiEpic.js';
 
 import {
-    PUNTOS_EJERCITO_WARMASTER,
-    TIPOS_PARTIDA_WARMASTER,
+    PUNTOS_EJERCITO_EPIC,
     RONDAS_DISPONIBLES,
     PARTICIPANTES_RANGO,
-} from '@/componentesWarmaster/funcionesWarmaster/constantesFuncionesWarmaster.js';
+} from '@/componentesEpic/funcionesEpic/constantesFuncionesEpic.js';
 import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/crearTorneo.css';
 
-function CrearTorneoWarmaster() {
+function CrearTorneoEpic() {
     const navigate = useNavigate();
     const { refrescarUsuario } = useAuth();
 
@@ -32,14 +31,9 @@ function CrearTorneoWarmaster() {
     const [imagenCartel, setImagenCartel] = useState(null);
     const [vistaPrevia, setVistaPrevia] = useState(null);
 
-    const [puntosEjercito, setPuntosEjercito] = useState(PUNTOS_EJERCITO_WARMASTER.default);
+    const [puntosEjercito, setPuntosEjercito] = useState(PUNTOS_EJERCITO_EPIC.default);
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
     const [archivoPDF, setArchivoPDF] = useState(null); 
-    const [partidaRonda1, setPartidaRonda1] = useState("");
-    const [partidaRonda2, setPartidaRonda2] = useState("");
-    const [partidaRonda3, setPartidaRonda3] = useState("");
-    const [partidaRonda4, setPartidaRonda4] = useState("");
-    const [partidaRonda5, setPartidaRonda5] = useState("");
 
     // Estados para los organizadores del torneo
     const [organizadorAdicional, setOrganizadorAdicional] = useState([]);
@@ -179,24 +173,6 @@ function CrearTorneoWarmaster() {
             return;
         }
 
-        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) {
-            setError("Debes seleccionar escenarios para las primeras 3 rondas");
-            setLoading(false);
-            return;
-        }
-
-        if (rondasMax >= 4 && !partidaRonda4) {
-            setError("Debes seleccionar el escenario para la ronda 4");
-            setLoading(false);
-            return;
-        }
-
-        if (rondasMax >= 5 && !partidaRonda5) {
-            setError("Debes seleccionar el escenario para la ronda 5");
-            setLoading(false);
-            return;
-        }
-
         if (participantesMax < PARTICIPANTES_RANGO.min || participantesMax > PARTICIPANTES_RANGO.max) {
             setError(`El número de participantes debe estar entre ${PARTICIPANTES_RANGO.min} y ${PARTICIPANTES_RANGO.max}`);
             setLoading(false);
@@ -219,11 +195,6 @@ function CrearTorneoWarmaster() {
                 torneoData.append('ubicacion', ubicacion || '');
                 torneoData.append('puntos_ejercito', parseInt(puntosEjercito));
                 torneoData.append('participantes_max', parseInt(participantesMax));
-                torneoData.append('partida_ronda_1', partidaRonda1);
-                torneoData.append('partida_ronda_2', partidaRonda2);
-                torneoData.append('partida_ronda_3', partidaRonda3);
-                torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
-                torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
                 torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional));
 
                 // Añadir PDF si existe
@@ -249,16 +220,11 @@ function CrearTorneoWarmaster() {
                     ubicacion: ubicacion || null,
                     puntos_ejercito: parseInt(puntosEjercito),
                     participantes_max: parseInt(participantesMax),
-                    partida_ronda_1: partidaRonda1,
-                    partida_ronda_2: partidaRonda2,
-                    partida_ronda_3: partidaRonda3,
-                    partida_ronda_4: rondasMax >= 4 ? partidaRonda4 : null,
-                    partida_ronda_5: rondasMax >= 5 ? partidaRonda5 : null,
                     organizadores_emails: organizadorAdicional
                 };
             }
 
-            const result = await torneosWarmasterApi.crearTorneo(torneoData);
+            const result = await torneosEpicApi.crearTorneo(torneoData);
             
             if (result.success || result.data) {
                 const mensajeExito = [
@@ -316,7 +282,7 @@ function CrearTorneoWarmaster() {
 
     return (
         <div className="crear-torneo-container">
-            <h1>⚔️ Crear Torneo WARMASTER</h1>
+            <h1>⚔️ Crear Torneo EPIC ARMAGEDDON</h1>
             
             {error && (
                 <div className="error-message">
@@ -369,15 +335,15 @@ function CrearTorneoWarmaster() {
                         name="puntosBanda" 
                         id="puntosBanda" 
                         type="number"
-                        min={PUNTOS_EJERCITO_WARMASTER.min}
-                        max={PUNTOS_EJERCITO_WARMASTER.max}
+                        min={PUNTOS_EJERCITO_EPIC.min}
+                        max={PUNTOS_EJERCITO_EPIC.max}
                         value={puntosEjercito}
                         onChange={(e) => setPuntosEjercito(e.target.value)}
                         required
                         disabled={loading}
                     />
                     <small className="help-text">
-                        Entre {PUNTOS_EJERCITO_WARMASTER.min} y {PUNTOS_EJERCITO_WARMASTER.max} puntos
+                        Entre {PUNTOS_EJERCITO_EPIC.min} y {PUNTOS_EJERCITO_EPIC.max} puntos
                     </small>
 
                     <label htmlFor="participantesMax">Participantes Máximos:*</label>
@@ -641,94 +607,6 @@ function CrearTorneoWarmaster() {
                     )}
                 </fieldset>
 
-                {/* ESCENARIOS POR RONDA */}
-                <fieldset>
-                    <legend>🎲 Escenarios por Ronda</legend>
-
-                    <label htmlFor="partidaRonda1">Ronda 1:*</label>
-                    <select
-                        name="partidaRonda1"
-                        id="partidaRonda1"
-                        value={partidaRonda1}
-                        onChange={(e) => setPartidaRonda1(e.target.value)}
-                        required
-                        disabled={loading}
-                    >
-                        <option value="">Selecciona escenario</option>
-                        {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
-                        ))}
-                    </select>
-
-                    <label htmlFor="partidaRonda2">Ronda 2:*</label>
-                    <select
-                        name="partidaRonda2"
-                        id="partidaRonda2"
-                        value={partidaRonda2}
-                        onChange={(e) => setPartidaRonda2(e.target.value)}
-                        required
-                        disabled={loading}
-                    >
-                        <option value="">Selecciona escenario</option>
-                        {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
-                        ))}
-                    </select>
-
-                    <label htmlFor="partidaRonda3">Ronda 3:*</label>
-                    <select
-                        name="partidaRonda3"
-                        id="partidaRonda3"
-                        value={partidaRonda3}
-                        onChange={(e) => setPartidaRonda3(e.target.value)}
-                        required
-                        disabled={loading}
-                    >
-                        <option value="">Selecciona escenario</option>
-                        {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
-                            <option key={tipo} value={tipo}>{tipo}</option>
-                        ))}
-                    </select>
-
-                    {rondasMax >= 4 && (
-                        <>
-                            <label htmlFor="partidaRonda4">Ronda 4:*</label>
-                            <select
-                                name="partidaRonda4"
-                                id="partidaRonda4"
-                                value={partidaRonda4}
-                                onChange={(e) => setPartidaRonda4(e.target.value)}
-                                required={rondasMax >= 4}
-                                disabled={loading}
-                            >
-                                <option value="">Selecciona escenario</option>
-                                {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
-                                    <option key={tipo} value={tipo}>{tipo}</option>
-                                ))}
-                            </select>
-                        </>
-                    )}
-
-                    {rondasMax >= 5 && (
-                        <>
-                            <label htmlFor="partidaRonda5">Ronda 5:*</label>
-                            <select
-                                name="partidaRonda5"
-                                id="partidaRonda5"
-                                value={partidaRonda5}
-                                onChange={(e) => setPartidaRonda5(e.target.value)}
-                                required={rondasMax >= 5}
-                                disabled={loading}
-                            >
-                                <option value="">Selecciona escenario</option>
-                                {TIPOS_PARTIDA_WARMASTER.map((tipo) => (
-                                    <option key={tipo} value={tipo}>{tipo}</option>
-                                ))}
-                            </select>
-                        </>
-                    )}
-                </fieldset>
-
                 <div className="form-actions">
                     <button type="submit" disabled={loading} className="btn-primary">
                         {loading ? "⏳ Creando..." : "✅ Crear Torneo"}
@@ -744,4 +622,4 @@ function CrearTorneoWarmaster() {
     );
 }
 
-export default CrearTorneoWarmaster;
+export default CrearTorneoEpic;

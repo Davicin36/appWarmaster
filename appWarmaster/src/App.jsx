@@ -69,6 +69,10 @@ function App() {
             element={<VerTorneos onOpenLogin={() => setIsLoginOpen(true)} />}
         />
          <Route
+            path='/torneosEpic/:torneoId/detalles'
+            element={<VerTorneos onOpenLogin={() => setIsLoginOpen(true)} />}
+        />
+         <Route
             path='/ranking'
             element={<Ranking />}
         />
@@ -159,6 +163,14 @@ function App() {
         />
          <Route
             path='/torneosFow/:torneoId/editar-inscripcion'
+           element={
+                <PrivateRoute>
+                    <Inscripcion />
+                </PrivateRoute>
+            } 
+        />
+         <Route
+            path='/torneosEpic/:torneoId/editar-inscripcion'
            element={
                 <PrivateRoute>
                     <Inscripcion />

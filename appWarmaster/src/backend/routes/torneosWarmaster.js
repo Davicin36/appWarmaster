@@ -1,4 +1,6 @@
 import express from 'express';
+import crypto from 'crypto'
+import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import cloudinary from 'cloudinary'
@@ -1443,6 +1445,14 @@ router.post('/:torneoId/organizadores/:organizadorId/reenviar', verificarToken, 
       );
     }
 
+    const [usuarioInvitador] = await pool.execute(
+      'SELECT nombre, apellidos, nombre_alias, email FROM usuarios WHERE id = ?',
+      [req.usuario.userId]
+    );
+    const nombreInvitador = usuarioInvitador[0].nombre_alias || 
+      `${usuarioInvitador[0].nombre || ''} ${usuarioInvitador[0].apellidos || ''}`.trim() || 
+      usuarioInvitador[0].email;
+
     const nombreCompleto = info.nombre_alias || 
                           `${info.nombre || ''} ${info.apellidos || ''}`.trim() || 
                           info.email;
@@ -2070,7 +2080,7 @@ router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarTo
       banda: jugador.faccion
     };
 
-    const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+    const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
 
     if (resultado.success) {
       res.json({
@@ -2182,7 +2192,7 @@ router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrgani
           banda: jugador.faccion
         };
 
-        const resultado = await enviarInvitacionJugador(destinatario, torneoInfo);
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
 
         if (resultado.success) {
           totalEnviados++;
@@ -3707,6 +3717,7 @@ router.get('/:torneoId/jugadores-correos', verificarToken, verificarOrganizadorT
                 jts.nombre_ejercito
             FROM jugador_torneo_warmaster jts
             INNER JOIN usuarios u ON jts.jugador_id = u.id
+            WHERE jts.torneo_id=?
             ORDER BY u.nombre, u.apellidos
         `, [torneoId]);
 

@@ -33,6 +33,15 @@ import VistaInformacionPublicaFow from '../componentesFow/verTorneo/VistaInforma
 import VistaEmparejamientosPublicaFow from '../componentesFow/verTorneo/VistaEmparejamientosPublicaFow';
 import VistaClasificacionPublicaFow from '../componentesFow/verTorneo/VistaClasificacionPublicaFow';
 
+// EPIC ARMAGEDON - Importar todas las vistas
+
+import VistaGeneralEpic from '../componentesEpic/administrarTorneo/VistaGeneralEpic';
+import VistaJugadoresEpic from '../componentesEpic/administrarTorneo/VistaJugadoresEpic';
+import VistaEmparejamientosEpic from '../componentesEpic/administrarTorneo/VistaEmparejamientosEpic';
+
+import VistaInformacionPublicaEpic from '../componentesEpic/verTorneo/VistaInformacionPublicaEpic'
+import VistaEmparejamientosPublicaEpic from '../componentesEpic/verTorneo/VistaEmparejamientosPublicaEpic';
+import VistaClasificacionPublicaEpic from '../componentesEpic/verTorneo/VistaClasificacionPublicaEpic';
 
 // BOLT ACTION- Importar todas las vistas
 /*
@@ -67,6 +76,12 @@ export const REGISTRO_VISTAS_TORNEOS = {
         emparejamientos: VistaEmparejamientosFow,
         clasificacion: VistaClasificacionFow
     },
+    "EPIC": {
+        general: VistaGeneralEpic,
+        jugadores: VistaJugadoresEpic,
+        emparejamientos: VistaEmparejamientosEpic,
+        clasificacion: VistaClasificacionPublicaEpic
+    },
     /*
     "BOLT": {
         general: VistaGeneralBolt,
@@ -95,6 +110,11 @@ export const REGISTRO_VISTAS_PUBLICAS = {
         informacion: VistaInformacionPublicaFow,
         emparejamientos: VistaEmparejamientosPublicaFow,
         clasificacion: VistaClasificacionPublicaFow
+    },
+    "EPIC": {
+        informacion: VistaInformacionPublicaEpic,
+        emparejamientos: VistaEmparejamientosPublicaEpic,
+        clasificacion: VistaClasificacionPublicaEpic
     },
     /*
     "BOLT": {

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import torneosSagaApi from '@/servicios/apiSaga';
 import torneosWarmasterApi from '@/servicios/apiWarmaster';
 import torneosFowApi from '@/servicios/apiFow';
+import torneosEpicApi from '@/servicios/apiEpic';
 
 import '@/estilos/enviarCorreos.css';
 
@@ -31,6 +32,9 @@ const VistaEnviarCorreos = ({ torneoId, torneo, tipoJuego }) => {
       case 'FOW':
       case 'fow':
         return torneosFowApi;
+      case 'epic':
+      case 'EPIC':
+        return torneosEpicApi;
       default:
         console.warn(`Tipo de juego no reconocido: ${tipoJuego}, usando SAGA por defecto`);
         return torneosSagaApi;

@@ -87,6 +87,7 @@ function Perfil() {
         const s = (sistema || '').toLowerCase();
         if (s.includes('warmaster') || s === 'w') return 'torneosWarmaster';
         if (s.includes('fow') || s.includes('flames') || s === 'f') return 'torneosFow';
+        if (s.includes('epic')) return 'torneosEpic';
         return 'torneosSaga';
     };
 
@@ -131,10 +132,13 @@ function Perfil() {
                 setLoadingTorneos(true);
                 setErrorTorneos("");
                 const response = await usuarioApi.obtenerTorneosUsuario(user.id);
+
                 if (response.success || response.data) {
                     const data = response.data || response;
                     setTorneosCreados(data.torneosCreados || []);
                     setTorneosParticipando(data.torneosParticipando || []);
+
+                    console.log(data.torneosCreados);
                 } else {
                     setErrorTorneos(response.error || "Error al cargar torneos");
                 }
@@ -372,9 +376,10 @@ function Perfil() {
 
     // ===== SISTEMAS PARA TORNEOS PARTICIPANDO =====
     const SISTEMAS = [
-        { key: 'SAGA',      icono: '⚔️',  label: 'SAGA' },
+        { key: 'SAGA', icono: '⚔️',  label: 'SAGA' },
         { key: 'WARMASTER', icono: '⚔️',  label: 'WARMASTER' },
-        { key: 'FOW',       icono: '⚔️',  label: 'FLAMES OF WAR' }
+        { key: 'FOW', icono: '⚔️',  label: 'FLAMES OF WAR' },
+        { key: 'EPIC', icono: '⚔️', label: 'EPIC' }
     ];
 
     return (
@@ -831,7 +836,7 @@ function Perfil() {
                                                         <th>Sistema</th>
                                                         <th>Estado</th>
                                                         <th>Fecha</th>
-                                                        {key !== 'WARMASTER' && < th>Época</th>}
+                                                        {key !== 'WARMASTER' && key !== 'EPIC' && <th>Época</th>}
                                                         <th>Mi Facción</th>
                                                         <th>Acciones</th>
                                                     </tr>
@@ -847,7 +852,7 @@ function Perfil() {
                                                                 </span>
                                                             </td>
                                                             <td>{formatearFecha(torneo.fecha_inicio)}</td>
-                                                            {key !== 'WARMASTER' && <td>{torneo.epocas_disponibles || '—'}</td>}
+                                                            {key !== 'WARMASTER' && key !== 'EPIC' && <td>{torneo.epocas_disponibles || '—'}</td>}
                                                             <td>{torneo.faccion || '—'}</td>
                                                             <td className="acciones-cel">
                                                                 <Link

@@ -7,7 +7,8 @@ import usuarioApi from "../servicios/apiUsuarios";
 // Importar todas las APIs
 import torneosSagaApi from "@/servicios/apiSaga";
 import torneosWarmasterApi from "@/servicios/apiWarmaster";
-import torneosFowApi from "../servicios/apiFow";
+import torneosFowApi from "@/servicios/apiFow";
+import torneosEpicApi from "@/servicios/apiEpic";
 
 import Footer from '@/paginas/Footer.jsx'
 
@@ -35,7 +36,8 @@ function VerTorneo( {onOpenLogin}) {
     const APIS_POR_SISTEMA = {
         'SAGA': torneosSagaApi,
         'WARMASTER': torneosWarmasterApi,
-        'FOW':torneosFowApi
+        'FOW':torneosFowApi,
+        'EPIC': torneosEpicApi,
         // Agregar más sistemas aquí en el futuro
     };
 

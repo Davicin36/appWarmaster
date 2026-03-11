@@ -83,7 +83,18 @@ router.get('/usuarios', verificarToken, verificarSuperAdmin, async (req, res) =>
 router.put('/usuarios/:id', verificarToken, verificarSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, email, rol, activo } = req.body;
+    const { 
+      nombre, 
+      apellidos, 
+      nombre_alias, 
+      club, 
+      email, 
+      estado_cuenta, 
+      rol, 
+      codigo_postal, 
+      localidad, 
+      pais 
+    } = req.body;
     
     // Verificar que no se modifique a sí mismo si intenta cambiar su rol
     if (parseInt(id) === req.userId && rol !== req.userRole) {
