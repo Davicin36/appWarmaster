@@ -40,4 +40,10 @@ export const REGISTRO_INSCRIPCIONES ={
         "Por equipos": null
     }
     */
+   /*
+     "PUNKA": {
+        "Individual": InscripcionPunkaIndividual,
+        "Por equipos": null
+    }
+    */
 }
