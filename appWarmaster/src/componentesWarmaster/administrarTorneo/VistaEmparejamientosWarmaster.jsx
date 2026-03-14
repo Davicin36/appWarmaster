@@ -479,11 +479,28 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
     };
 
     const guardarEdicion = (nuevosDatos) => {
-        const nuevosEmp = [...emparejamientos];
+    const nuevosEmp = [...emparejamientos];
+
+    // Buscar los objetos jugador completos para que la preview muestre los nombres
+    const jugador1 = jugadores.find(
+            j => j.jugador_id === nuevosDatos.jugador1_id || j.id === nuevosDatos.jugador1_id
+        );
+        const jugador2 = nuevosDatos.jugador2_id
+            ? jugadores.find(
+                j => j.jugador_id === nuevosDatos.jugador2_id || j.id === nuevosDatos.jugador2_id
+            )
+            : null;
+
         nuevosEmp[emparejamientoEditando.index] = {
             ...nuevosEmp[emparejamientoEditando.index],
-            ...nuevosDatos
+            ...nuevosDatos,
+            jugador1: jugador1 ?? nuevosEmp[emparejamientoEditando.index].jugador1,
+            jugador2: jugador2 ?? null,
+            jugador1_id: nuevosDatos.jugador1_id,
+            jugador2_id: nuevosDatos.jugador2_id || null,
+            es_bye: nuevosDatos.jugador2_id ? 0 : 1,
         };
+
         setEmparejamientos(nuevosEmp);
         setModalEdicionAbierto(false);
         setEmparejamientoEditando(null);
