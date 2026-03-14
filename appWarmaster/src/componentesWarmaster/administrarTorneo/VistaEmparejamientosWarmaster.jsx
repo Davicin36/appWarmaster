@@ -5,6 +5,7 @@ import torneosWarmasterApi from '@/servicios/apiWarmaster';
 import { generarEmparejamientosIndividuales } from '../funcionesWarmaster/emparejamientosIndividualesWarmaster';
 
 import ModalRegistroPartidaWarmaster from '../ModalRegistroPartidaWarmaster';
+import ModalEdicionEmparejamientos from '@/componente/ModalEdicionEmparejamientos';
 
 import '@/estilos/vistasTorneos/vistaEmparejamientos.css';
 
@@ -28,6 +29,10 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
     const [partidaSeleccionada, setPartidaSeleccionada] = useState(null);
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [esOrganizador, setEsOrganizador] = useState(false);
+
+    const [modoEdicion, setModoEdicion] = useState(false);
+    const [emparejamientoEditando, setEmparejamientoEditando] = useState(null);
+    const [modalEdicionAbierto, setModalEdicionAbierto] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -134,7 +139,7 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
     const handleGenerarEmparejamientos = async () => {
         try {
-/*
+/*arreglarlo
             if( torneo.estado ==='en_curso') {
                  alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
                 return;
@@ -459,6 +464,32 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
         );
     };
 
+    const eliminarEmparejamiento = (index) => {
+        if (window.confirm('¿Eliminar este emparejamiento?')) {
+            const nuevosEmp = [...emparejamientos];
+            nuevosEmp.splice(index, 1);
+            setEmparejamientos(nuevosEmp);
+            alert('✅ Emparejamiento eliminado');
+        }
+    };
+
+    const abrirEdicion = (emparejamiento, index) => {
+        setEmparejamientoEditando({ ...emparejamiento, index });
+        setModalEdicionAbierto(true);
+    };
+
+    const guardarEdicion = (nuevosDatos) => {
+        const nuevosEmp = [...emparejamientos];
+        nuevosEmp[emparejamientoEditando.index] = {
+            ...nuevosEmp[emparejamientoEditando.index],
+            ...nuevosDatos
+        };
+        setEmparejamientos(nuevosEmp);
+        setModalEdicionAbierto(false);
+        setEmparejamientoEditando(null);
+        alert('✅ Emparejamiento actualizado');
+    };
+
     const renderPartidas = (partidas, esRondaActual = false) => {
         return partidas.map((partida, index) => 
             renderPartidaIndividual(partida, index, esRondaActual)
@@ -518,19 +549,41 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                             <button 
                                 onClick={handleGenerarEmparejamientos}
                                 className="btn-primary"
-                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || torneo.estado !== 'en_curso'}
+                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || modoEdicion || torneo.estado !== 'en_curso'}
                             >
                                 🎲 Generar Emparejamientos
                             </button>
 
                             {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
-                                <button 
-                                    onClick={guardarResultados}
-                                    className="btn-success"
-                                    disabled={guardando}
-                                >
-                                    {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
-                                </button>
+                                <>
+                                    {!modoEdicion ? (
+                                        <>
+                                            <button
+                                                onClick={() => setModoEdicion(true)}
+                                                className="btn-warning"
+                                            >
+                                                ✏️ Editar Emparejamientos
+                                            </button>
+                                            <button 
+                                                onClick={guardarResultados}
+                                                className="btn-success"
+                                                disabled={guardando}
+                                            >
+                                                {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                setModoEdicion(false);
+                                                alert('✅ Modo edición desactivado. Ahora puedes guardar.');
+                                            }}
+                                            className="btn-success"
+                                        >
+                                            ✅ Finalizar Edición
+                                        </button>
+                                    )}
+                                </>
                             )}
 
                             {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
@@ -617,6 +670,24 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                                         
                                         return (
                                             <div key={index} className="emparejamiento-card">
+                                                {modoEdicion && (
+                                                    <div className="botones-edicion">
+                                                        <button
+                                                            onClick={() => abrirEdicion(emp, index)}
+                                                            className="btn-editar-small"
+                                                            title="Editar emparejamiento"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                        <button
+                                                            onClick={() => eliminarEmparejamiento(index)}
+                                                            className="btn-eliminar-small"
+                                                            title="Eliminar emparejamiento"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+                                                )}
                                                 <div className="mesa-numero preview">
                                                     Mesa {emp.mesa || index + 1}
                                                     {emp.es_bye && ' ⭐ BYE'}
@@ -692,6 +763,19 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
                         setModalAbierto(false);
                         setPartidaSeleccionada(null);
                     }}
+                />
+            )}
+            {modalEdicionAbierto && emparejamientoEditando && (
+                <ModalEdicionEmparejamientos
+                    emparejamiento={emparejamientoEditando}
+                    jugadores={jugadores}
+                    equipos={[]}
+                    esTorneoEquipos={false}
+                    onClose={() => {
+                        setModalEdicionAbierto(false);
+                        setEmparejamientoEditando(null);
+                    }}
+                    onGuardar={guardarEdicion}
                 />
             )}
         </div>
