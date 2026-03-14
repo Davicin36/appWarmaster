@@ -134,12 +134,12 @@ function VistaEmparejamientosWarmaster({ torneoId: propTorneoId, esVistaPublica 
 
     const handleGenerarEmparejamientos = async () => {
         try {
-
+/*
             if( torneo.estado ==='en_curso') {
                  alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
                 return;
             }
-            
+            */
             if (!torneoId) {
                 alert('⚠️ Error: No se encontró el ID del torneo');
                 return;
