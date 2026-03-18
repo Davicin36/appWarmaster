@@ -253,6 +253,12 @@ function VerTorneo( {onOpenLogin}) {
                         </span>
                     )
                 };
+                case 'EPIC':
+                return {
+                    iconoPuntos: '⚡',
+                    labelPuntos: torneo.puntos_ejercito || 0,
+                    camposExtra: null
+                };
             default:
                 return {
                     iconoPuntos: '⚔️',

@@ -625,17 +625,141 @@ useEffect(() => {
 
     // Abrir modal de edición
     const abrirEdicion = (emparejamiento, index) => {
-        setEmparejamientoEditando({ ...emparejamiento, index });
+        // getJugadorId debe ser idéntico al del modal
+        const getJugadorId = (j) => j.jugador_id || j.id;
+
+        // Buscar el jugador en el array por cualquiera de los dos IDs posibles
+        const jug1 = jugadores.find(j => 
+            j.id === emparejamiento.jugador1_id || 
+            j.jugador_id === emparejamiento.jugador1_id ||
+            j.id === emparejamiento.jugador1?.id ||
+            j.jugador_id === emparejamiento.jugador1?.jugador_id
+        );
+        const jug2 = jugadores.find(j => 
+            j.id === emparejamiento.jugador2_id || 
+            j.jugador_id === emparejamiento.jugador2_id ||
+            j.id === emparejamiento.jugador2?.id ||
+            j.jugador_id === emparejamiento.jugador2?.jugador_id
+        );
+
+        // Resolver el ID que usa el select (jugador_id prioritario, igual que getJugadorId del modal)
+        const j1Id = jug1 ? getJugadorId(jug1) : null;
+        const j2Id = jug2 ? getJugadorId(jug2) : null;
+
+        const empNormalizado = {
+            ...emparejamiento,
+            index,
+            jugador1_id: j1Id,
+            jugador2_id: j2Id,
+            equipo1_id: emparejamiento.equipo1_id ? Number(emparejamiento.equipo1_id) : null,
+            equipo2_id: emparejamiento.equipo2_id ? Number(emparejamiento.equipo2_id) : null,
+            es_bye: emparejamiento.es_bye || 0,
+        };
+
+        setEmparejamientoEditando(empNormalizado);
         setModalEdicionAbierto(true);
     };
 
     // Guardar cambios de edición
     const guardarEdicion = (nuevosDatos) => {
         const nuevosEmp = [...emparejamientos];
-        nuevosEmp[emparejamientoEditando.index] = {
-            ...nuevosEmp[emparejamientoEditando.index],
-            ...nuevosDatos
-        };
+        const empActual = nuevosEmp[emparejamientoEditando.index];
+
+        let empActualizado;
+
+        if (esTorneoEquipos()) {
+            // Resolver nombres de equipos desde el array equipos
+            const equipo1 = equipos.find(eq => 
+                (eq.id || eq.equipo_id) === nuevosDatos.equipo1_id
+            );
+            const equipo2 = nuevosDatos.equipo2_id 
+                ? equipos.find(eq => (eq.id || eq.equipo_id) === nuevosDatos.equipo2_id)
+                : null;
+
+            // Reconstruir partidas cruzando jugadores de cada equipo
+            let nuevasPartidas = empActual.partidas || [];
+
+            if (equipo1 && equipo2) {
+                const jugadoresEq1 = equipo1.jugadores || [];
+                const jugadoresEq2 = equipo2.jugadores || [];
+
+                // Emparejar jugador a jugador por índice, manteniendo épocas si las hay
+                nuevasPartidas = jugadoresEq1.map((j1, i) => {
+                    const j2 = jugadoresEq2[i] || null;
+                    const partidaAnterior = empActual.partidas?.[i] || {};
+
+                    return {
+                        ...partidaAnterior,
+                        jugador1_id: j1.jugador_id || j1.id,
+                        jugador1_nombre: j1.jugador_nombre || j1.nombre,
+                        jugador1_alias: j1.nombre_alias || null,
+                        jugador2_id: j2 ? (j2.jugador_id || j2.id) : null,
+                        jugador2_nombre: j2 ? (j2.jugador_nombre || j2.nombre) : null,
+                        jugador2_alias: j2 ? (j2.nombre_alias || null) : null,
+                        epoca: j1.epoca || partidaAnterior.epoca || null,
+                        es_bye: j2 ? 0 : 1,
+                    };
+                });
+            } else if (equipo1 && !equipo2) {
+                // BYE: mantener jugadores del equipo1 sin rival
+                nuevasPartidas = (equipo1.jugadores || []).map((j1, i) => {
+                    const partidaAnterior = empActual.partidas?.[i] || {};
+                    return {
+                        ...partidaAnterior,
+                        jugador1_id: j1.jugador_id || j1.id,
+                        jugador1_nombre: j1.jugador_nombre || j1.nombre,
+                        jugador1_alias: j1.nombre_alias || null,
+                        jugador2_id: null,
+                        jugador2_nombre: null,
+                        jugador2_alias: null,
+                        epoca: j1.epoca || partidaAnterior.epoca || null,
+                        es_bye: 1,
+                    };
+                });
+            }
+
+            empActualizado = {
+                ...empActual,
+                ...nuevosDatos,
+                equipo1_nombre: equipo1?.nombre_equipo || empActual.equipo1_nombre,
+                equipo2_nombre: equipo2?.nombre_equipo || null,
+                partidas: nuevasPartidas,
+            };
+
+        } else {
+            // INDIVIDUALES: resolver nombres desde el array jugadores
+            const getJugadorNombre = (j) => j.jugador_nombre || j.nombre;
+
+            const jugador1 = jugadores.find(j => 
+                (j.jugador_id || j.id) === nuevosDatos.jugador1_id
+            );
+            const jugador2 = nuevosDatos.jugador2_id
+                ? jugadores.find(j => (j.jugador_id || j.id) === nuevosDatos.jugador2_id)
+                : null;
+
+            empActualizado = {
+                ...empActual,
+                ...nuevosDatos,
+                // Campos planos (para el render)
+                jugador1_nombre: jugador1 ? getJugadorNombre(jugador1) : empActual.jugador1_nombre,
+                jugador2_nombre: jugador2 ? getJugadorNombre(jugador2) : null,
+                // Objeto anidado sincronizado (por si algún render lo usa)
+                jugador1: jugador1 ? {
+                    ...empActual.jugador1,
+                    ...jugador1,
+                    nombre: getJugadorNombre(jugador1),
+                    jugador_nombre: getJugadorNombre(jugador1),
+                } : empActual.jugador1,
+                jugador2: jugador2 ? {
+                    ...empActual.jugador2,
+                    ...jugador2,
+                    nombre: getJugadorNombre(jugador2),
+                    jugador_nombre: getJugadorNombre(jugador2),
+                } : null,
+            };
+        }
+
+        nuevosEmp[emparejamientoEditando.index] = empActualizado;
         setEmparejamientos(nuevosEmp);
         setModalEdicionAbierto(false);
         setEmparejamientoEditando(null);
