@@ -132,7 +132,8 @@ router.get('/temporadas/:sistemaJuego', async (req, res) => {
 router.get('/ranking/:sistemaJuego', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
-    const { limit = 100, minPartidas = 0, año } = req.query;
+    const { limit = 100, año } = req.query;
+    const minPartidas = sistemaJuego === 'saga' ? 6 : 0;
     const añoActual = año || new Date().getFullYear();
     
     if (!validarSistemaJuego(sistemaJuego)) {

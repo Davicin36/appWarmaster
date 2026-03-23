@@ -484,65 +484,86 @@ export async function actualizarEloAutomatico(connTorneos, connRanking, torneoId
   // 7. Guardar estadísticas detalladas
   console.log(`\n📊 Guardando estadísticas detalladas...`);
 
-  if (sistemaJuego === 'saga') {
-    for (const [jugadorId, stats] of estadisticasJugadores) {
-      const epocaFavorita = Object.entries(stats.epocas)
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-      const faccionFavorita = Object.entries(stats.facciones)
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  for (const [jugadorId, stats] of estadisticasJugadores) {
 
-      await connRanking.query(
-        `INSERT INTO estadisticas_jugador 
-         (jugador_id, temporada_id, sistema_juego, epoca_favorita, faccion_favorita,
-          epocas_jugadas, facciones_jugadas, torneos_participados)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE
-           epoca_favorita = VALUES(epoca_favorita),
-           faccion_favorita = VALUES(faccion_favorita),
-           epocas_jugadas = JSON_MERGE_PRESERVE(COALESCE(epocas_jugadas, '{}'), VALUES(epocas_jugadas)),
-           facciones_jugadas = JSON_MERGE_PRESERVE(COALESCE(facciones_jugadas, '{}'), VALUES(facciones_jugadas)),
-           torneos_participados = torneos_participados + 1,
-           updated_at = CURRENT_TIMESTAMP`,
-        [
-          jugadorId, temporadaId, sistemaJuego,
-          epocaFavorita, faccionFavorita,
-          JSON.stringify(stats.epocas), JSON.stringify(stats.facciones)
-        ]
-      );
+    // ── Leer estadísticas existentes en BD ──────────────────────────────
+    const [existente] = await connRanking.query(
+      `SELECT epocas_jugadas, facciones_jugadas
+      FROM estadisticas_jugador
+      WHERE jugador_id = ? AND temporada_id = ? AND sistema_juego = ?`,
+      [jugadorId, temporadaId, sistemaJuego]
+    );
+
+    // ── Helper: parsear JSON de BD (puede venir como string u objeto) ──
+    const parsearJSON = (raw) => {
+      if (!raw) return {};
+      if (typeof raw === 'object' && !Buffer.isBuffer(raw)) return raw;
+      try { return JSON.parse(raw); } catch { return {}; }
+    };
+
+    // ── Helper: fusionar dos objetos sumando valores (nunca arrays) ────
+    const fusionar = (base, nuevo) => {
+      const resultado = { ...base };
+      for (const [clave, valor] of Object.entries(nuevo)) {
+        resultado[clave] = (resultado[clave] || 0) + (Number(valor) || 0);
+      }
+      return resultado;
+    };
+
+    // ── Helper: clave con mayor valor ──────────────────────────────────
+    const favorita = (obj) =>
+      Object.keys(obj).length === 0
+        ? null
+        : Object.entries(obj).sort(([, a], [, b]) => b - a)[0][0];
+
+    // ── Construir objetos fusionados según sistema ─────────────────────
+    let epocasMerged = {};
+    let faccionesMerged = {};
+
+    if (existente.length > 0) {
+      epocasMerged   = parsearJSON(existente[0].epocas_jugadas);
+      faccionesMerged = parsearJSON(existente[0].facciones_jugadas);
     }
 
-  } else if (sistemaJuego === 'warmaster' || sistemaJuego === 'fow' || sistemaJuego === 'epic') {
-    for (const [jugadorId, stats] of estadisticasJugadores) {
-      const ejercitoFavorito = Object.entries(stats.ejercitos)
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-      const epocaFavorita = Object.entries(stats.epocas || {})
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-      // ✅ Epic usa facciones propias; warmaster/fow usan ejercito como faccion
-      const faccionFavorita = sistemaJuego === 'epic'
-        ? (Object.entries(stats.ejercitos || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || null)
-        : ejercitoFavorito;
+    if (sistemaJuego === 'saga') {
+      epocasMerged    = fusionar(epocasMerged, stats.epocas);
+      faccionesMerged = fusionar(faccionesMerged, stats.facciones);
 
-      await connRanking.query(
-        `INSERT INTO estadisticas_jugador 
-         (jugador_id, temporada_id, sistema_juego, epoca_favorita, faccion_favorita,
-          epocas_jugadas, facciones_jugadas, torneos_participados)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE
-           epoca_favorita = VALUES(epoca_favorita),
-           faccion_favorita = VALUES(faccion_favorita),
-           epocas_jugadas = JSON_MERGE_PRESERVE(COALESCE(epocas_jugadas, '{}'), VALUES(epocas_jugadas)),
-           facciones_jugadas = JSON_MERGE_PRESERVE(COALESCE(facciones_jugadas, '{}'), VALUES(facciones_jugadas)),
-           torneos_participados = torneos_participados + 1,
-           updated_at = CURRENT_TIMESTAMP`,
-        [
-          jugadorId, temporadaId, sistemaJuego,
-          epocaFavorita,
-          faccionFavorita,
-          JSON.stringify(stats.epocas || {}),
-          JSON.stringify(stats.ejercitos)
-        ]
-      );
+    } else if (sistemaJuego === 'fow') {
+      epocasMerged    = fusionar(epocasMerged, stats.epocas);
+      faccionesMerged = fusionar(faccionesMerged, stats.ejercitos); // ejercito → faccion_favorita
+
+    } else if (sistemaJuego === 'warmaster' || sistemaJuego === 'epic') {
+      epocasMerged    = {};  // warmaster/epic no tienen época
+      faccionesMerged = fusionar(faccionesMerged, stats.ejercitos);
     }
+
+    const epocaFavorita   = favorita(epocasMerged);
+    const faccionFavorita = favorita(faccionesMerged);
+
+    // ── Upsert limpio, sin JSON_MERGE_PRESERVE ─────────────────────────
+    await connRanking.query(
+      `INSERT INTO estadisticas_jugador
+        (jugador_id, temporada_id, sistema_juego,
+          epoca_favorita, faccion_favorita,
+          epocas_jugadas, facciones_jugadas,
+          torneos_participados)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+      ON DUPLICATE KEY UPDATE
+        epoca_favorita      = VALUES(epoca_favorita),
+        faccion_favorita    = VALUES(faccion_favorita),
+        epocas_jugadas      = VALUES(epocas_jugadas),
+        facciones_jugadas   = VALUES(facciones_jugadas),
+        torneos_participados = torneos_participados + 1,
+        updated_at          = CURRENT_TIMESTAMP`,
+      [
+        jugadorId, temporadaId, sistemaJuego,
+        epocaFavorita,
+        faccionFavorita,
+        JSON.stringify(epocasMerged),
+        JSON.stringify(faccionesMerged)
+      ]
+    );
   }
 
   // 8. Marcar torneo como procesado

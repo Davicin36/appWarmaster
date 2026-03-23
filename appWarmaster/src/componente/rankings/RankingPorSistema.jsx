@@ -13,7 +13,7 @@ const RankingPorSistema = ({ sistema }) => {
   const [error, setError] = useState(null);
   const [filtros, setFiltros] = useState({
     limit: 50,
-    minPartidas: 6
+    minPartidas: sistema?.toLowerCase() === 'saga' ? 6 : 0
   });
 
   useEffect(() => {
