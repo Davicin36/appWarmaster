@@ -156,10 +156,7 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
         t.nombre as temporada_nombre,
         t.año as temporada_año,
         RANK() OVER (
-          ORDER BY 
-            e.partidas_jugadas DESC,
-            ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) DESC,
-            e.elo_actual DESC
+          ORDER BY e.elo_actual DESC
         ) as posicion,
         est.epoca_favorita,
         est.faccion_favorita
@@ -169,10 +166,7 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
         AND e.temporada_id = est.temporada_id 
         AND e.sistema_juego = est.sistema_juego
       WHERE t.año = ? AND e.sistema_juego = ? AND e.partidas_jugadas >= ?
-      ORDER BY 
-        e.partidas_jugadas DESC,
-        porcentaje_victorias DESC,
-        e.elo_actual DESC
+      ORDER BY e.elo_actual DESC
       LIMIT ?
     `, [parseInt(añoActual), sistemaJuego, parseInt(minPartidas), parseInt(limit)]);
     
@@ -222,7 +216,8 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
 
 router.get('/ranking-global', async (req, res) => {
   try {
-    const { limit = 100, minPartidas = 0 } = req.query;
+    const { limit = 100 } = req.query;
+    const minPartidas = 6
     const añoActual = new Date().getFullYear();
     
     // PASO 1: Obtener datos de ranking
@@ -238,24 +233,15 @@ router.get('/ranking-global', async (req, res) => {
         ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) as porcentaje_victorias,
         RANK() OVER (
           PARTITION BY e.sistema_juego 
-          ORDER BY 
-            e.partidas_jugadas DESC,
-            ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) DESC,
-            e.elo_actual DESC
+          ORDER BY e.elo_actual DESC
         ) as posicion_sistema,
         RANK() OVER (
-          ORDER BY 
-            e.partidas_jugadas DESC,
-            ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) DESC,
-            e.elo_actual DESC
+          ORDER BY e.elo_actual DESC
         ) as posicion_global
       FROM elo_jugadores e
       JOIN temporadas t ON e.temporada_id = t.id
       WHERE t.año = ? AND e.partidas_jugadas >= ?
-      ORDER BY 
-        e.partidas_jugadas DESC,
-        porcentaje_victorias DESC,
-        e.elo_actual DESC
+      ORDER BY e.elo_actual DESC
       LIMIT ?
     `, [añoActual, parseInt(minPartidas), parseInt(limit)]);
     

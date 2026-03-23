@@ -13,7 +13,7 @@ const RankingPorSistema = ({ sistema }) => {
   const [error, setError] = useState(null);
   const [filtros, setFiltros] = useState({
     limit: 50,
-    minPartidas: 0
+    minPartidas: 6
   });
 
   useEffect(() => {
@@ -105,20 +105,6 @@ const RankingPorSistema = ({ sistema }) => {
 
       {/* Filtros */}
       <div className="ranking-filtros">
-        <div className="filtro">
-          <label>Mínimo de partidas:</label>
-          <select 
-            value={filtros.minPartidas}
-            onChange={(e) => handleFiltroChange('minPartidas', parseInt(e.target.value))}
-          >
-            <option value="0">Todas</option>
-            <option value="3">3+</option>
-            <option value="5">5+</option>
-            <option value="10">10+</option>
-            <option value="20">20+</option>
-          </select>
-        </div>
-
         <div className="filtro">
           <label>Mostrar:</label>
           <select 
