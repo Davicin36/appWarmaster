@@ -164,7 +164,7 @@ function PrincipalFow({ onOpenLogin }) {
                                         </td>
                                         <td data-label="Estado">{torneo.estado}</td>
                                         <td className="acciones-cell">
-                                            {torneo.created_by === userId && (
+                                            {torneo.created_by === userId || torneo.es_organizador === 1 && (
                                                 <button 
                                                     className="btn-administrar"
                                                     onClick={() => navigate(`/administrarTorneo/${torneo.id}`)}
