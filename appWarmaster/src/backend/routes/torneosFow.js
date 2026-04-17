@@ -794,7 +794,7 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
         if (rondasNum !== null)            { camposActualizar.push('rondas_max = ?');      valores.push(rondasNum); }
         if (ronda_actual !== undefined)    { camposActualizar.push('ronda_actual = ?');    valores.push(ronda_actual); }
         if (fecha_inicio !== undefined)    { camposActualizar.push('fecha_inicio = ?');    valores.push(fecha_inicio) || null; }
-        if (fecha_fin !== undefined)       { camposActualizar.push('fecha_fin = ?');       valores.push(fecha_fin) || null; }
+        if (fecha_fin !== undefined) { camposActualizar.push('fecha_fin = ?'); valores.push(fecha_fin || null); }
         if (ubicacion !== undefined)       { camposActualizar.push('ubicacion = ?');       valores.push(ubicacion || null); }
         if (puntos_ejercito !== undefined) { camposActualizar.push('puntos_ejercito = ?'); valores.push(puntos_ejercito); }
         if (participantes_max !== undefined){ camposActualizar.push('participantes_max = ?'); valores.push(participantes_max); }
