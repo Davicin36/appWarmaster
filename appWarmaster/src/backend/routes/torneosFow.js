@@ -1039,7 +1039,6 @@ router.get('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorne
 });
 
 // ===== AGREGAR ORGANIZADOR AL TORNEO =====
-// FIX 3: clave 'pendiente' → 'pendiente_registro' en objeto mensajes
 
 router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   try {
@@ -2077,8 +2076,12 @@ router.patch('/:torneoId/jugadores/:jugadorId/pago', verificarToken, async (req,
             return res.status(404).json(errorResponse('Torneo no encontrado'));
         }
         
-        // ✅ FIX 6: req.userId → req.usuario.userId
-        if (torneo[0].created_by !== req.usuario.userId) {
+       const [esOrganizador] = await pool.execute(
+            'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+            [torneoId, req.usuario.userId]
+        );
+
+        if (torneo[0].created_by !== req.usuario.userId && esOrganizador.length === 0) {
             return res.status(403).json(errorResponse('No tienes permisos'));
         }
 
@@ -2116,7 +2119,13 @@ router.get('/:torneoId/verificarPagos', verificarToken, async (req, res) => {
             return res.status(404).json(errorResponse('Torneo no encontrado'));
         }
 
-        if (torneo[0].created_by !== usuarioId) {
+        // ✅ Creador O cualquier organizador del torneo
+        const [esOrganizador] = await pool.execute(
+            'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+            [torneoId, usuarioId]
+        );
+
+        if (torneo[0].created_by !== usuarioId && esOrganizador.length === 0) {
             return res.status(403).json(errorResponse('No tienes permisos para ver esta información'));
         }
 
