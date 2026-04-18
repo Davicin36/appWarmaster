@@ -2610,7 +2610,6 @@ router.put('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req
 });
 
 // ====== CONFIRMAR RESULTADO INDIVIDUAL POR ORGANIZADOR ========
-// FIX 7: req.userId → req.usuario.userId
 
 router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken, async (req, res) => {
   let connection;
@@ -2649,11 +2648,13 @@ router.patch('/:torneoId/partidasTorneoFow/:partidaId/confirmar', verificarToken
     
     const partidaData = verificacion[0];
     
-    // ✅ FIX 7: req.userId → req.usuario.userId
-    if (partidaData.created_by !== req.usuario.userId) {
-      await connection.rollback();
-      connection.release();
-      return res.status(403).json(errorResponse('Solo el organizador puede confirmar resultados'));
+   const [esOrgConfirmar] = await connection.execute(
+        'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+        [torneoId, req.usuario.userId]
+    );
+
+    if (partidaData.created_by !== req.usuario.userId && esOrgConfirmar.length === 0) {
+        return res.status(403).json(errorResponse('Solo los organizadores pueden confirmar resultados'));
     }
     
     const esBye = !partidaData.participacion_j2_id || partidaData.es_bye;
@@ -2924,7 +2925,6 @@ router.post('/:torneoId/guardarEmparejamientosIndividuales', verificarToken, asy
 });
 
 // ======ELIMINAR PARTIDA======
-// FIX 7: req.userId → req.usuario.userId
 
 router.delete('/:torneoId/partidasTorneoFow/:partidaId', verificarToken, async (req, res) => {
   try {
@@ -3006,7 +3006,6 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) => {
 });
 
 // ======= OBTENER JUGADORES PARA CORREOS (INDIVIDUAL) =======
-// FIX 4: añadido WHERE jtf.torneo_id = ?
 
 router.get('/:torneoId/jugadores-correos', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
     try {
