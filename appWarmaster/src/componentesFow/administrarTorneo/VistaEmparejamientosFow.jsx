@@ -56,7 +56,9 @@ function VistaEmparejamientosFow({ torneoId: propTorneoId, esVistaPublica = fals
 
     useEffect(() => {
         if (torneo?.created_by && usuarioActual?.id) {
-            setEsOrganizador(torneo.created_by === usuarioActual.id);
+            const esCreador = torneo.created_by === usuarioActual.id
+            const esOrgAnadido = torneo.es_organiador === 1
+            setEsOrganizador(esCreador || esOrgAnadido);
         }
     }, [torneo, usuarioActual]);
 
