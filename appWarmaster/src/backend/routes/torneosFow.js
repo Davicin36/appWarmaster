@@ -2485,7 +2485,7 @@ router.get('/:torneoId/partidasTorneoFow', async (req, res) => {
     const partidasFormateadas = partidas.map(p => ({
       id: p.id, torneo_id: p.torneo_id, ronda: p.ronda, mesa: p.mesa,
       nombre_partida: p.nombre_partida, es_bye: p.es_bye,
-      resultado_pw: p.resultado_pf, resultado_confirmado: p.resultado_confirmado,
+      resultado_pf: p.resultado_pf, resultado_confirmado: p.resultado_confirmado,
       puntos_victoria_j1: p.puntos_victoria_j1, puntos_victoria_j2: p.puntos_victoria_j2,
       puntos_torneo_j1: p.puntos_torneo_j1, puntos_torneo_j2: p.puntos_torneo_j2,
       pelotones_destruidos_vencedor: p.pelotones_destruidos_vencedor,
