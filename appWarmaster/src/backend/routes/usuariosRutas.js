@@ -735,6 +735,11 @@ router.get('/torneos', async (req, res) => {
                                 FROM jugador_torneo_epic jte 
                                 WHERE jte.torneo_id = ts.id
                             )
+                                WHEN ts.sistema ='DRACULA' THEN (
+                                SELECT COUNT (*)
+                                FROM jugador_torneo_dracula jtd
+                                WHERE jtd.torneo_id = ts.id
+                            )
                             ELSE 0
                         END
                     WHEN ts.tipo_torneo = 'Por equipos' THEN
@@ -837,6 +842,8 @@ router.get('/:userId', verificarToken, async (req, res) => {
           SELECT COUNT(*) FROM jugador_torneo_warmaster WHERE torneo_id = ts.id
         ) + (
           SELECT COUNT(*) FROM jugador_torneo_epic WHERE torneo_id = ts.id
+        ) + (
+          SELECT COUNT(*) FROM jugador_torneo_dracula WHERE torneo_id = ts.id
         ) as total_participantes,
         COUNT(DISTINCT tseq.id) as total_equipos
       FROM torneos_sistemas ts
@@ -849,7 +856,6 @@ router.get('/:userId', verificarToken, async (req, res) => {
     `, [userId]);
     
     // ✅ CONSULTA 2: Torneos donde PARTICIPA (TODOS, incluyendo propios)
-    // 🔥 CAMBIO: Se ELIMINÓ el filtro "ts.created_by != ?"
     const [torneosParticipando] = await pool.execute(`
       SELECT 
         ts.id, 
@@ -895,7 +901,7 @@ router.get('/:userId', verificarToken, async (req, res) => {
         SELECT 
           torneo_id, jugador_id,
           ejercito AS faccion,
-          NULL AS epoca_inscripcion,
+          NULL AS epoca_inscripcion,        -- no tiene epoca
           NULL AS composicion_ejercito    -- no tienen composición de banda
         FROM jugador_torneo_warmaster 
         WHERE jugador_id = ?
@@ -905,9 +911,19 @@ router.get('/:userId', verificarToken, async (req, res) => {
         SELECT 
           torneo_id, jugador_id,
           ejercito AS faccion,
-          NULL AS epoca_inscripcion,
-          NULL AS composicion_ejercito    -- no tienen composición de banda
+          NULL AS epoca_inscripcion,          -- no tiene epoca
+          NULL AS composicion_ejercito      -- no tienen composición de banda
         FROM jugador_torneo_epic
+        WHERE jugador_id = ?
+
+        UNION ALL
+
+         SELECT 
+          torneo_id, jugador_id,
+          banda AS faccion,
+          NULL AS epoca_inscripcion,          -- no tiene epoca
+          NULL AS composicion_ejercito      -- no tienen composición de banda
+        FROM jugador_torneo_dracula
         WHERE jugador_id = ?
         
       ) p ON ts.id = p.torneo_id
@@ -919,12 +935,36 @@ router.get('/:userId', verificarToken, async (req, res) => {
         FROM torneo_epocas_fow GROUP BY torneo_id
       ) epocas ON ts.id = epocas.torneo_id
       ORDER BY ts.fecha_inicio ASC
-    `, [userId, userId, userId, userId]);
+    `, [userId, userId, userId, userId, userId]);
+
+
+    const [torneosCoorganizando] = await pool.execute (`
+      SELECT
+        ts.id,
+        ts.sistema,
+        ts.nombre_torneo,
+        ts.tipo_torneo,
+        ts.estado,
+        ts.fecha_inicio,
+        ts.fecha_fin,
+        ts.ubicacion,
+        ts.created_by,
+        u.nombre AS creador_nombre,
+        u.apellidos AS creador_apellidos
+      FROM organizadores_torneos ot
+      INNER JOIN torneos_sistemas ts ON ot.torneo_id = ts.id
+      INNER JOIN usuarios u ON ts.created_by = u.id
+      WHERE ot.usuario_id = ? AND ts.created_by != ?
+      ORDER BY ts.fecha_inicio ASC
+    `, [userId, userId]);
+
+    console.log('🤝 Coorganizando:', torneosCoorganizando.length, JSON.stringify(torneosCoorganizando));
     
     res.json(
       successResponse('Torneos del usuario obtenidos exitosamente', {
         torneosCreados,
-        torneosParticipando
+        torneosParticipando,
+        torneosCoorganizando
       })
     );
     
