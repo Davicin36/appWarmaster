@@ -55,6 +55,7 @@ function Perfil() {
     // ===== ESTADOS ORGANIZADOR =====
     const [loadingOrganizador, setLoadingOrganizador] = useState(false);
     const [errorOrganizador, setErrorOrganizador] = useState("");
+    const [torneosCoorganizando, setTorneosCoorganizando] = useState([]);
 
     // ===== ESTADOS TORNEOS =====
     const [torneosCreados, setTorneosCreados] = useState([]);
@@ -88,6 +89,7 @@ function Perfil() {
         if (s.includes('warmaster') || s === 'w') return 'torneosWarmaster';
         if (s.includes('fow') || s.includes('flames') || s === 'f') return 'torneosFow';
         if (s.includes('epic')) return 'torneosEpic';
+        if (s.includes('dracula')) return 'torneosDracula';
         return 'torneosSaga';
     };
 
@@ -137,7 +139,7 @@ function Perfil() {
                     const data = response.data || response;
                     setTorneosCreados(data.torneosCreados || []);
                     setTorneosParticipando(data.torneosParticipando || []);
-
+                    setTorneosCoorganizando(data.torneosCoorganizando || []);
                     console.log(data.torneosCreados);
                 } else {
                     setErrorTorneos(response.error || "Error al cargar torneos");
@@ -379,7 +381,8 @@ function Perfil() {
         { key: 'SAGA', icono: '⚔️',  label: 'SAGA' },
         { key: 'WARMASTER', icono: '⚔️',  label: 'WARMASTER' },
         { key: 'FOW', icono: '⚔️',  label: 'FLAMES OF WAR' },
-        { key: 'EPIC', icono: '⚔️', label: 'EPIC' }
+        { key: 'EPIC', icono: '⚔️', label: 'EPIC' },
+        { key: 'DRACULA', icono: '⚔️', label: 'DRACULA' }
     ];
 
     return (
@@ -748,7 +751,7 @@ function Perfil() {
                 {user.rol === 'organizador' && (
                     <section className="torneos-section">
                         <div className="section-header">
-                            <h2>🏆 Mis Torneos Creados ({torneosCreados.length})</h2>
+                            <h2>🏆 Mis Torneos Creados ({torneosCreados.length + torneosCoorganizando.length})</h2>
                             <Link to="/seleccionarJuegos" className="btn-primary">➕ Crear Torneo</Link>
                         </div>
 
@@ -756,7 +759,7 @@ function Perfil() {
                             <div className="loading-message">⏳ Cargando torneos...</div>
                         ) : errorTorneos ? (
                             <div className="error-message">{errorTorneos}</div>
-                        ) : torneosCreados.length === 0 ? (
+                        ) : torneosCreados.length === 0 && torneosCoorganizando.length === 0 ? (
                             <div className="empty-message">
                                 <p>📝 Aún no has creado ningún torneo</p>
                             </div>
@@ -768,6 +771,7 @@ function Perfil() {
                                             <th>Torneo</th>
                                             <th>Sistema</th>
                                             <th>Estado</th>
+                                            <th>Rol</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
@@ -786,6 +790,23 @@ function Perfil() {
                                                         to={`/administrarTorneo/${torneo.id}`}
                                                         className="btn-tabla btn-administrar"
                                                     >
+                                                        ⚙️ Administrar
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {torneosCoorganizando.map(torneo => (
+                                            <tr key={`coorg-${torneo.id}`}>
+                                                <td className="torneo-nombre-cel">{torneo.nombre_torneo}</td>
+                                                <td>{torneo.sistema}</td>
+                                                <td>
+                                                    <span className={`estado-badge ${getEstadoClase(torneo.estado)}`}>
+                                                        {torneo.estado?.toUpperCase() || 'PENDIENTE'}
+                                                    </span>
+                                                </td>
+                                                <td><span className="rol-badge-tabla">🤝 Co-organizador</span></td>
+                                                <td className="acciones-cel">
+                                                    <Link to={`/administrarTorneo/${torneo.id}`} className="btn-tabla btn-administrar">
                                                         ⚙️ Administrar
                                                     </Link>
                                                 </td>
