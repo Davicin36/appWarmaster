@@ -785,6 +785,7 @@ function Perfil() {
                                                         {torneo.estado?.toUpperCase() || 'PENDIENTE'}
                                                     </span>
                                                 </td>
+                                                <td><span className="rol-badge-tabla">🤝 Organizador Principal</span></td>
                                                 <td className="acciones-cel">
                                                     <Link
                                                         to={`/administrarTorneo/${torneo.id}`}
