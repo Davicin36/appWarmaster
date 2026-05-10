@@ -420,6 +420,12 @@ useEffect(() => {
             const todasLasPartidas = [];
             let mesaCounter = 1;
             const esEquipos = esTorneoEquipos();
+
+            const resolverIdJTS = (idRecibido) => {
+                if (!idRecibido) return null;
+                const j = jugadores.find(j => j.id === idRecibido || j.jugador_id === idRecibido);
+                return j?.id ?? null;
+            };
             
             emparejamientos.forEach((emp) => {
                 if (emp.partidas && Array.isArray(emp.partidas)) {
@@ -430,8 +436,8 @@ useEffect(() => {
 
                         todasLasPartidas.push({
                             mesa: mesaCounter++,
-                            jugador1_id: partida.jugador1_id,
-                            jugador2_id: partida.jugador2_id,
+                            jugador1_id: resolverIdJTS(partida.jugador1_id),
+                            jugador2_id: resolverIdJTS(partida.jugador2_id),
                             equipo1_id: emp.equipo1_id,
                             equipo2_id: emp.equipo2_id,
                             epoca: partida.epoca || null,
@@ -443,8 +449,8 @@ useEffect(() => {
                 } else {
                     todasLasPartidas.push({
                         mesa: mesaCounter++,
-                        jugador1_id: emp.jugador1_id,
-                        jugador2_id: emp.jugador2_id,
+                        jugador1_id: resolverIdJTS(emp.jugador1_id),
+                        jugador2_id: resolverIdJTS(emp.jugador2_id),
                         equipo1_id: null,
                         equipo2_id: null,
                         epoca: emp.epoca || null,
@@ -626,7 +632,7 @@ useEffect(() => {
     // Abrir modal de edición
     const abrirEdicion = (emparejamiento, index) => {
         // getJugadorId debe ser idéntico al del modal
-        const getJugadorId = (j) => j.jugador_id || j.id;
+        const getJugadorId = (j) => j.id || j.jugador_id;
 
         // Buscar el jugador en el array por cualquiera de los dos IDs posibles
         const jug1 = jugadores.find(j => 
