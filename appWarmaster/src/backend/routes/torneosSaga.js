@@ -67,11 +67,11 @@ cloudinary.v2.config({
 
 router.get('/obtenerTorneos', async (req, res) => {
   try {
-    console.log('📥 GET /api/torneosSaga');
-    
+    console.log('📥 GET /api/torneosSaga/obtenerTorneos');
+
     const { page = 1, limit = 10, buscar = '' } = req.query;
     const { limit: limitNum, offset } = paginar(page, limit);
-    
+
     let userId = 0;
     const authHeader = req.headers['authorization'];
     if (authHeader) {
@@ -84,25 +84,24 @@ router.get('/obtenerTorneos', async (req, res) => {
         console.log('ℹ️ Sin autenticación o token inválido', err);
       }
     }
-    
-    let whereClause = 'WHERE ts.sistema = "SAGA"'
-    let queryParams = [userId, userId]; //dos veces, una pra el usuario inscrito y otro para el organizador del torneo
-    
+
+    let whereClause = 'WHERE ts.sistema = "SAGA"';
+    let queryParams = [userId, userId];
+
     if (buscar.trim()) {
-      whereClause = 'WHERE ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?';
+      whereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
       const searchTerm = `%${buscar}%`;
-      queryParams = [searchTerm, searchTerm];
+      queryParams.push(searchTerm, searchTerm);
     }
 
-    queryParams.push(parseInt(limitNum), parseInt(offset))
-    
+    queryParams.push(parseInt(limitNum), parseInt(offset));
+
     const [torneos] = await pool.query(`
       SELECT 
         ts.id,
         ts.nombre_torneo,
         ts.sistema,
         ts.tipo_torneo,
-        ts.num_jugadores_equipo,
         ts.rondas_max,
         ts.ronda_actual,
         ts.fecha_inicio,
@@ -110,9 +109,13 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.ubicacion,
         ts.imagen_url,
         ts.puntos_banda,
-        ts.unidades_legendarias,
         ts.participantes_max,
-        ts.equipos_max,
+        ts.unidades_legendarias,
+        ts.modelo_gakis,
+        ts.warlord_punto_victoria,
+        ts.misiones_secundarias,
+        ts.personaje_especial,
+        ts.puntosDeTorneo,
         ts.estado,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
@@ -123,46 +126,46 @@ router.get('/obtenerTorneos', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
-        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
-        u.nombre as creador_nombre,
-        u.apellidos as creador_apellidos,
-        u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jts.id ELSE NULL END) as total_participantes,
-        COUNT(DISTINCT eq.id) as total_equipos_inscritos,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Por equipos' THEN jts.jugador_id ELSE NULL END) as total_jugadores_en_equipos,
-        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito,
-        MAX(CASE WHEN ot.usuario_id = ? THEN 1 ELSE 0 END) as soy_organizador
-      FROM torneos_sistemas ts 
-      LEFT JOIN usuarios u ON ts.created_by = u.id 
+        u.nombre AS creador_nombre,
+        u.apellidos AS creador_apellidos,
+        u.club AS creador_club,
+        COUNT(DISTINCT jts.id) AS total_participantes,
+        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.id SEPARATOR '|') AS epocas_disponibles,
+        MAX(CASE WHEN ot.usuario_id = ? THEN 1 ELSE 0 END) AS es_organizador,
+        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) AS usuario_inscrito
+      FROM torneos_sistemas ts
+      LEFT JOIN usuarios u ON ts.created_by = u.id
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN torneo_saga_equipo eq ON ts.id = eq.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       LEFT JOIN organizadores_torneos ot ON ts.id = ot.torneo_id
+      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       ${whereClause}
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
       LIMIT ? OFFSET ?
     `, queryParams);
 
-    // Query para contar total
+    console.log(`✅ ${torneos.length} torneos SAGA obtenidos`);
+
     let countParams = [];
+    let countWhereClause = 'WHERE ts.sistema = "SAGA"';
+
     if (buscar.trim()) {
+      countWhereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
       const searchTerm = `%${buscar}%`;
       countParams = [searchTerm, searchTerm];
     }
-    
+
     const [totalRows] = await pool.execute(`
-      SELECT COUNT(DISTINCT ts.id) as total
-      FROM torneos_sistemas ts 
-      LEFT JOIN usuarios u ON ts.created_by = u.id 
+      SELECT COUNT(DISTINCT ts.id) AS total
+      FROM torneos_sistemas ts
+      LEFT JOIN usuarios u ON ts.created_by = u.id
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
-      ${whereClause}
+      ${countWhereClause}
     `, countParams);
-    
+
     const total = totalRows[0].total;
     const totalPages = Math.ceil(total / limitNum);
-    
+
     res.json(
       successResponse('Torneos obtenidos exitosamente', {
         torneosSaga: torneos,
@@ -174,9 +177,9 @@ router.get('/obtenerTorneos', async (req, res) => {
         }
       })
     );
-    
+
   } catch (error) {
-    console.error('❌ Error al obtener torneos:', error);
+    console.error('❌ Error al obtener torneos SAGA:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
@@ -186,9 +189,9 @@ router.get('/obtenerTorneos', async (req, res) => {
 router.get('/torneo/:torneoId', async (req, res) => {
   try {
     const { torneoId } = req.params;
-    
-    console.log(`📖 GET /torneo/${torneoId}`);
-    
+
+    console.log(`📖 GET /torneo/${torneoId} - SAGA`);
+
     let userId = null;
     const authHeader = req.headers['authorization'];
     if (authHeader) {
@@ -198,7 +201,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         userId = decoded.userId;
         console.log(`✅ Usuario: ${userId}`);
       } catch (err) {
-        console.log('ℹ️ Sin autenticación', err);
+        console.log('ℹ️ Sin autenticación');
       }
     }
 
@@ -216,10 +219,15 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.ubicacion,
         ts.imagen_url,
         ts.puntos_banda,
-        ts.unidades_legendarias,
         ts.participantes_max,
         ts.equipos_max,
         ts.estado,
+        ts.unidades_legendarias,
+        ts.modelo_gakis,
+        ts.warlord_punto_victoria,
+        ts.misiones_secundarias,
+        ts.personaje_especial,
+        ts.puntosDeTorneo,
         ts.partida_ronda_1,
         ts.partida_ronda_2,
         ts.partida_ronda_3,
@@ -229,43 +237,35 @@ router.get('/torneo/:torneoId', async (req, res) => {
         ts.base_tamaño,
         ts.created_by,
         ts.created_at,
-        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.epoca SEPARATOR '|') as epocas_disponibles,
-        u.nombre as creador_nombre,
-        u.apellidos as creador_apellidos,
-        u.email as creador_email,
-        u.club as creador_club,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jts.id ELSE NULL END) as total_participantes,
-        COUNT(DISTINCT eq.id) as total_equipos_inscritos,
-        COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Por equipos' THEN jts.jugador_id ELSE NULL END) as total_jugadores_en_equipos,
-        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito,
-        ts.listas_ocultas_saga,
-        MAX(CASE WHEN ot.usuario_id = ? THEN 1 ELSE 0 END) as soy_organizador
-      FROM torneos_sistemas ts 
-      LEFT JOIN usuarios u ON ts.created_by = u.id 
+        u.nombre AS creador_nombre,
+        u.apellidos AS creador_apellidos,
+        u.email AS creador_email,
+        u.club AS creador_club,
+        COUNT(DISTINCT jts.id) AS total_participantes,
+        MAX(CASE WHEN ot.usuario_id = ? THEN 1 ELSE 0 END) AS es_organizador,
+        MAX(CASE WHEN jts.jugador_id = ? THEN 1 ELSE 0 END) AS usuario_inscrito,
+        GROUP_CONCAT(DISTINCT tse.epoca ORDER BY tse.id SEPARATOR '|') AS epocas_disponibles
+      FROM torneos_sistemas ts
+      LEFT JOIN usuarios u ON ts.created_by = u.id
       LEFT JOIN jugador_torneo_saga jts ON ts.id = jts.torneo_id
-      LEFT JOIN torneo_saga_equipo eq ON ts.id = eq.torneo_id
-      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
       LEFT JOIN organizadores_torneos ot ON ts.id = ot.torneo_id
-      WHERE ts.id = ? AND ts.sistema="SAGA"
+      LEFT JOIN torneo_saga_epocas tse ON ts.id = tse.torneo_id
+      WHERE ts.id = ? AND ts.sistema = 'SAGA'
       GROUP BY ts.id
     `, [userId, userId, torneoId]);
-    
+
     if (torneos.length === 0) {
-      return res.status(404).json(
-        errorResponse('Torneo no encontrado')
-      );
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
     }
-    
-    const torneo = torneos[0];
-    
+
     res.json(
       successResponse('Torneo obtenido exitosamente', {
-        torneo: torneo
+        torneo: torneos[0]
       })
     );
-    
+
   } catch (error) {
-    console.error('❌ Error al obtener torneo:', error);
+    console.error('❌ Error al obtener torneo SAGA:', error);
     res.status(500).json(errorResponse('Error interno del servidor'));
   }
 });
@@ -292,8 +292,13 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
       equipos_max: equipos_max_raw,
       estado,
       unidades_legendarias: unidades_legendarias_raw,
+      modelo_gakis: modelo_gakis_raw,           // 🆕
+      warlord_punto_victoria: warlord_pv_raw,    // 🆕
+      misiones_secundarias: misiones_raw,        // 🆕
+      personaje_especial: personaje_raw,  
+      puntosDeTorneo: puntos_torneo_raw,
       partida_ronda_1,
-      partida_ronda_2,
+      partida_ronda_2, 
       partida_ronda_3,
       partida_ronda_4,
       partida_ronda_5,
@@ -305,23 +310,21 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
     const participantes_max = parseInt(participantes_max_raw);
     const equipos_max = parseInt(equipos_max_raw);
 
-    let unidades_legendarias = 0
-    if (unidades_legendarias_raw !== undefined && unidades_legendarias_raw !== null) {
-      const esVerdadero = unidades_legendarias_raw === true || 
-                        unidades_legendarias_raw === 'true' || 
-                        unidades_legendarias_raw === 1 || 
-                        unidades_legendarias_raw === '1';
-                        unidades_legendarias_raw === 'on';
-    
-      unidades_legendarias = esVerdadero ? 1 : 0;
-    }
+    const normalizarBool = (val) =>
+    (val === true || val === 'true' || val === 1 || val === '1' || val === 'on') ? 1 : 0;
 
+    const unidades_legendarias = normalizarBool(unidades_legendarias_raw);
+    const modelo_gakis = normalizarBool(modelo_gakis_raw);
+    const warlord_punto_victoria = normalizarBool(warlord_pv_raw);
+    const misiones_secundarias = normalizarBool(misiones_raw);
+    const personaje_especial = normalizarBool(personaje_raw);
+    const puntosDeTorneo = normalizarBool(puntos_torneo_raw);   
     // ✅ CORREGIDO: Parsear épocas si viene como string
     let epocas_disponibles;
     if (typeof epocas_raw === 'string') {
       try {
         epocas_disponibles = JSON.parse(epocas_raw);
-      } catch (e) {
+      } catch {
         epocas_disponibles = epocas_raw.split('|').map(e => e.trim()).filter(e => e);
       }
     } else {
@@ -333,7 +336,7 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
       if(typeof organizadores_raw === 'string') {
           try {
             organizadores_emails = JSON.parse(organizadores_raw)
-          }catch (e) {
+          }catch {
             organizadores_emails = organizadores_raw.split(', ').map(e => e.trim()).filter(e => e);
           }
       } else if (Array.isArray(organizadores_raw)) {
@@ -506,6 +509,11 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
         puntos_banda, 
         puntos_ejercito,
         unidades_legendarias,
+        modelo_gakis,
+        warlord_punto_victoria,
+        misiones_secundarias,
+        personaje_especial,
+        puntosDeTorneo,
         participantes_max, 
         equipos_max,
         estado, 
@@ -518,7 +526,7 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
         bases_nombre, 
         base_tamaño, 
         created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre_torneo, 
         tipo_torneo === 'Por equipos' ? 'Por equipos' : 'Individual',
@@ -531,6 +539,11 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
         puntos_banda,
         0,
         unidades_legendarias,
+        modelo_gakis,
+        warlord_punto_victoria,
+        misiones_secundarias,
+        personaje_especial,
+        puntosDeTorneo,
         participantes_max,
         equipos_max,
         estado || 'pendiente',
@@ -744,7 +757,7 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       tipo_torneo,
       num_jugadores_equipo,
       ronda_actual,
-      epoca_torneo: epoca_raw,
+      epocas_disponibles: epocas_raw,
       fecha_inicio, 
       fecha_fin, 
       ubicacion,
@@ -759,7 +772,12 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
       partida_ronda_5,
       eliminar_pdf,
       unidades_legendarias,
-      eliminar_imagen
+      eliminar_imagen,
+      modelo_gakis,           // 🆕
+      warlord_punto_victoria, // 🆕
+      misiones_secundarias,   // 🆕
+      personaje_especial,
+      puntosDeTorneo
     } = req.body;
 
      // ⬅️ AÑADIR ESTO - igual que Warmaster
@@ -773,11 +791,15 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
     }
 
     let epocas_disponibles;
-    if (epoca_raw) {
-      if (typeof epoca_raw === 'string') {
-        epocas_disponibles = epoca_raw.split('|').map(e => e.trim()).filter(e => e);
-      } else if (Array.isArray(epoca_raw)) {
-        epocas_disponibles = epoca_raw;
+    if (epocas_raw) {
+      if (typeof epocas_raw === 'string') {
+        try {
+          epocas_disponibles = JSON.parse(epocas_raw);
+        } catch {
+          epocas_disponibles = epocas_raw.split('|').map(e => e.trim()).filter(e => e);
+        }
+      } else if (Array.isArray(epocas_raw)) {
+        epocas_disponibles = epocas_raw;
       }
     }
 
@@ -880,15 +902,37 @@ router.put('/:torneoId/actualizarTorneo', verificarToken, verificarOrganizadorTo
     }
 
     if (unidades_legendarias !== undefined) {
-    const esVerdadero = unidades_legendarias === true ||
-                        unidades_legendarias === 'true' ||
-                        unidades_legendarias === 1 ||
-                        unidades_legendarias === '1' ||
-                        unidades_legendarias === 'on'; // ← AÑADIR
-    camposActualizar.push('unidades_legendarias = ?');
-    valores.push(esVerdadero ? 1 : 0);
-}
-    
+      const normalizarBool = (val) =>
+        (val === true || val === 'true' || val === 1 || val === '1' || val === 'on') ? 1 : 0;
+      camposActualizar.push('unidades_legendarias = ?');
+      valores.push(normalizarBool(unidades_legendarias));
+    }
+
+    if (modelo_gakis !== undefined) {
+      camposActualizar.push('modelo_gakis = ?');
+      valores.push(modelo_gakis === '1' || modelo_gakis === true || modelo_gakis === 1 ? 1 : 0);
+    }
+
+    if (warlord_punto_victoria !== undefined) {
+      camposActualizar.push('warlord_punto_victoria = ?');
+      valores.push(warlord_punto_victoria === '1' || warlord_punto_victoria === true || warlord_punto_victoria === 1 ? 1 : 0);
+    }
+
+    if (misiones_secundarias !== undefined) {
+      camposActualizar.push('misiones_secundarias = ?');
+      valores.push(misiones_secundarias === '1' || misiones_secundarias === true || misiones_secundarias === 1 ? 1 : 0);
+    }
+
+    if (personaje_especial !== undefined) {
+      camposActualizar.push('personaje_especial = ?');
+      valores.push(personaje_especial === '1' || personaje_especial === true || personaje_especial === 1 ? 1 : 0);
+    }
+
+    if (puntosDeTorneo !== undefined) {
+      camposActualizar.push('puntosDeTorneo = ?');
+      valores.push(puntosDeTorneo === '1' || puntosDeTorneo === true || puntosDeTorneo === 1 ? 1 : 0);
+    }
+
     // ✅ IMPORTANTE: Guardar ubicacion
     if (ubicacion !== undefined) {
       camposActualizar.push('ubicacion = ?');
@@ -4557,13 +4601,17 @@ router.delete('/:torneoId/jugadores/:jugadorId', verificarToken, async (req, res
     );
     
     if (torneoExistente.length === 0) {
-      return res.status(404).json(
-        errorResponse('Torneo no encontrado')
-      );
+      return res.status(404).json(errorResponse('Torneo no encontrado'));
     }
     
     const esPropio = parseInt(jugadorId) === parseInt(req.userId);
-    const esOrganizador = parseInt(torneoExistente[0].created_by) === parseInt(req.userId);
+
+    const esCreador = parseInt(torneoExistente[0].created_by) === parseInt(req.userId);
+    const [orgRow] = await pool.execute(
+      'SELECT id FROM organizadores_torneos WHERE torneo_id = ? AND usuario_id = ?',
+      [torneoId, req.userId]
+    );
+    const esOrganizador = esCreador || orgRow.length > 0;
 
     if (!esPropio && !esOrganizador) {
         return res.status(403).json(
