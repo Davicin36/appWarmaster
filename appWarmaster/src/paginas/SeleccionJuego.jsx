@@ -8,6 +8,7 @@ import logoWarmaster from '../assets/logoWarmaster.webp'
 import logoFow from '../assets/logoFow.webp'
 import logoBolt from '../assets/logoBolt.webp'
 import logoEpic from '../assets/logoEpic.webp'
+import logoDracula from '../assets/logoDraculas.webp'
 
 import Footer from '@/paginas/Footer.jsx'
 
@@ -86,6 +87,16 @@ function SeleccionJuego() {
                     soportaIndividual: true,
                     soportaEquipos: false,
                     ruta: '/crearTorneo/epic',
+                    activo: true
+                },
+                {
+                    id: 6,
+                    nombre: 'Dracula',
+                    descripcion: 'Juego de escaramuzas a 28mm ambientado en la América Western Sobrenatural',
+                    imagen: logoDracula,
+                    soportaIndividual: true,
+                    soportaEquipos: false,
+                    ruta: '/crearTorneo/dracula',
                     activo: true
                 }
             ];

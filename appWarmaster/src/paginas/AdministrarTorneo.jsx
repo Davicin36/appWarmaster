@@ -7,7 +7,7 @@ import torneosSagaApi from "@/servicios/apiSaga";
 import torneosWarmasterApi from "@/servicios/apiWarmaster";
 import torneosFowApi from "../servicios/apiFow";
 import torneosEpicApi from "../servicios/apiEpic";
-
+import torneosDraculaApi from "../servicios/apiDracula";
 
 import VistaJugadores from '@/componente/vistasAdministrarTorneos/VistaJugadores';
 import VistaClasificacion from '@/componente/vistasAdministrarTorneos/VistaClasificacion';
@@ -43,7 +43,8 @@ const cargarTorneo = async () => {
             'SAGA': torneosSagaApi,
             'WARMASTER': torneosWarmasterApi,
             'FOW': torneosFowApi,
-            'EPIC': torneosEpicApi
+            'EPIC': torneosEpicApi,
+            'DRACULA': torneosDraculaApi
         };
 
         // 3️⃣ Usar la API correcta

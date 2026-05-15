@@ -109,108 +109,109 @@ function PrincipalSaga({ onOpenLogin }) {
                     </p>
                 ) : (
                     <div className="tabla-container">
-                        <table className="tabla-torneos">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Nombre del torneo</th>
-                                    <th>Tipo torneo</th>
-                                    <th>Época(s)</th>
-                                    <th>Fecha Inicio</th>
-                                    <th>Ubicación</th>
-                                    <th>Organizador</th>
-                                    <th>Participantes/Equipos</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {torneosSaga.map((torneo, index) => (
-                                    <tr key={torneo.id}>
-                                        <td data-label="#">{index + 1}</td>
-                                        <td data-label="Torneo">
-                                            <strong>{torneo.nombre_torneo}</strong>
-                                        </td>
-                                        <td data-label="Tipo">
-                                            <strong>{torneo.tipo_torneo}</strong>
-                                            {torneo.tipo_torneo === 'Por equipos' && (
-                                                <small className="torneo-info-extra">
-                                                    ({torneo.equipos_max} equipos / {torneo.num_jugadores_equipo} jugadores)  
-                                                </small>
-                                            )}
-                                            {torneo.tipo_torneo === 'Individual' && (
-                                                <small className="torneo-info-extra">
-                                                    ({torneo.participantes_max} participantes)  
-                                                </small>
-                                            )}
-                                        </td>
-                                        <td data-label="Época(s)">
-                                            <span className="epocas-cell">
-                                                {formatearEpocas(torneo.epocas_disponibles)}
-                                            </span>
-                                        </td>
-                                        <td data-label="Fecha Inicio">{formatearFecha(torneo.fecha_inicio)}</td>
-                                        <td data-label="Ubicación">{torneo.ubicacion || 'Por determinar'}</td>
-                                        <td data-label="Organizador">
-                                            {torneo.creador_nombre && torneo.creador_apellidos 
-                                                ? `${torneo.creador_nombre} ${torneo.creador_apellidos}`
-                                                : 'N/A'
-                                            }
-                                            {torneo.creador_club && (
-                                                <small className="club-info">
-                                                    📍 {torneo.creador_club}
-                                                </small>
-                                            )}
-                                        </td>
-                                        <td data-label="Participantes">
-                                            <span className="participantes-badge">
-                                                {torneo.tipo_torneo === 'Por equipos' 
-                                                    ? `${torneo.total_equipos_inscritos || 0} / ${torneo.equipos_max}`
-                                                    : `${torneo.total_participantes || 0} / ${torneo.participantes_max}`
-                                                }
-                                            </span>
-                                        </td>
-                                        <td data-label="Estado">
-                                            <span className="estado-torneos">
-                                                {obtenerTextoEstado(torneo.estado)}
-                                            </span>
-                                        </td>
-                                        <td className="acciones-cell">
-                                            {torneo.soy_organizador === 1 && (
-                                                <button 
-                                                    className="btn-administrar"
-                                                    onClick={() => navigate(`/administrarTorneo/${torneo.id}`)}
-                                                >
-                                                    🔧 Administrar
-                                                </button>
-                                            )}
-                                            
-                                            {torneo.estado === 'pendiente' && (
-                                                <button 
-                                                    className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
-                                                    onClick={() => {
-                                                        if (torneo.usuario_inscrito) {
-                                                            navigate(`/torneosSaga/${torneo.id}/editar-inscripcion`);
-                                                        } else {
-                                                            apuntarseATorneo(torneo.id);
+                                <table className="tabla-torneos">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombre del torneo</th>
+                                            <th>Tipo torneo</th>
+                                            <th>Época(s)</th>
+                                            <th>Fecha Inicio</th>
+                                            <th>Ubicación</th>
+                                            <th>Organizador</th>
+                                            <th>Participantes</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {torneosSaga.map((torneo, index) => (
+                                            <tr key={torneo.id}>
+                                                <td data-label="#">{index + 1}</td>
+                                                <td data-label="Torneo">
+                                                    <strong>{torneo.nombre_torneo}</strong>
+                                                </td>
+                                                <td data-label="Tipo">
+                                                    <strong>{torneo.tipo_torneo}</strong>
+                                                    {torneo.tipo_torneo === 'Por equipos' && (
+                                                        <small className="torneo-info-extra">
+                                                            ({torneo.equipos_max} equipos / {torneo.num_jugadores_equipo} jugadores)  
+                                                        </small>
+                                                    )}
+                                                    {torneo.tipo_torneo === 'Individual' && (
+                                                        <small className="torneo-info-extra">
+                                                            ({torneo.participantes_max} participantes)  
+                                                        </small>
+                                                    )}
+                                                </td>
+                                                <td data-label="Época(s)">
+                                                    <span className="epocas-cell">
+                                                        {formatearEpocas(torneo.epocas_disponibles)}
+                                                    </span>
+                                                </td>
+                                                <td data-label="Fecha Inicio">{formatearFecha(torneo.fecha_inicio)}</td>
+                                                <td data-label="Ubicación">{torneo.ubicacion || 'Por determinar'}</td>
+                                                <td data-label="Organizador">
+                                                    {torneo.creador_nombre && torneo.creador_apellidos 
+                                                        ? `${torneo.creador_nombre} ${torneo.creador_apellidos}`
+                                                        : 'N/A'
+                                                    }
+                                                    {torneo.creador_club && (
+                                                        <small className="club-info">
+                                                            📍 {torneo.creador_club}
+                                                        </small>
+                                                    )}
+                                                </td>
+                                                <td data-label="Participantes">
+                                                    <span className="participantes-badge">
+                                                        {torneo.tipo_torneo === 'Por equipos' 
+                                                            ? `${torneo.total_equipos_inscritos || 0} / ${torneo.equipos_max}`
+                                                            : `${torneo.total_participantes || 0} / ${torneo.participantes_max}`
                                                         }
-                                                    }}
-                                                >
-                                                    {torneo.usuario_inscrito ? '✏️ Administrar Inscripción' : '✅ Inscribirse'}
-                                                </button>
-                                            )}
+                                                    </span>
+                                                </td>
+                                                <td data-label="Estado">
+                                                    <span className="estado-torneos">
+                                                        {obtenerTextoEstado(torneo.estado)}
+                                                    </span>
+                                                </td>
+                                                <td className="acciones-cell">
+                                                    {torneo.es_organizador === 1 && (
+                                                        <button 
+                                                            className="btn-administrar"
+                                                            onClick={() => navigate(`/administrarTorneo/${torneo.id}`)}
+                                                        >
+                                                            🔧 Administrar
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {torneo.estado === 'pendiente' && (
+                                                        <button 
+                                                            className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
+                                                            onClick={() => {
+                                                                if (torneo.usuario_inscrito) {
+                                                                    navigate(`/torneosSaga/${torneo.id}/editar-inscripcion`);
+                                                                } else {
+                                                                    apuntarseATorneo(torneo.id);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {torneo.usuario_inscrito ? '✏️ Administrar Inscripción' : '✅ Inscribirse'}
+                                                        </button>
+                                                    )}
 
-                                            <button 
-                                                className="btn-ver-detalles"
-                                                onClick={() => navigate(`/torneosSaga/${torneo.id}/detalles`)}
-                                            >   
-                                                👁️ Ver Detalles
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                    <button 
+                                                        className="btn-ver-detalles"
+                                                        onClick={() => navigate(`/torneosSaga/${torneo.id}/detalles`)}
+                                                    >   
+                                                        👁️ Ver Detalles
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
                     </div>
                 )}
             </section>

@@ -100,7 +100,7 @@ router.get('/obtenerTorneos', async (req, res) => {
     }
     
     let whereClause = 'WHERE ts.sistema = "WARMASTER"';
-    let queryParams = [userId];
+    let queryParams = [userId, userId];
     
     if (buscar.trim()) {
       whereClause += ' AND (ts.nombre_torneo LIKE ? OR ts.ubicacion LIKE ?)';
@@ -138,10 +138,12 @@ router.get('/obtenerTorneos', async (req, res) => {
         u.apellidos as creador_apellidos,
         u.club as creador_club,
         COUNT(DISTINCT jtw.id) as total_participantes,
-        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito,
+        MAX(CASE WHEN co.usuario_id = ? THEN 1 ELSE 0 END) as es_coorganizador
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
+      LEFT JOIN organizadores_torneos co ON ts.id = co.torneo_id
       ${whereClause}
       GROUP BY ts.id
       ORDER BY ts.created_at DESC
@@ -234,13 +236,15 @@ router.get('/torneo/:torneoId', async (req, res) => {
         u.email as creador_email,
         u.club as creador_club,
         COUNT(DISTINCT CASE WHEN ts.tipo_torneo = 'Individual' THEN jtw.id ELSE NULL END) as total_participantes,
-        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito
+        MAX(CASE WHEN jtw.jugador_id = ? THEN 1 ELSE 0 END) as usuario_inscrito,
+        MAX(CASE WHEN co.usuario_id = ? THEN 1 ELSE 0 END) as es_coorganizador
       FROM torneos_sistemas ts 
       LEFT JOIN usuarios u ON ts.created_by = u.id 
       LEFT JOIN jugador_torneo_warmaster jtw ON ts.id = jtw.torneo_id
+      LEFT JOIN organizadores_torneos co ON ts.id = co.torneo_id
       WHERE ts.id = ? AND ts.sistema="WARMASTER"
       GROUP BY ts.id
-    `, [userId, torneoId]);
+    `, [userId, userId, torneoId]);
     
     if (torneos.length === 0) {
       return res.status(404).json(

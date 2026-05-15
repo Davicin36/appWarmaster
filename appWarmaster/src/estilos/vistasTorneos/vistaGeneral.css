@@ -439,6 +439,52 @@
     font-size: 1.5em;
 }
 
+.info-item-gakis {
+    padding: 18px;
+    background: linear-gradient(135deg, var(--color-fondo-principal), #FFFFFF);
+    border-radius: 10px;
+    border-left: 5px solid var(--color-verde-claro);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    grid-column: 1 / -1; /* ← ocupa todo el ancho del grid */
+}
+
+.info-item-gakis:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.info-item-gakis label {
+    display: block;
+    font-weight: bold;
+    color: var(--color-verde-oscuro);
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gakis-resumen {
+    display: flex;
+    flex-direction: column;  /* ← antes era row, badge y lista se solapaban */
+    gap: 0.6rem;
+}
+
+.gakis-resumen-lista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;         /* ← los items en fila si hay espacio */
+    gap: 0.5rem 1.5rem;
+    font-size: 0.95rem;
+}
+
+.gakis-resumen-lista li {
+    color: var(--color-texto-principal);
+    font-weight: 500;
+}
+
 /* ==========================================
    HEADER CON BOTONES DE ACCIÓN
    ========================================== */

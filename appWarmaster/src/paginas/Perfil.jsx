@@ -141,6 +141,8 @@ function Perfil() {
                     setTorneosParticipando(data.torneosParticipando || []);
                     setTorneosCoorganizando(data.torneosCoorganizando || []);
                     console.log(data.torneosCreados);
+                    console.log('rol actual:',  user?.rol);
+                    console.log("Torneos coorganizando:", data.torneosCoorganizando);
                 } else {
                     setErrorTorneos(response.error || "Error al cargar torneos");
                 }

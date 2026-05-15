@@ -56,7 +56,9 @@ export const TIPOS_PARTIDA_SAGA = [
         "Cambio de planes",
         "El cruce",
         "Vieja Disputa",
-        "Escenario Inventado"
+        "Escenario Inventado",
+        "El rio Helado",
+        "¡Emboscada!"
     ];
 
     export const ESTADOS_TORNEO_SAGA = [
@@ -193,9 +195,16 @@ export const BANDAS_POR_EPOCA = {
           obligatorio: false,
           opciones:[
             { valor: "publio", nombre: "PUBLIO CORNELIO ESCIPIÓN, El Africano",
+              opcionesRequeridas: { 
+                tipoWarlord: "consul ",
+                otroSelect: "tribuno"
+              },
               costeEnPuntos: 1,
              },
             { valor: "marcus", nombre: "MARCUS CLAUDIUS MARCELLUS, la Espada de Roma",
+              opcionesRequeridas: {
+                tipoWarlord: "consul"
+              },
               costeEnPuntos: 1,
              }
           ],

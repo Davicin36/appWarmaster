@@ -2,8 +2,7 @@
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/bd.js';
 
-const verificarToken = (req, res, next) => {
-  
+const verificarToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     
@@ -22,27 +21,41 @@ const verificarToken = (req, res, next) => {
         error: 'Acceso denegado. Token no proporcionado.' 
       });
     }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Token inválido o expirado.' 
+      });
+    }
+
+    // ✅ Leer rol siempre de BD para que cambios de rol sean inmediatos
+    const [rows] = await pool.execute(
+      'SELECT rol, estado_cuenta FROM usuarios WHERE id = ?',
+      [decoded.userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Usuario no encontrado.' 
+      });
+    }
+
+    req.usuario = {
+      userId: decoded.userId,
+      email: decoded.email,
+      rol: rows[0].rol        // ✅ siempre fresco de BD
+    };
     
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        return res.status(403).json({ 
-          success: false,
-          error: 'Token inválido o expirado.' 
-        });
-      }
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    req.userRole = rows[0].rol;
       
-      req.usuario = {
-        userId: decoded.userId,
-        email: decoded.email,
-        rol: decoded.rol
-      };
-      
-      req.userId = decoded.userId;
-      req.userEmail = decoded.email;
-      req.userRole = decoded.rol;
-        
-      next();
-    });
+    next();
     
   } catch (error) {
     console.error('❌ Error inesperado en middleware:', error);

@@ -454,6 +454,7 @@ useEffect (() => {
         curaids: 0,
         perros: 0,
         berserkers: 0,
+        cerdos: 0
       });
       setUnidadesEspeciales({});
       setOpcionesBanda({});
@@ -659,7 +660,8 @@ useEffect (() => {
             valor: warlordSeleccionado,
             nombre: opcionWarlord.nombre,
             costePuntos: opcionWarlord.costePuntos,
-            bandaDesbloqueada: opcionWarlord.bandaDesbloqueada || null
+            bandaDesbloqueada: opcionWarlord.bandaDesbloqueada || null,
+            opcionesRequeridas: opcionWarlord.opcionesRequeridas || null
           };
         }
       }

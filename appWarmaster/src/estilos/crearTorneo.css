@@ -250,6 +250,23 @@
   cursor: not-allowed;
 }
 
+.gakis-opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    border-left: 3px solid var(--color-primary, #c0392b);
+    background: rgba(0,0,0,0.05);
+    border-radius: 0 6px 6px 0;
+}
+
+.gakis-opcion-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
 /* ============================================
    CONTENEDOR DE ÉPOCAS - Grid de Checkboxes
    ============================================ */
@@ -424,6 +441,8 @@
   box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
   font-weight: 600;
 }
+
+
 
 /* ============================================
    🆕 ORGANIZADORES ADICIONALES - MEJORADO

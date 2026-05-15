@@ -5,7 +5,8 @@ import { useParams } from "react-router-dom";
 import CrearTorneoSaga from "../componentesSaga/CrearTorneoSaga.jsx";
 import CrearTorneoWarmaster from "../componentesWarmaster/CrearTorneoWarmaster.jsx";
 import CrearTorneoFow from "../componentesFow/CrearTorneoFow.jsx";
-import CrearTorneoEpic from "../componentesEpic/CrearTorneoEpic.jsx";
+import CrearTorneoEpic from "../componentesEpic/CrearTorneoEpic.jsx"
+import CrearTorneoDracula from "../componentesDracula/CrearTorneoDracula.jsx"
 
 function CrearTorneoGeneral() {
     const { juego } = useParams();
@@ -22,7 +23,10 @@ function CrearTorneoGeneral() {
 
         case "epic":
             return <CrearTorneoEpic />;
-/*
+
+        case "dracula": 
+            return <CrearTorneoDracula />;
+            /*
         case "bolt-action":
             return <CrearTorneoBolt />;
 */

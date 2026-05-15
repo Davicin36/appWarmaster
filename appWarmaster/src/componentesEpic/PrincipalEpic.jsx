@@ -152,7 +152,7 @@ function PrincipalEpic({ onOpenLogin }) {
                                         </td>
                                         <td data-label="Estado">{torneo.estado}</td>
                                         <td className="acciones-cell">
-                                            {torneo.created_by === userId && (
+                                            {torneo.created_by === userId || torneo.es_coorganizador && (
                                                 <button 
                                                     className="btn-administrar"
                                                     onClick={() => navigate(`/administrarTorneo/${torneo.id}`)}
@@ -166,7 +166,7 @@ function PrincipalEpic({ onOpenLogin }) {
                                                     className={torneo.usuario_inscrito ? "btn-inscrito" : "btn-apuntarse"}
                                                     onClick={() => {
                                                         if (torneo.usuario_inscrito) {
-                                                            navigate(`/torneosWarmaster/${torneo.id}/editar-inscripcion`);
+                                                            navigate(`/torneosEpic/${torneo.id}/editar-inscripcion`);
                                                         } else {
                                                             apuntarseATorneo(torneo.id);
                                                         }
@@ -178,7 +178,7 @@ function PrincipalEpic({ onOpenLogin }) {
 
                                             <button 
                                                 className="btn-ver-detalles"
-                                                onClick={() => navigate(`/torneosWarmaster/${torneo.id}/detalles`)}
+                                                onClick={() => navigate(`/torneosEpic/${torneo.id}/detalles`)}
                                             >   
                                                 👁️ Ver Detalles
                                             </button>

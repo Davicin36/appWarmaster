@@ -373,7 +373,7 @@ function VistaJugadoresEpic({ torneoId: propTorneoId, torneo, jugadores: propJug
                     <div className="modal-content-anadir" onClick={(e) => e.stopPropagation()}>
                         <AnadirParticipantesTorneos
                             torneoId={torneoId}
-                            sistema="WARMASTER"
+                            sistema="EPIC"
                             onClose={() => setMostrarModalAnadir(false)}
                             onSuccess={async () => {
                                 setMostrarModalAnadir(false);

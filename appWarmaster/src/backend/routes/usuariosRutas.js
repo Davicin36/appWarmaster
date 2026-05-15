@@ -800,6 +800,7 @@ router.post('/contacto', async (req, res) => {
     res.status(500).json({ error: 'No se pudo enviar el mensaje' });
   }
 });
+
 // ======OBTENER SISTEMAS  DEL TORNEO======
 
 router.get('/torneos/sistema/:torneoId', async (req, res) => {
@@ -953,7 +954,7 @@ router.get('/:userId', verificarToken, async (req, res) => {
         u.apellidos AS creador_apellidos
       FROM organizadores_torneos ot
       INNER JOIN torneos_sistemas ts ON ot.torneo_id = ts.id
-      INNER JOIN usuarios u ON ts.created_by = u.id
+      LEFT JOIN usuarios u ON ts.created_by = u.id
       WHERE ot.usuario_id = ? AND ts.created_by != ?
       ORDER BY ts.fecha_inicio ASC
     `, [userId, userId]);

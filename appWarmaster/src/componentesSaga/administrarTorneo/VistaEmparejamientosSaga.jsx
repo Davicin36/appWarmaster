@@ -420,14 +420,8 @@ useEffect(() => {
             const todasLasPartidas = [];
             let mesaCounter = 1;
             const esEquipos = esTorneoEquipos();
-
-            const resolverIdJTS = (idRecibido) => {
-                if (!idRecibido) return null;
-                const j = jugadores.find(j => j.id === idRecibido || j.jugador_id === idRecibido);
-                return j?.id ?? null;
-            };
-            
-            emparejamientos.forEach((emp) => {
+           
+             emparejamientos.forEach((emp) => {
                 if (emp.partidas && Array.isArray(emp.partidas)) {
                     emp.partidas.forEach((partida) => {
                         const escenarioAsignado = esEquipos && partida.epoca 
@@ -436,8 +430,8 @@ useEffect(() => {
 
                         todasLasPartidas.push({
                             mesa: mesaCounter++,
-                            jugador1_id: resolverIdJTS(partida.jugador1_id),
-                            jugador2_id: resolverIdJTS(partida.jugador2_id),
+                            jugador1_id: partida.jugador1_id ?? null,
+                            jugador2_id: partida.jugador2_id ?? null,
                             equipo1_id: emp.equipo1_id,
                             equipo2_id: emp.equipo2_id,
                             epoca: partida.epoca || null,
@@ -449,8 +443,8 @@ useEffect(() => {
                 } else {
                     todasLasPartidas.push({
                         mesa: mesaCounter++,
-                        jugador1_id: resolverIdJTS(emp.jugador1_id),
-                        jugador2_id: resolverIdJTS(emp.jugador2_id),
+                        jugador1_id: emp.jugador1_id ?? null,
+                        jugador2_id: emp.jugador2_id ?? null,
                         equipo1_id: null,
                         equipo2_id: null,
                         epoca: emp.epoca || null,
@@ -463,7 +457,7 @@ useEffect(() => {
 
             const errores = [];
             todasLasPartidas.forEach((partida, index) => {
-                if(!partida.jugador1_id) {
+                if(!partida.jugador1_id && !partida.es_bye) {
                     errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID (partida ${index+1})`);
                 }
             });
@@ -1079,6 +1073,7 @@ useEffect(() => {
                         )}
                         <div className="stats">
                             PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} |
+                            PP: {parseFloat(partida.puntos_partida_j1 || 0).toFixed(1)} |
                             PT: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)} | 
                             PM: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)}
                         </div>
@@ -1100,6 +1095,7 @@ useEffect(() => {
                             )}
                             <div className="stats">
                                 PV: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} | 
+                                PP: {parseFloat(partida.puntos_partida_j2 || 0).toFixed(1)} |
                                 PT: {parseFloat(partida.puntos_torneo_j2 || 0).toFixed(1)} | 
                                 PM: {parseFloat(partida.puntos_masacre_j2 || 0).toFixed(1)}
                             </div>
@@ -1483,7 +1479,7 @@ useEffect(() => {
                                         </div>
                                     )}
 
-                                   <div className={`emparejamientos-grid ${esTorneoEquipos ? 'equipos-layout' : ''}`}>
+                                   <div className={`emparejamientos-grid ${esTorneoEquipos() ? 'equipos-layout' : ''}`}>
                                         {partidasGuardadas.length > 0 ? (
                                             renderPartidas(partidasGuardadas, true)
                                         ) : (
@@ -1652,6 +1648,7 @@ useEffect(() => {
             {modalAbierto && partidaSeleccionada && (
                 <ModalRegistroPartida
                     partida={partidaSeleccionada}
+                    torneo={torneo}
                     esOrganizador={esOrganizador}
                     onClose={() => {
                         setModalAbierto(false);

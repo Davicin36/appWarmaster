@@ -40,6 +40,10 @@ CREATE TABLE torneos_sistemas (
   puntos_banda INT NOT NULL,
   puntos_ejercito INT NOT NULL, /*PARA  FOW Y BOLT*/
   unidades_legendarias TINYINT (1) DEFAULT 0,
+  modelo_gakis TINYINT(1) NOT NULL DEFAULT 0,
+  warlord_punto_victoria TINYINT(1) NOT NULL DEFAULT 0,
+  misiones_secundarias TINYINT(1) NOT NULL DEFAULT 0,
+  puntos_de_torneo TINYINT(1) NOT NULL DEFAULT 0;
   participantes_max INT NOT NULL,
   equipos_max INT NOT NULL,
   ronda_actual INT DEFAULT 1,

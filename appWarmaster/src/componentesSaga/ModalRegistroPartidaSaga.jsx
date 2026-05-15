@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import torneosSagaApi from '../servicios/apiSaga';
 import '@/estilos/modalPartidas.css';
 
-function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = false }) {
+function ModalRegistroPartida({ partida, torneo, onClose, onGuardar, esOrganizador = false }) {
+
+    const usaPuntosTorneo = torneo.puntosDeTorneo === 1;
+    const warlordSumaVictoria = torneo.warlord_punto_victoria === 1;
+    const tienePersonajeExtra = torneo.personaje_especial === 1;
+    const tieneMisionesSecundarias = torneo.misiones_secundarias === 1;
+
     const resultadoConfirmado = partida.resultado_confirmado || false;
 
     const tieneDatos = () => {
@@ -26,11 +32,16 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
         puntos_bonificacion_j1:  partida.puntos_bonificacion_j1 || 0,
         puntos_bonificacion_j2:  partida.puntos_bonificacion_j2 || 0,
         warlord_muerto_j1: partida.warlord_muerto_j1 || false,
+        warlord_especial_muerto_j1: partida.warlord_especial_muerto_j1 || false,
+        misiones_secundarias_j1: partida.misiones_secundarias_j1 || false,
         warlord_muerto_j2: partida.warlord_muerto_j2 || false,
+        warlord_especial_muerto_j2: partida.warlord_especial_muerto_j2 || false,
+        misiones_secundarias_j2: partida.misiones_secundarias_j2 || false,
         primer_jugador: partida.primer_jugador || null
     });
 
     const elCruce = partida.nombre_partida?.toLowerCase() === 'el cruce'
+    const viejaDisputa = partida.nombre_partida?.toLowerCase() === 'vieja disputa';
     
     const [guardando, setGuardando] = useState(false);
     const [confirmando, setConfirmando] = useState(false);
@@ -41,11 +52,29 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
         ganador: partida.ganador_sin_dados || null
     });
 
+    //=====HELPERS======
+
     const handleChange = (campo, valor) => {
         setResultado(prev => ({
             ...prev,
             [campo]: valor
         }));
+    };
+
+    const getWarlordCount = (jugador) => {
+        const principal = resultado[`warlord_muerto_j${jugador}`] ? 1 : 0;
+        const especial  = ( tienePersonajeExtra || viejaDisputa ) && resultado[`warlord_especial_muerto_j${jugador}`] ? 1 : 0;
+        return principal + especial;
+    };
+
+       // Función auxiliar para obtener el nombre del jugador
+    const getNombreJugador = (jugadorNum) => {
+        if (esTorneoEquipos) {
+            return jugadorNum === 1 ? partida.jugador1_nombre : partida.jugador2_nombre;
+        }
+        return jugadorNum === 1 
+            ? (partida.jugador1_nombre || partida.jugador1?.nombre)
+            : (partida.jugador2_nombre || partida.jugador2?.nombre);
     };
 
     const meQuedoSinDados = (ganador) => {
@@ -75,8 +104,12 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                 puntos_masacre_j2: parseInt(resultado.puntos_masacre_j2 ?? 0),
                 puntos_bonificacion_j1: parseInt(resultado.puntos_bonificacion_j1 ?? 0),
                 puntos_bonificacion_j2: parseInt(resultado.puntos_bonificacion_j2 ?? 0),
-                warlord_muerto_j1: resultado.warlord_muerto_j1,
-                warlord_muerto_j2: resultado.warlord_muerto_j2,
+                misiones_secundarias_j1: resultado.misiones_secundarias_j1,
+                misiones_secundarias_j2: resultado.misiones_secundarias_j2,
+                warlord_muerto_j1: resultado.warlord_muerto_j1 ? 1 : 0,
+                warlord_especial_muerto_j1: resultado.warlord_especial_muerto_j1  ? 1 : 0,
+                warlord_muerto_j2: resultado.warlord_muerto_j2 ? 1 : 0,
+                warlord_especial_muerto_j2: resultado.warlord_especial_muerto_j2  ? 1 : 0,
                 primer_jugador: resultado.primer_jugador,
                 sin_dados: sinDados.activo,
                 ganador_sin_dados: sinDados.ganador
@@ -96,9 +129,11 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                     `⚠️ Pendiente de confirmación del organizador\n\n` +
                     `Resultado: ${response.data.resultado}\n` +
                     `Primer Jugador : ${nombreJ1}\n` +
+                    ` * Puntos Partida J1: ${datosPartida.puntos_partida_j1 || 0}\n` +
                     ` * Puntos Torneo J1: ${response.data.puntosTorneo?.jugador1 || 0}` + ' - ' +
                     ` * Puntos Masacre J1: ${response.data.puntosMasacre?.jugador1 || 0}\n` +
                     `Segundo Jugador : ${nombreJ2}\n` + 
+                    ` * Puntos Partida J2: ${datosPartida.puntos_partida_j2 || 0}\n` +
                     ` * Puntos Torneo J2: ${response.data.puntosTorneo?.jugador2 || 0}` + ' - ' +
                     ` * Puntos Masacre J2: ${response.data.puntosMasacre?.jugador2 || 0}` 
                 :   '✅ Resultado guardado correctamente (pendiente de confirmación)';
@@ -157,6 +192,10 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
         const ppJ2 = parseInt(resultado.puntos_partida_j2) || 0;
         const pbJ1 = parseInt (resultado.puntos_bonificacion_j1) || 0
         const pbJ2 = parseInt (resultado.puntos_bonificacion_j2) || 0
+        const wJ1  = warlordSumaVictoria ? getWarlordCount(1) : 0;
+        const wJ2  = warlordSumaVictoria ? getWarlordCount(2) : 0;
+        const mJ1 = tieneMisionesSecundarias && resultado.misiones_secundarias_j1 ? 1 : 0;
+        const mJ2 = tieneMisionesSecundarias && resultado.misiones_secundarias_j2 ? 1 : 0;  
 
         // 🎲 PRIORIDAD: SIN DADOS
         if (sinDados.activo && sinDados.ganador) {
@@ -164,61 +203,76 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
             return `🏆 Victoria de ${nombreGanador} (3–0, sin dados)`;
         }
         
-        // 📊 TORNEOS POR EQUIPOS: Victoria si diferencia >= 3
-        if (esTorneoEquipos) {
-            const diferencia = Math.abs(ppJ1 - ppJ2);
-            const umbralDiferencia = 3; 
-            
-            if (diferencia >= umbralDiferencia) {
-                if (ppJ1 > ppJ2) {
-                    return `🏆 Victoria de ${partida.jugador1_nombre}`;
-                } else {
-                    return `🏆 Victoria de ${partida.jugador2_nombre}`;
-                }
-            } else {
-                if (elCruce && ppJ1 === ppJ2) {
-                    if (pbJ1 > pbJ2) {
-                        return `🏆 Victoria de ${partida.jugador1_nombre} (desempate por bonificación: ${pbJ1}-${pbJ2})`;
-                    } else if (pbJ2 > pbJ1) {
-                        return `🏆 Victoria de ${partida.jugador2_nombre} (desempate por bonificación: ${pbJ2}-${pbJ1})`;
-                    } else {
-                        return `🤝 Empate (${ppJ1}-${ppJ2}, bonificación ${pbJ1}-${pbJ2})`;
-                    }
-                }
-                // Diferencia < 3 = EMPATE
-                return `🤝 Empate (${ppJ1}-${ppJ2})`;
-            }
-            
-        } else {
-            // 📊 TORNEOS INDIVIDUALES: Victoria por más puntos
-            if (ppJ1 > ppJ2) {
-                return `🏆 Victoria de ${partida.jugador1_nombre}`;
-            }
-            if (ppJ2 > ppJ1) {
-                return `🏆 Victoria de ${partida.jugador2_nombre}`;
-            }
+         let ganador = null;
 
-            if (elCruce && ppJ1 === ppJ2) {
-                if (pbJ1 > pbJ2) {
-                    return `🏆 Victoria de ${partida.jugador1_nombre} (desempate por bonificación: ${pbJ1}-${pbJ2})`;
-                } else if (pbJ2 > pbJ1) {
-                    return `🏆 Victoria de ${partida.jugador2_nombre} (desempate por bonificación: ${pbJ2}-${pbJ1})`;
-                } else {
-                    return `🤝 Empate (${ppJ1}-${ppJ2}, bonificación ${pbJ1}-${pbJ2})`;
+        if (usaPuntosTorneo) {
+            // Con PT: gana quien tenga más puntos (sin umbral)
+            if (ppJ1 > ppJ2) ganador = 1;
+            else if (ppJ2 > ppJ1) ganador = 2;
+            else {
+                if (elCruce) {
+                    if (pbJ1 > pbJ2) ganador = 1;
+                    else if (pbJ2 > pbJ1) ganador = 2;
                 }
             }
-            return `🤝 Empate (${ppJ1}-${ppJ2})`;
+        } else {
+            
+            const umbralDiferencia = 3; 
+            const diferencia = Math.abs(ppJ1 - ppJ2);
+
+            if (diferencia >= umbralDiferencia) {
+                ganador = ppJ1 > ppJ2 ? 1 : 2;
+            } else if (elCruce && diferencia === 0) {
+                if (pbJ1 > pbJ2) ganador = 1;
+                else if (pbJ2 > pbJ1) ganador = 2;
+            }
         }
+
+        const warlordInfo = (warlordSumaVictoria && (wJ1 > 0 || wJ2 > 0)) || (mJ1 > 0 || mJ2 > 0)
+            ? ` | Bonus: J1 +${wJ1 + mJ1} / J2 +${wJ2 + mJ2}`
+            : '';
+
+        if (ganador) {
+            return `🏆 Victoria de ${getNombreJugador(ganador)} (${ppJ1}-${ppJ2})${warlordInfo}`;
+        }
+        return `🤝 Empate (${ppJ1}-${ppJ2})${warlordInfo}`;
     };
 
-    // Función auxiliar para obtener el nombre del jugador
-    const getNombreJugador = (jugadorNum) => {
-        if (esTorneoEquipos) {
-            return jugadorNum === 1 ? partida.jugador1_nombre : partida.jugador2_nombre;
-        }
-        return jugadorNum === 1 
-            ? (partida.jugador1_nombre || partida.jugador1?.nombre)
-            : (partida.jugador2_nombre || partida.jugador2?.nombre);
+    // ===== SECCIÓN WARLORD (reutilizable) =====
+
+    const renderWarlordSection = (jugador) => {
+        const count = getWarlordCount(jugador);
+        return (
+            <div className="form-group warlord-section">
+                <label className="warlord-label">
+                    <input
+                        type="checkbox"
+                        checked={resultado[`warlord_muerto_j${jugador}`]}
+                        onChange={(e) => handleChange(`warlord_muerto_j${jugador}`, e.target.checked)}
+                        disabled={guardando}
+                    />
+                    ☠️ Eliminó al Warlord enemigo
+                    {warlordSumaVictoria ? ' (+1 PV)' : ' (no puntúa)'}
+                </label>
+
+                {(tienePersonajeExtra || viejaDisputa) && (
+                    <label className="warlord-label">
+                        <input
+                            type="checkbox"
+                            checked={resultado[`warlord_especial_muerto_j${jugador}`]}
+                            onChange={(e) => handleChange(`warlord_especial_muerto_j${jugador}`, e.target.checked)}
+                            disabled={guardando}
+                        />
+                        ⭐ Eliminó al Personaje Especial enemigo
+                        {warlordSumaVictoria ? ' (+1 PV)' : ' (no puntúa)'}
+                    </label>
+                )}
+
+                {warlordSumaVictoria && count > 0 && (
+                    <small className="warlord-bonus">+{count} PV por warlord{count > 1 ? 's' : ''}</small>
+                )}
+            </div>
+        );
     };
 
     // SI ES BYE CONFIRMADO
@@ -374,7 +428,11 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                 <p><strong>Puntos Partida:</strong> {partida.puntos_partida_j1}</p>
                                 <p><strong>Puntos Masacre:</strong> {partida.puntos_masacre_j1}</p>
                                 <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j1}</p>
-                                <p><strong>Warlord Eliminado:</strong> {partida.warlord_muerto_j1 ? 'Sí' : 'No'}</p>
+                               {warlordSumaVictoria && (
+                                    <p><strong>Warlords eliminados:</strong> {partida.warlord_muerto_j1 || 0}
+                                        {partida.warlord_muerto_j1 > 0 && ` (+${partida.warlord_muerto_j1} PV)`}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="vs-divider">VS</div>
@@ -399,7 +457,11 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                 <p><strong>Puntos Partida:</strong> {partida.puntos_partida_j2}</p>
                                 <p><strong>Puntos Masacre:</strong> {partida.puntos_masacre_j2}</p>
                                 <p><strong>Puntos Torneo:</strong> {partida.puntos_torneo_j2}</p>
-                                <p><strong>Warlord Eliminado:</strong> {partida.warlord_muerto_j2 ? 'Sí' : 'No'}</p>
+                                {warlordSumaVictoria && (
+                                    <p><strong>Warlords eliminados:</strong> {partida.warlord_muerto_j2 || 0}
+                                        {partida.warlord_muerto_j2 > 0 && ` (+${partida.warlord_muerto_j2} PV)`}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -451,6 +513,12 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                             <p className="info-equipos">
                                 🛡️ <strong>Torneo por Equipos</strong> - Los puntos se suman a la clasificación del equipo
                             </p>
+                        )}
+                        {usaPuntosTorneo && (
+                            <p className="info-puntos-torneo">📊 <strong>Sistema de Puntos de Torneo activo</strong> — gana quien tenga más puntos</p>
+                        )}
+                        {!usaPuntosTorneo && (
+                            <p className="info-puntos-torneo">📊 <strong>Sistema estándar</strong> — victoria con diferencia ≥ 3 puntos</p>
                         )}
                     </div>
 
@@ -558,20 +626,25 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     </small>
                                 </div>
                             )}
-                            <div className="form-group checkbox">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={resultado.warlord_muerto_j1}
-                                        onChange={(e) => handleChange('warlord_muerto_j1', e.target.checked)}
-                                        disabled={guardando}
-                                    />
-                                    Eliminó al Warlord enemigo
-                                </label>
-                            </div>
+                            {renderWarlordSection(1)}
+
+                            {tieneMisionesSecundarias && (
+                                <div className="form-group">
+                                    <label className="warlord-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={resultado.misiones_secundarias_j1}
+                                            onChange={(e) => handleChange('misiones_secundarias_j1', e.target.checked)}
+                                            disabled={guardando}
+                                        />
+                                        🎯 Completó Misión Secundaria
+                                        {tieneMisionesSecundarias ? ' (+1 PV)' : ' (no puntúa)'}
+                                    </label>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="vs-divider">VS</div>
+                                <div className="vs-divider">VS</div>
 
                         <div className="jugador-resultado">
                             {esTorneoEquipos ? (
@@ -634,17 +707,22 @@ function ModalRegistroPartida({ partida, onClose, onGuardar, esOrganizador = fal
                                     </small>
                                 </div>
                             )}
-                            <div className="form-group checkbox">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={resultado.warlord_muerto_j2}
-                                        onChange={(e) => handleChange('warlord_muerto_j2', e.target.checked)}
-                                        disabled={guardando}
-                                    />
-                                    Eliminó al Warlord enemigo
-                                </label>
-                            </div>
+                            {renderWarlordSection(2)}
+
+                            {tieneMisionesSecundarias && (
+                                <div className="form-group">
+                                    <label className="warlord-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={resultado.misiones_secundarias_j2}
+                                            onChange={(e) => handleChange('misiones_secundarias_j2', e.target.checked)}
+                                            disabled={guardando}
+                                        />
+                                        🎯 Completó Misión Secundaria
+                                         {tieneMisionesSecundarias ? ' (+1 PV)' : ' (no puntúa)'}
+                                    </label>
+                                </div>
+                            )}
                         </div>
                     </div>
 

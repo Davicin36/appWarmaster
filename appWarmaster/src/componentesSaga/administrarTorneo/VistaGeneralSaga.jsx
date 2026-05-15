@@ -38,7 +38,11 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         puntos_banda: PUNTOS_BANDA_RANGO.default,
         participantes_max: PARTICIPANTES_RANGO.default,
         equipos_max: EQUIPOS_RANGO.default,
-        unidades_legendarias: '',
+        unidades_legendarias: '0',
+        modelo_gakis: '0',
+        warlord_punto_victoria: '0',
+        puntosDeTorneo: '0',
+        misiones_secundarias: '0',
         fecha_inicio: '',
         fecha_fin: '',
         ubicacion: '',
@@ -71,59 +75,60 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         }
     }, [torneoId]);
 
- useEffect(() => {
-    if (torneo) {
-        let epocas = [];
-        if (torneo.epocas_disponibles) {
-            epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
-        }
-
-        const tipoTorneo = torneo.tipo_torneo === 'Por equipos' 
-            ? 'Por equipos' 
-            : 'Individual';
-
-        const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
-        const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
-
-        if (fechaFin && fechaFin !== fechaInicio) {
-            setDuracionTorneo("2");
-        } else {
-            setDuracionTorneo("1");
-        }
-
-        // ✅ NORMALIZAR A STRING: Convertir cualquier valor truthy a '1', falsy a '0'
-        const unidadesLegendariasValor = (
-            torneo.unidades_legendarias === 1 || 
-            torneo.unidades_legendarias === '1' || 
-            torneo.unidades_legendarias === true
-        ) ? '1' : '0';
-
-        setDatosEdicion({
-            nombre_torneo: torneo.nombre_torneo || '',
-            tipo_torneo: tipoTorneo,
-            num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
-            epocas_disponibles: epocas,
-            rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
-            puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
-            equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
-            participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-            unidades_legendarias: unidadesLegendariasValor,  // ✅ String '0' o '1'
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin,
-            ubicacion: torneo.ubicacion || '',
-            estado: torneo.estado || 'pendiente',
-            partida_ronda_1: torneo.partida_ronda_1 || '',
-            partida_ronda_2: torneo.partida_ronda_2 || '',
-            partida_ronda_3: torneo.partida_ronda_3 || '',
-            partida_ronda_4: torneo.partida_ronda_4 || '',
-            partida_ronda_5: torneo.partida_ronda_5 || ''
-        });
-
-        if (torneo.imagen_url) {
-                setImagenActual(torneo.imagen_url);
+    useEffect(() => {
+        if (torneo) {
+            let epocas = [];
+            if (torneo.epocas_disponibles) {
+                epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
             }
-    }
-}, [torneo]);
+
+            const tipoTorneo = torneo.tipo_torneo === 'Por equipos' 
+                ? 'Por equipos' 
+                : 'Individual';
+
+            const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+
+            if (fechaFin && fechaFin !== fechaInicio) {
+                setDuracionTorneo("2");
+            } else {
+                setDuracionTorneo("1");
+            }
+
+            // ✅ NORMALIZAR A STRING: Convertir cualquier valor truthy a '1', falsy a '0'
+            const normalizar = (val) => (val === 1 || val === '1' || val === true) ? '1' : '0';
+
+
+            setDatosEdicion({
+                nombre_torneo: torneo.nombre_torneo || '',
+                tipo_torneo: tipoTorneo,
+                num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
+                epocas_disponibles: epocas,
+                rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
+                puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
+                equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
+                participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
+                unidades_legendarias: normalizar(torneo.unidades_legendarias),
+                modelo_gakis: normalizar(torneo.modelo_gakis),
+                warlord_punto_victoria: normalizar(torneo.warlord_punto_victoria),
+                puntosDeTorneo: normalizar(torneo.puntosDeTorneo),
+                misiones_secundarias: normalizar(torneo.misiones_secundarias),
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
+                ubicacion: torneo.ubicacion || '',
+                estado: torneo.estado || 'pendiente',
+                partida_ronda_1: torneo.partida_ronda_1 || '',
+                partida_ronda_2: torneo.partida_ronda_2 || '',
+                partida_ronda_3: torneo.partida_ronda_3 || '',
+                partida_ronda_4: torneo.partida_ronda_4 || '',
+                partida_ronda_5: torneo.partida_ronda_5 || ''
+            });
+
+            if (torneo.imagen_url) {
+                    setImagenActual(torneo.imagen_url);
+                }
+        }
+    }, [torneo]);
 
     const cargarDatos = async () => {
         try {
@@ -186,7 +191,7 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             alert(`❌ Error: ${error.message}`);
           }
         }
-      };
+    };
     
     const handleEdicionChange = (e) => {
         const { name, value } = e.target;
@@ -194,7 +199,7 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         if (errorEdicion) setErrorEdicion('');
     };
 
-       const handleNuevaImagenCartel = (e) => {
+    const handleNuevaImagenCartel = (e) => {
         const file = e.target.files[0];
         
         if (!file) {
@@ -323,6 +328,10 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
             equipos_max: datosEdicion.equipos_max,
             epocas_disponibles: datosEdicion.epocas_disponibles,
             unidades_legendarias: datosEdicion.unidades_legendarias, // ✅ Siempre incluir, incluso si es '0'
+            modelo_gakis: datosEdicion.modelo_gakis,
+            warlord_punto_victoria: datosEdicion.warlord_punto_victoria,
+            puntosDeTorneo: datosEdicion.puntosDeTorneo,
+            misiones_secundarias: datosEdicion.misiones_secundarias,
             fecha_inicio: datosEdicion.fecha_inicio,
             fecha_fin: duracionTorneo === "1" ? null : (datosEdicion.fecha_fin || null),
             ubicacion: datosEdicion.ubicacion || null,
@@ -381,69 +390,68 @@ function VistaGeneralSaga({ torneoId: propTorneoId, onUpdate }) {
         }
     };
 
-
-const handleCancelarEdicion = () => {
-     setModoEdicion(false);
-        setErrorEdicion('');
-        setArchivoPDF(null);
-        setEliminarPDF(false);
-        setImagenNueva(null);
-        setVistaPreviaImagen(null);
-        setEliminarImagenFlag(false);
-    
-    if (torneo) {
-        let epocas = [];
-        if (torneo.epocas_disponibles) {
-            epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
-        }
-
-        const tipoTorneo = torneo.tipo_torneo === 'Por equipos'
-            ? 'Por equipos'
-            : 'Individual';
-
-        const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
-        const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
-
-        if (fechaFin && fechaFin !== fechaInicio) {
-            setDuracionTorneo("2");
-        } else {
-            setDuracionTorneo("1");
-        }
-
-        // ✅ NORMALIZAR A STRING
-        const unidadesLegendariasValor = (
-            torneo.unidades_legendarias === 1 || 
-            torneo.unidades_legendarias === '1' || 
-            torneo.unidades_legendarias === true
-        ) ? '1' : '0';
-
-        setDatosEdicion({
-            nombre_torneo: torneo.nombre_torneo || '',
-            tipo_torneo: tipoTorneo,
-            num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
-            epocas_disponibles: epocas,
-            rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
-            puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
-            participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
-            equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
-            unidades_legendarias: unidadesLegendariasValor,  // ✅ String '0' o '1'
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin,
-            ubicacion: torneo.ubicacion || '',
-            estado: torneo.estado || 'pendiente',
-            partida_ronda_1: torneo.partida_ronda_1 || '',
-            partida_ronda_2: torneo.partida_ronda_2 || '',
-            partida_ronda_3: torneo.partida_ronda_3 || '',
-            partida_ronda_4: torneo.partida_ronda_4 || '',
-            partida_ronda_5: torneo.partida_ronda_5 || ''
-        });
-
-          // Restaurar imagen actual
-            if (torneo.imagen_url) {
-                setImagenActual(torneo.imagen_url);
+    const handleCancelarEdicion = () => {
+        setModoEdicion(false);
+            setErrorEdicion('');
+            setArchivoPDF(null);
+            setEliminarPDF(false);
+            setImagenNueva(null);
+            setVistaPreviaImagen(null);
+            setEliminarImagenFlag(false);
+        
+        if (torneo) {
+            let epocas = [];
+            if (torneo.epocas_disponibles) {
+                epocas = torneo.epocas_disponibles.split('|').map(e => e.trim()).filter(e => e);
             }
-    }
-};
+
+            const tipoTorneo = torneo.tipo_torneo === 'Por equipos'
+                ? 'Por equipos'
+                : 'Individual';
+
+            const fechaInicio = torneo.fecha_inicio?.split('T')[0] || '';
+            const fechaFin = torneo.fecha_fin?.split('T')[0] || '';
+
+            if (fechaFin && fechaFin !== fechaInicio) {
+                setDuracionTorneo("2");
+            } else {
+                setDuracionTorneo("1");
+            }
+
+            // ✅ NORMALIZAR A STRING
+            const normalizar = (val) => (val === 1 || val === '1' || val === true) ? '1' : '0';
+
+            setDatosEdicion({
+                nombre_torneo: torneo.nombre_torneo || '',
+                tipo_torneo: tipoTorneo,
+                num_jugadores_equipo: torneo.num_jugadores_equipo || JUGADORES_EQUIPO_RANGO.default,
+                epocas_disponibles: epocas,
+                rondas_max: torneo.rondas_max || RONDAS_DISPONIBLES[0].valor,
+                puntos_banda: torneo.puntos_banda || PUNTOS_BANDA_RANGO.default,
+                participantes_max: torneo.participantes_max || PARTICIPANTES_RANGO.default,
+                equipos_max: torneo.equipos_max || EQUIPOS_RANGO.default,
+                unidades_legendarias: normalizar(torneo.unidades_legendarias),
+                modelo_gakis: normalizar(torneo.modelo_gakis),
+                warlord_punto_victoria: normalizar(torneo.warlord_punto_victoria),
+                misiones_secundarias: normalizar(torneo.misiones_secundarias),
+                personaje_especial: normalizar(torneo.personaje_especial),
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
+                ubicacion: torneo.ubicacion || '',
+                estado: torneo.estado || 'pendiente',
+                partida_ronda_1: torneo.partida_ronda_1 || '',
+                partida_ronda_2: torneo.partida_ronda_2 || '',
+                partida_ronda_3: torneo.partida_ronda_3 || '',
+                partida_ronda_4: torneo.partida_ronda_4 || '',
+                partida_ronda_5: torneo.partida_ronda_5 || ''
+            });
+
+            // Restaurar imagen actual
+                if (torneo.imagen_url) {
+                    setImagenActual(torneo.imagen_url);
+                }
+        }
+    };
 
     const cambiarEstadoTorneo = async (nuevoEstado) => {
         if (torneo.estado === 'finalizado') {
@@ -688,28 +696,28 @@ const handleCancelarEdicion = () => {
         }
     };
 
-const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
-    const mensaje = tipo === 'pendiente'
-        ? `¿Cancelar invitación para ${nombre}?`
-        : `¿Eliminar a ${nombre} como organizador?`;
+    const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
+        const mensaje = tipo === 'pendiente'
+            ? `¿Cancelar invitación para ${nombre}?`
+            : `¿Eliminar a ${nombre} como organizador?`;
 
-    if (!window.confirm(mensaje)) return;
+        if (!window.confirm(mensaje)) return;
 
-    try {
-        setLoadingOrganizadores(true);
-        
-        await torneosSagaApi.eliminarOrganizador(torneoId, organizadorId);
-        
-        alert('✅ Organizador eliminado correctamente');
-        await cargarOrganizadores();
+        try {
+            setLoadingOrganizadores(true);
+            
+            await torneosSagaApi.eliminarOrganizador(torneoId, organizadorId);
+            
+            alert('✅ Organizador eliminado correctamente');
+            await cargarOrganizadores();
 
-    } catch (error) {
-        console.error('Error:', error);
-        alert(error.message || 'Error al eliminar organizador');
-    } finally {
-        setLoadingOrganizadores(false);
-    }
-};
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Error al eliminar organizador');
+        } finally {
+            setLoadingOrganizadores(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -861,32 +869,133 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                         )}
 
                         <fieldset>
-                            <legend>⚔️ Reglas Especiales</legend>
-                            
+                            <legend>🏆 Modelo GAKIS</legend>
+
                             <div className="unidades-legendarias-container">
                                 <label className="checkbox-container">
                                     <input
                                         type="checkbox"
-                                        name="unidades_legendarias"
-                                        checked={datosEdicion.unidades_legendarias === '1' || datosEdicion.unidades_legendarias === 1}
+                                        checked={datosEdicion.modelo_gakis === '1'}
                                         onChange={(e) => {
+                                            const activo = e.target.checked;
                                             setDatosEdicion(prev => ({
                                                 ...prev,
-                                                unidades_legendarias: e.target.checked ? '1' : '0'
+                                                modelo_gakis: activo ? '1' : '0',
+                                                // Reset de opciones Gakis si se desactiva
+                                                ...(!activo && {
+                                                    warlord_punto_victoria: '0',
+                                                    misiones_secundarias: '0',
+                                                    puntosDeTorneo: '0',
+                                                    unidades_legendarias: '0',
+                                                })
                                             }));
                                         }}
                                         disabled={loadingEdicion}
                                     />
                                     <span className="checkbox-label">
-                                        <strong>Permitir Unidades Legendarias</strong>
+                                        <strong>⚔️ Activar Modelo Gakis</strong>
                                     </span>
                                 </label>
                                 <small className="help-text">
-                                    {(datosEdicion.unidades_legendarias === '1' || datosEdicion.unidades_legendarias === 1)
-                                        ? "✅ Los jugadores podrán seleccionar Warlords Legendarios y unidades legendarias que cuestan puntos y pueden desbloquear bandas especiales o imponer restricciones."
-                                        : "⚠️ Las Unidades Legendarias están desactivadas."}
+                                    {datosEdicion.modelo_gakis === '1'
+                                        ? "✅ Modo Gakis activo. Configura las opciones adicionales abajo."
+                                        : "ℹ️ Torneo estándar sin reglas Gakis."}
                                 </small>
                             </div>
+
+                            {datosEdicion.modelo_gakis === '1' && (
+                                <div className="gakis-opciones">
+
+                                    <div className="gakis-opcion-item">
+                                        <label className="checkbox-container">
+                                            <input
+                                                type="checkbox"
+                                                checked={datosEdicion.warlord_punto_victoria === '1'}
+                                                onChange={(e) => setDatosEdicion(prev => ({
+                                                    ...prev,
+                                                    warlord_punto_victoria: e.target.checked ? '1' : '0'
+                                                }))}
+                                                disabled={loadingEdicion}
+                                            />
+                                            <span className="checkbox-label">
+                                                <strong>🗡️ Warlord otorga +1 PV al ser eliminado</strong>
+                                            </span>
+                                        </label>
+                                        <small className="help-text">
+                                            {datosEdicion.warlord_punto_victoria === '1'
+                                                ? "✅ Eliminar al Warlord rival suma 1 PV adicional."
+                                                : "⬜ El Warlord no otorga PV adicionales."}
+                                        </small>
+                                    </div>
+
+                                      <div className="gakis-opcion-item">
+                                        <label className="checkbox-container">
+                                            <input
+                                                type="checkbox"
+                                                checked={datosEdicion.puntosDeTorneo === '1'}
+                                                onChange={(e) => setDatosEdicion(prev => ({
+                                                    ...prev,
+                                                    puntosDeTorneo: e.target.checked ? '1' : '0'
+                                                }))}
+                                                disabled={loadingEdicion}
+                                            />
+                                            <span className="checkbox-label">
+                                                <strong>👤 Puntos de Torneo</strong>
+                                            </span>
+                                        </label>
+                                        <small className="help-text">
+                                            {datosEdicion.puntosDeTorneo === '1'
+                                                ? "✅ El torneo usa puntos de torneo."
+                                                : "⬜ Sin puntos de torneo en partida."} 
+                                        </small>
+                                    </div>
+                                    <div className="gakis-opcion-item">
+                                        <label className="checkbox-container">
+                                            <input
+                                                type="checkbox"
+                                                checked={datosEdicion.misiones_secundarias === '1'}
+                                                onChange={(e) => setDatosEdicion(prev => ({
+                                                    ...prev,
+                                                    misiones_secundarias: e.target.checked ? '1' : '0'
+                                                }))}
+                                                disabled={loadingEdicion}
+                                            />
+                                            <span className="checkbox-label">
+                                                <strong>👤 Misiones Secundarias</strong>
+                                            </span>
+                                        </label>
+                                        <small className="help-text">
+                                            {datosEdicion.misiones_secundarias === '1'
+                                                ? "✅ El torneo usa misiones secundarias."
+                                                : "⬜ Sin misiones secundarias en las partida."} 
+                                        </small>
+                                    </div>
+                                     <div className="unidades-legendarias-container">
+                                        <label className="checkbox-container">
+                                            <input
+                                                type="checkbox"
+                                                name="unidades_legendarias"
+                                                checked={datosEdicion.unidades_legendarias === '1'}
+                                                onChange={(e) => {
+                                                    setDatosEdicion(prev => ({
+                                                        ...prev,
+                                                        unidades_legendarias: e.target.checked ? '1' : '0'
+                                                    }));
+                                                }}
+                                                disabled={loadingEdicion}
+                                            />
+                                            <span className="checkbox-label">
+                                                <strong>Permitir Unidades Legendarias</strong>
+                                            </span>
+                                        </label>
+                                        <small className="help-text">
+                                            {(datosEdicion.unidades_legendarias === '1' || datosEdicion.unidades_legendarias === 1)
+                                                ? "✅ Los jugadores podrán seleccionar Warlords Legendarios y unidades legendarias que cuestan puntos y pueden desbloquear bandas especiales o imponer restricciones."
+                                                : "⚠️ Las Unidades Legendarias están desactivadas."}
+                                        </small>
+                                    </div>
+                                </div>
+                            )}
                         </fieldset>
 
                         <div className="form-row">
@@ -1476,17 +1585,6 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                             </div>
 
                             <div className="info-item">
-                                <label>⚔️ Unidades Legendarias:</label>
-                                <p>
-                                    {torneo.unidades_legendarias || torneo.unidadesLegendarias ? (
-                                        <span className="badge-activo">✅ Permitidas</span>
-                                    ) : (
-                                        <span className="badge-inactivo">⚠️ No permitidas</span>
-                                    )}
-                                </p>
-                            </div>
-
-                            <div className="info-item">
                                 <label>🎲 Número de Rondas:</label>
                                 <p>{torneo.rondas_max} rondas</p>
                             </div>
@@ -1531,7 +1629,39 @@ const handleEliminarOrganizador = async (organizadorId, tipo, nombre) => {
                                     <p>{new Date(torneo.fecha_fin).toLocaleDateString('es-ES')}</p>
                                 </div>
                             )}
+
+                              {torneo.modelo_gakis == '1' && (
+                                <div className="info-item-gakis">
+                                    <label>🏆 Modelo Gakis:</label>
+                                    <div className="gakis-resumen">
+                                        <span className="badge-activo">✅ Activo</span>
+                                        <ul className="gakis-resumen-lista">
+                                            <li>
+                                                {torneo.warlord_punto_victoria == '1'
+                                                    ? " Warlord: +1 PV ✅"
+                                                    : "Warlord sin PV extra ❌"}
+                                            </li>
+                                            <li>
+                                                {torneo.puntosDeTorneo ==1
+                                                    ? "Usando puntos de torneo ✅"
+                                                    : "Sin puntos de torneo ❌"}
+                                            </li>
+                                            <li>
+                                                {torneo.misiones_secundarias == '1'
+                                                    ? " Misiones secundarias activas ✅"
+                                                    : "Sin misiones secundarias ❌"}
+                                            </li>
+                                            <li>
+                                                {torneo.unidades_legendarias == '1'
+                                                    ? " Unidades legendarias permitidas ✅"
+                                                    : " Unidades legendarias no permitidas ❌"}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
                         </div>
+
                     </section>
 
                    <section className="seccion-rondas">

@@ -9,6 +9,7 @@ import torneosSagaApi from "@/servicios/apiSaga";
 import torneosWarmasterApi from "@/servicios/apiWarmaster";
 import torneosFowApi from "@/servicios/apiFow";
 import torneosEpicApi from "@/servicios/apiEpic";
+import torneosDraculaApi from "@/servicios/apiDracula";
 
 import Footer from '@/paginas/Footer.jsx'
 
@@ -38,6 +39,7 @@ function VerTorneo( {onOpenLogin}) {
         'WARMASTER': torneosWarmasterApi,
         'FOW':torneosFowApi,
         'EPIC': torneosEpicApi,
+        'DRACULA': torneosDraculaApi,
         // Agregar más sistemas aquí en el futuro
     };
 
@@ -179,6 +181,8 @@ function VerTorneo( {onOpenLogin}) {
         'SAGA': 'torneosSaga',
         'WARMASTER': 'torneosWarmaster',
         'FOW': 'torneosFow',
+        'EPIC': 'torneosEpic',
+        'DRACULA': 'torneosDracula'
     };
 
     if (loading) {
@@ -257,6 +261,12 @@ function VerTorneo( {onOpenLogin}) {
                 return {
                     iconoPuntos: '⚡',
                     labelPuntos: torneo.puntos_ejercito || 0,
+                    camposExtra: null
+                };
+                case 'DRACULA':
+                return {
+                    iconoPuntos: '🧛',
+                    labelPuntos: torneo.puntos_banda || 0,
                     camposExtra: null
                 };
             default:

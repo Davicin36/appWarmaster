@@ -8,6 +8,7 @@ import torneosSagaApi from '../servicios/apiSaga.js';
 import torneosWarmasterApi from '../servicios/apiWarmaster.js'
 import torneosFowApi from "../servicios/apiFow.js";
 import torneosEpicApi from "../servicios/apiEpic.js";
+import torneosDraculaApi from "../servicios/apiDracula.js";
 
 // Componentes de inscripción
 import { REGISTRO_INSCRIPCIONES } from '../funciones/registroInscripciones.js';
@@ -41,7 +42,8 @@ function Inscripcion() {
         'SAGA': torneosSagaApi,
         'WARMASTER': torneosWarmasterApi,
         'FOW': torneosFowApi,
-        'EPIC': torneosEpicApi
+        'EPIC': torneosEpicApi,
+        'DRACULA': torneosDraculaApi
       };
 
       // 3️⃣ Usar la API correcta según el sistema

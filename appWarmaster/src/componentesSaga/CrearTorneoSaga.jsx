@@ -40,6 +40,12 @@ function CrearTorneoSaga() {
         
     const [puntosBanda, setPuntosBanda] = useState(PUNTOS_BANDA_RANGO.default);
     const [unidadesLegendarias, setUnidadesLegendarias] = useState (false)
+
+    const [modeloGakis, setModeloGakis] = useState(false);
+    const [warlordPuntoVictoria, setWarlordPuntoVictoria] = useState(false);
+    const [puntosDeTorneo, setPuntosDeTorneo] = useState(false);
+    const [misionesSecundarias, setMisionesSecundarias] = useState(false);
+
     const [participantesMax, setParticipantesMax] = useState(PARTICIPANTES_RANGO.default); 
     const [equiposMax, setEquiposMax] = useState(EQUIPOS_RANGO.default);
     const [archivoPDF, setArchivoPDF] = useState(null); 
@@ -55,13 +61,14 @@ function CrearTorneoSaga() {
 
 //USEEFFECT PARA CARGAR TORNEO POR EQUIPOS
     useEffect(() => {
-    if (tipoTorneo === "Por equipos") {
-        setParticipantesMax(equiposMax * numJugadoresEquipo);
-    }
+        if (tipoTorneo === "Por equipos") {
+            setParticipantesMax(equiposMax * numJugadoresEquipo);
+        }
     }, [equiposMax, numJugadoresEquipo, tipoTorneo]);
-    
 
-      const handleImagenCartel = (e) => {
+    //CONTROLADORES HANDLERS
+    
+    const handleImagenCartel = (e) => {
         const file = e.target.files[0];
         
         if (!file) {
@@ -113,6 +120,13 @@ function CrearTorneoSaga() {
         }
     };
 
+    const handleModeloGakis = (activado) => {
+        setModeloGakis(activado);
+        if (!activado) {
+            setWarlordPuntoVictoria(false);
+            setPuntosDeTorneo(false);
+        }
+    };
 
     const handleEpocaSeleccion = (epoca) => {
         if (tipoTorneo === "Individual") {
@@ -294,6 +308,10 @@ function CrearTorneoSaga() {
                 torneoData.append('ubicacion', ubicacion || '');
                 torneoData.append('puntos_banda', parseInt(puntosBanda));
                 torneoData.append('unidades_legendarias', unidadesLegendarias ? '1' : '0');
+                torneoData.append('modelo_gakis', modeloGakis ? '1' : '0');
+                torneoData.append('warlord_punto_victoria', warlordPuntoVictoria ? '1' : '0');
+                torneoData.append('puntosDeTorneo', puntosDeTorneo ? '1' : '0');
+                torneoData.append('misiones_secundarias', misionesSecundarias ? '1' : '0');
                 torneoData.append('participantes_max', parseInt(participantesMax));
                 torneoData.append('equipos_max', parseInt(equiposMax));
                 torneoData.append('partida_ronda_1', partidaRonda1);
@@ -328,6 +346,10 @@ function CrearTorneoSaga() {
                     ubicacion: ubicacion || null,
                     puntos_banda: parseInt(puntosBanda),
                     unidades_legendarias: unidadesLegendarias ? '1' : '0',
+                    modelo_gakis: modeloGakis ? '1' : '0',
+                    warlord_punto_victoria: warlordPuntoVictoria ? '1' : '0',
+                    puntosDeTorneo: puntosDeTorneo ? '1' : '0',
+                    misiones_secundarias: misionesSecundarias ? '1' : '0',  
                     participantes_max: parseInt(participantesMax),
                     equipos_max: parseInt(equiposMax),
                     partida_ronda_1: partidaRonda1,
@@ -489,28 +511,113 @@ function CrearTorneoSaga() {
                         )}
                     </label>
                     {/* CONFIGURACIÓN DE REGLAS ESPECIALES */}
+            
                     <fieldset>
-                        <legend>⚔️ Unidades Legendarias</legend>
-                        
+                        <legend>🏆 SISTEMA GAKIS</legend>
+
                         <div className="unidades-legendarias-container">
                             <label className="checkbox-container">
                                 <input
                                     type="checkbox"
-                                    name="unidadesLegendarias"
-                                    checked={unidadesLegendarias}
-                                    onChange={(e) => setUnidadesLegendarias(e.target.checked)}
+                                    checked={modeloGakis}
+                                    onChange={(e) => handleModeloGakis(e.target.checked)}
                                     disabled={loading}
                                 />
                                 <span className="checkbox-label">
-                                    <strong>   Permitir Unidades Legendarias</strong>
+                                    <strong>⚔️ Activar Sistema Gakis</strong>
                                 </span>
                             </label>
                             <small className="help-text">
-                                {unidadesLegendarias 
-                                    ? "✅ Los jugadores podrán seleccionar Warlords Legendarios y unidades legendarias  que cuestan puntos y pueden desbloquear bandas especiales o imponer restricciones."
-                                    : "⚠️ Las Unidades Legendarias están desactivadas."}
+                                {modeloGakis
+                                    ? "✅ Modo Gakis activo. Configura las opciones adicionales abajo."
+                                    : "ℹ️ Torneo estándar. Activa esta opción para configurar reglas adicionales Gakis."}
                             </small>
                         </div>
+
+                        {modeloGakis && (
+                            <div className="gakis-opciones">
+
+                                {/* OPCIÓN 1: Warlord como PV */}
+                                <div className="gakis-opcion-item">
+                                    <label className="checkbox-container">
+                                        <input
+                                            type="checkbox"
+                                            checked={warlordPuntoVictoria}
+                                            onChange={(e) => setWarlordPuntoVictoria(e.target.checked)}
+                                            disabled={loading}
+                                        />
+                                        <span className="checkbox-label">
+                                            <strong>🗡️ Warlord otorga +1 PV al ser eliminado</strong>
+                                        </span>
+                                    </label>
+                                    <small className="help-text">
+                                        {warlordPuntoVictoria
+                                            ? "✅ Eliminar al Warlord rival suma 1 Punto de Victoria adicional."
+                                            : " El Warlord no otorga PV adicionales."}
+                                    </small>
+                                </div>
+
+                                {/* OPCIÓN 2: Puntos de Torneo */}
+                                <div className="gakis-opcion-item">
+                                    <label className="checkbox-container">
+                                        <input 
+                                            type="checkbox"
+                                            checked={puntosDeTorneo}
+                                            onChange={(e) => setPuntosDeTorneo(e.target.checked)}
+                                            disabled={loading}
+                                        />
+                                        <span className="checkbox-label">
+                                            <strong>🎯 Usar Puntos de Torneo</strong>
+                                        </span>
+                                    </label>
+                                    <small className="help-text">
+                                        {puntosDeTorneo
+                                            ? "✅ Este torneo usa Puntos de Torneo."
+                                            : " Puntos de Torneo desactivados."}
+                                    </small>
+                                </div>
+
+                                {/* OPCIÓN 3: Misiones Secundarias */}
+                                <div className="gakis-opcion-item">
+                                    <label className="checkbox-container">
+                                        <input 
+                                            type="checkbox"
+                                            checked={misionesSecundarias}
+                                            onChange={(e) => setMisionesSecundarias(e.target.checked)}
+                                            disabled={loading}
+                                        />
+                                        <span className="checkbox-label">
+                                            <strong>📜 Usar Misiones Secundarias</strong>
+                                        </span>
+                                    </label>
+                                    <small className="help-text">
+                                        {misionesSecundarias
+                                            ? "✅ Este torneo incluye Misiones Secundarias."
+                                            : " Misiones Secundarias desactivadas."}
+                                    </small>
+                                </div>
+
+                                 {/* OPCIÓN 4: unidades y personajes legendarios */}
+                                <div className="gakis-opcion-item">
+                                    <label className="checkbox-container">
+                                        <input 
+                                            type="checkbox"
+                                            checked={unidadesLegendarias}
+                                            onChange={(e) => setUnidadesLegendarias(e.target.checked)}
+                                            disabled={loading}
+                                        />
+                                        <span className="checkbox-label">
+                                            <strong>📜 Usar Unidades Legendarias</strong>
+                                        </span>
+                                    </label>
+                                    <small className="help-text">
+                                        {unidadesLegendarias
+                                            ? "✅ Este torneo incluye Unidades Legendarias."
+                                            : " Unidades Legendarias desactivadas."}
+                                    </small>
+                                </div>
+                            </div>
+                        )}
                     </fieldset>
 
                     <div className="epocas-grid">

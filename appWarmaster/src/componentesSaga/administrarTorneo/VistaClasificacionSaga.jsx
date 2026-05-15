@@ -17,6 +17,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
     const [error, setError] = useState('');
 
     const esTorneoEquipos = () => torneo?.tipo_torneo === 'Por equipos';
+    const esTorneoMisiones = () => torneo?.misiones_secundarias == 1;
 
     useEffect(() => {
         if (torneo && torneo.tipo_torneo === 'Por equipos') {
@@ -59,6 +60,8 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
     const cargarClasificacionIndividual = async () => {
         try {
             const response = await torneosSagaApi.obtenerClasificacionIndividual(torneoId);
+
+            console.log('Respuesta clasificación individual:', response);
             
             let dataClasificacion = [];
             if (Array.isArray(response)) {
@@ -233,6 +236,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
     };
 
    const renderClasificacionIndividual = () => {
+
         if (clasificacionIndividual.length === 0) {
             return (
                 <div className="empty-message">
@@ -258,6 +262,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                         <th>PP</th>
                         <th>Pts Torneo</th>
                         <th>Pts Masacre</th>
+                        {esTorneoMisiones() && <th>Misiones Secundarias</th>}
                         <th>Warlords</th>
                         <th>Pts Victoria</th>
                     </tr>
@@ -288,6 +293,7 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                             <td>{jugador.partidas_perdidas || 0}</td>
                             <td>{jugador.puntos_torneo_totales || 0}</td>
                             <td>{jugador.puntos_masacre_totales || 0}</td>
+                            {esTorneoMisiones() && <td>{jugador.misiones_secundarias_totales || 0}</td>}
                             <td>{jugador.warlord_muerto_totales || 0}</td>
                             <td className="puntos-destacado">{jugador.puntos_victoria_totales || 0}</td>
                         </tr>
@@ -340,7 +346,13 @@ function VistaClasificacionSaga({ torneoId: propTorneoId }) {
                                     <span className="stat-label">Pts Masacre</span>
                                     <span className="stat-valor">{equipo.puntos_masacre_totales || 0}</span>
                                 </div>
-                                 <div className="stat-item">
+                                {esTorneoMisiones() && (
+                                    <div className="stat-item">
+                                        <span className="stat-label">Misiones Secundarias</span>
+                                        <span className="stat-valor">{equipo.misiones_secundarias_totales || 0}</span>
+                                    </div>
+                                )}
+                                <div className="stat-item">
                                     <span className="stat-label">Warlords Muertos</span>
                                     <span className="stat-valor">{equipo.warlord_muerto || 0}</span>
                                 </div>

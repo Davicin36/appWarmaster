@@ -96,7 +96,7 @@ router.get('/obtenerTorneos', async (req, res) => {
         userId = decoded.userId;
         console.log(`✅ Usuario autenticado: ${userId}`);
       } catch (err) {
-        console.log('ℹ️ Sin autenticación o token inválido');
+        console.log('ℹ️ Sin autenticación o token inválido', err);
       }
     }
     
@@ -214,7 +214,7 @@ router.get('/torneo/:torneoId', async (req, res) => {
         userId = decoded.userId;
         console.log(`✅ Usuario: ${userId}`);
       } catch (err) {
-        console.log('ℹ️ Sin autenticación');
+        console.log('ℹ️ Sin autenticación o token inválido', err);
       }
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import usuarioApi from '@/servicios/apiUsuarios';
@@ -7,33 +7,35 @@ import PrincipalSaga from '@/componentesSaga/PrincipalSaga';
 import PrincipalWarmaster from '@/componentesWarmaster/PrincipalWarmaster';
 import PrincipalFow from '@/componentesFow/PrincipalFow';
 import PrincipalEpic from '@/componentesEpic/PrincipalEpic';
+import PrincipalDracula from '@/componentesDracula/PrincipalDracula';
+
 import Footer from '@/paginas/Footer.jsx'
 
 import vikingo from '../assets/vikingo.png';
 
 import '../estilos/principal.css';
+import '../estilos/novedades.css'
+
+const TORNEOS_POR_PAGINA = 5;
 
 function Principal({ onOpenLogin }) {
     const [juegoActivo, setJuegoActivo] = useState('todos');
+    const [subPestana, setSubPestana] = useState('proximos'); // 'proximos' | 'jugados'
     const [torneos, setTorneos] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState(null);
-    const navigate = useNavigate()
+    const [paginaActual, setPaginaActual] = useState(1);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const cargarTorneos = async () => {
             try {
                 setCargando(true);
                 setError(null);
-                
-                // Usar la función de la API
                 const data = await usuarioApi.obtenerTodosTorneos();
-                
-                // Ordenar por fecha de creación (más recientes primero)
                 const torneosOrdenados = data.sort((a, b) => 
                     new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
                 );
-                
                 setTorneos(torneosOrdenados);
             } catch (error) {
                 console.error('Error al cargar torneos:', error);
@@ -42,18 +44,20 @@ function Principal({ onOpenLogin }) {
                 setCargando(false);
             }
         };
-
         cargarTorneos();
     }, []);
 
-        // Formatear fecha
+    // Resetear página al cambiar subpestaña
+    useEffect(() => {
+        setPaginaActual(1);
+    }, [subPestana]);
+
     const formatearFecha = (fecha) => {
         if (!fecha) return 'Fecha no disponible';
         const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
         return new Date(fecha).toLocaleDateString('es-ES', opciones);
     };
 
-    // Función para recargar torneos
     const recargarTorneos = async () => {
         try {
             setCargando(true);
@@ -71,6 +75,36 @@ function Principal({ onOpenLogin }) {
         }
     };
 
+    const crearTorneoSaga = () => {
+        navigate('/crearTorneo/saga');
+    }
+
+    const navegarATorneo = (torneo) => {
+        const rutas = {
+            SAGA: `/torneosSaga/${torneo.id}/detalles`,
+            WARMASTER: `/torneosWarmaster/${torneo.id}/detalles`,
+            FOW: `/torneosFow/${torneo.id}/detalles`,
+            EPIC: `/torneosEpic/${torneo.id}/detalles`,
+            DRACULA: `/torneosDracula/${torneo.id}/detalles`,
+        };
+        const ruta = rutas[torneo.sistema];
+        if (ruta) navigate(ruta);
+    };
+
+    // Filtrar según subpestaña
+    const torneosFiltrados = useMemo(() => {
+        if (subPestana === 'proximos') {
+            return torneos.filter(t => t.estado === 'pendiente' || t.estado === 'en_curso');
+        }
+        return torneos.filter(t => t.estado === 'finalizado' || t.estado === 'cancelado');
+    }, [torneos, subPestana]);
+
+    // Paginación
+    const totalPaginas = Math.ceil(torneosFiltrados.length / TORNEOS_POR_PAGINA);
+    const torneosPagina = torneosFiltrados.slice(
+        (paginaActual - 1) * TORNEOS_POR_PAGINA,
+        paginaActual * TORNEOS_POR_PAGINA
+    );
 
     return (
         <div>      
@@ -78,16 +112,67 @@ function Principal({ onOpenLogin }) {
                 <img src={vikingo} alt="logo de Web" />
                 <div>
                     <h2>Bienvenido a la página principal de gestión de torneos de WARGAMES</h2>
-                    <p>Aquí podrás crear, gestionar y seguir tus torneos de WARGAMES de manera sencilla y eficiente.</p>
+                    <p>Aquí podrás crear, gestionar y seguir tus torneos de WARGAMES favoritos de manera sencilla y eficiente.</p>
                 </div>
                 <img src={vikingo} alt="logo de Web" />
             </section>
 
-            {/* NUEVA SECCIÓN DE RANKING */}
+            {/* 🆕 NOVEDAD: SISTEMA GAKIS */}
+            <section className="seccion-novedad">
+                <span className="novedad-badge">PROXIMAMENTE...</span>
+                <div className="novedad-banner">
+                    <div className="novedad-contenido">
+                        <h3>⚔️ SISTEMA GESTIÓN ESCENARIOS</h3>
+                        <p>
+                            Tienes escenarios personalizados para tus torneos SAGA? Ahora puedes añadirlos a tus torneos y que los organizadores puedan seleccionarlos al crear los torneos. En poco tiempo estará disponible esta sección.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* 🆕 NOVEDAD: SISTEMA GAKIS */}
+            <section className="seccion-novedad">
+                <span className="novedad-badge">🆕 NOVEDADES</span>
+                <div className="novedad-banner">
+                    <div className="novedad-contenido">
+                        <h3>⚔️ Sistema Gakis para torneos SAGA</h3>
+                        <p>
+                            Ya puedes crear torneos SAGA con el <strong>SISTEMA GAKIS</strong>
+                        </p>
+                        <p>
+                              Un nuevo modo de juego con reglas especiales para los modelos Gakis. Actívalo al crear tu torneo desde la configuración avanzada. Con el podrás añadir opciones extras a tus torneos SAGA, tales como:
+                              <table>
+                                <li><strong>Unidades legendarias exclusivas</strong></li>
+                                <p>Poder usar a tus heroes legendarios en las batallas de SAGA</p>
+                                <li><strong>Utilizar los Puntos de Torneo</strong></li>
+                                <p>
+                                    Ahora el modelo estandar de torneo SAGA, usa el formato normal, los puntos de las partidas y si ganas por 3 o más eres el vencedor, seleccionando puntos de torneo se usará el sistema de puntación
+                                    instaurado en el libro de Torneo.
+                                </p>
+                                <li><strong>Matar el warlord de PV</strong></li>
+                                <p>
+                                    Quieres que matar el walord valga para algo, usa este sistema y por cada warlord se añadirá 1 PV al resultado de la tabla clasificatoria.
+                                </p>
+                                <li><strong>Uso de misiones Secundarias</strong></li>
+                                <p>
+                                    Ahora se pueden añadir misiones secundarias en tus torneos, cumplirlas te podria dar hasta 1 PV para la clasificacion final.
+                                </p>
+                              </table>
+                        </p>
+                    </div>
+                    <button 
+                        className="btn-ver-saga"
+                        onClick={() => crearTorneoSaga()}
+                    >
+                        Crear Torneo SAGA →
+                    </button>
+                </div>
+            </section>
+
+            {/* RANKING */}
             <section className="seccion-ranking-destacada">
                 <div className="ranking-hero">
                     <div className="ranking-hero-contenido">
-                        <span className="ranking-badge">🏆 Nuevo</span>
                         <h2>Sistema de Ranking ELO</h2>
                         <p>Descubre tu posición en el ranking global y compite por el primer puesto</p>
                         <div className="ranking-hero-botones">
@@ -100,8 +185,7 @@ function Principal({ onOpenLogin }) {
                             <button 
                                 className="btn-info-ranking"
                                 onClick={() => {
-                                    const elemento = document.getElementById('info-ranking');
-                                    elemento?.scrollIntoView({ behavior: 'smooth' });
+                                    document.getElementById('info-ranking')?.scrollIntoView({ behavior: 'smooth' });
                                 }}
                             >
                                 ℹ️ ¿Cómo funciona?
@@ -128,6 +212,7 @@ function Principal({ onOpenLogin }) {
                 </div>
             </section>
 
+            {/* NAVEGACIÓN JUEGOS */}
             <nav className="navegacion-juegos">
                 <button 
                     className={juegoActivo === 'todos' ? 'activo' : ''}
@@ -159,30 +244,44 @@ function Principal({ onOpenLogin }) {
                 >
                     EPIC ARMAGEDON
                 </button>
-                {/*}
                 <button 
-                    className={juegoActivo === 'bolt' ? 'activo' : ''}
-                    onClick={() => setJuegoActivo('bolt')}
+                    className={juegoActivo === 'dracula' ? 'activo' : ''}
+                    onClick={() => setJuegoActivo('dracula')}
                 >
-                    BOLT ACTION
+                    DRACULA´S AMÉRICA
                 </button>
-                {*/}
             </nav>
 
-            {/* SECCIÓN DE TODOS LOS TORNEOS - Solo se muestra cuando juegoActivo === 'todos' */}
+            {/* CARTELES TORNEOS */}
             {juegoActivo === 'todos' && (
                 <section className="seccion-torneos-principales">
                     <div className="header-torneos">
                         <h2>🎯 Todos los Torneos</h2>
+
+                        {/* 🆕 SUB-PESTAÑAS */}
+                        <div className="sub-pestanas-torneos">
+                            <button
+                                className={`sub-pestana ${subPestana === 'proximos' ? 'activa' : ''}`}
+                                onClick={() => setSubPestana('proximos')}
+                            >
+                                🗓️ Próximos Torneos
+                            </button>
+                            <button
+                                className={`sub-pestana ${subPestana === 'jugados' ? 'activa' : ''}`}
+                                onClick={() => setSubPestana('jugados')}
+                            >
+                                ✅ Torneos Jugados
+                            </button>
+                        </div>
+
                         <p>
-                            {torneos.length === 0 
-                                ? 'No hay torneos disponibles' 
-                                : `${torneos.length} torneo${torneos.length !== 1 ? 's' : ''} disponible${torneos.length !== 1 ? 's' : ''}`
+                            {torneosFiltrados.length === 0
+                                ? 'No hay torneos disponibles'
+                                : `${torneosFiltrados.length} torneo${torneosFiltrados.length !== 1 ? 's' : ''}`
                             }
                         </p>
                     </div>
 
-                    {/* Mostrar error si existe */}
                     {error && (
                         <div className="mensaje-error">
                             <p>{error}</p>
@@ -197,93 +296,120 @@ function Principal({ onOpenLogin }) {
                             <div className="spinner"></div>
                             <p>Cargando torneos...</p>
                         </div>
-                    ) : torneos.length === 0 && !error ? (
+                    ) : torneosFiltrados.length === 0 && !error ? (
                         <div className="sin-torneos">
-                            <p>📅 No hay torneos todavía</p>
-                            <p>¡Sé el primero en crear uno!</p>
+                            <p>
+                                {subPestana === 'proximos'
+                                    ? '📅 No hay torneos próximos ni en curso'
+                                    : '📚 No hay torneos finalizados todavía'
+                                }
+                            </p>
                         </div>
                     ) : !error ? (
-                        <div className="grid-torneos">
-                            {torneos.map((torneo) => (
-                                <div 
-                                    key={torneo.id} 
-                                    className="card-torneo"
-                                    onClick={() => {
-                                        if (torneo.sistema === 'SAGA') {
-                                            navigate(`/torneosSaga/${torneo.id}/detalles`);
-                                        } else if (torneo.sistema === 'WARMASTER') {
-                                            navigate(`/torneosWarmaster/${torneo.id}/detalles`);
-                                        } else if (torneo.sistema === 'FOW') {
-                                            navigate(`/torneosFow/${torneo.id}/detalles`);
-                                        } else if (torneo.sistema === 'EPIC') {
-                                            navigate(`/torneosEpic/${torneo.id}/detalles`);
-                                        }
-                                    }}
-                                >
-                                    {/* IMAGEN */}
-                                    <div className="card-imagen-wrapper">
-                                        {torneo.imagen_url ? (
-                                            <img 
-                                                src={torneo.imagen_url} 
-                                                alt={torneo.nombre}
-                                                className="torneo-imagen"
-                                                onError={(e) => {
-                                                    e.target.onerror = null;
-                                                    e.target.src = vikingo;
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="torneo-sin-imagen">
-                                                <span className="icono-sin-imagen">🎮</span>
-                                                <p>Sin imagen</p>
-                                            </div>
-                                        )}
-                                        <span className="torneo-badge">{torneo.tipo_juego}</span>
-                                    </div>
-
-                                    {/* INFO */}
-                                    <div className="torneo-info">
-                                        <h3>{torneo.nombre}</h3>
-                                        {torneo.descripcion && (
-                                            <p className="torneo-descripcion">
-                                                {torneo.descripcion.length > 150 
-                                                    ? torneo.descripcion.substring(0, 150) + '...' 
-                                                    : torneo.descripcion}
-                                            </p>
-                                        )}
-                                        <div className="torneo-detalles">
-                                            <span className="torneo-detalle">
-                                                <strong>{torneo.sistema} - Torneo {torneo.tipo_torneo}</strong>
-                                            </span>
-                                            <span className="torneo-detalle">📅 {formatearFecha(torneo.fecha_inicio)}</span>
-                                            {torneo.ubicacion && (
-                                                <span className="torneo-detalle">📍 {torneo.ubicacion}</span>
-                                            )}
-                                            {torneo.tipo_torneo === 'Por equipos' ? (
-                                                <span className="torneo-detalle">
-                                                    👥 {torneo.num_participantes || 0} / {torneo.equipos_max} equipos
-                                                </span>
+                        <>
+                            <div className="grid-torneos">
+                                {torneosPagina.map((torneo) => (
+                                    <div 
+                                        key={torneo.id} 
+                                        className="card-torneo"
+                                        onClick={() => navegarATorneo(torneo)}
+                                    >
+                                        {/* IMAGEN */}
+                                        <div className="card-imagen-wrapper">
+                                            {torneo.imagen_url ? (
+                                                <img 
+                                                    src={torneo.imagen_url} 
+                                                    alt={torneo.nombre}
+                                                    className="torneo-imagen"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = vikingo;
+                                                    }}
+                                                />
                                             ) : (
-                                                <span className="torneo-detalle">
-                                                    👤 {torneo.num_participantes || 0} / {torneo.participantes_max} participantes
-                                                </span>
+                                                <div className="torneo-sin-imagen">
+                                                    <span className="icono-sin-imagen">🎮</span>
+                                                    <p>Sin imagen</p>
+                                                </div>
                                             )}
+                                            <span className="torneo-badge">{torneo.tipo_juego}</span>
                                         </div>
-                                        <div className="torneo-footer">
-                                            <span className={`estado-badge ${torneo.estado?.toLowerCase()}`}>
-                                                {torneo.estado === 'pendiente' && '⏳ Pendiente'}
-                                                {torneo.estado === 'en_curso' && '▶️ En Curso'}
-                                                {torneo.estado === 'finalizado' && '✅ Finalizado'}
-                                                {torneo.estado === 'cancelado' && '❌ Cancelado'}
-                                            </span>
-                                            {torneo.creador_nombre && (
-                                                <span className="torneo-creador">Por: {torneo.creador_nombre}</span>
+
+                                        {/* INFO */}
+                                        <div className="torneo-info">
+                                            <h3>{torneo.nombre}</h3>
+                                            {torneo.descripcion && (
+                                                <p className="torneo-descripcion">
+                                                    {torneo.descripcion.length > 150 
+                                                        ? torneo.descripcion.substring(0, 150) + '...' 
+                                                        : torneo.descripcion}
+                                                </p>
                                             )}
+                                            <div className="torneo-detalles">
+                                                <span className="torneo-detalle">
+                                                    <strong>{torneo.sistema} - Torneo {torneo.tipo_torneo}</strong>
+                                                </span>
+                                                <span className="torneo-detalle">📅 {formatearFecha(torneo.fecha_inicio)}</span>
+                                                {torneo.ubicacion && (
+                                                    <span className="torneo-detalle">📍 {torneo.ubicacion}</span>
+                                                )}
+                                                {torneo.tipo_torneo === 'Por equipos' ? (
+                                                    <span className="torneo-detalle">
+                                                        👥 {torneo.num_participantes || 0} / {torneo.equipos_max} equipos
+                                                    </span>
+                                                ) : (
+                                                    <span className="torneo-detalle">
+                                                        👤 {torneo.num_participantes || 0} / {torneo.participantes_max} participantes
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="torneo-footer">
+                                                <span className={`estado-badge ${torneo.estado?.toLowerCase()}`}>
+                                                    {torneo.estado === 'pendiente' && '⏳ Pendiente'}
+                                                    {torneo.estado === 'en_curso' && '▶️ En Curso'}
+                                                    {torneo.estado === 'finalizado' && '✅ Finalizado'}
+                                                    {torneo.estado === 'cancelado' && '❌ Cancelado'}
+                                                </span>
+                                                {torneo.creador_nombre && (
+                                                    <span className="torneo-creador">Por: {torneo.creador_nombre}</span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+                                ))}
+                            </div>
+
+                            {/* 🆕 PAGINACIÓN */}
+                            {totalPaginas > 1 && (
+                                <div className="paginacion-torneos">
+                                    <button
+                                        className="btn-pagina"
+                                        onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                        disabled={paginaActual === 1}
+                                    >
+                                        ← Anterior
+                                    </button>
+
+                                    {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
+                                        <button
+                                            key={num}
+                                            className={`btn-pagina ${paginaActual === num ? 'activa' : ''}`}
+                                            onClick={() => setPaginaActual(num)}
+                                        >
+                                            {num}
+                                        </button>
+                                    ))}
+
+                                    <button
+                                        className="btn-pagina"
+                                        onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                                        disabled={paginaActual === totalPaginas}
+                                    >
+                                        Siguiente →
+                                    </button>
                                 </div>
-                            ))}
-                        </div>
+                            )}
+                        </>
                     ) : null}
                 </section>
             )}
@@ -292,8 +418,9 @@ function Principal({ onOpenLogin }) {
             {juegoActivo === 'warmaster' && <PrincipalWarmaster onOpenLogin={onOpenLogin} />}
             {juegoActivo === 'fow' && <PrincipalFow onOpenLogin={onOpenLogin} />}
             {juegoActivo === 'epic' && <PrincipalEpic onOpenLogin={onOpenLogin} />}
+            {juegoActivo === 'dracula' && <PrincipalDracula onOpenLogin={onOpenLogin} />}
 
-            {/* NUEVA SECCIÓN: INFORMACIÓN DEL RANKING */}
+            {/* INFO RANKING */}
             <section id="info-ranking" className="seccion-info-ranking">
                 <h2>¿Cómo funciona el Sistema de Ranking ELO?</h2>
                 <div className="info-ranking-grid">
