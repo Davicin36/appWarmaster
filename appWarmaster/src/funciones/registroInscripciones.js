@@ -16,6 +16,9 @@ import inscripcionBoltIndividual from '../componentesBolt/inscripciones/inscripc
 //EPIC ARMAGEDON
 import InscripcionEpicIndividual from '@/componentesEpic/InscripcionEpicIndividual';
 
+//DRACUL´S AMERICA
+import InscripcionDraculaIndividual from '@/componentesDracula/InscripcionDraculaIndividual';
+
 
 export const REGISTRO_INSCRIPCIONES ={
     "SAGA": {
@@ -32,6 +35,10 @@ export const REGISTRO_INSCRIPCIONES ={
     },
      "EPIC": {
         "Individual": InscripcionEpicIndividual,
+        "Por equipos": null
+    },
+     "DRACULA": {
+        "Individual": InscripcionDraculaIndividual,
         "Por equipos": null
     },
     /*

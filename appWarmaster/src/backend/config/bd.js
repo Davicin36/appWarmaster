@@ -47,19 +47,19 @@ const baseConfigRanking = {
 };
 
 // Pool para la base de datos principal 'torneos'
-const poolTorneos = mysql.createPool({
+let poolTorneos = mysql.createPool({
   ...baseConfigTorneos,
   database: process.env.DB_NAME || 'railway'
 });
 
 // Pool para la base de datos 'rankingTorneos'
-const poolRanking = mysql.createPool({
+let poolRanking = mysql.createPool({
   ...baseConfigRanking,
   database: process.env.DB_RANKING_NAME || 'railway'
 });
 
 // Pool general sin base de datos específica
-const poolGeneral = mysql.createPool({
+let poolGeneral = mysql.createPool({
   ...baseConfigTorneos
 });
 
@@ -74,7 +74,7 @@ const recreatePool = (name) => {
   console.log(`🔄 Recreando pool ${name}...`);
   if (name === 'torneos') poolTorneos = mysql.createPool(baseConfigTorneos);
   if (name === 'ranking') poolRanking = mysql.createPool(baseConfigRanking);
-  if (name === 'general') poolGeneral = mysql.createPool(baseConfigGeneral);
+  if (name === 'general') poolGeneral = mysql.createPool(baseConfigTorneos);
 };
 
 export const safeQuery = async (poolInstance, sql, params = [], retries = 2) => {

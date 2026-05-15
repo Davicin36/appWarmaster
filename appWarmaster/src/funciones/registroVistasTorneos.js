@@ -43,6 +43,16 @@ import VistaInformacionPublicaEpic from '../componentesEpic/verTorneo/VistaInfor
 import VistaEmparejamientosPublicaEpic from '../componentesEpic/verTorneo/VistaEmparejamientosPublicaEpic';
 import VistaClasificacionPublicaEpic from '../componentesEpic/verTorneo/VistaClasificacionPublicaEpic';
 
+// DRACULA´S AMERICA - Importar todas las vistas
+
+import VistaGeneralDracula from '../componentesDracula/administrarTorneo/VistaGeneralDracula';
+import VistaJugadoresDracula from '../componentesDracula/administrarTorneo/VistaJugadoresDracula';
+import VistaEmparejamientosDracula from '../componentesDracula/administrarTorneo/VistaEmparejamientosDracula';
+
+import VistaInformacionPublicaDracula from '../componentesDracula/verTorneo/VistaInformacionPublicaDracula'
+import VistaEmparejamientosPublicaDracula from '../componentesDracula/verTorneo/VistaEmparejamientosPublicaDracula';
+import VistaClasificacionPublicaDracula from '../componentesDracula/verTorneo/VistaClasificacionPublicaDracula';
+
 // BOLT ACTION- Importar todas las vistas
 /*
 import VistaGeneralBolt from '../componentesBolt/administrarTorneo/VistaGeneralBolt;
@@ -81,7 +91,14 @@ export const REGISTRO_VISTAS_TORNEOS = {
         jugadores: VistaJugadoresEpic,
         emparejamientos: VistaEmparejamientosEpic,
         clasificacion: VistaClasificacionPublicaEpic
+    },  
+    "DRACULA": {
+        general: VistaGeneralDracula,
+        jugadores: VistaJugadoresDracula,
+        emparejamientos: VistaEmparejamientosDracula,
+        clasificacion: VistaClasificacionPublicaDracula
     },
+
     /*
     "BOLT": {
         general: VistaGeneralBolt,
@@ -115,6 +132,11 @@ export const REGISTRO_VISTAS_PUBLICAS = {
         informacion: VistaInformacionPublicaEpic,
         emparejamientos: VistaEmparejamientosPublicaEpic,
         clasificacion: VistaClasificacionPublicaEpic
+    },
+    "DRACULA": {
+        informacion: VistaInformacionPublicaDracula,
+        emparejamientos: VistaEmparejamientosPublicaDracula,
+        clasificacion: VistaClasificacionPublicaDracula
     },
     /*
     "BOLT": {

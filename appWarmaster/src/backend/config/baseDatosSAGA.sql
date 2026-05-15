@@ -73,7 +73,7 @@ CREATE TABLE clasificacion_jugadores_saga (
   puntos_torneo_totales DECIMAL (10,1) DEFAULT 0,
   puntos_masacre_totales INT DEFAULT 0,
   warlord_muerto_totales INT  DEFAULT 0,
-  misiones_secundarias_totales INT DEFAULT 0,
+  misiones_secundarias_totales INT DEFAULT 0, añadir
   FOREIGN KEY (torneo_id) REFERENCES torneos_sistemas(id) ON DELETE CASCADE,
   FOREIGN KEY (jugador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   FOREIGN KEY (equipo_id) REFERENCES torneo_saga_equipo(id) ON DELETE CASCADE, 
@@ -111,7 +111,7 @@ CREATE TABLE partidas_saga (
   puntos_victoria_j1 INT DEFAULT 0,
   puntos_victoria_j2 INT DEFAULT 0,
   puntos_partida_j1 INT DEFAULT 0,
-  puntos_partida_j2 INT DEFAULT 0,
+  puntos_partida_j2 INT DEFAULT 0, 
   puntos_torneo_j1 DECIMAL (10,1) DEFAULT 0,
   puntos_torneo_j2 DECIMAL (10,1) DEFAULT 0,
   puntos_masacre_j1 INT DEFAULT 0,

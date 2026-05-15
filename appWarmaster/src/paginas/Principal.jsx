@@ -79,6 +79,10 @@ function Principal({ onOpenLogin }) {
         navigate('/crearTorneo/saga');
     }
 
+      const crearTorneoDracula = () => {
+        navigate('/crearTorneo/dracula');
+    }
+
     const navegarATorneo = (torneo) => {
         const rutas = {
             SAGA: `/torneosSaga/${torneo.id}/detalles`,
@@ -166,6 +170,20 @@ function Principal({ onOpenLogin }) {
                     >
                         Crear Torneo SAGA →
                     </button>
+                    <div className="novedad-banner">
+                        <div className="novedad-contenido">
+                            <h3>⚔️ Nuevo sistema de Juego DRACULAS AMERICA</h3>
+                            <p>
+                                Ya puedes crear torneos del WARGAME DRACULAS AMERICA, 
+                            </p>
+                        </div>
+                        <button 
+                            className="btn-ver-saga"
+                            onClick={() => crearTorneoDracula()}
+                        >
+                            Crear Torneo DRACULAS AMERICA →
+                        </button>
+                    </div>
                 </div>
             </section>
 
