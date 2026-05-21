@@ -131,6 +131,12 @@ function Principal({ onOpenLogin }) {
                             Tienes escenarios personalizados para tus torneos SAGA? Ahora puedes añadirlos a tus torneos y que los organizadores puedan seleccionarlos al crear los torneos. En poco tiempo estará disponible esta sección.
                         </p>
                     </div>
+                    <div className="novedad-contenido">
+                        <h3>⚔️ TRADUCCIÓN AL INGLES</h3>
+                        <p>
+                            Se podrá disfrutar de la aplicación, en ingles y en castellano. Hagamos que el Hobby crezca
+                        </p>
+                    </div>
                 </div>
             </section>
 
