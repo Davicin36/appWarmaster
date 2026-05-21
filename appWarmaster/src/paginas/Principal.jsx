@@ -132,7 +132,7 @@ function Principal({ onOpenLogin }) {
                         </p>
                     </div>
                     <div className="novedad-contenido">
-                        <h3>⚔️ TRADUCCIÓN AL INGLES</h3>
+                        <h3>📕 TRADUCCIÓN AL INGLES</h3>
                         <p>
                             Se podrá disfrutar de la aplicación, en ingles y en castellano. Hagamos que el Hobby crezca
                         </p>
