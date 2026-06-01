@@ -1,0 +1,22 @@
+.btn-idioma {
+    border: 2px solid var(--color-beige-oscuro);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 2;
+    border-radius: 5px;;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.btn-idioma:hover {
+    border-color: var(--color-naranja);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2);
+}
+
+.bandera-idioma {
+    width: 55px;
+    height: 35px;
+    object-fit:contain;
+    border-radius: 3px;
+    display: block;
+}

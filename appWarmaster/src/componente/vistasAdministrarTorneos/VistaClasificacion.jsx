@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { obtenerVistaJuego } from '@/funciones/registroVistasTorneos';
 
 /**
@@ -6,13 +7,14 @@ import { obtenerVistaJuego } from '@/funciones/registroVistasTorneos';
  * Carga dinámicamente el componente específico del sistema de juego
  */
 function VistaClasificacion({ tipoJuego, ...props }) {
+    const { t } = useTranslation();
     const ComponenteVista = obtenerVistaJuego(tipoJuego, 'clasificacion');
 
     if (!ComponenteVista) {
         return (
             <div className="vista-clasificacion">
                 <div className="error-message">
-                    ⚠️ No existe vista de clasificación para el juego "{tipoJuego}"
+                    ⚠️ {t('vistas_general.sin_clasificacion', { juego: tipoJuego })}
                 </div>
             </div>
         );

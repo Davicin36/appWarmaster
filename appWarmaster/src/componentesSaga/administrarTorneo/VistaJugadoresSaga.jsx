@@ -1,46 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import  {useTranslation} from 'react-i18next';
 
 import torneosSagaApi from '@/servicios/apiSaga';
 import AnadirParticipantesTorneos from '@/componente/vistasAdministrarTorneos/AnadirParticipantesTorneos';
 import { 
     obtenerConfiguracionBanda,
-    obtenerOpcionesWarlordLegendario
+    obtenerOpcionesWarlordLegendario,
+    useSagaI18n
 } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
 import '@/estilos/vistasTorneos/vistaJugadores.css';
 
-// ==========================================
-// ✅ FUNCIÓN HELPER: CALCULAR PUNTOS TOTALES
-// ==========================================
 const calcularPuntosTotales = (composicion, banda) => {
     if (!composicion || Object.keys(composicion).length === 0) return 0;
-
     const config = banda ? obtenerConfiguracionBanda(banda) : null;
-
-    // Si usa tipos personalizados (Edad de la Magia)
     if (composicion.tiposTropaPersonalizados && config?.tiposTropaPersonalizados) {
         let total = 0;
         Object.keys(composicion.tiposTropaPersonalizados).forEach(idTropa => {
             const cantidad = composicion.tiposTropaPersonalizados[idTropa];
             const tipoConfig = config.tiposTropaPersonalizados.find(t => t.id === idTropa);
-            if (tipoConfig) {
-                total += cantidad * tipoConfig.puntos;
-            }
+            if (tipoConfig) { total += cantidad * tipoConfig.puntos; }
         });
         return total;
     }
-
-    // Bandas normales
     let total = 0;
-    
-    // Tipos estándar
     total += parseFloat(composicion.guardias || 0);
     total += parseFloat(composicion.guerreros || 0);
     total += parseFloat(composicion.levas || 0);
     total += parseFloat(composicion.mercenarios || 0);
-    
-    // Características especiales
     total += parseFloat(composicion.elefantes || 0);
     total += parseFloat(composicion.carros || 0);
     total += parseFloat(composicion.tambor || 0);
@@ -48,217 +36,138 @@ const calcularPuntosTotales = (composicion, banda) => {
     total += parseFloat(composicion.perros || 0);
     total += parseFloat(composicion.berserkers || 0);
     total += parseFloat(composicion.cerdos || 0);
-    
-    // Unidades especiales
     if (composicion.unidadesEspeciales) {
-        Object.values(composicion.unidadesEspeciales).forEach(valor => {
-            total += parseFloat(valor || 0);
-        });
+        Object.values(composicion.unidadesEspeciales).forEach(valor => { total += parseFloat(valor || 0); });
     }
-    
     return total;
 };
 
-// ==========================================
-// ✅ OBTENER UNIDADES ESPECIALES DESBLOQUEADAS POR WARLORD
-// ==========================================
-const obtenerUnidadesWarlord = (bandaBase, warlordValor) => {
-    if (!warlordValor || !bandaBase) return [];
-    
-    try {
-        // ✅ Obtener la época correcta de la banda
-        const configuracionBanda = obtenerConfiguracionBanda(bandaBase);
-        const epocaBanda = configuracionBanda.epoca;
-        
-        if (!epocaBanda) {
-            console.warn('⚠️ No se pudo determinar la época de la banda:', bandaBase);
-            return [];
-        }
-        
-        const opciones = obtenerOpcionesWarlordLegendario(epocaBanda, bandaBase);
-        if (!opciones) return [];
-        
-        const opcionWarlord = opciones.opciones.find(o => o.valor === warlordValor);
-        if (opcionWarlord && opcionWarlord.unidadesEspecialesDesbloqueadas) {
-            return opcionWarlord.unidadesEspecialesDesbloqueadas;
-        }
-    } catch (error) {
-        console.error('Error al obtener unidades del warlord:', error);
-    }
-    
-    return [];
-};
+const calcularPuntosTotalesConWarlord = (composicion, banda) =>
+    calcularPuntosTotales(composicion, banda) + (composicion.warlordLegendario?.costePuntos || 0);
 
-// ==========================================
-// ✅ COMPONENTE: MOSTRAR COMPOSICIÓN (MEJORADO)
-// ==========================================
-const MostrarComposicion = ({ composicion, banda, mostrarWarlord = true }) => {
-    if (!composicion || Object.keys(composicion).length === 0) {
-        return <span className="sin-composicion">Sin composición</span>;
-    }
+const MostrarComposicion = ({ composicion, torneo, inscrito, banda, mostrarWarlord = false }) => {
+    const { t } = useTranslation();
+    const { getTropa, getWarlordType } = useSagaI18n();
 
-    // ✅ Extraer información del warlord
+    if (!composicion || Object.keys(composicion).length === 0)
+        return <p className="sin-composicion">{t('vista_info_saga.sin_composicion')}</p>;
+
     const warlord = composicion.warlordLegendario || null;
     const bandaFinal = warlord?.bandaDesbloqueada || banda;
-
-    // ✅ Usar bandaFinal para obtener la configuración correcta
     const config = bandaFinal ? obtenerConfiguracionBanda(bandaFinal) : null;
-    const totalPuntos = calcularPuntosTotales(composicion, bandaFinal);
+    const puntosEjercito = calcularPuntosTotales(composicion, bandaFinal);
+    const totalPuntosConWarlord = calcularPuntosTotalesConWarlord(composicion, bandaFinal);
 
-    // ✅ Obtener unidades especiales desbloqueadas por warlord
-    const unidadesWarlord = warlord && banda 
-        ? obtenerUnidadesWarlord(banda, warlord.valor)  // ✅ Solo banda y warlord, la época se obtiene internamente
-        : [];
-
-    // ✅ EDAD DE LA MAGIA - Tipos personalizados
     if (composicion.tiposTropaPersonalizados && config?.tiposTropaPersonalizados) {
         return (
-            <div className="miembro-composicion-admin">
-                {/* ✅ WARLORD LEGENDARIO */}
+            <div className="composicion-banda">
                 {mostrarWarlord && warlord && (
-                    <div className="warlord-info-admin">
-                        <span className="badge-warlord">
-                            ⚔️ {warlord.nombre}
-                            {warlord.costePuntos > 0 && ` (${warlord.costePuntos} pts)`}
-                        </span>
+                    <div className="warlord-destacado">
+                        <div className="warlord-titulo">⚔️ {t('vista_info_saga.heroe_legendario')}</div>
+                        <div className="warlord-nombre">{warlord.nombre}</div>
+                        {warlord.costePuntos > 0 && (
+                            <div className="warlord-coste">
+                                {t('insc_equipo.warlord_coste')}: {warlord.costePuntos} {warlord.costePuntos === 1 ? t('insc_equipo.punto') : t('insc_equipo.puntos')}
+                            </div>
+                        )}
                         {warlord.bandaDesbloqueada && (
-                            <span className="badge-banda-desbloqueada">
-                                {warlord.bandaDesbloqueada}
-                            </span>
+                            <div className="warlord-banda-desbloqueada">
+                                ✨ {t('vista_info_saga.desbloquea')}: <strong>{warlord.bandaDesbloqueada}</strong>
+                            </div>
                         )}
                     </div>
                 )}
-
-                <div className="puntos-total-admin">
-                    <strong>Total: {totalPuntos.toFixed(1)} pts</strong>
+                <h5>📜 {t('vista_info_saga.composicion')}:</h5>
+                <div className="puntos-total-box">
+                    <div className="puntos-total-principal">
+                        <strong>{t('vista_info_saga.total')}: {totalPuntosConWarlord.toFixed(1)} pts</strong>
+                    </div>
                     {warlord?.costePuntos > 0 && (
-                        <small className="coste-warlord-info">
-                            (+{warlord.costePuntos} warlord)
-                        </small>
+                        <div className="puntos-desglose">
+                            {t('vista_info_saga.ejercito')}: {puntosEjercito.toFixed(1)} pts + {t('vista_info_saga.warlord_label')}: {warlord.costePuntos} pt
+                        </div>
                     )}
                 </div>
-                <div className="puntos-detalle-admin">
+                <ul>
                     {config.tiposTropaPersonalizados.map(tipo => {
                         const cantidad = composicion.tiposTropaPersonalizados[tipo.id] || 0;
-                        if (cantidad > 0) {
-                            return (
-                                <span key={tipo.id}>
-                                    {tipo.label}: {cantidad} ({(cantidad * tipo.puntos).toFixed(1)} pts)
-                                </span>
-                            );
-                        }
-                        return null;
+                        if (cantidad <= 0) return null;
+                        return <li key={tipo.id}>{getTropa(tipo.id)}: {cantidad} ({(cantidad * tipo.puntos).toFixed(1)} pts)</li>;
                     })}
-                </div>
+                </ul>
                 {composicion.opcionesBanda && Object.keys(composicion.opcionesBanda).length > 0 && (
-                    <div className="opciones-banda-mini-admin">
-                        {Object.entries(composicion.opcionesBanda).map(([key, value]) => (
-                            <span key={key} className="badge-opcion">
-                                {key}: {value}
-                            </span>
-                        ))}
+                    <div className="opciones-banda-detalle">
+                        <h6>⚙️ {t('insc_equipo.config_banda')}:</h6>
+                        <ul>
+                            {Object.entries(composicion.opcionesBanda).map(([key, value]) => {
+                                const opcion = config?.opcionesBanda?.find(o => o.id === key);
+                                const label  = opcion?.label || key;
+                                return <li key={key}>{label}: {getWarlordType(value)}</li>;
+                            })}
+                        </ul>
                     </div>
                 )}
             </div>
         );
     }
 
-    // ✅ BANDAS NORMALES
     return (
-        <div className="miembro-composicion-admin">
-            {/* ✅ WARLORD LEGENDARIO */}
-            {mostrarWarlord && warlord && (
-                <div className="warlord-info-admin">
-                    <span className="badge-warlord">
-                        ⚔️ {warlord.nombre}
-                        {warlord.costePuntos > 0 && ` (${warlord.costePuntos} pts)`}
-                    </span>
-                    {warlord.bandaDesbloqueada && (
-                        <span className="badge-banda-desbloqueada">
-                            ✨ {warlord.bandaDesbloqueada}
-                        </span>
-                    )}
-                </div>
-            )}
-
-            <div className="puntos-total-admin">
-                <strong>Total: {totalPuntos.toFixed(1)} pts</strong>
-                {warlord?.costePuntos > 0 && (
-                    <small className="coste-warlord-info">
-                        (+{warlord.costePuntos} warlord)
-                    </small>
+        <div className="composicion-banda">
+            <h5>📜 {t('vista_info_saga.composicion')}:</h5>
+            <div className="puntos-total-box">
+                <div className="puntos-total-principal" />
+                {warlord?.costePuntos >= 0 && (
+                    <div className="puntos-desglose">
+                        ⭐{warlord.nombre} ({warlord.costePuntos} {t('insc_equipo.punto')})
+                    </div>
                 )}
             </div>
-            <div className="puntos-detalle-admin">
-                {/* Tipos estándar */}
-                {composicion.guardias > 0 && <span>Guardias: {parseFloat(composicion.guardias)}</span>}
-                {composicion.berserkers > 0 && (
-                    <span className="unidad-especial"> Berserkers: {parseFloat(composicion.berserkers)}</span>
-                )}
-                
-                {/* Características especiales */}
-                {composicion.elefantes > 0 && <span> Elefantes: {parseFloat(composicion.elefantes)}</span>}
-                {composicion.carros > 0 && <span> Carros: {parseFloat(composicion.carros)}</span>}
-                {composicion.tambor > 0 && <span>Tambor: {parseFloat(composicion.tambor)}</span>}
-                {composicion.curaids > 0 && <span>Curaids: {parseFloat(composicion.curaids)}</span>}
-                {composicion.perros > 0 && <span> Perros de Guerra: {parseFloat(composicion.perros)}</span>}
-                
-                {/* CERDOS INCENDIARIOS - UNIDAD LEGENDARIA */}
-                {composicion.cerdos > 0 && (
-                    <span className="unidad-legendaria-especial">
-                        Cerdos Incendiarios: {parseFloat(composicion.cerdos)} 
-                    </span>
-                )}
-                
-                {/* Unidades especiales */}
-                {composicion.unidadesEspeciales && Object.entries(composicion.unidadesEspeciales).map(([key, value]) => {
-                    if (value > 0) {
-                        const unidad = config?.unidadesEspeciales?.find(u => u.nombre === key);
-                        const unidadWarlord = unidadesWarlord.find(u => u.nombre === key);
-                        const label = unidad?.label || unidadWarlord?.label || key;
-                        
-                        // ✅ Si es unidad desbloqueada por warlord, destacarla
-                        const esUnidadWarlord = !!unidadWarlord;
-                        
-                        return (
-                            <span 
-                                key={key}
-                                className={esUnidadWarlord ? 'unidad-warlord-desbloqueada' : ''}
-                            >
-                                {label}: {parseFloat(value)}
-                                {unidadWarlord && ` (${unidadWarlord.puntos} pts)`}
-                            </span>
-                        );
-                    }
-                    return null;
-                })}
-                
-                {composicion.guerreros > 0 && <span>Guerreros: {parseFloat(composicion.guerreros)}</span>}
-                {composicion.levas > 0 && <span>Levas: {parseFloat(composicion.levas)}</span>}
-                {composicion.mercenarios > 0 && <span>Mercenarios: {parseFloat(composicion.mercenarios)}</span>}
-            </div>
-            
-            {/* Opciones de banda */}
             {composicion.opcionesBanda && Object.keys(composicion.opcionesBanda).length > 0 && (
-                <div className="opciones-banda-mini-admin">
+                <div className="opciones-banda-detalle">
+                    <h6 />
                     {Object.entries(composicion.opcionesBanda).map(([key, value]) => {
                         const opcion = config?.opcionesBanda?.find(o => o.id === key);
-                        const label = opcion?.label || key;
-                        return (
-                            <span key={key} className="badge-opcion">
-                                {label}: {value}
-                            </span>
-                        );
+                        const label  = opcion?.label || t('vista_info_saga.ambicion_warlord');
+                        return <p key={key}><strong>{label}:</strong> {getWarlordType(value)}</p>;
                     })}
                 </div>
             )}
-            
-            {/* Detalle mercenarios */}
-            {composicion.detalleMercenarios && (
-                <div className="detalle-mercenarios-mini-admin">
-                    🧾 {composicion.detalleMercenarios}
-                </div>
-            )}
+            <ul>
+                {composicion.guardias    > 0 && <li>{getTropa('guardias')}: {parseFloat(composicion.guardias)}</li>}
+                {composicion.berserkers  > 0 && <li className="unidad-berserkers">{getTropa('berserkers')}: {parseFloat(composicion.berserkers)}</li>}
+                {composicion.elefantes   > 0 && <li>{getTropa('elefantes')}: {parseFloat(composicion.elefantes)}</li>}
+                {composicion.carros      > 0 && <li>{getTropa('carros')}: {parseFloat(composicion.carros)}</li>}
+                {composicion.tambor      > 0 && <li>{getTropa('tambor')}: {parseFloat(composicion.tambor)}</li>}
+                {composicion.curaids     > 0 && <li>{getTropa('curaids')}: {parseFloat(composicion.curaids)}</li>}
+                {composicion.perros      > 0 && <li>{getTropa('perros')}: {parseFloat(composicion.perros)}</li>}
+                {composicion.cerdos      > 0 && <li className="unidad-cerdos">{t('insc_equipo.cerdos_incendiarios')}: {parseFloat(composicion.cerdos)}</li>}
+                {composicion.unidadesEspeciales && Object.entries(composicion.unidadesEspeciales).map(([key, value]) => {
+                    if (value <= 0) return null;
+                    let unidad = config?.unidadesEspeciales?.find(u => u.nombre === key);
+                    if (!unidad && warlord) {
+                        const epocaTorneo = torneo?.epocas_disponibles || inscrito?.epoca;
+                        if (epocaTorneo) {
+                            const ow = obtenerOpcionesWarlordLegendario(epocaTorneo, banda);
+                            if (ow) {
+                                const owActual = ow.opciones.find(o => o.valor === warlord.valor);
+                                if (owActual?.unidadesEspecialesDesbloqueadas)
+                                    unidad = owActual.unidadesEspecialesDesbloqueadas.find(u => u.valor === key);
+                            }
+                        }
+                    }
+                    const nombre      = unidad?.nombre || key;
+                    const esLegendaria= (unidad?.puntos || 0) >= 2;
+                    return (
+                        <li key={key} className={esLegendaria ? 'unidad-legendaria' : ''}>
+                            {esLegendaria && '⭐ '}{nombre}: {parseFloat(value)}
+                        </li>
+                    );
+                })}
+                {composicion.guerreros   > 0 && <li>{getTropa('guerreros')}: {parseFloat(composicion.guerreros)}</li>}
+                {composicion.levas       > 0 && <li>{getTropa('levas')}: {parseFloat(composicion.levas)}</li>}
+                {composicion.mercenarios > 0 && <li>{getTropa('mercenarios')}: {parseFloat(composicion.mercenarios)}</li>}
+                {composicion.detalleMercenarios && <li className="detalle-mercenarios">🧾 {composicion.detalleMercenarios}</li>}
+            </ul>
         </div>
     );
 };
@@ -266,6 +175,8 @@ const MostrarComposicion = ({ composicion, banda, mostrarWarlord = true }) => {
 function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugadores: propJugadores, equipos: propEquipos, onUpdate }) {
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
+    const { t } = useTranslation();
+    const { getBanda, getEpoca } = useSagaI18n();
     
     const [jugadores, setJugadores] = useState(propJugadores || []);
     const [equipos, setEquipos] = useState(propEquipos || []);
@@ -275,18 +186,15 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
     const [mostrarModalAnadir, setMostrarModalAnadir] = useState(false);
 
     useEffect(() => {
-        if (!propJugadores && !propEquipos) {
-            cargarDatos();
-        }
+        if (!propJugadores && !propEquipos) { cargarDatos(); }
     }, [torneoId, tipoTorneo]);
 
     useEffect(() => {
         if (propJugadores) {
-            const jugadoresNormalizados = propJugadores.map(j => ({
+            setJugadores(propJugadores.map(j => ({
                 ...j,
                 pagado: j.pagado === 1 || j.pagado === '1' ? 'pagado' : 'pendiente'
-            }));
-            setJugadores(jugadoresNormalizados);
+            })));
         }
         if (propEquipos) setEquipos(propEquipos);
     }, [propJugadores, propEquipos]);
@@ -294,24 +202,20 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
     const cargarDatos = async () => {
         try {
             setLoading(true);
-            
             if (tipoTorneo === 'Individual') {
                 const data = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
                 const jugadoresArray = Array.isArray(data) ? data : data.data || [];
-
-                const jugadoresNormalizados = jugadoresArray.map(jugador => ({
+                setJugadores(jugadoresArray.map(jugador => ({
                     ...jugador,
                     pagado: jugador.pagado === 1 || jugador.pagado === '1' ? 'pagado' : 'pendiente'
-                }));
-                
-                setJugadores(jugadoresNormalizados);
+                })));
             } else if (tipoTorneo === 'Por equipos') {
                 const response = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
                 const equiposData = response.data || response || [];
                 setEquipos(Array.isArray(equiposData) ? equiposData : []);
             }
         } catch (error) {
-            console.error('Error al cargar datos:', error);
+            console.error(`${t('comun.error_datos')}:`, error);
         } finally {
             setLoading(false);
         }
@@ -319,208 +223,140 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
 
     const cambiarEstadoPagoJugador = async (jugadorId, estadoActual) => {
         const nuevoEstado = estadoActual === 'pagado' ? 'pendiente' : 'pagado';
-
-        const confirmar = window.confirm(
-            `¿Cambiar estado de pago a "${nuevoEstado.toUpperCase()}"?`
-        );
+        const label = nuevoEstado === 'pagado' ? t('comun.pagados') : t('comun.pendiente');
         
-        if (!confirmar) return;
-            
+        if (!window.confirm(`${t('vista_jugadores.cambio_pago_jugador')} "${label.toUpperCase()}"?`)) return;
         try {
             setLoadingPago(prev => ({ ...prev, [`jugador-${jugadorId}`]: true }));
-            
             await torneosSagaApi.actualizarPagoJugador(torneoId, jugadorId, nuevoEstado);
-            
-            setJugadores(prev => prev.map(j => 
-                j.id === jugadorId 
-                    ? { ...j, pagado: nuevoEstado }
-                    : j
-            ));
-
-            alert(`✅ Estado actualizado a: ${nuevoEstado.toUpperCase()}`);
-            
+            setJugadores(prev => prev.map(j => j.id === jugadorId ? { ...j, pagado: nuevoEstado } : j));
+            alert(`✅ ${t('vista_jugadores.estado_actualizado')} ${label.toUpperCase()}`);
             if (onUpdate) onUpdate();
-            
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         } finally {
             setLoadingPago(prev => ({ ...prev, [`jugador-${jugadorId}`]: false }));
         }
     };
 
     const cambiarEstadoPagoEquipo = async (equipoId, estadoActual) => {
+        // Valores de BD: siempre literales, NUNCA traducidos
         const nuevoEstado = estadoActual === 'pagado' ? 'pendiente' : 'pagado';
-        
-        const confirmar = window.confirm(
-            `¿Cambiar estado de pago del equipo a "${nuevoEstado.toUpperCase()}"?`
-        );
-        
-        if (!confirmar) return;
-        
+        // Label solo para mostrar al usuario
+        const label = nuevoEstado === 'pagado' ? t('comun.pagados') : t('comun.pendiente');
+
+        if (!window.confirm(`${t('vista_jugadores.cambio_pago_equipo')} "${label.toUpperCase()}"?`)) return;
         try {
             setLoadingPago(prev => ({ ...prev, [`equipo-${equipoId}`]: true }));
-        
             await torneosSagaApi.actualizarPagoEquipo(torneoId, equipoId, nuevoEstado);
-            
-            setEquipos(prev => prev.map(e => 
-                String(e.id) === String(equipoId) 
-                    ? { ...e, pagado: nuevoEstado }
-                    : e
+            setEquipos(prev => prev.map(e =>
+                String(e.id) === String(equipoId) ? { ...e, pagado: nuevoEstado } : e
             ));
-            
-            alert(`✅ Estado de pago actualizado a: ${nuevoEstado.toUpperCase()}`);
-            
+            alert(`✅ ${t('vista_jugadores.estado_actualizado')} ${label.toUpperCase()}`);
             if (onUpdate) onUpdate();
-            
         } catch (error) {
-            console.error('❌ Error completo:', error);
-            alert(`❌ Error: ${error.response?.data?.error || error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('vista_jugadores.error_actualizar')} ${error.response?.data?.error || error.message}`);
         } finally {
-            setLoadingPago(prev => ({ ...prev, [`equipo-${equipoId}`]: false }));
+            setLoadingPago(prev => ({ ...prev, [`equipo-${equipoId}`]: false }));  // ← template literal fuera de t()
         }
     };
 
     const eliminarJugador = async (jugadorId) => {
-        if (!window.confirm('¿Eliminar este jugador del torneo?')) return;
-        
+        if (!window.confirm(t('vista_jugadores.eliminar_jugador'))) return;
         try {
             await torneosSagaApi.eliminarJugadorTorneo(torneoId, jugadorId);
-            alert('✅ Jugador eliminado');
+            alert(`✅ ${t('vista_jugadores.jugador_eliminado')}`);
             await cargarDatos();
             if (onUpdate) onUpdate();
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         }
     };
 
     const eliminarEquipo = async (equipoId) => {
-        if (!window.confirm('¿Eliminar este equipo del torneo?')) return;
-        
+        if (!window.confirm(t('vista_jugadores.eliminar_equipo'))) return;
         try {
             await torneosSagaApi.eliminarEquipoTorneo(torneoId, equipoId);
-            alert('✅ Equipo eliminado');
+            alert(`✅ ${t('vista_jugadores.equipo_eliminado')}`);
             await cargarDatos();
             if (onUpdate) onUpdate();
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         }
     };
 
     const reenviarTodasLasInvitaciones = async () => {
         const totalEquipos = equipos.length;
-        
-        const confirmar = window.confirm(
-            `⚠️ REENVÍO MASIVO DE INVITACIONES ⚠️\n\n` +
-            `Se reenviarán las invitaciones a TODOS los equipos del torneo (${totalEquipos} equipos).\n\n` +
-            `¿Estás seguro de continuar?`
-        );
-        
-        if (!confirmar) return;
-
+        if (!window.confirm(
+            `⚠️ ${t('vista_jugadores.reenvio_todos_equipos')} ⚠️\n\n` +
+            `${t('vista_jugadores.reenvio_descripcion')} (${totalEquipos} ${t('vista_jugadores.equipos')}).\n\n` +
+            t('vista_jugadores.confirmar_reenvio')
+        )) return;
         try {
             setLoadingReenvio(true);
-            
             const response = await torneosSagaApi.reenviarInscripcionTodosEquipos(torneoId);
-            
             if (response.success) {
                 const { totales } = response.data;
-                
-                let mensaje = `✅ ${response.message}\n\n`;
-                mensaje += `📊 RESUMEN GENERAL\n`;
-                mensaje += `🏆 Equipos: ${totalEquipos}\n`;
-                mensaje += `📧 Emails enviados: ${totales.emailsEnviados}\n`;
-                mensaje += `❌ Emails fallidos: ${totales.emailsFallidos}\n`;
-                
-                alert(mensaje);
+                alert(
+                    `✅ ${response.message}\n\n` +
+                    `📊 ${t('vista_jugadores.resumen_general')}\n` +
+                    `🏆 ${t('vista_jugadores.equipos')}: ${totalEquipos}\n` +
+                    `📧 ${t('vista_jugadores.email_enviado')}: ${totales.emailsEnviados}\n` +
+                    `❌ ${t('vista_jugadores.email_fallo')}: ${totales.emailsFallidos}`
+                );
             }
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         } finally {
             setLoadingReenvio(false);
         }
     };
 
     const reenviarInvitacionEquipo = async (equipo) => {
-        if (!equipo || !equipo.id) {
-            alert('❌ Error: datos del equipo no disponibles');
-            return;
-        }
-        
-        const confirmar = window.confirm(
-            `¿Reenviar invitaciones al equipo "${equipo.nombre_equipo}"?`
-        );
-        
-        if (!confirmar) return;
-
+        if (!equipo || !equipo.id) { alert(`❌ ${t('comun.no_datos_participantes')}`); return; }
+        if (!window.confirm(`${t('vista_jugadores.reenvio_un_equipo')} "${equipo.nombre_equipo}"?`)) return;
         try {
             setLoadingReenvio(true);
-            
             const response = await torneosSagaApi.reenviarInscripcionEquipo(torneoId, equipo.id);
-            
-            if (response.success) {
-                alert(`✅ ${response.message}`);
-            }
+            if (response.success) alert(`✅ ${response.message}`);
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         } finally {
             setLoadingReenvio(false);
         }
     };
 
     const reenviarInvitacionTodosJugadores = async () => {
-        if (jugadores.length === 0) {
-            alert('❌ No hay jugadores');
-            return;
-        }
-
-        const confirmar = window.confirm(
-            `¿Reenviar invitaciones a todos los jugadores (${jugadores.length})?`
-        );
-
-        if (!confirmar) return;
-
+        if (jugadores.length === 0) { alert(`❌ ${t('comun.no_datos_participantes')}`); return; }
+        if (!window.confirm(`${t('vista_jugadores.reenvio_jugadores')} (${jugadores.length})?`)) return;
         try {
             setLoadingReenvio(true);
             const response = await torneosSagaApi.reenviarInscripcionTodosJugadores(torneoId);
-
-            if (response.success) {
-                alert(`✅ ${response.message}`);
-            }
+            if (response.success) alert(`✅ ${response.message}`);
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         } finally {
             setLoadingReenvio(false);
         }
     };
 
     const reenviarInvitacionIndividual = async (jugador) => {
-        if (!jugador || !jugador.id) {
-            alert('❌ Error: datos no disponibles');
-            return;
-        }
-
-        const confirmar = window.confirm(
-            `¿Reenviar invitación a "${jugador.jugador_nombre} ${jugador.jugador_apellidos}"?`
-        );
-
-        if (!confirmar) return;
-
+        if (!jugador || !jugador.id) { alert(`❌ ${t('comun.no_datos_participantes')}`); return; }
+        if (!window.confirm(`${t('vista_jugadores.reenvio_jugador')} "${jugador.jugador_nombre} ${jugador.jugador_apellidos}"?`)) return;
         try {
             setLoadingReenvio(true);
             const response = await torneosSagaApi.reenviarInscripcionJugador(torneoId, jugador.id);
-
-            if (response.success) {
-                alert(`✅ ${response.message}`);
-            }
+            if (response.success) alert(`✅ ${response.message}`);
         } catch (error) {
-            console.error('Error:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(`${t('comun.error')}:`, error);
+            alert(`❌ ${t('comun.error')}: ${error.message}`);
         } finally {
             setLoadingReenvio(false);
         }
@@ -529,41 +365,31 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
     const confirmarTodosLosPagos = async () => {
         if (tipoTorneo === 'Individual') {
             const pendientes = jugadores.filter(j => j.pagado !== 'pagado');
-            if (pendientes.length === 0) {
-                alert('✅ Todos los jugadores ya tienen el pago confirmado');
-                return;
-            }
-            if (!window.confirm(`¿Marcar como PAGADO a los ${pendientes.length} jugadores pendientes?`)) return;
+            if (pendientes.length === 0) { alert(`✅ ${t('vista_jugadores.confirmar_todos_pagados_jug')}`); return; }
+            if (!window.confirm(`${t('vista_jugadores.marcar_pagados')} ${pendientes.length} ${t('vista_jugadores.jugadores_pendientes')}?`)) return;
             try {
                 setLoading(true);
-                await Promise.all(
-                    pendientes.map(j => torneosSagaApi.actualizarPagoJugador(torneoId, j.id, 'pagado'))
-                );
+                await Promise.all(pendientes.map(j => torneosSagaApi.actualizarPagoJugador(torneoId, j.id, 'pagado')));
                 setJugadores(prev => prev.map(j => ({ ...j, pagado: 'pagado' })));
                 if (onUpdate) onUpdate();
-                alert(`✅ ${pendientes.length} pagos confirmados`);
+                alert(`✅ ${pendientes.length} ${t('comun.pagos_confirmados')}`);
             } catch (error) {
-                alert(`❌ Error: ${error.message}`);
+                alert(`❌ ${t('comun.error')}: ${error.message}`);
             } finally {
                 setLoading(false);
             }
         } else {
             const pendientes = equipos.filter(e => e.pagado !== 'pagado');
-            if (pendientes.length === 0) {
-                alert('✅ Todos los equipos ya tienen el pago confirmado');
-                return;
-            }
-            if (!window.confirm(`¿Marcar como PAGADO a los ${pendientes.length} equipos pendientes?`)) return;
+            if (pendientes.length === 0) { alert(`✅ ${t('vista_jugadores.confirmar_todos_pagados_eq')}`); return; }
+            if (!window.confirm(`${t('vista_jugadores.marcar_pagados')} ${pendientes.length} ${t('vista_jugadores.equipos_pendientes')}?`)) return;
             try {
                 setLoading(true);
-                await Promise.all(
-                    pendientes.map(e => torneosSagaApi.actualizarPagoEquipo(torneoId, e.id, 'pagado'))
-                );
+                await Promise.all(pendientes.map(e => torneosSagaApi.actualizarPagoEquipo(torneoId, e.id, 'pagado')));
                 setEquipos(prev => prev.map(e => ({ ...e, pagado: 'pagado' })));
                 if (onUpdate) onUpdate();
-                alert(`✅ ${pendientes.length} pagos confirmados`);
+                alert(`✅ ${pendientes.length} ${t('comun.pagos_confirmados')}`);
             } catch (error) {
-                alert(`❌ Error: ${error.message}`);
+                alert(`❌ ${t('comun.error')}: ${error.message}`);
             } finally {
                 setLoading(false);
             }
@@ -573,40 +399,26 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
     if (loading) {
         return (
             <div className="vista-jugadores">
-                <div className="empty-message">⏳ Cargando...</div>
+                <div className="empty-message">⏳ {t('vista_jugadores.cargando_jugadores')}</div>
             </div>
         );
     }
 
-    // ==========================================
-    // VISTA INDIVIDUAL
-    // ==========================================
     if (tipoTorneo === 'Individual') {
         return (
             <div className="vista-jugadores">
                 <div className="header-jugadores-con-boton">
-                    <h2>👥 Jugadores Inscritos ({jugadores.length})</h2>
+                    <h2>👥 {t('vista_jugadores.jugadores_inscritos')} ({jugadores.length})</h2>
                     {torneo?.estado === 'pendiente' && (
                         <>
-                            <button 
-                                className="btn-primary"
-                                onClick={() => setMostrarModalAnadir(true)}
-                            >
-                                Invitar Jugador
+                            <button className="btn-primary" onClick={() => setMostrarModalAnadir(true)}>
+                                {t('vista_jugadores.invitar_jugador')}
                             </button>
-                            <button 
-                                className="btn-secondary-small"
-                                onClick={reenviarInvitacionTodosJugadores}
-                                disabled={loadingReenvio}
-                            >
-                                {loadingReenvio ? '⏳ Enviando...' : '📧 Reenviar Invitaciones'}
+                            <button className="btn-secondary-small" onClick={reenviarInvitacionTodosJugadores} disabled={loadingReenvio}>
+                                {loadingReenvio ? `⏳ ${t('vista_jugadores.enviando')}` : `📧 ${t('vista_jugadores.reenviar_invitaciones')}`}
                             </button>
-                            <button
-                                className="btn-secondary-small"
-                                onClick={confirmarTodosLosPagos}
-                                disabled={loading}
-                            >
-                                {loading ? '⏳ Procesando...' : '💰 Confirmar Todos los Pagos'}
+                            <button className="btn-secondary-small" onClick={confirmarTodosLosPagos} disabled={loading}>
+                                {loading ? `⏳ ${t('vista_jugadores.procesando')}` : `💰 ${t('vista_jugadores.confirmar_pagos')}`}
                             </button>
                         </>
                     )}
@@ -614,12 +426,9 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                
                 {jugadores.length === 0 ? (
                     <div className="empty-message">
-                        <p>📭 No hay jugadores inscritos</p>
-                        <button 
-                            className="btn-primary"
-                            onClick={() => setMostrarModalAnadir(true)}
-                        >
-                            ➕ Invitar Primer Jugador
+                        <p>📭 {t('vista_jugadores.sin_jugadores')}</p>
+                        <button className="btn-primary" onClick={() => setMostrarModalAnadir(true)}>
+                            ➕ {t('vista_jugadores.invitar_primer_jugador')}
                         </button>
                     </div>
                 ) : (
@@ -627,15 +436,15 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                         <table className="tabla-jugadores-detalle">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Jugador</th>
-                                    <th>Alias</th>
-                                    <th>Club</th>
-                                    <th>Época</th>
-                                    <th>Facción</th>
-                                    <th>Composición</th>
-                                    <th>Pago</th>
-                                    {torneo?.estado === 'pendiente' && <th>Acciones</th>}
+                                    <th>{t('vista_jugadores.almohadilla')}</th>
+                                    <th>{t('vista_jugadores.jugador')}</th>
+                                    <th>{t('vista_clasificacion.alias')}</th>
+                                    <th>{t('vista_clasificacion.club')}</th>
+                                    <th>{t('vista_clasificacion.epocas')}</th>
+                                    <th>{t('vista_clasificacion.faccion')}</th>
+                                    <th>{t('vista_jugadores.composicion')}</th>
+                                    <th>{t('vista_jugadores.pago')}</th>
+                                    {torneo?.estado === 'pendiente' && <th>{t('vista_jugadores.acciones')}</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -647,66 +456,42 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                                 ? JSON.parse(jugador.composicion_ejercito)
                                                 : jugador.composicion_ejercito;
                                         } catch (e) {
-                                            console.error('Error al parsear composición:', e);
+                                            console.error(`${t('vista_jugadores.error_composicion')}`, e);
                                         }
                                     }
-                                    
-                                    // ✅ Obtener banda final (desbloqueada si hay warlord)
                                     const warlord = composicion.warlordLegendario;
                                     const bandaFinal = warlord?.bandaDesbloqueada || jugador.faccion;
-                                    
                                     const isPagado = jugador.pagado === 'pagado';
+                                    // FIX L579: clave fija
                                     const isLoadingPago = loadingPago[`jugador-${jugador.id}`];
-
                                     return (
                                         <tr key={jugador.id}>
                                             <td>{index + 1}</td>
-                                            <td className="nombre-jugador-completo">
-                                                {jugador.jugador_nombre} {jugador.jugador_apellidos}
-                                            </td>
+                                            <td className="nombre-jugador-completo">{jugador.jugador_nombre} {jugador.jugador_apellidos}</td>
                                             <td>{jugador.nombre_alias || '-'}</td>
                                             <td>{jugador.club || '-'}</td>
-                                            <td>{torneo?.epocas_disponibles || jugador.epoca || '-'}</td>
+                                            <td>{jugador.epoca ? getEpoca(jugador.epoca) : (torneo?.epocas_disponibles ? getEpoca(torneo.epocas_disponibles) : '-')}</td>
                                             <td>
-                                                {/* ✅ Mostrar banda base y desbloqueada */}
-                                                <div>{jugador.faccion || '-'}</div>
+                                                <div>{jugador.faccion ? getBanda(jugador.faccion) : '-'}</div>
                                                 {warlord?.bandaDesbloqueada && (
-                                                    <div className="banda-desbloqueada-celda">
-                                                        ✨ {warlord.bandaDesbloqueada}
-                                                    </div>
+                                                    <div className="banda-desbloqueada-celda">✨ {getBanda(warlord.bandaDesbloqueada)}</div>
                                                 )}
                                             </td>
                                             <td>
-                                                <MostrarComposicion 
-                                                    composicion={composicion} 
-                                                    banda={bandaFinal}
-                                                    mostrarWarlord={torneo?.unidades_legendarias === 1}
-                                                />
+                                                <MostrarComposicion composicion={composicion} banda={bandaFinal} mostrarWarlord={torneo?.unidades_legendarias === 1} />
                                             </td>
                                             <td>
-                                                <button
-                                                    onClick={() => cambiarEstadoPagoJugador(jugador.id, jugador.pagado)}
-                                                    className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`}
-                                                    disabled={isLoadingPago}
-                                                >
-                                                    {isLoadingPago ? '⏳' : (isPagado ? '✅ Pagado' : '⏰ Pendiente')}
+                                                <button onClick={() => cambiarEstadoPagoJugador(jugador.id, jugador.pagado)} className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`} disabled={isLoadingPago}>
+                                                    {isLoadingPago ? '⏳' : (isPagado ? `✅ ${t('botones.pagado')}` : `⏰ ${t('botones.pendiente')}`)}
                                                 </button>
                                             </td>
                                             {torneo?.estado === 'pendiente' && (
                                                 <td>
-                                                    <button 
-                                                        className="btn-secondary-small"
-                                                        onClick={() => reenviarInvitacionIndividual(jugador)}
-                                                        disabled={loadingReenvio}
-                                                        style={{ marginRight: '5px' }}
-                                                    >
+                                                    <button className="btn-secondary-small" onClick={() => reenviarInvitacionIndividual(jugador)} disabled={loadingReenvio} style={{ marginRight: '5px' }}>
                                                         {loadingReenvio ? '⏳' : '📧'}
                                                     </button>
-                                                    <button
-                                                        onClick={() => eliminarJugador(jugador.jugador_id)}
-                                                        className="btn-danger-small"
-                                                    >
-                                                        🗑️ Eliminar
+                                                    <button onClick={() => eliminarJugador(jugador.jugador_id)} className="btn-danger-small">
+                                                        🗑️ {t('botones.eliminar')}
                                                     </button>
                                                 </td>
                                             )}
@@ -721,15 +506,9 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                 {mostrarModalAnadir && (
                     <div className="modal-overlay" onClick={() => setMostrarModalAnadir(false)}>
                         <div className="modal-content-anadir" onClick={(e) => e.stopPropagation()}>
-                            <AnadirParticipantesTorneos
-                                torneoId={torneoId}
+                            <AnadirParticipantesTorneos torneoId={torneoId}
                                 onClose={() => setMostrarModalAnadir(false)}
-                                onSuccess={async () => {
-                                    setMostrarModalAnadir(false);
-                                    await cargarDatos();
-                                    if (onUpdate) onUpdate();
-                                }}
-                            />
+                                onSuccess={async () => { setMostrarModalAnadir(false); await cargarDatos(); if (onUpdate) onUpdate(); }} />
                         </div>
                     </div>
                 )}
@@ -737,35 +516,20 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
         );
     }
 
-    // ==========================================
-    // VISTA DE EQUIPOS
-    // ==========================================
     return (
         <div className="vista-jugadores">
             <div className="header-jugadores-con-boton">
-                <h2>👥 Equipos Inscritos ({equipos.length})</h2>
+                <h2>👥 {t('vista_jugadores.equipos')} ({equipos.length})</h2>
                 {torneo?.estado === 'pendiente' && (
                     <>
-                        <button 
-                            className="btn-primary"
-                            onClick={() => setMostrarModalAnadir(true)}
-                            disabled={loadingReenvio}
-                        >
-                            Invitar Equipo
+                        <button className="btn-primary" onClick={() => setMostrarModalAnadir(true)} disabled={loadingReenvio}>
+                            {t('vista_jugadores.invitar_primer_equipo')}
                         </button>
-                        <button 
-                            className="btn-secondary-small"
-                            onClick={reenviarTodasLasInvitaciones}
-                            disabled={loadingReenvio}
-                        >
-                            {loadingReenvio ? '⏳ Enviando...' : '📧 Reenviar Invitaciones'}
+                        <button className="btn-secondary-small" onClick={reenviarTodasLasInvitaciones} disabled={loadingReenvio}>
+                            {loadingReenvio ? `⏳ ${t('vista_jugadores.enviando')}` : `📧 ${t('vista_jugadores.reenviar_invitaciones')}`}
                         </button>
-                        <button
-                            className="btn-secondary-small"
-                            onClick={confirmarTodosLosPagos}
-                            disabled={loading}
-                        >
-                            {loading ? '⏳ Procesando...' : '💰 Confirmar Todos los Pagos'}
+                        <button className="btn-secondary-small" onClick={confirmarTodosLosPagos} disabled={loading}>
+                            {loading ? `⏳ ${t('vista_jugadores.procesando')}` : `💰 ${t('vista_jugadores.confirmar_pagos')}`}
                         </button>
                     </>
                 )}
@@ -773,12 +537,9 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
             
             {equipos.length === 0 ? (
                 <div className="empty-message">
-                    <p>📭 No hay equipos inscritos</p>
-                    <button 
-                        className="btn-primary"
-                        onClick={() => setMostrarModalAnadir(true)}
-                    >
-                        ➕ Invitar Primer Equipo
+                    <p>📭 {t('vista_jugadores.no_equipos')}</p>
+                    <button className="btn-primary" onClick={() => setMostrarModalAnadir(true)}>
+                        ➕ {t('vista_jugadores.invitar_primer_equipo')}
                     </button>
                 </div>
             ) : (
@@ -786,7 +547,6 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                     {equipos.map((equipo) => {
                         const isPagado = equipo.pagado === 'pagado';
                         const isLoadingPago = loadingPago[`equipo-${equipo.id}`];
-
                         return (
                             <div key={equipo.id} className="card-equipo-admin">
                                 <div className="equipo-header-admin">
@@ -795,70 +555,46 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
                                         👑 {equipo.capitan_nombre} {equipo.capitan_apellidos} {equipo.capitan_alias && `(${equipo.capitan_alias})`}
                                     </span>
                                 </div>
-
                                 <div className="equipo-miembros-admin">
-                                    <h4>Miembros ({(equipo.miembros || []).length}):</h4>
+                                    <h4>{t('vista_jugadores.miembros_equipo')} ({(equipo.miembros || []).length}):</h4>
                                     {(equipo.miembros || []).length > 0 ? (
                                         <ul className="lista-miembros-admin">
                                             {equipo.miembros.map((miembro, idx) => {
-                                                // ✅ Obtener banda final del miembro
                                                 const warlord = miembro.composicion?.warlordLegendario;
                                                 const bandaFinal = warlord?.bandaDesbloqueada || miembro.faccion;
-
                                                 return (
                                                     <li key={idx} className="miembro-item-admin">
                                                         <div className="miembro-header-admin">
                                                             <span className="miembro-nombre-admin">
-                                                                {miembro.es_capitan && '👑 '}
-                                                                {miembro.nombre} {miembro.alias && `(${miembro.alias})`}
+                                                                {miembro.es_capitan && '👑 '}{miembro.nombre} {miembro.alias && `(${miembro.alias})`}
                                                             </span>
                                                             <span className="miembro-epoca-banda-admin">
-                                                                {miembro.epoca} - {miembro.faccion}
+                                                                {miembro.epoca ? getEpoca(miembro.epoca) : '-'} - {miembro.faccion ? getBanda(miembro.faccion) : '-'}
                                                                 {warlord?.bandaDesbloqueada && (
-                                                                    <span className="banda-desbloqueada-inline">
-                                                                        ✨ {warlord.bandaDesbloqueada}
-                                                                    </span>
+                                                                    <span className="banda-desbloqueada-inline">✨ {getBanda(warlord.bandaDesbloqueada)}</span>
                                                                 )}
                                                             </span>
                                                         </div>
-                                                        
-                                                        <MostrarComposicion 
-                                                            composicion={miembro.composicion} 
-                                                            banda={bandaFinal}
-                                                            epoca={miembro.epoca}
-                                                            mostrarWarlord={torneo?.unidades_legendarias === 1}
-                                                        />
+                                                        <MostrarComposicion composicion={miembro.composicion} banda={bandaFinal} epoca={miembro.epoca} mostrarWarlord={torneo?.unidades_legendarias === 1} />
                                                     </li>
                                                 );
                                             })}
                                         </ul>
                                     ) : (
-                                        <p className="sin-miembros-admin">Sin miembros</p>
+                                        <p className="sin-miembros-admin">{t('vista_jugadores.sin_miembros')}</p>
                                     )}
                                 </div>
-
                                 <div className="equipo-acciones-admin">
-                                    <button
-                                        onClick={() => cambiarEstadoPagoEquipo(equipo.id, equipo.pagado)}
-                                        className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`}
-                                        disabled={isLoadingPago}
-                                    >
-                                        {isLoadingPago ? '⏳' : (isPagado ? '✅ Pagado' : '⏰ Pendiente')}
+                                    <button onClick={() => cambiarEstadoPagoEquipo(equipo.id, equipo.pagado)} className={`btn-pago ${isPagado ? 'pagado' : 'pendiente'}`} disabled={isLoadingPago}>
+                                        {isLoadingPago ? '⏳' : (isPagado ? `✅ ${t('botones.pagado')}` : `⏰ ${t('botones.pendiente')}`)}
                                     </button>
                                     {torneo?.estado === 'pendiente' && (
                                         <>
-                                            <button 
-                                                className="btn-primary"
-                                                onClick={() => reenviarInvitacionEquipo(equipo)}
-                                                disabled={loadingReenvio}
-                                            >
-                                                {loadingReenvio ? '⏳' : '📧 Reenviar'}
+                                            <button className="btn-primary" onClick={() => reenviarInvitacionEquipo(equipo)} disabled={loadingReenvio}>
+                                                {loadingReenvio ? '⏳' : `📧 ${t('botones.reenviar_invitacion')}`}
                                             </button>
-                                            <button
-                                                onClick={() => eliminarEquipo(equipo.id)}
-                                                className="btn-danger-small"
-                                            >
-                                                🗑️ Eliminar
+                                            <button onClick={() => eliminarEquipo(equipo.id)} className="btn-danger-small">
+                                                🗑️ {t('botones.eliminar')}
                                             </button>
                                         </>
                                     )}
@@ -872,15 +608,9 @@ function VistaJugadoresSaga({ torneoId: propTorneoId, torneo, tipoTorneo, jugado
             {mostrarModalAnadir && (
                 <div className="modal-overlay" onClick={() => setMostrarModalAnadir(false)}>
                     <div className="modal-content-anadir" onClick={(e) => e.stopPropagation()}>
-                        <AnadirParticipantesTorneos
-                            torneoId={torneoId}
+                        <AnadirParticipantesTorneos torneoId={torneoId}
                             onClose={() => setMostrarModalAnadir(false)}
-                            onSuccess={async () => {
-                                setMostrarModalAnadir(false);
-                                await cargarDatos();
-                                if (onUpdate) onUpdate();
-                            }}
-                        />
+                            onSuccess={async () => { setMostrarModalAnadir(false); await cargarDatos(); if (onUpdate) onUpdate(); }} />
                     </div>
                 </div>
             )}

@@ -160,16 +160,18 @@ class apiUsuarios {
   }
 
   async recuperarPassword (email){
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request (`/recuperar-password`, {
       method: 'POST',
-      body: { email }
+      body: { email, lang }
     })
   }
 
   async resetPassword (token, password) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`/reset-password`, {
       method: 'POST',
-      body: { token, password } 
+      body: { token, password, lang } 
     })
   }
   

@@ -5,9 +5,7 @@ import torneosSagaApi from '@/servicios/apiSaga';
 // ==========================================
 
 /**
- * Genera emparejamientos aleatorios para la primera ronda
- * @param {number} torneoId - ID del torneo
- * @returns {Promise<Array>} - Array de emparejamientos
+ * este es mi emparejamientosIndividualesSaga.js
  */
     
 const generarEmparejamientosIniciales = async (torneoId) => {

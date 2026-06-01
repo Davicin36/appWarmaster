@@ -19,27 +19,6 @@ export const generarEmparejamientosEquipos = async (torneoId, ronda) => {
 };
 
 // ==========================================
-// OBTENER JUGADORES DE UN EQUIPO CON ÉPOCA
-// ==========================================
-
-const obtenerJugadoresEquipo = async (torneoId, equipoId) => {
-    try {
-        const response = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
-        const todosJugadores = Array.isArray(response) ? response : response.data || [];
-        
-        const jugadoresEquipo = todosJugadores.filter(j => 
-            j.equipo_id === equipoId || 
-            (j.equipo && (j.equipo.id === equipoId || j.equipo.equipo_id === equipoId))
-        );
-        
-        return jugadoresEquipo;
-    } catch (error) {
-        console.warn(`⚠️ No se pudieron obtener jugadores del equipo ${equipoId}:`, error);
-        return [];
-    }
-};
-
-// ==========================================
 // CREAR ESTRUCTURA COMPLETA DE ENFRENTAMIENTO CON JUGADORES
 // ==========================================
 
@@ -48,8 +27,8 @@ const crearEnfrentamientoCompleto = async (torneoId, equipo1, equipo2 = null, es
         const equipo1Id = equipo1.id || equipo1.equipo_id;
         const equipo2Id = equipo2 ? (equipo2.id || equipo2.equipo_id) : null;
         
-        const jugadores1 = await obtenerJugadoresEquipo(torneoId, equipo1Id);
-        const jugadores2 = equipo2 && !esBye ? await obtenerJugadoresEquipo(torneoId, equipo2Id) : [];
+        const jugadores1 = equipo1.jugadores || equipo1.miembros || [];
+        const jugadores2 = equipo2 && !esBye ? (equipo2.jugadores || equipo2.miembros || []) : [];
         
         const epocasEquipo1 = {};
         const epocasEquipo2 = {};
@@ -176,12 +155,20 @@ const generarEmparejamientosSuizoEquipos = async (torneoId) => {
         const responseClasificacion = await torneosSagaApi.obtenerClasificacionEquipos(torneoId);
         const clasificacion = responseClasificacion?.data || responseClasificacion || [];
 
+        const responseEquipos = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
+        const equiposCompletos = Array.isArray(responseEquipos) ? responseEquipos : responseEquipos.data || [];
+
+        const clasificacionConJugadores = clasificacion.map(eq => {
+            const equipoCompleto = equiposCompletos.find(e => e.id === eq.equipo_id);
+            return { ...eq, jugadores: equipoCompleto?.jugadores || [] };
+        });
+
         if (!Array.isArray(clasificacion) || clasificacion.length < 2) {
             throw new Error("Se necesitan al menos 2 equipos en la clasificación");
         }
         const { historialEnfrentamientos, equiposConBye } = await obtenerHistorialEquipos(torneoId);
 
-        const equiposOrdenados = ordenarEquipos(clasificacion);
+        const equiposOrdenados = ordenarEquipos(clasificacionConJugadores);
 
         const emparejamientos = [];
         let equiposDisponibles = [...equiposOrdenados];

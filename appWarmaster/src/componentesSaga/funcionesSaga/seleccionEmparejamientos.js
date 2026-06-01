@@ -1,4 +1,4 @@
-
+/*este es mi seleccionEmparejamientos.js**/ 
 import { generarEmparejamientosEquipos } from './emparejamientosEquiposSaga';
 import { generarEmparejamientosIndividuales } from './emparejamientosIndividualesSaga';
 

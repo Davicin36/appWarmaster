@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next'; 
 import { obtenerVistaJuego } from '@/funciones/registroVistasTorneos';
 
 /**
@@ -7,6 +8,7 @@ import { obtenerVistaJuego } from '@/funciones/registroVistasTorneos';
  * la vista general específica del sistema de juego
  */
 function VistaJugadores({ tipoJuego, ...props }) {
+    const { t } = useTranslation();
     // Obtener el componente específico del juego
     const ComponenteVista = obtenerVistaJuego(tipoJuego,  'jugadores');
 
@@ -15,7 +17,7 @@ function VistaJugadores({ tipoJuego, ...props }) {
         return (
             <div className="vista-general">
                 <div className="error-message">
-                    ⚠️ No existe vista general para el juego "{tipoJuego}"
+                    ⚠️ {t('vistas_general.sin_general', { juego: tipoJuego })}
                 </div>
             </div>
         );

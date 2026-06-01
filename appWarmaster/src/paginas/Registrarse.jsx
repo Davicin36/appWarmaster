@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 
 import { useAuth } from "../servicios/AuthContext";
 import { validarCodigoPostal } from "../servicios/validaciones";
@@ -9,8 +10,9 @@ import '../estilos/registrarse.css'
 
 function Registrarse({ onOpenLogin }) { 
     const navigate = useNavigate();
-    const location = useLocation()
+    const location = useLocation();
     const { registro } = useAuth();
+    const { t } = useTranslation();
     
     const [formData, setFormData] = useState({
         nombre: "",
@@ -25,8 +27,7 @@ function Registrarse({ onOpenLogin }) {
         confirmPassword: ""
     });
 
-    const [aceptaTerminos, setAceptaTerminos] = useState (false)
-    
+    const [aceptaTerminos, setAceptaTerminos] = useState(false);
     const [loading, setLoading] = useState(false);
     const [loadingCP, setLoadingCP] = useState(false);
     const [error, setError] = useState("");
@@ -35,59 +36,42 @@ function Registrarse({ onOpenLogin }) {
     const [showPasswords, setShowPasswords] = useState(false);
 
     const paises = [
-        { value: "", label: "Selecciona un país", codigo: "" },
-        { value: "España", label: "España 🇪🇸", codigo: "ES" },
-        { value: "Francia", label: "Francia 🇫🇷", codigo: "FR" },
-        { value: "Portugal", label: "Portugal 🇵🇹", codigo: "PT" },
-        { value: "Reino Unido", label: "Reino Unido 🇬🇧", codigo: "GB" },
-        { value: "Alemania", label: "Alemania 🇩🇪", codigo: "DE" },
-        { value: "Italia", label: "Italia 🇮🇹", codigo: "IT" },
-        { value: "Países Bajos", label: "Países Bajos 🇳🇱", codigo: "NL" },
-        { value: "Bélgica", label: "Bélgica 🇧🇪", codigo: "BE" },
-        { value: "Suiza", label: "Suiza 🇨🇭", codigo: "CH" },
-        { value: "Austria", label: "Austria 🇦🇹", codigo: "AT" },
-        { value: "Estados Unidos", label: "Estados Unidos 🇺🇸", codigo: "US" },
-        { value: "Canadá", label: "Canadá 🇨🇦", codigo: "CA" },
-        { value: "México", label: "México 🇲🇽", codigo: "MX" },
-        { value: "Argentina", label: "Argentina 🇦🇷", codigo: "AR" },
-        { value: "Brasil", label: "Brasil 🇧🇷", codigo: "BR" }
+        { value: "",               label: t('registro.pais_selecciona'),  codigo: "" },
+        { value: "España",         label: "España 🇪🇸",                    codigo: "ES" },
+        { value: "Francia",        label: "Francia 🇫🇷",                   codigo: "FR" },
+        { value: "Portugal",       label: "Portugal 🇵🇹",                  codigo: "PT" },
+        { value: "Reino Unido",    label: "Reino Unido 🇬🇧",               codigo: "GB" },
+        { value: "Alemania",       label: "Alemania 🇩🇪",                  codigo: "DE" },
+        { value: "Italia",         label: "Italia 🇮🇹",                    codigo: "IT" },
+        { value: "Países Bajos",   label: "Países Bajos 🇳🇱",              codigo: "NL" },
+        { value: "Bélgica",        label: "Bélgica 🇧🇪",                   codigo: "BE" },
+        { value: "Suiza",          label: "Suiza 🇨🇭",                     codigo: "CH" },
+        { value: "Austria",        label: "Austria 🇦🇹",                   codigo: "AT" },
+        { value: "Estados Unidos", label: "Estados Unidos 🇺🇸",            codigo: "US" },
+        { value: "Canadá",         label: "Canadá 🇨🇦",                    codigo: "CA" },
+        { value: "México",         label: "México 🇲🇽",                    codigo: "MX" },
+        { value: "Argentina",      label: "Argentina 🇦🇷",                  codigo: "AR" },
+        { value: "Brasil",         label: "Brasil 🇧🇷",                    codigo: "BR" }
     ];
 
-    // ✅ Pre-cargar email si viene de invitación
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const emailFromUrl = params.get('email');
-        
         if (emailFromUrl) {
-            setFormData(prev => ({
-                ...prev,
-                email: emailFromUrl
-            }));
+            setFormData(prev => ({ ...prev, email: emailFromUrl }));
         }
     }, [location]);
 
-
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
 
         if (name === 'pais') {
-            setFormData(prev => ({
-                ...prev,
-                codigo_postal: "",
-                localidad: ""
-            }));
+            setFormData(prev => ({ ...prev, codigo_postal: "", localidad: "" }));
         }
 
         if (errors[name]) {
-            setErrors(prev => {
-                const newErrors = {...prev};
-                delete newErrors[name];
-                return newErrors;
-            });
+            setErrors(prev => { const n = {...prev}; delete n[name]; return n; });
         }
 
         if (error) setError("");
@@ -95,40 +79,21 @@ function Registrarse({ onOpenLogin }) {
     };
 
     const buscarLocalidadCP = async (codigoPostal, paisNombre) => {
-        if(!codigoPostal || !paisNombre) return;
-
-        const paisObjetivo = paises.find(pais => pais.value === paisNombre);
-        if(!paisObjetivo || !paisObjetivo.codigo) return;
-        
-        const codigoISO = paisObjetivo.codigo;
+        if (!codigoPostal || !paisNombre) return;
+        const paisObjetivo = paises.find(p => p.value === paisNombre);
+        if (!paisObjetivo?.codigo) return;
 
         try {
             setLoadingCP(true);
-
-            const response = await fetch(
-                `https://api.zippopotam.us/${codigoISO}/${codigoPostal}`
-            );
-
-            if (!response.ok){
-                throw new Error('Código postal no encontrado');
-            }
-
+            const response = await fetch(`https://api.zippopotam.us/${paisObjetivo.codigo}/${codigoPostal}`);
+            if (!response.ok) throw new Error('Código postal no encontrado');
             const data = await response.json();
-            if (data.places && data.places.length > 0) {
+            if (data.places?.length > 0) {
                 const lugar = data.places[0];
-
-                setFormData(prev => ({
-                    ...prev,
-                    localidad: lugar['place name'] || lugar.state || ''
-                }));
-
-                setErrors(prev => {
-                    const newErrors = {...prev};
-                    delete newErrors.localidad;
-                    return newErrors;
-                });
+                setFormData(prev => ({ ...prev, localidad: lugar['place name'] || lugar.state || '' }));
+                setErrors(prev => { const n = {...prev}; delete n.localidad; return n; });
             }
-        } catch (error){
+        } catch (error) {
             console.error('No se pudo obtener la localidad', error.message);
         } finally {
             setLoadingCP(false);
@@ -137,29 +102,17 @@ function Registrarse({ onOpenLogin }) {
 
     const handleCodigoPostalChange = (e) => {
         const codigoPostal = e.target.value;
-        setFormData(prev => ({
-            ...prev,
-            codigo_postal: codigoPostal
-        }));
-
+        setFormData(prev => ({ ...prev, codigo_postal: codigoPostal }));
         if (errors.codigo_postal) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors.codigo_postal;
-                return newErrors;
-            });
+            setErrors(prev => { const n = {...prev}; delete n.codigo_postal; return n; });
         }
     };
 
     const handleCPBlur = async () => {
-        if(formData.codigo_postal && formData.pais){
+        if (formData.codigo_postal && formData.pais) {
             const validacion = validarCodigoPostal(formData.codigo_postal, formData.pais);
-
             if (!validacion.valido) {
-                setErrors(prev => ({
-                    ...prev,
-                    codigo_postal: validacion.mensaje
-                }));
+                setErrors(prev => ({ ...prev, codigo_postal: validacion.mensaje }));
                 return;
             }
             await buscarLocalidadCP(formData.codigo_postal, formData.pais);
@@ -170,81 +123,74 @@ function Registrarse({ onOpenLogin }) {
         const nuevosErrores = {};
 
         if (!formData.nombre || !formData.apellidos || !formData.email || !formData.password) {
-            setError("Por favor, completa todos los campos requeridos");
+            setError(t('registro.errores.campos_requeridos'));
             return false;
         }
 
         if (!formData.email.trim()) {
-            nuevosErrores.email = "El email es requerido";
+            nuevosErrores.email = t('registro.errores.email_requerido');
         } else {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(formData.email)) {
-                nuevosErrores.email = "El formato del email no es válido";
+                nuevosErrores.email = t('registro.errores.email_invalido');
             }
         }
 
         if (!formData.pais) {
-            nuevosErrores.pais = "Debes seleccionar un país";
+            nuevosErrores.pais = t('registro.errores.pais_requerido');
         }
 
         if (!formData.localidad.trim()) {
-            nuevosErrores.localidad = "La localidad es requerida";
+            nuevosErrores.localidad = t('registro.errores.localidad_requerida');
         }
 
         if (!formData.codigo_postal.trim()) {
-            nuevosErrores.codigo_postal = "El código postal es requerido";
+            nuevosErrores.codigo_postal = t('registro.errores.cp_requerido');
         } else if (formData.pais) {
             const validacion = validarCodigoPostal(formData.codigo_postal, formData.pais);
             if (!validacion.valido) {
                 nuevosErrores.codigo_postal = validacion.mensaje;
             }
         }
-        
 
         if (!formData.password) {
-            nuevosErrores.password = "La contraseña es requerida";
+            nuevosErrores.password = t('registro.errores.password_requerida');
         } else {
             if (formData.password.length < 6) {
-                nuevosErrores.password = "La contraseña debe tener al menos 6 caracteres";
+                nuevosErrores.password = t('registro.errores.password_corta');
             }
-            
             const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{6,}$/;
             if (!passwordRegex.test(formData.password)) {
-                nuevosErrores.password = "La contraseña debe contener al menos una letra y un número";
+                nuevosErrores.password = t('registro.errores.password_formato');
             }
         }
 
         if (formData.password !== formData.confirmPassword) {
-            nuevosErrores.confirmPassword = "Las contraseñas no coinciden";
+            nuevosErrores.confirmPassword = t('registro.errores.passwords_no_coinciden');
         }
 
         if (!aceptaTerminos) {
-            nuevosErrores.terminos = "Debes aceptar los Términos y Condiciones para registrarte";
+            nuevosErrores.terminos = t('registro.errores.terminos_requeridos');
         }
 
         setErrors(nuevosErrores);
-        
         if (Object.keys(nuevosErrores).length > 0) {
             setError(Object.values(nuevosErrores)[0]);
             return false;
         }
-
         return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (!validarFormulario()) {
-            return;
-        }
+        if (!validarFormulario()) return;
 
         setLoading(true);
         setError("");
         setSuccess("");
-        
+
         try {
-           const datosRegistro = {
+            const datosRegistro = {
                 nombre: formData.nombre,
                 apellidos: formData.apellidos,
                 nombre_alias: formData.nombre_alias,
@@ -256,354 +202,241 @@ function Registrarse({ onOpenLogin }) {
                 password: formData.password,
                 aceptaTerminos: true
             };
-            
+
             const resultado = await registro(datosRegistro);
-            
+
             if (resultado.success) {
-                setSuccess("✅ Usuario registrado exitosamente! Redirigiendo...");
-                
+                setSuccess(t('registro.exito'));
                 setTimeout(() => {
                     navigate("/");
-                    if (onOpenLogin) {
-                        onOpenLogin();
-                    }
+                    if (onOpenLogin) onOpenLogin();
                 }, 2000);
             } else {
-                setError(resultado.error || "Error al registrar usuario");
+                setError(resultado.error || t('registro.errores.generico'));
             }
         } catch (err) {
             console.error("Error en registro:", err);
-            setError("Error de conexión. Intenta nuevamente.");
+            setError(t('registro.errores.conexion'));
         } finally {
             setLoading(false);
         }
     };
 
-    const togglePasswordsVisibility = () => {
-        setShowPasswords(prev => !prev);
-    };
-
-    const volverInicio = () => {
-        navigate('/');
-    };
-
     return (
         <div className="register-container">
-            <h1>Gestión de Torneos de WARGAMES</h1>
-            
-            <form className="register-form" onSubmit={handleSubmit}>
-                <h2>CREAR CUENTA</h2>
-                
-                {error && (
-                    <div className="error-message">
-                        {error}
-                    </div>
-                )}
+            <h1>{t('registro.titulo_app')}</h1>
 
-                {success && (
-                    <div className="success-message">
-                        {success}
-                    </div>
-                )}
-                
-                {/* FILA 1: Nombre y Apellidos */}
+            <form className="register-form" onSubmit={handleSubmit}>
+                <h2>{t('registro.crear_cuenta')}</h2>
+
+                {error   && <div className="error-message">{error}</div>}
+                {success && <div className="success-message">{success}</div>}
+
+                {/* NOMBRE Y APELLIDOS */}
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="nombre">Nombre</label>
-                        <input 
-                            type="text" 
-                            id="nombre"
-                            name="nombre"
-                            value={formData.nombre}
-                            onChange={handleChange}
-                            placeholder="Tu nombre"
-                            required
-                            disabled={loading}
+                        <label htmlFor="nombre">{t('registro.nombre')}</label>
+                        <input
+                            type="text" id="nombre" name="nombre"
+                            value={formData.nombre} onChange={handleChange}
+                            placeholder={t('registro.nombre_placeholder')}
+                            required disabled={loading}
                             className={errors.nombre ? 'input-error' : ''}
                         />
-                        {errors.nombre && (
-                            <span className="field-error">{errors.nombre}</span>
-                        )}
+                        {errors.nombre && <span className="field-error">{errors.nombre}</span>}
                     </div>
-
                     <div className="form-group">
-                        <label htmlFor="apellidos">Apellidos</label>
-                        <input 
-                            type="text" 
-                            id="apellidos"
-                            name="apellidos"
-                            value={formData.apellidos}
-                            onChange={handleChange}
-                            placeholder="Tus apellidos"
-                            required
-                            disabled={loading}
+                        <label htmlFor="apellidos">{t('registro.apellidos')}</label>
+                        <input
+                            type="text" id="apellidos" name="apellidos"
+                            value={formData.apellidos} onChange={handleChange}
+                            placeholder={t('registro.apellidos_placeholder')}
+                            required disabled={loading}
                             className={errors.apellidos ? 'input-error' : ''}
                         />
-                        {errors.apellidos && (
-                            <span className="field-error">{errors.apellidos}</span>
-                        )}
+                        {errors.apellidos && <span className="field-error">{errors.apellidos}</span>}
                     </div>
                 </div>
 
-                {/* FILA 2: Alias y Club */}
+                {/* ALIAS Y CLUB */}
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="nombre_alias">Alias (Opcional)</label>
-                        <input 
-                            type="text" 
-                            id="nombre_alias"
-                            name="nombre_alias"
-                            value={formData.nombre_alias}
-                            onChange={handleChange}
-                            placeholder="Nickname"
+                        <label htmlFor="nombre_alias">{t('registro.alias')}</label>
+                        <input
+                            type="text" id="nombre_alias" name="nombre_alias"
+                            value={formData.nombre_alias} onChange={handleChange}
+                            placeholder={t('registro.alias_placeholder')}
                             disabled={loading}
                         />
                     </div>
-
                     <div className="form-group">
-                        <label htmlFor="club">Club (Opcional)</label>
-                        <input 
-                            type="text" 
-                            id="club"
-                            name="club"
-                            value={formData.club}
-                            onChange={handleChange}
-                            placeholder="Tu club (opcional)"
+                        <label htmlFor="club">{t('registro.club')}</label>
+                        <input
+                            type="text" id="club" name="club"
+                            value={formData.club} onChange={handleChange}
+                            placeholder={t('registro.club_placeholder')}
                             disabled={loading}
                         />
                     </div>
                 </div>
 
+                {/* PAÍS */}
                 <div className="form-row-full">
                     <div className="form-group">
-                        <label htmlFor="pais">
-                            País <span className="required">*</span>
-                        </label>
+                        <label htmlFor="pais">{t('registro.pais')} <span className="required">*</span></label>
                         <select
-                                id="pais"
-                                name="pais"
-                                value={formData.pais}
-                                onChange={handleChange}
-                                required
-                                disabled={loading}
-                                className={errors.pais ? 'input-error' : ''}
-                            >
-                                {paises.map((pais, index) => (
-                                    <option key={index} value={pais.value}>
-                                        {pais.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.pais && (
-                                <span className="field-error">{errors.pais}</span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label htmlFor="codigo_postal">
-                                Código Postal <span className="required">*</span>
-                            </label>
-                            <div className="input-with-loader">
-                                <input 
-                                    type="text" 
-                                    id="codigo_postal"
-                                    name="codigo_postal"
-                                    value={formData.codigo_postal}
-                                    onChange={handleCodigoPostalChange}
-                                    onBlur={handleCPBlur}
-                                    placeholder={formData.pais ? "Ej: 28001" : "Selecciona país primero"}
-                                    required
-                                    disabled={loading || !formData.pais}
-                                    className={errors.codigo_postal ? 'input-error' : ''}
-                                />
-                                {loadingCP && <span className="input-loader">🔍</span>}
-                            </div>
-                            {errors.codigo_postal && (
-                                <span className="field-error">{errors.codigo_postal}</span>
-                            )}
-                            <small className="field-hint">
-                                {formData.pais ? "La localidad se completará automáticamente" : "Selecciona un país primero"}
-                            </small>
-                        </div>
-                            
-                        <div className="form-group">
-                            <label htmlFor="localidad">
-                                Localidad <span className="required">*</span>
-                            </label>
-                            <input                                     
-                                type="text" 
-                                id="localidad"
-                                name="localidad"
-                                value={formData.localidad}
-                                onChange={handleChange}
-                                placeholder="Se autocompletará..."
-                                required
-                                disabled={loading}
-                                className={errors.localidad ? 'input-error' : ''}
-                            />
-                            {errors.localidad && (
-                                <span className="field-error">{errors.localidad}</span>
-                            )}
-                            <small className="field-hint">
-                                Puedes editarla si es necesario
-                            </small>
-                        </div>
-                    </div>
-
-                {/* FILA Email */}
-                <div className="form-row-full">
-                    <div className="form-group">
-                        <label htmlFor="email">
-                            Email <span className="required">*</span>
-                        </label>
-                        <input 
-                            type="email" 
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="tu-email@ejemplo.com"
-                            required
-                            disabled={loading} // ✅ Bloquear si es invitación
-                            autoComplete="email"
-                            className={errors.email ? 'input-error' : ''}
-                        />
-                        {errors.email && (
-                            <span className="field-error">{errors.email}</span>
-                        )}
+                            id="pais" name="pais"
+                            value={formData.pais} onChange={handleChange}
+                            required disabled={loading}
+                            className={errors.pais ? 'input-error' : ''}
+                        >
+                            {paises.map((pais, index) => (
+                                <option key={index} value={pais.value}>{pais.label}</option>
+                            ))}
+                        </select>
+                        {errors.pais && <span className="field-error">{errors.pais}</span>}
                     </div>
                 </div>
 
-                {/* FILA Contraseñas */}
+                {/* CP Y LOCALIDAD */}
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="password">
-                            Contraseña <span className="required">*</span>
-                        </label>
-                        <input 
-                            type={showPasswords ? "text" : "password"}
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Mínimo 6 caracteres" 
-                            required
-                            disabled={loading}
-                            autoComplete="new-password"
-                            className={errors.password ? 'input-error' : ''}
-                        />
-                        {errors.password && (
-                            <span className="field-error">{errors.password}</span>
-                        )}
+                        <label htmlFor="codigo_postal">{t('registro.cp')} <span className="required">*</span></label>
+                        <div className="input-with-loader">
+                            <input
+                                type="text" id="codigo_postal" name="codigo_postal"
+                                value={formData.codigo_postal}
+                                onChange={handleCodigoPostalChange}
+                                onBlur={handleCPBlur}
+                                placeholder={formData.pais ? t('registro.cp_placeholder') : t('registro.cp_placeholder_sin_pais')}
+                                required disabled={loading || !formData.pais}
+                                className={errors.codigo_postal ? 'input-error' : ''}
+                            />
+                            {loadingCP && <span className="input-loader">🔍</span>}
+                        </div>
+                        {errors.codigo_postal && <span className="field-error">{errors.codigo_postal}</span>}
                         <small className="field-hint">
-                            Debe contener al menos una letra y un número
+                            {formData.pais ? t('registro.cp_hint') : t('registro.cp_hint_sin_pais')}
                         </small>
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="confirmPassword">
-                            Confirmar Contraseña <span className="required">*</span>
-                        </label>
-                        <input 
+                        <label htmlFor="localidad">{t('registro.localidad')} <span className="required">*</span></label>
+                        <input
+                            type="text" id="localidad" name="localidad"
+                            value={formData.localidad} onChange={handleChange}
+                            placeholder={t('registro.localidad_placeholder')}
+                            required disabled={loading}
+                            className={errors.localidad ? 'input-error' : ''}
+                        />
+                        {errors.localidad && <span className="field-error">{errors.localidad}</span>}
+                        <small className="field-hint">{t('registro.localidad_hint')}</small>
+                    </div>
+                </div>
+
+                {/* EMAIL */}
+                <div className="form-row-full">
+                    <div className="form-group">
+                        <label htmlFor="email">{t('registro.email')} <span className="required">*</span></label>
+                        <input
+                            type="email" id="email" name="email"
+                            value={formData.email} onChange={handleChange}
+                            placeholder={t('registro.email_placeholder')}
+                            required disabled={loading}
+                            autoComplete="email"
+                            className={errors.email ? 'input-error' : ''}
+                        />
+                        {errors.email && <span className="field-error">{errors.email}</span>}
+                    </div>
+                </div>
+
+                {/* CONTRASEÑAS */}
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="password">{t('registro.password')} <span className="required">*</span></label>
+                        <input
                             type={showPasswords ? "text" : "password"}
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Repite contraseña" 
-                            required
-                            disabled={loading}
+                            id="password" name="password"
+                            value={formData.password} onChange={handleChange}
+                            placeholder={t('registro.password_placeholder')}
+                            required disabled={loading}
+                            autoComplete="new-password"
+                            className={errors.password ? 'input-error' : ''}
+                        />
+                        {errors.password && <span className="field-error">{errors.password}</span>}
+                        <small className="field-hint">{t('registro.password_hint')}</small>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="confirmPassword">{t('registro.confirmar_password')} <span className="required">*</span></label>
+                        <input
+                            type={showPasswords ? "text" : "password"}
+                            id="confirmPassword" name="confirmPassword"
+                            value={formData.confirmPassword} onChange={handleChange}
+                            placeholder={t('registro.confirmar_password_placeholder')}
+                            required disabled={loading}
                             autoComplete="new-password"
                             className={errors.confirmPassword ? 'input-error' : ''}
                         />
-                        {errors.confirmPassword && (
-                            <span className="field-error">{errors.confirmPassword}</span>
-                        )}
+                        {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
                     </div>
                 </div>
 
+                {/* MOSTRAR CONTRASEÑAS */}
                 <div className="checkbox-container">
                     <div className="checkbox-group">
-                        <input 
-                            type="checkbox" 
-                            id="showPasswords"
+                        <input
+                            type="checkbox" id="showPasswords"
                             checked={showPasswords}
-                            onChange={togglePasswordsVisibility}
+                            onChange={() => setShowPasswords(prev => !prev)}
                             disabled={loading}
                         />
-                        <label htmlFor="showPasswords">Mostrar contraseñas</label>
+                        <label htmlFor="showPasswords">{t('registro.mostrar_passwords')}</label>
                     </div>
                 </div>
 
-                {/* ✅ NUEVO: CHECKBOX DE TÉRMINOS Y CONDICIONES */}
+                {/* TÉRMINOS */}
                 <div className="terms-checkbox-container">
                     <label className={`terms-checkbox-label ${errors.terminos ? 'error' : ''}`}>
                         <input
-                            type="checkbox"
-                            id="aceptaTerminos"
+                            type="checkbox" id="aceptaTerminos"
                             checked={aceptaTerminos}
                             onChange={(e) => {
                                 setAceptaTerminos(e.target.checked);
-                                // Limpiar error de términos si se acepta
                                 if (e.target.checked && errors.terminos) {
-                                    setErrors(prev => {
-                                        const newErrors = {...prev};
-                                        delete newErrors.terminos;
-                                        return newErrors;
-                                    });
+                                    setErrors(prev => { const n = {...prev}; delete n.terminos; return n; });
                                 }
                             }}
-                            required
-                            disabled={loading}
+                            required disabled={loading}
                             className="terms-checkbox-input"
                         />
                         <span className="checkbox-text">
-                            Acepto los{' '}
+                            {t('registro.acepto')}{' '}
                             <Link to="/terminos-condiciones" target="_blank" rel="noopener noreferrer">
-                                Términos y Condiciones
+                                {t('registro.terminos_link')}
                             </Link>
-                            {' '}y la{' '}
+                            {' '}{t('registro.y_la')}{' '}
                             <Link to="/politica-privacidad" target="_blank" rel="noopener noreferrer">
-                                Política de Privacidad
+                                {t('registro.privacidad_link')}
                             </Link>
                         </span>
                     </label>
-                    {errors.terminos && (
-                        <span className="terms-error-message">{errors.terminos}</span>
-                    )}
+                    {errors.terminos && <span className="terms-error-message">{errors.terminos}</span>}
                 </div>
 
-
+                {/* BOTONES */}
                 <div className="button-group">
-                    <button 
-                        type="submit" 
-                        className="btn-primary"
-                        disabled={loading}
-                    >
-                        {loading ? "⏳ Registrando..." : "CREAR CUENTA"}
+                    <button type="submit" className="btn-primary" disabled={loading}>
+                        {loading ? t('registro.registrando') : t('registro.crear_cuenta_btn')}
                     </button>
-                    
-                    <button 
-                        type="button" 
-                        className="btn-secondary"
-                        onClick={volverInicio} 
-                        disabled={loading}
-                    >
-                        Volver
+                    <button type="button" className="btn-secondary" onClick={() => navigate('/')} disabled={loading}>
+                        {t('registro.volver')}
                     </button>
                 </div>
 
                 <p className="login-link">
-                    ¿Ya tienes cuenta?{' '}
-                    <button 
-                        type="button"
-                        onClick={onOpenLogin}
-                        className="link-button"
-                        disabled={loading}
-                    >
-                        Inicia sesión aquí
+                    {t('registro.ya_tienes_cuenta')}{' '}
+                    <button type="button" onClick={onOpenLogin} className="link-button" disabled={loading}>
+                        {t('registro.iniciar_sesion_link')}
                     </button>
                 </p>
             </form>

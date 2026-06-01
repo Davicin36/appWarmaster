@@ -1,15 +1,17 @@
 import React from 'react';
 import { obtenerVistaPublica } from '@/funciones/registroVistasTorneos';
+import { useTranslation } from 'react-i18next';
 
 /**
  * PORTAL: Vista Clasificación Pública
  */
 function VistaClasificacionPublica({ tipoJuego, ...props }) {
+    const { t } = useTranslation();
     if (!tipoJuego) {
         return (
             <div className="vista-clasificacion-publica">
                 <div className="empty-message">
-                    ⏳ Cargando clasificación...
+                    ⏳ {t('vistas_publica.cargando_clasificacion')}
                 </div>
             </div>
         );
@@ -21,7 +23,7 @@ function VistaClasificacionPublica({ tipoJuego, ...props }) {
         return (
             <div className="vista-clasificacion-publica">
                 <div className="error-message">
-                    ⚠️ No existe vista de clasificación para "{tipoJuego}"
+                    ⚠️ {t('vistas_general.sin_clasificacion', { juego: tipoJuego })}
                 </div>
             </div>
         );

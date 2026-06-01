@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import usuarioApi from '@/servicios/apiUsuarios';
+import Footer from '@/paginas/Footer.jsx';
 import '@/estilos/legalPages.css';
 
 const Contacto = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({ nombre: '', email: '', asunto: '', mensaje: '' });
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -18,12 +21,11 @@ const Contacto = () => {
     e.preventDefault();
     setEnviando(true);
     setError(null);
-
     try {
       await usuarioApi.enviarContacto(formData);
       setEnviado(true);
-    } catch (err) {
-      setError('No se pudo enviar el mensaje. Inténtalo de nuevo o escríbenos directamente a warmastermadrid23@gmail.com', err);
+    } catch {
+      setError(t('contacto.error_envio'));
     } finally {
       setEnviando(false);
     }
@@ -32,32 +34,29 @@ const Contacto = () => {
   return (
     <div className="documento-legal-container">
       <div className="documento-legal-content">
-        <h1 className="documento-legal-titulo">Contacto</h1>
-        <p className="documento-legal-fecha">¿Tienes alguna pregunta o sugerencia? Escríbenos.</p>
+        <h1 className="documento-legal-titulo">{t('contacto.titulo')}</h1>
+        <p className="documento-legal-fecha">{t('contacto.subtitulo')}</p>
 
         <section className="documento-legal-seccion">
-          <h2>Información de Contacto</h2>
-          <p>Puedes contactar conmigo directamente a través del siguiente correo electrónico:</p>
+          <h2>{t('contacto.info_titulo')}</h2>
+          <p>{t('contacto.info_texto')}</p>
           <p>
             📧 <strong>
-              <a href="mailto:warmastermadrid23@gmail.com">
-                warmastermadrid23@gmail.com
-              </a>
+              <a href="mailto:warmastermadrid23@gmail.com">warmastermadrid23@gmail.com</a>
             </strong>
           </p>
-          <p>Intento responder en un plazo máximo de <strong>48 horas laborables</strong>.</p>
+          <p>{t('contacto.plazo_respuesta')}</p>
         </section>
 
         <section className="documento-legal-seccion">
-          <h2>Envía un Mensaje</h2>
+          <h2>{t('contacto.form_titulo')}</h2>
 
           {enviado ? (
             <div className="contacto-exito">
-              <p>✅ Mensaje enviado correctamente. Te responderemos en un plazo de 48 horas.</p>
+              <p>✅ {t('contacto.exito')}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="contacto-form">
-
               {error && (
                 <div className="contacto-error">
                   <p>❌ {error}</p>
@@ -66,76 +65,65 @@ const Contacto = () => {
 
               <div className="contacto-form-row">
                 <div className="contacto-form-group">
-                  <label>Nombre *</label>
+                  <label>{t('contacto.campo_nombre')}</label>
                   <input
-                    type="text"
-                    name="nombre"
-                    required
-                    value={formData.nombre}
-                    onChange={handleChange}
-                    placeholder="Tu nombre"
+                    type="text" name="nombre" required
+                    value={formData.nombre} onChange={handleChange}
+                    placeholder={t('contacto.placeholder_nombre')}
                     disabled={enviando}
                   />
                 </div>
                 <div className="contacto-form-group">
-                  <label>Email *</label>
+                  <label>{t('contacto.campo_email')}</label>
                   <input
-                    type="email"
-                    name="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="tu@email.com"
+                    type="email" name="email" required
+                    value={formData.email} onChange={handleChange}
+                    placeholder={t('registro.email_placeholder')}
                     disabled={enviando}
                   />
                 </div>
               </div>
 
               <div className="contacto-form-group">
-                <label>Asunto *</label>
+                <label>{t('contacto.campo_asunto')}</label>
                 <input
-                  type="text"
-                  name="asunto"
-                  required
-                  value={formData.asunto}
-                  onChange={handleChange}
-                  placeholder="¿En qué puedo ayudarte?"
+                  type="text" name="asunto" required
+                  value={formData.asunto} onChange={handleChange}
+                  placeholder={t('contacto.placeholder_asunto')}
                   disabled={enviando}
                 />
               </div>
 
               <div className="contacto-form-group">
-                <label>Mensaje *</label>
+                <label>{t('contacto.campo_mensaje')}</label>
                 <textarea
-                  name="mensaje"
-                  required
-                  value={formData.mensaje}
-                  onChange={handleChange}
-                  placeholder="Escribe tu mensaje aquí..."
-                  rows={6}
+                  name="mensaje" required rows={6}
+                  value={formData.mensaje} onChange={handleChange}
+                  placeholder={t('contacto.placeholder_mensaje')}
                   disabled={enviando}
                 />
               </div>
 
               <button type="submit" className="contacto-btn-enviar" disabled={enviando}>
-                {enviando ? '⏳ Enviando...' : '📧 Enviar Mensaje'}
+                {enviando ? `⏳ ${t('contacto.enviando')}` : `📧 ${t('contacto.btn_enviar')}`}
               </button>
             </form>
           )}
         </section>
 
         <section className="documento-legal-seccion">
-          <h2>Motivos de Contacto Frecuentes</h2>
+          <h2>{t('contacto.motivos_titulo')}</h2>
           <ul>
-            <li>Problemas con el registro o inicio de sesión</li>
-            <li>Dudas sobre la gestión de torneos</li>
-            <li>Solicitar soporte para un torneo específico</li>
-            <li>Sugerencias de mejora de la plataforma</li>
-            <li>Reporte de errores o comportamientos inesperados</li>
-            <li>Consultas sobre datos personales y privacidad</li>
+            <li>{t('contacto.motivo_1')}</li>
+            <li>{t('contacto.motivo_2')}</li>
+            <li>{t('contacto.motivo_3')}</li>
+            <li>{t('contacto.motivo_4')}</li>
+            <li>{t('contacto.motivo_5')}</li>
+            <li>{t('contacto.motivo_6')}</li>
           </ul>
         </section>
       </div>
+      <Footer />
     </div>
   );
 };

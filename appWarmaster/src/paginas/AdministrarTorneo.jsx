@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 
 import usuarioApi from "../servicios/apiUsuarios";
 
@@ -15,191 +16,125 @@ import VistaEmparejamientos from '@/componente/vistasAdministrarTorneos/VistaEmp
 import VistaGeneral from '@/componente/vistasAdministrarTorneos/VistaGeneral';
 import VistaEnviarCorreos from '@/componente/vistasAdministrarTorneos/VistaEnviarCorreos';
 
-import Footer from '@/paginas/Footer.jsx'
-
+import Footer from '@/paginas/Footer.jsx';
 import '../estilos/administrarTorneo.css';
 
 function AdministrarTorneo() {
     const { torneoId } = useParams();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const [torneo, setTorneo] = useState(null);
     const [vistaActiva, setVistaActiva] = useState('general');
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        cargarTorneo();
-    }, [torneoId]);
+    useEffect(() => { cargarTorneo(); }, [torneoId]);
 
-const cargarTorneo = async () => {
-    try {
-        setLoading(true);
-        
-        // 1️⃣ Obtener el sistema del torneo
-        const { sistema } = await usuarioApi.obtenerSistema(torneoId);
-
-        // 2️⃣ Mapeo de APIs por sistema
-        const APIS_POR_SISTEMA = {
-            'SAGA': torneosSagaApi,
-            'WARMASTER': torneosWarmasterApi,
-            'FOW': torneosFowApi,
-            'EPIC': torneosEpicApi,
-            'DRACULA': torneosDraculaApi
-        };
-
-        // 3️⃣ Usar la API correcta
-        const api = APIS_POR_SISTEMA[sistema];
-        
-        if (!api) {
-            throw new Error(`Sistema ${sistema} no soportado`);
+    const cargarTorneo = async () => {
+        try {
+            setLoading(true);
+            const { sistema } = await usuarioApi.obtenerSistema(torneoId);
+            const APIS_POR_SISTEMA = {
+                'SAGA':     torneosSagaApi,
+                'WARMASTER':torneosWarmasterApi,
+                'FOW':      torneosFowApi,
+                'EPIC':     torneosEpicApi,
+                'DRACULA':  torneosDraculaApi
+            };
+            const api = APIS_POR_SISTEMA[sistema];
+            if (!api) throw new Error(`Sistema ${sistema} no soportado`);
+            const response = await api.obtenerTorneo(torneoId);
+            setTorneo(response.data?.torneo || response);
+        } catch (error) {
+            console.error('Error al cargar torneo:', error);
+        } finally {
+            setLoading(false);
         }
+    };
 
-        const response = await api.obtenerTorneo(torneoId);
-        const dataTorneo = response.data?.torneo || response;
+    if (loading) return (
+        <div className="loading-container">
+            <div className="loading-message">⏳ {t('adm_torneo.cargando')}</div>
+        </div>
+    );
 
-        setTorneo(dataTorneo);
-        
-    } catch (error) {
-        console.error('Error al cargar torneo:', error);
-    } finally {
-        setLoading(false);
-    }
-};
-
-    // CHECK 1: Loading
-    if (loading) {
-        return (
-            <div className="loading-container">
-                <div className="loading-message">⏳ Cargando torneo...</div>
+    if (!torneo) return (
+        <div className="error-container">
+            <div className="error-message-box">
+                <h2>⚠️ {t('adm_torneo.error_titulo')}</h2>
+                <p>{t('adm_torneo.error_no_encontrado')}</p>
             </div>
-        );
-    }
+        </div>
+    );
 
-    // CHECK 2: Torneo existe
-    if (!torneo) {
-        return (
-            <div className="error-container">
-                <div className="error-message-box">
-                    <h2>⚠️ Error</h2>
-                    <p>No se encontró el torneo</p>
-                </div>
-            </div>
-        );
-    }
-
-    // CHECK 3: Sistema existe
     const tipoJuego = torneo.sistema;
 
-    // CHECK 4: VALIDACIÓN EXTRA
-    if (!tipoJuego) {
-        return (
-            <div className="error-container">
-                <div className="error-message-box">
-                    <h2>⚠️ Error de Configuración</h2>
-                    <p>El torneo no tiene un sistema de juego definido</p>
-                    <small>Torneo ID: {torneoId}</small>
-                </div>
+    if (!tipoJuego) return (
+        <div className="error-container">
+            <div className="error-message-box">
+                <h2>⚠️ {t('adm_torneo.error_config')}</h2>
+                <p>{t('adm_torneo.error_sistema')}</p>
+                <small>Torneo ID: {torneoId}</small>
             </div>
-        );
-    }
+        </div>
+    );
 
     return (
         <div className="administrar-torneo-container">
             <header className="torneo-header">
                 <h1>{torneo.nombre_torneo}</h1>
                 <div className="torneo-info">
-                    <span className="info-item">
-                        ⚔️ {tipoJuego}
-                    </span>
+                    <span className="info-item">⚔️ {tipoJuego}</span>
                     <span className={`estado-badge estado-${torneo.estado}`}>
-                        {torneo.estado === 'pendiente' && '⏸️ Pendiente'}
-                        {torneo.estado === 'en_curso' && '▶️ En Curso'}
-                        {torneo.estado === 'finalizado' && '🏁 Finalizado'}
+                        {torneo.estado === 'pendiente'  && t('estado.pendiente')}
+                        {torneo.estado === 'en_curso'   && t('estado.en_curso')}
+                        {torneo.estado === 'finalizado' && t('estado.finalizado')}
                     </span>
                 </div>
             </header>
 
             <nav className="vista-nav">
-                <button 
-                    className={vistaActiva === 'general' ? 'active' : ''} 
-                    onClick={() => setVistaActiva('general')}
-                >
-                    ℹ️ General
+                <button className={vistaActiva === 'general'          ? 'active' : ''} onClick={() => setVistaActiva('general')}>
+                    ℹ️ {t('adm_torneo.nav_general')}
                 </button>
-                <button 
-                    className={vistaActiva === 'correos' ? 'active' : ''} 
-                    onClick={() => setVistaActiva('correos')}
-                >
-                    📧 Correos
+                <button className={vistaActiva === 'correos'          ? 'active' : ''} onClick={() => setVistaActiva('correos')}>
+                    📧 {t('adm_torneo.nav_correos')}
                 </button>
-                <button 
-                    className={vistaActiva === 'jugadores' ? 'active' : ''} 
-                    onClick={() => setVistaActiva('jugadores')}
-                >
-                    {torneo.tipo_torneo === 'Por equipos' ? '👥 Equipos' : '👤 Jugadores'}
+                <button className={vistaActiva === 'jugadores'        ? 'active' : ''} onClick={() => setVistaActiva('jugadores')}>
+                    {torneo.tipo_torneo === 'Por equipos'
+                        ? `👥 ${t('adm_torneo.nav_equipos')}`
+                        : `👤 ${t('adm_torneo.nav_jugadores')}`
+                    }
                 </button>
-                <button 
-                    className={vistaActiva === 'emparejamientos' ? 'active' : ''} 
-                    onClick={() => setVistaActiva('emparejamientos')}
-                >
-                    🎯 Emparejamientos
+                <button className={vistaActiva === 'emparejamientos'  ? 'active' : ''} onClick={() => setVistaActiva('emparejamientos')}>
+                    🎯 {t('adm_torneo.nav_emparejamientos')}
                 </button>
-                <button 
-                    className={vistaActiva === 'clasificacion' ? 'active' : ''} 
-                    onClick={() => setVistaActiva('clasificacion')}
-                >
-                    🏆 Clasificación
+                <button className={vistaActiva === 'clasificacion'    ? 'active' : ''} onClick={() => setVistaActiva('clasificacion')}>
+                    🏆 {t('adm_torneo.nav_clasificacion')}
                 </button>
             </nav>
 
             <main className="contenido-principal">
                 {vistaActiva === 'general' && (
-                    <VistaGeneral 
-                        tipoJuego={tipoJuego}
-                        torneoId={torneoId} 
-                        onUpdate={cargarTorneo} 
-                    />
+                    <VistaGeneral tipoJuego={tipoJuego} torneoId={torneoId} onUpdate={cargarTorneo} />
                 )}
-
                 {vistaActiva === 'correos' && (
-                    <VistaEnviarCorreos 
-                        tipoJuego={tipoJuego}
-                        torneoId={torneoId}
-                        torneo={torneo}
-                    />
+                    <VistaEnviarCorreos tipoJuego={tipoJuego} torneoId={torneoId} torneo={torneo} />
                 )}
-        
                 {vistaActiva === 'jugadores' && (
-                    <VistaJugadores 
-                        tipoJuego={tipoJuego}
-                        torneoId={torneoId}
-                        torneo={torneo}
-                        tipoTorneo={torneo.tipo_torneo}
-                        onUpdate={cargarTorneo} 
-                    />
+                    <VistaJugadores tipoJuego={tipoJuego} torneoId={torneoId} torneo={torneo} tipoTorneo={torneo.tipo_torneo} onUpdate={cargarTorneo} />
                 )}
-                
                 {vistaActiva === 'emparejamientos' && (
-                    <VistaEmparejamientos 
-                        tipoJuego={tipoJuego}
-                        torneoId={torneoId}
-                        torneo={torneo}
-                        onUpdate={cargarTorneo} 
-                    />
+                    <VistaEmparejamientos tipoJuego={tipoJuego} torneoId={torneoId} torneo={torneo} onUpdate={cargarTorneo} />
                 )}
-                
                 {vistaActiva === 'clasificacion' && (
-                    <VistaClasificacion 
-                        tipoJuego={tipoJuego}
-                        torneoId={torneoId}
-                        torneo={torneo}
-                    />
+                    <VistaClasificacion tipoJuego={tipoJuego} torneoId={torneoId} torneo={torneo} />
                 )}
             </main>
 
             <footer className="footer-controles">
                 <button type="button" onClick={() => navigate('/')} className="btn-atras">
-                    ⬅️ Volver al Inicio
+                    ⬅️ {t('adm_torneo.volver_inicio')}
                 </button>
             </footer>
             <Footer />

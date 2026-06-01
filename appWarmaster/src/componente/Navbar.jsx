@@ -1,77 +1,69 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { useAuth } from "../servicios/AuthContext";
 
 import NavbarLogin from "./NavbarLogin";
+import BotonIdioma from "@/i18n/componentes/BotonIdioma";
 
 import '../estilos/navbar.css';
 
-function Navbar ({ onOpenLogin }) {  // ✅ Recibe onOpenLogin como prop
+function Navbar({ onOpenLogin }) {
     const navigate = useNavigate();
     const { user, isAuthenticated, logout } = useAuth();
+    const { t } = useTranslation();
 
     const handleLogout = () => {
         logout();
-        navigate('/', { replace: true})
+        navigate('/', { replace: true });
     };
 
     return (
         <nav className="navbar">
             <div className="navbar-container">
                 <div className="navbar-left">
-                    <Link to="/" className="navbar-home">
-                        🏠
-                    </Link>
-                    <h1 className="navbar-title">Gestión de Torneos WARGAMES</h1>
+                    <Link to="/" className="navbar-home">🏠</Link>
+                    <h1 className="navbar-title">{t('navbar.titulo')}</h1>
                 </div>
 
                 <div className="navbar-right">
+                    {/* BOTÓN DE IDIOMA — siempre visible */}
+                    <BotonIdioma />
+
                     {isAuthenticated ? (
                         <>
                             <div className="user-section">
                                 <div className="user-info">
                                     <span className="welcome-message">
-                                        Bienvenido, <strong>{user.nombre_alias || user.nombre}</strong>
+                                        {t('navbar.bienvenido')}, <strong>{user.nombre_alias || user.nombre}</strong>
                                     </span>
                                     <div className="user-details">
-                                        <span className="user-name">
-                                            {user.nombre} {user.apellidos}
-                                        </span>
+                                        <span className="user-name">{user.nombre} {user.apellidos}</span>
                                         {user.club && (
                                             <span className="club-info">
-                                                Club: <strong>{user.club}</strong>
+                                                {t('navbar.club')}: <strong>{user.club}</strong>
                                             </span>
                                         )}
                                         {user.rol && user.rol !== 'usuario' && (
                                             <span className="role-info">
-                                                Rol: <strong>{user.rol}</strong>
+                                                {t('navbar.rol')}: <strong>{user.rol}</strong>
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <button 
-                                    className="logout-btn" 
-                                    onClick={handleLogout}
-                                    title="Cerrar Sesión"
-                                >
-                                    Cerrar Sesión
+                                <button className="logout-btn" onClick={handleLogout} title={t('navbar.cerrar_sesion')}>
+                                    {t('navbar.cerrar_sesion')}
                                 </button>
                             </div>
-                            
                             <NavbarLogin />
                         </>
                     ) : (
                         <div className="auth-links">
-                            {/* ✅ CAMBIADO: button en lugar de Link */}
-                            <button 
-                                onClick={onOpenLogin}
-                                className="nav-link login-link"
-                                type="button"
-                            >
-                                Iniciar Sesión
+                            <button onClick={onOpenLogin} className="nav-link login-link" type="button">
+                                {t('navbar.iniciar_sesion')}
                             </button>
                             <Link to="/registrarse" className="nav-link register-link">
-                                Registrarse
+                                {t('navbar.registrarse')}
                             </Link>
                         </div>
                     )}

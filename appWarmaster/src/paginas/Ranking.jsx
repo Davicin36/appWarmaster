@@ -1,5 +1,5 @@
-// pages/RankingPage.jsx
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import SelectorSistema from '../componente/rankings/SelectorSistema';
 import RankingPorSistema from '../componente/rankings/RankingPorSistema';
@@ -8,27 +8,22 @@ import apiRanking from '../servicios/apiRanking';
 import '@/estilos/ranking.css';
 
 const Ranking = () => {
+  const { t } = useTranslation();
+
   const [sistemaSeleccionado, setSistemaSeleccionado] = useState(null);
   const [temporada, setTemporada] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    cargarSistemaInicial();
-  }, []);
+  useEffect(() => { cargarSistemaInicial(); }, []);
 
   useEffect(() => {
-    if (sistemaSeleccionado) {
-      cargarTemporada();
-    }
+    if (sistemaSeleccionado) cargarTemporada();
   }, [sistemaSeleccionado]);
 
   const cargarSistemaInicial = async () => {
     try {
       const sistemas = await apiRanking.obtenerSistemasDisponibles();
-      if (sistemas.length > 0) {
-        // Seleccionar el primer sistema disponible
-        setSistemaSeleccionado(sistemas[0].sistema);
-      }
+      if (sistemas.length > 0) setSistemaSeleccionado(sistemas[0].sistema);
     } catch (error) {
       console.error('Error cargando sistema inicial:', error);
     } finally {
@@ -45,34 +40,28 @@ const Ranking = () => {
     }
   };
 
-  const handleCambiarSistema = (nuevoSistema) => {
-    setSistemaSeleccionado(nuevoSistema);
-  };
-
-  if (loading) {
-    return (
-      <div className="ranking-page-loading">
-        <div className="spinner"></div>
-        <p>Cargando sistema de ranking...</p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="ranking-page-loading">
+      <div className="spinner"></div>
+      <p>{t('ranking_page.cargando')}</p>
+    </div>
+  );
 
   return (
     <div className="ranking-page">
       <header className="ranking-header">
-        <h1>🏆 Ranking ELO</h1>
+        <h1>🏆 {t('ranking_page.titulo')}</h1>
         {temporada && (
           <div className="temporada-info">
-            <span className="temporada-nombre">{temporada.nombre}</span>
-            <span className="temporada-año">Temporada {temporada.año}</span>
+            <span className="temporada-nombre">{t('ranking_page.temporada')}</span>
+            <span className="temporada-año">{t('ranking_page.temporada')} {temporada.año}</span>
           </div>
         )}
       </header>
 
-      <SelectorSistema 
+      <SelectorSistema
         sistemaActual={sistemaSeleccionado}
-        onCambiarSistema={handleCambiarSistema}
+        onCambiarSistema={setSistemaSeleccionado}
       />
 
       {sistemaSeleccionado && (

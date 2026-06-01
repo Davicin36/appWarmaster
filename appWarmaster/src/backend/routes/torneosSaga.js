@@ -305,7 +305,8 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
       partida_ronda_3,
       partida_ronda_4,
       partida_ronda_5,
-      organizadores_emails: organizadores_raw
+      organizadores_emails: organizadores_raw,
+      lang
     } = req.body;
 
     const rondas_max = parseInt(rondas_max_raw);
@@ -669,7 +670,8 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
               fechaFin: fecha_fin,
               ubicacion,
               tipoTorneo: tipo_torneo,
-              rondasMax: rondas_max
+              rondasMax: rondas_max,
+              lang: lang
             });
           } catch (emailError) {
             console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
@@ -687,7 +689,8 @@ router.post('/creandoTorneo', verificarToken, uploadMultiple.fields([
               fechaFin: fecha_fin,
               ubicacion,
               tipoTorneo: tipo_torneo,
-              rondasMax: rondas_max
+              rondasMax: rondas_max,
+              lang: lang
             });
           } catch (emailError) {
             console.error(`  ❌ Error enviando email a ${org.email}:`, emailError.message);
@@ -1254,7 +1257,7 @@ router.get('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorne
 router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorneo,async (req, res) => {
   try {
     const { torneoId } = req.params;
-    const { email } = req.body;
+    const { email, lang} = req.body;
 
     if (!email || !email.trim()) {
       return res.status(400).json(errorResponse('El email es obligatorio'));
@@ -1379,7 +1382,8 @@ router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorn
               fechaFin: torneo[0].fecha_fin ? new Date(torneo[0].fecha_fin).toLocaleDateString('es-ES') : null,
               ubicacion: torneo[0].ubicacion,
               tipoTorneo: torneo[0].tipo_torneo,
-              rondasMax: torneo[0].rondas_max
+              rondasMax: torneo[0].rondas_max,
+              lang: lang
           });
         } catch (emailError) {
           console.error('⚠️ Error al enviar email:', emailError);
@@ -1436,7 +1440,8 @@ router.post('/:torneoId/organizadores', verificarToken, verificarOrganizadorTorn
             fechaFin: torneo[0].fecha_fin ? new Date(torneo[0].fecha_fin).toLocaleDateString('es-ES') : null,
             ubicacion: torneo[0].ubicacion || 'Por confirmar',
             tipoTorneo: torneo[0].tipo_torneo,
-            rondasMax: torneo[0].rondas_max
+            rondasMax: torneo[0].rondas_max,
+            lang: lang
           });
           console.log(`📧 Email de invitación enviado a: ${emailLimpio}`);
         } catch (emailError) {
@@ -1618,6 +1623,7 @@ router.delete('/:torneoId/organizadores/:organizadorId', verificarToken, verific
 router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   try {
     const { torneoId, organizadorId } = req.params;
+    const { lang } = req.body;
 
     // Obtener información del torneo y organizador
     const [data] = await pool.execute(
@@ -1681,7 +1687,8 @@ router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verifica
           fechaFin: info.fecha_fin ? new Date(info.fecha_fin).toLocaleDateString('es-ES') : null,
           ubicacion: info.ubicacion || 'Por confirmar',
           tipoTorneo: info.tipo_torneo,
-          rondasMax: info.rondas_max
+          rondasMax: info.rondas_max,
+          lang: lang
         });
       } else {
         // Usuario registrado pero pendiente
@@ -1694,7 +1701,8 @@ router.post('/torneos/:torneoId/organizadores/:organizadorId/reenviar', verifica
           fechaFin: info.fecha_fin ? new Date(info.fecha_fin).toLocaleDateString('es-ES') : null,
           ubicacion: info.ubicacion,
           tipoTorneo: info.tipo_torneo,
-          rondasMax: info.rondas_max
+          rondasMax: info.rondas_max,
+          lang: lang
         });
       }
 
@@ -2281,7 +2289,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
   
   try {
     const { torneoId } = req.params;
-    const { participante } = req.body;
+    const { participante, lang } = req.body;
     const usuarioOrganizadorId = req.usuario.userId;
 
     // ✅ VALIDAR SOLO NOMBRE (sin apellidos)
@@ -2312,14 +2320,6 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
       return res.status(404).json({
         success: false,
         message: 'Torneo no encontrado'
-      });
-    }
-
-    if (torneoCheck[0].created_by !== usuarioOrganizadorId) {
-      await connection.rollback();
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para añadir participantes a este torneo'
       });
     }
 
@@ -2444,7 +2444,7 @@ router.post('/:torneoId/add-individual-participant', verificarToken, verificarOr
           }
         };
 
-        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo, lang);
         
         if (resultado.success) {
           emailEnviado = true;
@@ -2489,14 +2489,15 @@ router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarTo
   
   try {
     const { torneoId, jugadorId } = req.params;
+    const { lang } = req.body;
 
     console.log('📧 Reenviando invitación al jugador:', { torneoId, jugadorId });
 
     // Obtener datos del jugador en el torneo
     const [jugadorData] = await connection.query(
-      `SELECT jts.id, jts.usuario_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
+      `SELECT jts.id, jts.jugador_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
        FROM jugador_torneo_saga jts
-       INNER JOIN usuarios u ON jts.usuario_id = u.id
+       INNER JOIN usuarios u ON jts.jugador_id = u.id
        WHERE jts.id = ? AND jts.torneo_id = ?`,
       [jugadorId, torneoId]
     );
@@ -2555,7 +2556,7 @@ router.post('/:torneoId/jugadores/:jugadorId/reenviarInvitacionInd', verificarTo
       banda: jugador.faccion
     };
 
-    const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
+    const resultado = await enviarInvitarJugador(destinatario, torneoInfo, lang);
 
     if (resultado.success) {
       res.json({
@@ -2594,14 +2595,15 @@ router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrgani
 
   try {
     const { torneoId } = req.params;
+    const { lang } = req.body;
 
     console.log('📧 Reenviando invitaciones a todos los jugadores del torneo:', torneoId);
 
     // Obtener todos los jugadores del torneo
     const [jugadores] = await connection.query(
-      `SELECT jts.id, jts.usuario_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
+      `SELECT jts.id, jts.jugador_id, u.nombre, u.apellidos, u.email, u.estado_cuenta, jts.epoca, jts.faccion
        FROM jugador_torneo_saga jts
-       INNER JOIN usuarios u ON jts.usuario_id = u.id
+       INNER JOIN usuarios u ON jts.jugador_id = u.id
        WHERE jts.torneo_id = ?
        ORDER BY u.nombre ASC`,
       [torneoId]
@@ -2667,7 +2669,7 @@ router.post('/:torneoId/reenviarTodosJugadores', verificarToken, verificarOrgani
           banda: jugador.faccion
         };
 
-        const resultado = await enviarInvitarJugador(destinatario, torneoInfo);
+        const resultado = await enviarInvitarJugador(destinatario, torneoInfo, lang);
 
         if (resultado.success) {
           totalEnviados++;
@@ -2749,7 +2751,8 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
       misOpcionesBanda,
       misTiposTropaPersonalizados,
       miDetalleMercenarios,
-      miWarlordLegendario       // ✅ warlord del capitán
+      miWarlordLegendario,    // ✅ warlord del capitán
+      lang
     } = req.body;
     
     const inscriptorId = req.userId;
@@ -3130,7 +3133,7 @@ router.post('/:torneoId/inscripcionEquipo', verificarToken, async (req, res) => 
                 fecha_fin: torneo.fecha_fin,
                 puntos_banda: torneo.puntos_banda
               },
-              null
+              lang
             );
           } catch (emailError) {
             console.error(`❌ Error enviando email a ${miembro.email}:`, emailError.message);
@@ -3250,7 +3253,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
   try {
     const { torneoId } = req.params;
     const userId = req.usuario?.userId || req.userId;
-    const { nombreEquipo, miembros } = req.body;
+    const { nombreEquipo, miembros, lang } = req.body;
 
     await connection.beginTransaction();
 
@@ -3518,8 +3521,7 @@ router.put('/:torneoId/actualizarInscripcionEquipo', verificarToken, async (req,
       for (const usuario of nuevosUsuariosParaEmail) {
         try {
           const resultado = await enviarInvitacionEquipo(
-            usuario, datosEquipo, torneoInfoEmail, null
-          );
+            usuario, datosEquipo, torneoInfoEmail, lang);
           if (resultado.success) {
             emailsEnviados.push(usuario.email);
           } else {
@@ -3572,7 +3574,7 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
   
   try {
     const { torneoId } = req.params;
-    const { nombreEquipo, miembros } = req.body;
+    const { nombreEquipo, miembros, lang } = req.body;
 
     // Validaciones básicas
     if (!nombreEquipo || !nombreEquipo.trim()) {
@@ -3854,7 +3856,7 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
             banda: null // Todavía no tiene banda asignada
           };
 
-          const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo);
+          const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo, lang);
           
           if (resultado.success) {
             emailsEnviados.push({
@@ -3921,15 +3923,40 @@ router.post('/:torneoId/add-team', verificarToken, verificarOrganizadorTorneo, a
   }
 });
 
-// ===== REENVIAR EMAIL A UN  EQUIPOS AÑADIDOS  (ORGANIZADOR) =====
+// ===== REENVIAR EMAIL A UN EQUIPOS AÑADIDOS (ORGANIZADOR) =====
 
 router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   const connection = await pool.getConnection();
   
+  // 1. Diccionario de traducciones para las respuestas del Frontend
+  const { lang = 'es' } = req.body;
+  
+  const i18n = {
+    es: {
+      equipoNoEncontrado: 'Equipo no encontrado en este torneo',
+      torneoNoEncontrado: 'Torneo no encontrado',
+      capitanNoEncontrado: 'Capitán del equipo no encontrado',
+      sinMiembros: 'No se encontraron miembros en este equipo',
+      exitoMensaje: (cant, equipo) => `Se han reenviado ${cant} invitaciones del equipo "${equipo}"`,
+      errorServidor: 'Error al reenviar invitaciones'
+    },
+    en: {
+      equipoNoEncontrado: 'Team not found in this tournament',
+      torneoNoEncontrado: 'Tournament not found',
+      capitanNoEncontrado: 'Team captain not found',
+      sinMiembros: 'No members found in this team',
+      exitoMensaje: (cant, equipo) => `${cant} invitations have been resent for team "${equipo}"`,
+      errorServidor: 'Error resending invitations'
+    }
+  };
+
+  // Selector de idioma (si no es 'en', por defecto usa 'es')
+  const t = i18n[lang === 'en' ? 'en' : 'es'];
+
   try {
     const { torneoId, equipoId } = req.params;
 
-    console.log('📧 Reenviando invitaciones:', { torneoId, equipoId });
+    console.log('📧 Reenviando invitaciones:', { torneoId, equipoId, lang });
 
     // Verificar que el equipo existe y pertenece al torneo
     const [equipoCheck] = await connection.query(
@@ -3942,7 +3969,7 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
     if (equipoCheck.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Equipo no encontrado en este torneo'
+        message: t.equipoNoEncontrado
       });
     }
 
@@ -3964,7 +3991,7 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
     if (torneoData.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Torneo no encontrado'
+        message: t.torneoNoEncontrado
       });
     }
 
@@ -3981,7 +4008,7 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
     if (capitanData.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Capitán del equipo no encontrado'
+        message: t.capitanNoEncontrado
       });
     }
 
@@ -4011,7 +4038,7 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
     if (miembros.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No se encontraron miembros en este equipo'
+        message: t.sinMiembros
       });
     }
 
@@ -4053,10 +4080,11 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
           email: miembro.email,
           esNuevo: esNuevoUsuario,
           epoca: miembro.epoca,
-          banda: miembro.faccion // Si ya tiene facción asignada
+          banda: miembro.faccion
         };
 
-        const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo);
+        // Pasamos 'lang' a la función del mailer para que el cuerpo del correo también se traduzca
+        const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo, lang);
         
         if (resultado.success) {
           emailsEnviados.push({
@@ -4071,7 +4099,7 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
             usuariosRegistrados.push(miembro.email);
           }
           
-          console.log(`  ✅ Email reenviado a: ${miembro.email} (${esNuevoUsuario ? 'Pendiente registro' : 'Registrado'})`);
+          console.log(`  ✅ Email reenviado a: ${miembro.email} (${esNuevoUsuario ? 'Pendiente' : 'Registrado'})`);
         } else {
           emailsFallidos.push({
             email: miembro.email,
@@ -4090,16 +4118,17 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
       }
     }
 
+    // Respuesta exitosa traducida
     res.json({
       success: true,
-      message: `Se han reenviado ${emailsEnviados.length} invitaciones del equipo "${equipo.nombre_equipo}"`,
+      message: t.exitoMensaje(emailsEnviados.length, equipo.nombre_equipo),
       data: {
         torneo: torneo.nombre_torneo,
         equipo: equipo.nombre_equipo,
         totalMiembros: miembros.length,
         emails: {
           enviados: emailsEnviados.length,
-          fallidos: emailsFallidos.length,
+          fallidos:  emailsFallidos.length,
           pendientesRegistro: usuariosPendientes.length,
           registrados: usuariosRegistrados.length
         },
@@ -4116,7 +4145,7 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
     console.error('❌ Error al reenviar invitaciones:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al reenviar invitaciones',
+      message: t.errorServidor,
       error: error.message
     });
   } finally {
@@ -4124,15 +4153,38 @@ router.post('/:torneoId/equipos/:equipoId/reenviarInvitacionEq', verificarToken,
   }
 });
 
-// ===== REENVIAR EMAIL A TODOS LOS  EQUIPOS AÑADIDOS  (ORGANIZADOR) =====
+// ===== REENVIAR EMAIL A TODOS LOS EQUIPOS AÑADIDOS (ORGANIZADOR) =====
 
 router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrganizadorTorneo, async (req, res) => {
   const connection = await pool.getConnection();
   
+  // 1. Diccionario de traducciones para las respuestas del Frontend
+  const { lang = 'es' } = req.body;
+  
+  const i18n = {
+    es: {
+      sinEquipos: 'No se encontraron equipos en este torneo',
+      torneoNoEncontrado: 'Torneo no encontrado',
+      capitanNoEncontrado: 'Capitán no encontrado',
+      exitoMensaje: (cantEquipos, cantEmails) => `Se procesaron ${cantEquipos} equipos. Total de invitaciones enviadas: ${cantEmails}`,
+      errorServidor: 'Error al reenviar invitaciones a todos los equipos'
+    },
+    en: {
+      sinEquipos: 'No teams found in this tournament',
+      torneoNoEncontrado: 'Tournament not found',
+      capitanNoEncontrado: 'Captain not found',
+      exitoMensaje: (cantEquipos, cantEmails) => `${cantEquipos} teams processed. Total invitations sent: ${cantEmails}`,
+      errorServidor: 'Error resending invitations to all teams'
+    }
+  };
+
+  // Selector de idioma (por defecto 'es')
+  const t = i18n[lang === 'en' ? 'en' : 'es'];
+  
   try {
     const { torneoId } = req.params;
 
-    console.log('📧 Reenviando invitaciones a todos los equipos del torneo:', torneoId);
+    console.log('📧 Reenviando invitaciones a todos los equipos del torneo:', torneoId, `[Idioma: ${lang}]`);
 
     // Obtener todos los equipos del torneo
     const [equipos] = await connection.query(
@@ -4146,7 +4198,7 @@ router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrg
     if (equipos.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No se encontraron equipos en este torneo'
+        message: t.sinEquipos
       });
     }
 
@@ -4166,7 +4218,7 @@ router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrg
     if (torneoData.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Torneo no encontrado'
+        message: t.torneoNoEncontrado
       });
     }
 
@@ -4206,7 +4258,7 @@ router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrg
       if (capitanData.length === 0) {
         resultadosPorEquipo.push({
           equipo: equipo.nombre_equipo,
-          error: 'Capitán no encontrado'
+          error: t.capitanNoEncontrado // Error interno por equipo traducido
         });
         continue;
       }
@@ -4257,7 +4309,8 @@ router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrg
             banda: miembro.faccion
           };
 
-          const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo);
+          // Pasamos el lang actual a la función encargada del HTML del correo
+          const resultado = await enviarInvitacionEquipo(destinatario, datosEquipo, torneoInfo, lang);
           
           if (resultado.success) {
             emailsEnviados.push(miembro.email);
@@ -4293,9 +4346,10 @@ router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrg
       totalRegistrados += registrados;
     }
 
+    // Respuesta de éxito traducida
     res.json({
       success: true,
-      message: `Se procesaron ${equipos.length} equipos. Total de invitaciones enviadas: ${totalEmailsEnviados}`,
+      message: t.exitoMensaje(equipos.length, totalEmailsEnviados),
       data: {
         torneo: torneo.nombre_torneo,
         totalEquipos: equipos.length,
@@ -4313,7 +4367,7 @@ router.post('/:torneoId/reenviarTodasInvitaciones', verificarToken, verificarOrg
     console.error('❌ Error al reenviar invitaciones a todos los equipos:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al reenviar invitaciones a todos los equipos',
+      message: t.errorServidor,
       error: error.message
     });
   } finally {
@@ -6688,6 +6742,8 @@ router.post('/:torneoId/guardarEmparejamientosEquipos', verificarToken, verifica
   try {
     const { torneoId } = req.params;
     const { emparejamientos, ronda } = req.body;
+
+    console.log('🔍 emparejamientos recibidos:', JSON.stringify(emparejamientos, null, 2));
     
     if (!emparejamientos || !Array.isArray(emparejamientos)) {
       throw new Error('emparejamientos debe ser un array');
@@ -6709,6 +6765,7 @@ router.post('/:torneoId/guardarEmparejamientosEquipos', verificarToken, verifica
     for (const partida of emparejamientos) {
       const jugador1_id = partida.jugador1_id;
       const jugador2_id = partida.jugador2_id || null;
+      console.log('🔍 insertando partida:', { jugador1_id, jugador2_id, equipo1_id: partida.equipo1_id });
       const es_bye = !jugador2_id;
 
       const insertQuery = `
@@ -6912,7 +6969,7 @@ router.get('/:torneoId/obtenerClasificacionIndividual', async (req, res) =>{
                 LEFT JOIN torneo_saga_equipo tse
                   ON tse.torneo_id = cjs.torneo_id 
                   AND tse.id = cjs.equipo_id
-                LEFT JOIN jugador_torneo_saga jts
+                INNER JOIN jugador_torneo_saga jts
                   ON cjs.jugador_id = jts.jugador_id
                   AND cjs.torneo_id = jts.torneo_id 
               WHERE cjs.torneo_id = ?
@@ -7166,7 +7223,7 @@ router.post('/:torneoId/enviar-correo', verificarToken, verificarOrganizadorTorn
 
     try {
         const { torneoId } = req.params;
-        const { destinatarios, asunto, mensaje, tipoTorneo } = req.body;
+        const { destinatarios, asunto, mensaje, tipoTorneo, lang } = req.body;
 
         // Verificar que el usuario es el organizador del torneo
           const [torneo] = await pool.query(
@@ -7285,7 +7342,8 @@ router.post('/:torneoId/enviar-correo', verificarToken, verificarOrganizadorTorn
                 asunto: asunto,
                 mensaje: mensaje,
                 nombreEquipo: destinatario.equipo || null,
-                organizador: datosOrganizador
+                organizador: datosOrganizador,
+                lang: lang
             });
 
             if (resultado.success) {

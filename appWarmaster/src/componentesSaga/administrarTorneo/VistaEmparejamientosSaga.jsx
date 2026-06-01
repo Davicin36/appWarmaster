@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import torneosSagaApi from '@/servicios/apiSaga';
 import usuarioApi from '@/servicios/apiUsuarios';
-import { generarEmparejamientos } from '../funcionesSaga/seleccionEmparejamientos';
+import { generarEmparejamientos } from '@/componentesSaga/funcionesSaga/seleccionEmparejamientos';
+import { useSagaI18n } from '@/componentesSaga/funcionesSaga/constantesFuncionesSaga';
 
 import ModalRegistroPartida from '../ModalRegistroPartidaSaga';
 import ModalEdicionEmparejamientos from '@/componente/ModalEdicionEmparejamientos';
@@ -14,6 +16,10 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const { torneoId: paramTorneoId } = useParams();
     const torneoId = propTorneoId || paramTorneoId;
 
+    const { t, i18n } = useTranslation();
+    const { getEpoca, getEscenario, getBanda } = useSagaI18n();
+    const locale = i18n.language === 'en' ? 'en-GB' : 'es-ES';
+
     const [torneo, setTorneo] = useState(null);
     const [jugadores, setJugadores] = useState([]);
     const [equipos, setEquipos] = useState([]);
@@ -21,1090 +27,496 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
     const [partidasGuardadas, setPartidasGuardadas] = useState([]);
     const [todasLasPartidas, setTodasLasPartidas] = useState([]);
     const [rondasExpandidas, setRondasExpandidas] = useState({});
-    
     const [loading, setLoading] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [cargandoPartidas, setCargandoPartidas] = useState(false);
     const [error, setError] = useState(null);
-    
     const [modalAbierto, setModalAbierto] = useState(false);
-    const [partidaSeleccionada, setPartidaSeleccionada] = useState(null);
+    const [partidaSeleccionada, setPartidaSeleccionada]  = useState(null);
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [esOrganizador, setEsOrganizador] = useState(false);
     const [esParticipante, setEsParticipante] = useState(false);
     const [mostrarSelectorEscenarios, setMostrarSelectorEscenarios] = useState(false);
-    const [asignacionesEscenarios, setAsignacionesEscenarios] = useState({});
-
-    const [modoEdicion, setModoEdicion] = useState(false);
+    const [asignacionesEscenarios,    setAsignacionesEscenarios]    = useState({});
+    const [modoEdicion,          setModoEdicion]          = useState(false);
     const [emparejamientoEditando, setEmparejamientoEditando] = useState(null);
-    const [modalEdicionAbierto, setModalEdicionAbierto] = useState(false);
+    const [modalEdicionAbierto,  setModalEdicionAbierto]  = useState(false);
 
     const esTorneoEquipos = () => torneo?.tipo_torneo === 'Por equipos';
 
-    //VERIFICAMOS EL TOKEN DEL JUGADOR
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
-                setUsuarioActual({
-                    id: payload.userId,
-                    nombre: payload.nombre
-                });
-            } catch (error) {
-                console.error('Error al decodificar token:', error);
-            }
+                setUsuarioActual({ id: payload.userId, nombre: payload.nombre });
+            } catch (error) { console.error('Error al decodificar token:', error); }
         }
     }, []);
 
-    //CARGAR SI ES EL ORGANIZADOR
-useEffect(() => {
-    const verificarOrganizador = async () => {
-
-        if (torneoId && usuarioActual?.id) {
-            try {
-                const token = localStorage.getItem('token');
-                if (!token) {
+    useEffect(() => {
+        const verificarOrganizador = async () => {
+            if (torneoId && usuarioActual?.id) {
+                try {
+                    const token = localStorage.getItem('token');
+                    if (!token) { setEsOrganizador(false); return; }
+                    const response = await usuarioApi.verificarOrganizador(torneoId);
+                    const esOrg = response.data?.esOrganizador || response.esOrganizador || false;
+                    setEsOrganizador(esOrg);
+                } catch (error) {
+                    console.error('❌ Error al verificar organizador:', error);
                     setEsOrganizador(false);
-                    return;
                 }
-
-                const response = await usuarioApi.verificarOrganizador(torneoId);           
-                const esOrg = response.data?.esOrganizador || response.esOrganizador || false;
-                
-                setEsOrganizador(esOrg);
-           
-            } catch (error) {
-                console.error('❌ Error al verificar organizador:', error);
-                console.error('Error completo:', error.response?.data || error.message);
-                setEsOrganizador(false);
             }
-        } 
-    };
-    try {
-        verificarOrganizador();
-    } catch (error) {
-        console.error('💥 Error fatal en useEffect verificarOrganizador:', error);
-    }
-}, [torneoId, usuarioActual]);
+        };
+        try { verificarOrganizador(); } catch (error) { console.error('💥 Error fatal:', error); }
+    }, [torneoId, usuarioActual]);
 
+    useEffect(() => { if (torneoId) cargarDatos(); }, [torneoId]);
 
-    //CARGAR LOS DATOS DEL TORNEO
     useEffect(() => {
-        if (torneoId) {
-            cargarDatos();
-        }
-    }, [torneoId]);
-
-    //VER SI ES PARTICIPANTE O NO DEL TORNEO
-    useEffect(() => {
-        if(usuarioActual && (jugadores.length > 0 || equipos.length > 0)) {
+        if (usuarioActual && (jugadores.length > 0 || equipos.length > 0))
             setEsParticipante(verificarEsParticipante());
-        }
     }, [usuarioActual, jugadores, equipos, torneo]);
 
     const cargarDatos = async () => {
         try {
-            setLoading(true);
-            setError(null);
-            
+            setLoading(true); setError(null);
             const responseTorneo = await torneosSagaApi.obtenerTorneo(torneoId);
             const dataTorneo = responseTorneo.data?.torneo || responseTorneo.torneo || responseTorneo;
             setTorneo(dataTorneo);
-            
-            // Cargar jugadores o equipos según el tipo de torneo
             if (dataTorneo.tipo_torneo === 'Por equipos') {
-                try {
-                    const responseEquipos = await torneosSagaApi.obtenerEquiposTorneo(torneoId);
-                    const dataEquipos = responseEquipos.data || responseEquipos || [];
-                    setEquipos(Array.isArray(dataEquipos) ? dataEquipos : []);
-                } catch (err) {
-                    console.error('No hay equipos todavía', err);
-                    setEquipos([]);
-                }
+                try { const r = await torneosSagaApi.obtenerEquiposTorneo(torneoId); const d = r.data || r || []; setEquipos(Array.isArray(d) ? d : []); }
+                catch { setEquipos([]); }
             } else {
-                try {
-                    const responseJugadores = await torneosSagaApi.obtenerJugadoresTorneo(torneoId);
-                    const dataJugadores = responseJugadores.data || responseJugadores || [];
-                    setJugadores(Array.isArray(dataJugadores) ? dataJugadores : []);
-                } catch (err) {
-                    console.error('No hay jugadores todavía', err);
-                    setJugadores([]);
-                }
+                try { const r = await torneosSagaApi.obtenerJugadoresTorneo(torneoId); const d = r.data || r || []; setJugadores(Array.isArray(d) ? d : []); }
+                catch { setJugadores([]); }
             }
-            
             await cargarTodasLasPartidas(dataTorneo.id);
-            
-            if (dataTorneo.ronda_actual) {
-                await cargarPartidasRonda(dataTorneo.id, dataTorneo.ronda_actual);
-            }
-            
+            if (dataTorneo.ronda_actual) await cargarPartidasRonda(dataTorneo.id, dataTorneo.ronda_actual);
         } catch (err) {
             console.error('Error al cargar datos:', err);
-            setError('No se pudieron cargar los datos del torneo');
-        } finally {
-            setLoading(false);
-        }
+            setError(t('comun.error_datos'));
+        } finally { setLoading(false); }
     };
 
     const verificarEsParticipante = () => {
-    
-    if (!usuarioActual?.id) {
-        return false;
-    }
-
-    if (esTorneoEquipos()) {
-        const resultado = equipos.some(equipo => {
-
-            const encontrado = equipo.jugadores?.some(j => {
-                return j.jugador_id === usuarioActual.id;
-            });
-            return encontrado;
-        });
-        return resultado;
-    } else {
-        const resultado = jugadores.some(j => {
-            return j.jugador_id === usuarioActual.id || j.id === usuarioActual.id;
-        });
-        return resultado;
-    }
-};
+        if (!usuarioActual?.id) return false;
+        if (esTorneoEquipos()) return equipos.some(eq => eq.jugadores?.some(j => j.jugador_id === usuarioActual.id));
+        return jugadores.some(j => j.jugador_id === usuarioActual.id || j.id === usuarioActual.id);
+    };
 
     const puedeVerPartidas = () => {
-        // El organizador siempre puede ver
         if (esOrganizador) return true;
-        
-        // Si el torneo está finalizado, TODOS pueden ver
-        if (torneo?.estado === 'finalizado') return true;
-        
-        // Si el torneo está en curso, TODOS pueden ver
-        if (torneo?.estado === 'en_curso') return true;
-        
-        // Si está pendiente, solo el organizador puede ver
+        if (torneo?.estado === 'finalizado' || torneo?.estado === 'en_curso') return true;
         return false;
     };
 
-   const cargarTodasLasPartidas = async (tId = torneoId) => { 
-    try {
-        let allPartidas = [];
-        
-        // 🎯 Obtener el número máximo de rondas
-        const rondasMax = torneo?.rondas_max || 5;
-        
-        // 🔄 Cargar RONDA POR RONDA (igual que la ronda actual)
-        for (let r = 1; r <= rondasMax; r++) {
-            try {
-                let roundResponse;
-                
-                // 🎯 Usar EXACTAMENTE los mismos endpoints que cargarPartidasRonda()
-                if (esOrganizador) {
-                    if (esTorneoEquipos()) {
-                        roundResponse = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, r);
+    const cargarTodasLasPartidas = async (tId = torneoId) => {
+        try {
+            let allPartidas = [];
+            const rondasMax = torneo?.rondas_max || 5;
+            for (let r = 1; r <= rondasMax; r++) {
+                try {
+                    let roundResponse;
+                    if (esOrganizador) {
+                        roundResponse = esTorneoEquipos()
+                            ? await torneosSagaApi.obtenerEmparejamientosEquipos(tId, r)
+                            : await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, r);
                     } else {
-                        roundResponse = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, r);
+                        roundResponse = esTorneoEquipos()
+                            ? await torneosSagaApi.obtenerEmparejamientosEquiposPublico(tId, r)
+                            : await torneosSagaApi.obtenerEmparejamientosIndividualesPublico(tId, r);
                     }
-                } else {
-                    // 👁️ PARA VISITANTES: usar endpoints públicos
-                    if (esTorneoEquipos()) {
-                        roundResponse = await torneosSagaApi.obtenerEmparejamientosEquiposPublico(tId, r);
-                    } else {
-                        roundResponse = await torneosSagaApi.obtenerEmparejamientosIndividualesPublico(tId, r);
-                    }
-                }
-                
-                const roundPartidas = roundResponse?.data || roundResponse || [];
-                if (Array.isArray(roundPartidas) && roundPartidas.length > 0) {
-                    allPartidas.push(...roundPartidas);
-                }
-            } catch (err) {
-                console.error(`⚠️ Ronda ${r}: error al cargar -`, err.message);
+                    const roundPartidas = roundResponse?.data || roundResponse || [];
+                    if (Array.isArray(roundPartidas) && roundPartidas.length > 0) allPartidas.push(...roundPartidas);
+                } catch (err) { console.error(`⚠️ ${t('vista_emp.error_ronda')} ${r}:`, err.message); }
             }
-        }
-    
-        setTodasLasPartidas(allPartidas);
-        
-    } catch (err) {
-        console.error('❌ Error al cargar todas las partidas:', err);
-        setTodasLasPartidas([]);
-    }
-};
+            setTodasLasPartidas(allPartidas);
+        } catch  { setTodasLasPartidas([]); }
+    };
 
     const cargarPartidasRonda = async (tId = torneoId, ronda = torneo?.ronda_actual) => {
         try {
             setCargandoPartidas(true);
-            
-            try {
-                let response;
-                
-                // 🎯 SI ES ORGANIZADOR: usar endpoints protegidos
-                if (esOrganizador) {
-                    if (esTorneoEquipos()) {
-                        response = await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda);
-                    } else {
-                        response = await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
-                    }
-                } else {
-                    // 👁️ PARA VISITANTES Y PARTICIPANTES: usar endpoints públicos
-                    if (esTorneoEquipos()) {
-                        response = await torneosSagaApi.obtenerEmparejamientosEquiposPublico(tId, ronda);
-                    } else {
-                        response = await torneosSagaApi.obtenerEmparejamientosIndividualesPublico(tId, ronda);
-                    }
-                }
-
-                const partidas = response?.data || response || [];
-                const partidasArray = Array.isArray(partidas) ? partidas : [];
-                setPartidasGuardadas(partidasArray);
-                
-            } catch (err) {
-                console.warn('No se pudieron cargar emparejamientos:', err.message);
-                setPartidasGuardadas([]);
+            let response;
+            if (esOrganizador) {
+                response = esTorneoEquipos()
+                    ? await torneosSagaApi.obtenerEmparejamientosEquipos(tId, ronda)
+                    : await torneosSagaApi.obtenerEmparejamientosIndividuales(tId, ronda);
+            } else {
+                response = esTorneoEquipos()
+                    ? await torneosSagaApi.obtenerEmparejamientosEquiposPublico(tId, ronda)
+                    : await torneosSagaApi.obtenerEmparejamientosIndividualesPublico(tId, ronda);
             }
-            
+            const partidas = response?.data || response || [];
+            setPartidasGuardadas(Array.isArray(partidas) ? partidas : []);
         } catch (err) {
-            console.error('Error al cargar partidas:', err);
+            console.warn(`${t('vista_emp.error_emparejamientos')} ${ronda}:`, err.message);
             setPartidasGuardadas([]);
-        } finally {
-            setCargandoPartidas(false);
-        }
+        } finally { setCargandoPartidas(false); }
     };
 
     const partidasPorRonda = () => {
         const grupos = {};
-        todasLasPartidas.forEach(partida => {
-            if (!grupos[partida.ronda]) {
-                grupos[partida.ronda] = [];
-            }
-            grupos[partida.ronda].push(partida);
-        });
+        todasLasPartidas.forEach(p => { if (!grupos[p.ronda]) grupos[p.ronda] = []; grupos[p.ronda].push(p); });
         return grupos;
     };
 
-    const toggleRonda = (ronda) => {
-        setRondasExpandidas(prev => ({
-            ...prev,
-            [ronda]: !prev[ronda]
-        }));
-    };
+    const toggleRonda = (ronda) => setRondasExpandidas(prev => ({ ...prev, [ronda]: !prev[ronda] }));
 
     const handleGenerarEmparejamientos = async () => {
         try {
-
-            if( torneo.estado !=='en_curso') {
-                 alert('⚠️ El torneo debe estar en estado "En Curso" para generar emparejamientos.\n\nInicia el torneo primero.');
-                return;
+            if (torneo.estado !== 'en_curso') {
+                alert(`⚠️ ${t('vista_emp.torneo_enCurso')}\n\n${t('vista_emp.iniciar_torneo')}`); return;
             }
-
-            if (!torneoId) {
-                alert('⚠️ Error: No se encontró el ID del torneo');
-                return;
-            }
-
+            if (!torneoId) { alert(`⚠️ ${t('vista_emp.error_id_torneo')}`); return; }
             const esEquipos = esTorneoEquipos();
             const minParticipantes = esEquipos ? equipos.length : jugadores.length;
-
-            // Validar participantes mínimos
             if (minParticipantes < 2) {
-                alert(`⚠️ Se necesitan al menos 2 ${esEquipos ? 'equipos' : 'jugadores'} para generar emparejamientos`);
-                return;
+                alert(`⚠️ ${t('vista_emp.minimo_ronda1')} 2 ${esEquipos ? t('vgs.equipos') : t('tabla.jugadores')} ${t('vista_emp.minimo_ronda2')}`); return;
             }
-
-            // Preparar participantes SOLO para torneos individuales
             let participantes = [];
-            
             if (!esEquipos) {
-                const responseClasificacion = await torneosSagaApi.obtenerClasificacionIndividual(torneoId);
-                const clasificacion = responseClasificacion.data || responseClasificacion || [];
-        
+                const rc = await torneosSagaApi.obtenerClasificacionIndividual(torneoId);
+                const cl = rc.data || rc || [];
                 participantes = jugadores.map(j => {
-                    const stats = clasificacion.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
-
-    
-                    return {
-                        ...j,
-                        puntos_torneo: stats?.puntos_torneo || 0,
-                        puntos_victoria: stats?.puntos_victoria || 0,
-                        puntos_masacre: stats?.puntos_masacre || 0,
-                        partidas_jugadas: stats?.partidas_jugadas || 0
-                    };
+                    const s = cl.find(c => c.jugador_id === j.jugador_id || c.jugador_id === j.id);
+                    return { ...j, puntos_torneo: s?.puntos_torneo || 0, puntos_victoria: s?.puntos_victoria || 0, puntos_masacre: s?.puntos_masacre || 0, partidas_jugadas: s?.partidas_jugadas || 0 };
                 });
-
             }
-
-            // 🎯 LLAMADA UNIFICADA
-            const nuevosEmparejamientos = await generarEmparejamientos(
-                torneoId,
-                torneo.ronda_actual || 1,
-                esEquipos ? 'Por equipos' : 'individual',
-                participantes
-            );
-
+            const nuevosEmparejamientos = await generarEmparejamientos(torneoId, torneo.ronda_actual || 1, esEquipos ? 'Por equipos' : 'individual', participantes);
             setEmparejamientos(Array.isArray(nuevosEmparejamientos) ? nuevosEmparejamientos : []);
-            alert(`✅ ${nuevosEmparejamientos.length} emparejamientos generados correctamente`);
-            
+            alert(`✅ ${nuevosEmparejamientos.length} ${t('vista_emp.emp_correctos')}`);
         } catch (error) {
-            console.error('❌ Error al generar emparejamientos:', error);
-            alert(`Error al generar emparejamientos: ${error.message}`);
+            console.error(`❌ ${t('vista_emp.error_generar_emp')}:`, error);
+            alert(`❌ ${t('vista_emp.error_generar_emp')}: ${error.message}`);
             setEmparejamientos([]);
         }
     };
 
     const obtenerEpocasDisponibles = () => {
-    const epocas = new Set();
-    
-    if (esTorneoEquipos()) {
-        equipos.forEach(equipo => {
-            equipo.jugadores?.forEach(jugador => {
-                if (jugador.epoca) {
-                    epocas.add(jugador.epoca);
-                }
-            });
-        });
-    }
-    
-    return Array.from(epocas).sort();
-};
+        const epocas = new Set();
+        if (esTorneoEquipos()) equipos.forEach(eq => eq.jugadores?.forEach(j => { if (j.epoca) epocas.add(j.epoca); }));
+        return Array.from(epocas).sort();
+    };
 
-   const guardarResultados = async () => {
+    const guardarResultados = async () => {
         try {
-            setGuardando(true);
-            setError(null);
-
-            if (!emparejamientos || emparejamientos.length === 0) {
-                alert('⚠️ Primero debes generar los emparejamientos');
-                return;
-            }
-
+            setGuardando(true); setError(null);
+            if (!emparejamientos?.length) { alert(`⚠️ ${t('vista_emp.primero_emp')}`); return; }
             if (esTorneoEquipos()) {
                 const epocas = obtenerEpocasDisponibles();
-                
                 if (epocas.length > 0 && Object.keys(asignacionesEscenarios).length === 0) {
-                    setMostrarSelectorEscenarios(true);
-                    setGuardando(false);
-                    return; // Esperar a que asigne los escenarios
+                    setMostrarSelectorEscenarios(true); setGuardando(false); return;
                 }
             }
-
             let nombreEscenario;
-            
             if (torneo.tipo_torneo === 'Por equipos') {
-                const rondas = [
-                    torneo.partida_ronda_1,
-                    torneo.partida_ronda_2,
-                    torneo.partida_ronda_3,
-                    torneo.partida_ronda_4,
-                    torneo.partida_ronda_5
-                ].filter(Boolean);
-                
-                nombreEscenario = rondas.length > 0 
-                    ? rondas.join(' / ') 
-                    : 'Escenarios por definir';
-           } else {
-            nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
-            
-                if (!nombreEscenario) {
-                    alert(`⚠️ No se encontró el escenario configurado para la Ronda ${torneo.ronda_actual}`);
-                    return;
-                }
+                const rondas = [torneo.partida_ronda_1, torneo.partida_ronda_2, torneo.partida_ronda_3, torneo.partida_ronda_4, torneo.partida_ronda_5].filter(Boolean);
+                nombreEscenario = rondas.length > 0 ? rondas.join(' / ') : t('vista_emp.escenario_definir');
+            } else {
+                nombreEscenario = torneo[`partida_ronda_${torneo.ronda_actual}`];
+                if (!nombreEscenario) { alert(`⚠️ ${t('vista_emp.no_escenario_ronda')} ${torneo.ronda_actual}`); return; }
             }
-
-            const confirmar = window.confirm(
-                `¿Guardar ${emparejamientos.length} emparejamientos para la Ronda ${torneo.ronda_actual}?`
-            );
-            
-            if (!confirmar) {
-                setGuardando(false);
-                return;
+            if (!window.confirm(`¿${t('vista_emp.guardar_emp1')} ${emparejamientos.length} ${t('vista_emp.guardar_emp2')} ${torneo.ronda_actual}?`)) {
+                setGuardando(false); return;
             }
-
-            const todasLasPartidas = [];
+            const todasLasP = [];
             let mesaCounter = 1;
             const esEquipos = esTorneoEquipos();
-           
-             emparejamientos.forEach((emp) => {
-                if (emp.partidas && Array.isArray(emp.partidas)) {
-                    emp.partidas.forEach((partida) => {
-                        const escenarioAsignado = esEquipos && partida.epoca 
-                        ? asignacionesEscenarios[partida.epoca] 
-                        : nombreEscenario;
 
-                        todasLasPartidas.push({
-                            mesa: mesaCounter++,
-                            jugador1_id: partida.jugador1_id ?? null,
-                            jugador2_id: partida.jugador2_id ?? null,
-                            equipo1_id: emp.equipo1_id,
-                            equipo2_id: emp.equipo2_id,
-                            epoca: partida.epoca || null,
-                            es_bye: partida.es_bye || 0,
-                            nombre_partida: escenarioAsignado,
-                            ronda: torneo.ronda_actual,
-                        });
+            console.log('🔍 IDs que van a la DB:', emparejamientos.map(e => ({
+                j1: e.jugador1_id,
+                j2: e.jugador2_id,
+                partidas: e.partidas?.map(p => ({ j1: p.jugador1_id, j2: p.jugador2_id }))
+            })));
+
+            emparejamientos.forEach(emp => {
+                if (emp.partidas && Array.isArray(emp.partidas)) {
+                    emp.partidas.forEach(partida => {
+                        const esc = esEquipos && partida.epoca ? asignacionesEscenarios[partida.epoca] : nombreEscenario;
+                        todasLasP.push({ mesa: mesaCounter++, jugador1_id: partida.jugador1_id ?? null, jugador2_id: partida.jugador2_id ?? null, equipo1_id: emp.equipo1_id, equipo2_id: emp.equipo2_id, epoca: partida.epoca || null, es_bye: partida.es_bye || 0, nombre_partida: esc, ronda: torneo.ronda_actual });
                     });
                 } else {
-                    todasLasPartidas.push({
-                        mesa: mesaCounter++,
-                        jugador1_id: emp.jugador1_id ?? null,
-                        jugador2_id: emp.jugador2_id ?? null,
-                        equipo1_id: null,
-                        equipo2_id: null,
-                        epoca: emp.epoca || null,
-                        es_bye: emp.es_bye || 0,
-                        nombre_partida: nombreEscenario,
-                        ronda: torneo.ronda_actual,
-                    });
-                }
-            })
-
-            const errores = [];
-            todasLasPartidas.forEach((partida, index) => {
-                if(!partida.jugador1_id && !partida.es_bye) {
-                    errores.push(`Mesa ${partida.mesa}: jugador 1 sin ID (partida ${index+1})`);
+                    todasLasP.push({ mesa: mesaCounter++, jugador1_id: emp.jugador1_id ?? null, jugador2_id: emp.jugador2_id ?? null, equipo1_id: null, equipo2_id: null, epoca: emp.epoca || null, es_bye: emp.es_bye || 0, nombre_partida: nombreEscenario, ronda: torneo.ronda_actual });
                 }
             });
-
-            if (errores.length > 0){
-                console.error('Errores de validación: ', errores);
-                console.error('Partidas con error: ', todasLasPartidas);
-                alert('Error: Faltan IDs: \n' + errores.join('\n'));
-                return;
-            }
-
-            // 🎯 Usar el endpoint correcto según el tipo de torneo
-            if (esEquipos) {
-                await torneosSagaApi.guardarEmparejamientosEquipos(
-                    torneo.id,
-                    todasLasPartidas,
-                    torneo.ronda_actual
-                );
-            } else {
-                await torneosSagaApi.guardarEmparejamientosIndividuales(
-                    torneo.id,
-                    todasLasPartidas,
-                    torneo.ronda_actual
-                );
-            }
-
-            alert(`✅ ${emparejamientos.length} partidas creadas para la Ronda ${torneo.ronda_actual}\nEscenario: ${nombreEscenario}`);
-
-            setEmparejamientos([]);
-            setAsignacionesEscenarios({}); // Limpiar asignaciones
-            setMostrarSelectorEscenarios(false);
-
-            await cargarPartidasRonda();
-            await cargarTodasLasPartidas();
-        
+            const errores = [];
+            todasLasP.forEach((p, i) => { if (!p.jugador1_id && !p.es_bye) errores.push(`${t('vista_emp.mesa')} ${p.mesa}: ${t('vista_emp.jugador1_sin_id')} (${t('vista_emp.partida')} ${i+1})`); });
+            if (errores.length > 0) { console.error(t('vista_emp.errores_validacion'), errores); alert(`${t('vista_emp.error_id_emp')}\n` + errores.join('\n')); return; }
+            if (esEquipos) await torneosSagaApi.guardarEmparejamientosEquipos(torneo.id, todasLasP, torneo.ronda_actual);
+            else await torneosSagaApi.guardarEmparejamientosIndividuales(torneo.id, todasLasP, torneo.ronda_actual);
+            // FIX: \n en lugar de \$ (bug original)
+            alert(`✅ ${emparejamientos.length} ${t('vista_emp.partidas_creadas_ronda')} ${torneo.ronda_actual}\n${t('vista_emp.escenario')}: ${nombreEscenario}`);
+            setEmparejamientos([]); setAsignacionesEscenarios({}); setMostrarSelectorEscenarios(false);
+            await cargarPartidasRonda(); await cargarTodasLasPartidas();
         } catch (err) {
-            console.error('❌ Error completo al guardar:', err);
-            setError(err.message || 'No se pudieron guardar los emparejamientos');
-            alert(`❌ Error: ${err.message}`);
-        } finally {
-            setGuardando(false);
-        }
-    }; 
+            console.error(`❌ ${t('vista_emp.errores_guardar_emp')}`, err);
+            setError(err.message || t('vista_emp.no_pudieron_guardar_emp'));
+            alert(`❌ ${t('comun.error')} ${err.message}`);
+        } finally { setGuardando(false); }
+    };
 
     const generarSiguienteRonda = async () => {
         try {
-            if (!todasLasPartidasCompletas()) {
-                alert('⚠️ Debes completar todas las partidas de la ronda actual antes de generar la siguiente ronda');
-                return;
-            }
-
-            if (torneo.ronda_actual >= torneo.rondas_max) {
-                alert('⚠️ Ya se han jugado todas las rondas del torneo');
-                return;
-            }
-
-            const confirmar = window.confirm(
-                `¿Generar emparejamientos para la Ronda ${torneo.ronda_actual + 1}?\n\n` +
-                `Se calcularán los emparejamientos basados en los resultados actuales.`
-            );
-
-            if (!confirmar) return;
-
-            await torneosSagaApi.actualizarTorneo(torneo.id, {
-                ronda_actual: torneo.ronda_actual + 1
-            });
-
+            if (!todasLasPartidasCompletas()) { alert(`⚠️ ${t('vista_emp.completar_todas_partidas')}`); return; }
+            if (torneo.ronda_actual >= torneo.rondas_max) { alert(`⚠️ ${t('vista_emp.ronda_maxima')}`); return; }
+            if (!window.confirm(`${t('vista_emp.generar_siguiente_ronda')} ${torneo.ronda_actual + 1}?\n\n${t('vista_emp.afirmar_emp')}`)) return;
+            await torneosSagaApi.actualizarTorneo(torneo.id, { ronda_actual: torneo.ronda_actual + 1 });
             await cargarDatos();
-
-        } catch (err) {
-            console.error('Error:', err);
-            alert(`❌ Error al generar siguiente ronda: ${err.message}`);
-        }
+        } catch (err) { alert(`❌ ${t('vista_emp.error_generar_emp')} ${err.message}`); }
     };
 
     const todasLasPartidasCompletas = () => {
         if (partidasGuardadas.length === 0) return false;
-        
-        return partidasGuardadas.every(partida => 
-            partida.resultado_ps && 
-            partida.resultado_ps !== 'pendiente' &&
-            partida.resultado_ps !== null
-        );
+        return partidasGuardadas.every(p => p.resultado_ps && p.resultado_ps !== 'pendiente' && p.resultado_ps !== null);
     };
 
     const puedeEditarEstaPartida = (partida) => {
-        // Si no está en curso, nadie puede editar
         if (torneo?.estado !== 'en_curso') return false;
-        
-        // Si la partida está confirmada, solo el organizador puede desconfirmarla
         if (partida.resultado_confirmado && !esOrganizador) return false;
-        
-        // El organizador puede editar cualquier partida
         if (esOrganizador) return true;
-        
-        // Los participantes solo pueden editar sus propias partidas
         if (!esParticipante || !usuarioActual) return false;
-        
-        // 🎯 CORRECCIÓN: Verificar según tipo de torneo
         if (esTorneoEquipos()) {
-            // Buscar equipo1
-            const equipo1 = equipos.find(eq => 
-                eq.id === partida.equipo1_id || eq.equipo_id === partida.equipo1_id
-            ); 
-            // Buscar equipo2
-            const equipo2 = equipos.find(eq => 
-                eq.id === partida.equipo2_id || eq.equipo_id === partida.equipo2_id
-            );
-            // Verificar si pertenece
-            const perteneceEquipo1 = equipo1 && equipo1.jugadores?.some(j => {
-                return j.jugador_id === usuarioActual.id;
-            });
-            
-            const perteneceEquipo2 = equipo2 && equipo2.jugadores?.some(j => {
-                return j.jugador_id === usuarioActual.id;
-            });
-            
-            return perteneceEquipo1 || perteneceEquipo2;
+            const eq1 = equipos.find(eq => eq.id === partida.equipo1_id || eq.equipo_id === partida.equipo1_id);
+            const eq2 = equipos.find(eq => eq.id === partida.equipo2_id || eq.equipo_id === partida.equipo2_id);
+            return (eq1 && eq1.jugadores?.some(j => j.jugador_id === usuarioActual.id)) ||
+                   (eq2 && eq2.jugadores?.some(j => j.jugador_id === usuarioActual.id));
         } else {
-            // Para torneos individuales
-            const jugador1 = jugadores.find(j => j.id === partida.jugador1_id);
-            const jugador2 = jugadores.find(j => j.id === partida.jugador2_id);
-            
-            const esJugadorDeEstaPartida = 
-                (jugador1 && jugador1.jugador_id === usuarioActual.id) ||
-                (jugador2 && jugador2.jugador_id === usuarioActual.id);
-            
-            return esJugadorDeEstaPartida;
+            const j1 = jugadores.find(j => j.id === partida.jugador1_id);
+            const j2 = jugadores.find(j => j.id === partida.jugador2_id);
+            return (j1 && j1.jugador_id === usuarioActual.id) || (j2 && j2.jugador_id === usuarioActual.id);
         }
     };
 
-    const handleAsignarEscenario = (epoca, escenario) => {
-        setAsignacionesEscenarios(prev => ({
-            ...prev,
-            [epoca]: escenario
-        }));
-    };
-
-    const todasLasEpocasAsignadas = () => {
-        const epocas = obtenerEpocasDisponibles();
-        return epocas.every(epoca => asignacionesEscenarios[epoca]);
-    };
+    const handleAsignarEscenario = (epoca, escenario) => setAsignacionesEscenarios(prev => ({ ...prev, [epoca]: escenario }));
+    
+    const todasLasEpocasAsignadas = () => obtenerEpocasDisponibles().every(ep => asignacionesEscenarios[ep]);
 
     const confirmarAsignaciones = () => {
-        if (!todasLasEpocasAsignadas()) {
-            alert('⚠️ Debes asignar un escenario a todas las épocas');
-            return;
-        }
-        setMostrarSelectorEscenarios(false);
-        guardarResultados(); // Continuar con el guardado
+        if (!todasLasEpocasAsignadas()) { alert(`⚠️ ${t('vista_emp.asignar_escenario')}`); return; }
+        setMostrarSelectorEscenarios(false); guardarResultados();
     };
 
-    /* 
-    FUNCIONES PARA EL EDICION EMPAREJAMIENTOS
-     Función para eliminar un emparejamiento
-     */
     const eliminarEmparejamiento = (index) => {
-        if (window.confirm('¿Eliminar este emparejamiento?')) {
-            const nuevosEmp = [...emparejamientos];
-            nuevosEmp.splice(index, 1);
-            setEmparejamientos(nuevosEmp);
-            alert('✅ Emparejamiento eliminado');
+        if (window.confirm(t('vista_emp.eliminar_emp'))) {
+            const n = [...emparejamientos]; n.splice(index, 1); setEmparejamientos(n);
+            alert(`✅ ${t('vista_emp.eliminado_emp')}`);
         }
     };
 
-    // Abrir modal de edición
     const abrirEdicion = (emparejamiento, index) => {
-        // getJugadorId debe ser idéntico al del modal
         const getJugadorId = (j) => j.id || j.jugador_id;
-
-        // Buscar el jugador en el array por cualquiera de los dos IDs posibles
-        const jug1 = jugadores.find(j => 
-            j.id === emparejamiento.jugador1_id || 
-            j.jugador_id === emparejamiento.jugador1_id ||
-            j.id === emparejamiento.jugador1?.id ||
-            j.jugador_id === emparejamiento.jugador1?.jugador_id
-        );
-        const jug2 = jugadores.find(j => 
-            j.id === emparejamiento.jugador2_id || 
-            j.jugador_id === emparejamiento.jugador2_id ||
-            j.id === emparejamiento.jugador2?.id ||
-            j.jugador_id === emparejamiento.jugador2?.jugador_id
-        );
-
-        // Resolver el ID que usa el select (jugador_id prioritario, igual que getJugadorId del modal)
-        const j1Id = jug1 ? getJugadorId(jug1) : null;
-        const j2Id = jug2 ? getJugadorId(jug2) : null;
-
-        const empNormalizado = {
-            ...emparejamiento,
-            index,
-            jugador1_id: j1Id,
-            jugador2_id: j2Id,
-            equipo1_id: emparejamiento.equipo1_id ? Number(emparejamiento.equipo1_id) : null,
-            equipo2_id: emparejamiento.equipo2_id ? Number(emparejamiento.equipo2_id) : null,
-            es_bye: emparejamiento.es_bye || 0,
-        };
-
-        setEmparejamientoEditando(empNormalizado);
+        const jug1 = jugadores.find(j => j.id === emparejamiento.jugador1_id || j.id === emparejamiento.jugador1?.id);
+        const jug2 = jugadores.find(j => j.id === emparejamiento.jugador2_id || j.id === emparejamiento.jugador2?.id);
+        setEmparejamientoEditando({ ...emparejamiento, index, jugador1_id: jug1 ? getJugadorId(jug1) : null, jugador2_id: jug2 ? getJugadorId(jug2) : null, equipo1_id: emparejamiento.equipo1_id ? Number(emparejamiento.equipo1_id) : null, equipo2_id: emparejamiento.equipo2_id ? Number(emparejamiento.equipo2_id) : null, es_bye: emparejamiento.es_bye || 0 });
         setModalEdicionAbierto(true);
     };
 
-    // Guardar cambios de edición
     const guardarEdicion = (nuevosDatos) => {
         const nuevosEmp = [...emparejamientos];
         const empActual = nuevosEmp[emparejamientoEditando.index];
-
         let empActualizado;
-
         if (esTorneoEquipos()) {
-            // Resolver nombres de equipos desde el array equipos
-            const equipo1 = equipos.find(eq => 
-                (eq.id || eq.equipo_id) === nuevosDatos.equipo1_id
-            );
-            const equipo2 = nuevosDatos.equipo2_id 
-                ? equipos.find(eq => (eq.id || eq.equipo_id) === nuevosDatos.equipo2_id)
-                : null;
-
-            // Reconstruir partidas cruzando jugadores de cada equipo
+            const eq1 = equipos.find(eq => (eq.id || eq.equipo_id) === nuevosDatos.equipo1_id);
+            const eq2 = nuevosDatos.equipo2_id ? equipos.find(eq => (eq.id || eq.equipo_id) === nuevosDatos.equipo2_id) : null;
             let nuevasPartidas = empActual.partidas || [];
-
-            if (equipo1 && equipo2) {
-                const jugadoresEq1 = equipo1.jugadores || [];
-                const jugadoresEq2 = equipo2.jugadores || [];
-
-                // Emparejar jugador a jugador por índice, manteniendo épocas si las hay
-                nuevasPartidas = jugadoresEq1.map((j1, i) => {
-                    const j2 = jugadoresEq2[i] || null;
-                    const partidaAnterior = empActual.partidas?.[i] || {};
-
-                    return {
-                        ...partidaAnterior,
-                        jugador1_id: j1.jugador_id || j1.id,
-                        jugador1_nombre: j1.jugador_nombre || j1.nombre,
-                        jugador1_alias: j1.nombre_alias || null,
-                        jugador2_id: j2 ? (j2.jugador_id || j2.id) : null,
-                        jugador2_nombre: j2 ? (j2.jugador_nombre || j2.nombre) : null,
-                        jugador2_alias: j2 ? (j2.nombre_alias || null) : null,
-                        epoca: j1.epoca || partidaAnterior.epoca || null,
-                        es_bye: j2 ? 0 : 1,
-                    };
-                });
-            } else if (equipo1 && !equipo2) {
-                // BYE: mantener jugadores del equipo1 sin rival
-                nuevasPartidas = (equipo1.jugadores || []).map((j1, i) => {
-                    const partidaAnterior = empActual.partidas?.[i] || {};
-                    return {
-                        ...partidaAnterior,
-                        jugador1_id: j1.jugador_id || j1.id,
-                        jugador1_nombre: j1.jugador_nombre || j1.nombre,
-                        jugador1_alias: j1.nombre_alias || null,
-                        jugador2_id: null,
-                        jugador2_nombre: null,
-                        jugador2_alias: null,
-                        epoca: j1.epoca || partidaAnterior.epoca || null,
-                        es_bye: 1,
-                    };
-                });
+            if (eq1 && eq2) {
+                const j1s = eq1.jugadores || [], j2s = eq2.jugadores || [];
+                nuevasPartidas = j1s.map((j1, i) => { 
+                    const j2 = j2s[i] || null; 
+                    const pa = empActual.partidas?.[i] || {}; 
+                        return { ...pa, jugador1_id: j1.id, jugador1_nombre: j1.jugador_nombre || j1.nombre, jugador1_alias: j1.nombre_alias || null, jugador2_id: j2 ?  j2.id : null, jugador2_nombre: j2 ? (j2.jugador_nombre || j2.nombre) : null, jugador2_alias: j2 ? (j2.nombre_alias || null) : null, epoca: j1.epoca || pa.epoca || null, es_bye: j2 ? 0 : 1 }; });
+            } else if (eq1 && !eq2) {
+                nuevasPartidas = (eq1.jugadores || []).map((j1, i) => { const pa = empActual.partidas?.[i] || {}; return { ...pa, jugador1_id: j1.id, jugador1_nombre: j1.jugador_nombre || j1.nombre, jugador1_alias: j1.nombre_alias || null, jugador2_id: null, jugador2_nombre: null, jugador2_alias: null, epoca: j1.epoca || pa.epoca || null, es_bye: 1 }; });
             }
-
-            empActualizado = {
-                ...empActual,
-                ...nuevosDatos,
-                equipo1_nombre: equipo1?.nombre_equipo || empActual.equipo1_nombre,
-                equipo2_nombre: equipo2?.nombre_equipo || null,
-                partidas: nuevasPartidas,
-            };
-
+            empActualizado = { ...empActual, ...nuevosDatos, equipo1_nombre: eq1?.nombre_equipo || empActual.equipo1_nombre, equipo2_nombre: eq2?.nombre_equipo || null, partidas: nuevasPartidas };
         } else {
-            // INDIVIDUALES: resolver nombres desde el array jugadores
-            const getJugadorNombre = (j) => j.jugador_nombre || j.nombre;
-
-            const jugador1 = jugadores.find(j => 
-                (j.jugador_id || j.id) === nuevosDatos.jugador1_id
-            );
-            const jugador2 = nuevosDatos.jugador2_id
-                ? jugadores.find(j => (j.jugador_id || j.id) === nuevosDatos.jugador2_id)
-                : null;
-
-            empActualizado = {
-                ...empActual,
-                ...nuevosDatos,
-                // Campos planos (para el render)
-                jugador1_nombre: jugador1 ? getJugadorNombre(jugador1) : empActual.jugador1_nombre,
-                jugador2_nombre: jugador2 ? getJugadorNombre(jugador2) : null,
-                // Objeto anidado sincronizado (por si algún render lo usa)
-                jugador1: jugador1 ? {
-                    ...empActual.jugador1,
-                    ...jugador1,
-                    nombre: getJugadorNombre(jugador1),
-                    jugador_nombre: getJugadorNombre(jugador1),
-                } : empActual.jugador1,
-                jugador2: jugador2 ? {
-                    ...empActual.jugador2,
-                    ...jugador2,
-                    nombre: getJugadorNombre(jugador2),
-                    jugador_nombre: getJugadorNombre(jugador2),
-                } : null,
-            };
+            const getNombre = (j) => j.jugador_nombre || j.nombre;
+            const j1 = jugadores.find(j => j.id === nuevosDatos.jugador1_id);
+            const j2 = nuevosDatos.jugador2_id ? jugadores.find(j => j.id === nuevosDatos.jugador2_id) : null;
+            empActualizado = { ...empActual, ...nuevosDatos, jugador1_nombre: j1 ? getNombre(j1) : empActual.jugador1_nombre, jugador2_nombre: j2 ? getNombre(j2) : null, jugador1: j1 ? { ...empActual.jugador1, ...j1, nombre: getNombre(j1), jugador_nombre: getNombre(j1) } : empActual.jugador1, jugador2: j2 ? { ...empActual.jugador2, ...j2, nombre: getNombre(j2), jugador_nombre: getNombre(j2) } : null };
         }
-
         nuevosEmp[emparejamientoEditando.index] = empActualizado;
         setEmparejamientos(nuevosEmp);
-        setModalEdicionAbierto(false);
-        setEmparejamientoEditando(null);
-        alert('✅ Emparejamiento actualizado');
+        setModalEdicionAbierto(false); setEmparejamientoEditando(null);
+        alert(`✅ ${t('vista_emp.emp_actualizado')}`);
     };
 
-   const compartirEmparejamientos = async () => {
-        // 🎯 Determinar qué emparejamientos compartir
-        const emparejamientosParaCompartir = partidasGuardadas.length > 0 
-            ? partidasGuardadas 
-            : emparejamientos;
-        
-        if (emparejamientosParaCompartir.length === 0) {
-            alert('⚠️ No hay emparejamientos para compartir');
-            return;
-        }
-
-        let texto = `🎮 EMPAREJAMIENTOS - RONDA ${torneo.ronda_actual}\n`;
-        texto += `📅 Torneo: ${torneo.nombre_torneo}\n`;
-        texto += `📍 Fecha: ${new Date().toLocaleDateString()}\n`;
-        texto += `\n`;
-
-        // 🎯 Si son partidas guardadas (con toda la info)
+    const compartirEmparejamientos = async () => {
+        const emps = partidasGuardadas.length > 0 ? partidasGuardadas : emparejamientos;
+        // FIX: clave correcta para "no hay nada que compartir"
+        if (emps.length === 0) { alert(`⚠️ ${t('vista_emp.compatir.no_compartir_emp')}`); return; }
+        let texto = `🎮 ${t('vista_emp.compatir.emparejamientos')} ${torneo.ronda_actual}\n`;
+        texto += `📅 ${t('comun.torneo')}: ${torneo.nombre_torneo}\n`;
+        texto += `📍 ${t('comun.fecha')}: ${new Date().toLocaleDateString(locale)}\n\n`;
         if (partidasGuardadas.length > 0) {
             partidasGuardadas.forEach((partida, index) => {
-                texto += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-                texto += `🎲 MESA ${partida.mesa || index + 1}\n`;
-                
+                texto += `━━━━━━━━━━━━━━━━━━━━━━━━━\n🎲 ${t('vista_emp.compatir.mesa')} ${partida.mesa || index + 1}\n`;
                 if (esTorneoEquipos()) {
-                    texto += `🔵 ${partida.equipo1_nombre || 'Equipo 1'}\n`;
-                    texto += `   👤 ${partida.jugador1_nombre || 'Jugador 1'}\n`;
-                    if (partida.jugador1_faccion) {
-                        texto += `   ⚔️ ${partida.jugador1_faccion}\n`;
-                    }
-                    texto += `\n         VS\n\n`;
-                    
-                    if (partida.es_bye || !partida.jugador2_nombre) {
-                        texto += `🔴 BYE (Victoria automática)\n`;
-                    } else {
-                        texto += `🔴 ${partida.equipo2_nombre || 'Equipo 2'}\n`;
-                        texto += `   👤 ${partida.jugador2_nombre || 'Jugador 2'}\n`;
-                        if (partida.jugador2_faccion) {
-                            texto += `   ⚔️ ${partida.jugador2_faccion}\n`;
-                        }
+                    texto += `🔵 ${partida.equipo1_nombre || t('vista_emp.compatir.equipo1')}\n   👤 ${partida.jugador1_nombre || t('vista_emp.compatir.jugador1')}\n`;
+                   if (partida.jugador1_faccion) texto += `   ⚔️ ${getBanda(partida.jugador1_faccion)}\n`
+                    texto += `\n VS \n\n`;
+                    if (partida.es_bye || !partida.jugador2_nombre) texto += `🔴 ${t('vista_emp.compatir.bye')}\n`;
+                    else { texto += `🔴 ${partida.equipo2_nombre || t('vista_emp.compatir.equipo2')}\n   
+                        👤 ${partida.jugador2_nombre || t('vista_emp.compatir.jugador2')}\n`;
+                        if (partida.jugador2_faccion) texto += `   ⚔️ ${getBanda(partida.jugador2_faccion)}\n`; 
                     }
                 } else {
-                    texto += `🔵 ${partida.jugador1_nombre || 'Jugador 1'}\n`;
-                    if (partida.jugador1_faccion) {
-                        texto += `   ⚔️ ${partida.jugador1_faccion}\n`;
-                    }
-                    texto += `\n         VS\n\n`;
-                    
-                    if (partida.es_bye || !partida.jugador2_nombre) {
-                        texto += `🔴 BYE (Victoria automática)\n`;
-                    } else {
-                        texto += `🔴 ${partida.jugador2_nombre || 'Jugador 2'}\n`;
-                        if (partida.jugador2_faccion) {
-                            texto += `   ⚔️ ${partida.jugador2_faccion}\n`;
-                        }
-                    }
+                    texto += `🔵 ${partida.jugador1_nombre || t('vista_emp.compatir.jugador1')}\n`;
+                    if (partida.jugador1_faccion) texto += `   ⚔️ ${getBanda(partida.jugador1_faccion)}\n`;
+                    texto += `\n VS \n\n`;
+                    if (partida.es_bye || !partida.jugador2_nombre) texto += `🔴 ${t('vista_emp.compatir.bye')}\n`;
+                    else { texto += `🔴 ${partida.jugador2_nombre || t('vista_emp.compatir.jugador2')}\n`;
+                    if (partida.jugador2_faccion) texto += `   ⚔️ ${getBanda(partida.jugador2_faccion)}\n`; }
                 }
-                
-                if (partida.nombre_partida) {
-                    texto += `\n📋 Escenario: ${partida.nombre_partida}\n`;
-                }
-                if (partida.epoca) {
-                    texto += `📅 Época: ${partida.epoca}\n`;
-                }
+                if (partida.nombre_partida) texto += `\n📋 ${t('vista_emp.escenario')}: ${getEscenario(partida.nombre_partida)}\n`;
+                if (partida.epoca) texto += `📅 ${t('modal_partida.epoca')}: ${getEpoca(partida.epoca)}\n`;
                 texto += `\n`;
             });
-        } 
-        // 🎯 Si son emparejamientos preview (antes de guardar)
-        else {
+        } else {
             emparejamientos.forEach((emp, index) => {
-                texto += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-                texto += `🎲 MESA ${emp.mesa || index + 1}\n`;
-                
+                texto += `━━━━━━━━━━━━━━━━━━━━━━━━━\n🎲 ${t('vista_emp.compatir.mesa')} ${emp.mesa || index + 1}\n`;
                 if (esTorneoEquipos()) {
-                    texto += `🔵 ${emp.equipo1_nombre || 'Equipo 1'}\n`;
-                    if (emp.partidas && emp.partidas.length > 0) {
-                        emp.partidas.forEach(partida => {
-                            texto += `   👤 ${partida.jugador1_nombre}\n`;
-                            if (partida.epoca) texto += `   📅 ${partida.epoca}\n`;
-                        });
-                    }
-                    texto += `\n         VS\n\n`;
-                    
-                    if (emp.es_bye) {
-                        texto += `🔴 BYE (Victoria automática)\n`;
-                    } else {
-                        texto += `🔴 ${emp.equipo2_nombre || 'Equipo 2'}\n`;
-                        if (emp.partidas && emp.partidas.length > 0) {
-                            emp.partidas.forEach(partida => {
-                                if (partida.jugador2_nombre) {
-                                    texto += `   👤 ${partida.jugador2_nombre}\n`;
-                                }
-                            });
-                        }
-                    }
+                    texto += `🔵 ${emp.equipo1_nombre || t('vista_emp.compatir.equipo1')}\n`;
+                    if (emp.partidas) emp.partidas.forEach(p => { texto += `   👤 ${p.jugador1_nombre}\n`; if (p.epoca) texto += `   📅 ${getEpoca(p.epoca)}\n`; });
+                    texto += `\n VS \n\n`;
+                    if (emp.es_bye) texto += `🔴 ${t('vista_emp.compatir.bye')}\n`;
+                    else { texto += `🔴 ${emp.equipo2_nombre || t('vista_emp.compatir.equipo2')}\n`; if (emp.partidas) emp.partidas.forEach(p => { if (p.jugador2_nombre) texto += `   👤 ${p.jugador2_nombre}\n`; }); }
                 } else {
-                    const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
-                    const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
-                    
-                    texto += `🔵 ${jugador1Nombre || 'Jugador 1'}\n`;
-                    texto += `\n         VS\n\n`;
-                    
-                    if (emp.es_bye) {
-                        texto += `🔴 BYE (Victoria automática)\n`;
-                    } else {
-                        texto += `🔴 ${jugador2Nombre || 'Jugador 2'}\n`;
-                    }
+                    const j1n = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
+                    const j2n = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
+                    texto += `🔵 ${j1n || t('vista_emp.compatir.jugador1')}\n\n VS \n\n`;
+                    texto += emp.es_bye ? `🔴 ${t('vista_emp.compatir.bye')}\n` : `🔴 ${j2n || t('vista_emp.compatir.jugador2')}\n`;
                 }
                 texto += `\n`;
             });
         }
-
-        // 🔥 API Web Share
         if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: `Emparejamientos - Ronda ${torneo.ronda_actual}`,
-                    text: texto
-                });
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    console.error('Usuario canceló compartir');
-                }
-            }
+            try { await navigator.share({ title: `${t('vista_emp.compatir.emp_ronda')} ${torneo.ronda_actual}`, text: texto }); }
+            // FIX: clave correcta dentro del namespace compatir
+            catch (err) { if (err.name !== 'AbortError') console.error(t('vista_emp.compatir.no_compartir'), err); }
         } else {
-            // ❌ Fallback para ordenadores
-            try {
-                await navigator.clipboard.writeText(texto);
-                alert('✅ ¡Emparejamientos copiados al portapapeles!\n\nPega el texto en WhatsApp, Telegram, etc.');
-            } catch (err) {
-                alert('❌ No se pudo copiar. Por favor, selecciona y copia manualmente.', err);
-            }
+            try { await navigator.clipboard.writeText(texto); alert(`✅ ${t('vista_emp.compatir.copiados_portapapeles')}\n\n${t('vista_emp.compatir.wasap_telegram')}`); }
+            catch (err) { alert(`❌ ${t('vista_emp.compatir.error_copiar')}`), err }
         }
     };
-// Función para verificar si la partida tiene datos introducidos
+
     const tieneDatos = (partida) => {
-        // Verificar si hay un resultado registrado (no pendiente)
-        if (partida.resultado_ps && partida.resultado_ps !== 'pendiente') {
-            return true;
-        }
-        
-        // Verificar si hay puntos mayores a 0
-        const tienePuntos = 
-            (partida.puntos_torneo_j1 && partida.puntos_torneo_j1 > 0) || 
-            (partida.puntos_torneo_j2 && partida.puntos_torneo_j2 > 0) ||
-            (partida.puntos_masacre_j1 && partida.puntos_masacre_j1 > 0) ||
-            (partida.puntos_masacre_j2 && partida.puntos_masacre_j2 > 0) ||
-            (partida.puntos_victoria_j1 && partida.puntos_victoria_j1 > 0) ||
-            (partida.puntos_victoria_j2 && partida.puntos_victoria_j2 > 0);
-        
-        return tienePuntos;
+        if (partida.resultado_ps && partida.resultado_ps !== 'pendiente') return true;
+        return (partida.puntos_torneo_j1 > 0 || partida.puntos_torneo_j2 > 0 || partida.puntos_masacre_j1 > 0 || partida.puntos_masacre_j2 > 0 || partida.puntos_victoria_j1 > 0 || partida.puntos_victoria_j2 > 0);
     };
 
     const esBye = (partida) => {
-        // ✅ Si la partida tiene datos introducidos, NO es BYE
-        if (tieneDatos(partida)) {
-            return false;
-        }
-        // Solo es BYE si no tiene jugador 2 Y tampoco tiene datos
+        if (tieneDatos(partida)) return false;
         return !partida.jugador2_nombre || !partida.jugador2_id || partida.es_bye;
     };
 
     const abrirModalPartida = (partida) => {
         if (!puedeEditarEstaPartida(partida)) {
-            alert('⚠️ El torneo debe estar "En Curso" para poder introducir resultados.\n\nCambia el estado del torneo primero.');
-            return;
+            alert(`⚠️ ${t('vista_emp.torneo_enCurso_resultados')}\n\n${t('vista_emp.cambia_estado')}`); return;
         }
-
-        setPartidaSeleccionada(partida);
-        setModalAbierto(true);
+        setPartidaSeleccionada(partida); setModalAbierto(true);
     };
 
     const confirmarPartida = async (partidaId, confirmar) => {
         try {
-            // 🎯 Usar el endpoint correcto según tipo de torneo
-            if (esTorneoEquipos()) {
-                await torneosSagaApi.confirmarResultadoEquipo(torneo.id, partidaId, confirmar);
-            } else {
-                await torneosSagaApi.confirmarResultado(torneo.id, partidaId, confirmar);
-            }
-            
-            alert(confirmar 
-                ? '✅ Resultado confirmado. Los puntos se han sumado a las clasificaciones.' 
-                : '⚠️ Resultado desconfirmado. Los puntos se han restado de las clasificaciones.'
-            );
-            
-            await cargarPartidasRonda();
-            await cargarTodasLasPartidas();
-            
+            if (esTorneoEquipos()) await torneosSagaApi.confirmarResultadoEquipo(torneo.id, partidaId, confirmar);
+            else await torneosSagaApi.confirmarResultado(torneo.id, partidaId, confirmar);
+            alert(confirmar ? `✅ ${t('vista_emp.resultado_confirmar')}` : `⚠️ ${t('vista_emp.resultado_desconfimar')}`);
+            await cargarPartidasRonda(); await cargarTodasLasPartidas();
         } catch (error) {
-            console.error('Error al confirmar resultado:', error);
-            alert(`❌ Error: ${error.message}`);
+            console.error(t('vista_emp.error_confirmar_resultados'), error);
+            alert(`❌ ${t('comun.error')} ${error.message}`);
         }
     };
 
     const agruparPartidasPorEquipos = (partidas) => {
         if (!esTorneoEquipos()) return partidas;
-
         const grupos = {};
-        
         partidas.forEach(partida => {
-            // Obtener IDs de equipos
-            const eq1_id = partida.equipo1_id;
-            const eq2_id = partida.equipo2_id;
-            
-            // Crear clave única para el enfrentamiento de equipos
-            const equipoKey = eq2_id 
-                ? `equipo_${eq1_id}_vs_${eq2_id}`
-                : `equipo_${eq1_id}_bye`;
-            
+            const eq1_id = partida.equipo1_id, eq2_id = partida.equipo2_id;
+            const equipoKey = eq2_id ? `equipo_${eq1_id}_vs_${eq2_id}` : `equipo_${eq1_id}_bye`;
             if (!grupos[equipoKey]) {
-                // Buscar nombres de equipos
-                const equipo1Data = equipos.find(eq => eq.id === eq1_id || eq.equipo_id === eq1_id);
-                const equipo2Data = eq2_id ? equipos.find(eq => eq.id === eq2_id || eq.equipo_id === eq2_id) : null;
-                
-                grupos[equipoKey] = {
-                    equipo1_id: eq1_id,
-                    equipo2_id: eq2_id,
-                    equipo1_nombre: equipo1Data?.nombre_equipo || `Equipo ${eq1_id}`,
-                    equipo2_nombre: equipo2Data?.nombre_equipo || null,
-                    partidasPorEpoca: {}, // Agrupar partidas por época
-                    todasLasPartidas: [] // Array completo
-                };
+                const eq1Data = equipos.find(eq => eq.id === eq1_id || eq.equipo_id === eq1_id);
+                const eq2Data = eq2_id ? equipos.find(eq => eq.id === eq2_id || eq.equipo_id === eq2_id) : null;
+                grupos[equipoKey] = { equipo1_id: eq1_id, equipo2_id: eq2_id, equipo1_nombre: eq1Data?.nombre_equipo || `${t('comun.equipo')} ${eq1_id}`, equipo2_nombre: eq2Data?.nombre_equipo || null, partidasPorEpoca: {}, todasLasPartidas: [] };
             }
-            
-            // Agregar a todas las partidas
             grupos[equipoKey].todasLasPartidas.push(partida);
-            
-            // Agrupar por época
-            const epoca = partida.epoca || 'Sin época';
-            if (!grupos[equipoKey].partidasPorEpoca[epoca]) {
-                grupos[equipoKey].partidasPorEpoca[epoca] = [];
-            }
+            const epoca = partida.epoca || t('vista_emp.sin_epocas');
+            if (!grupos[equipoKey].partidasPorEpoca[epoca]) grupos[equipoKey].partidasPorEpoca[epoca] = [];
             grupos[equipoKey].partidasPorEpoca[epoca].push(partida);
         });
-        
         return grupos;
     };
 
     const renderPartidaIndividual = (partida, index, esRondaActual) => {
-
         const estaConfirmado = partida.resultado_confirmado;
-        // Verificar permisos de edición
-        const puedeEditar = esRondaActual && 
-                            puedeEditarEstaPartida(partida) && 
-                            !esBye(partida);
-    
+        const puedeEditar = esRondaActual && puedeEditarEstaPartida(partida) && !esBye(partida);
         return (
-            <div 
-                key={partida.id} 
-                className={`emparejamiento-card ${puedeEditar ? 'editable' : ''}`}
+            <div key={partida.id} className={`emparejamiento-card ${puedeEditar ? 'editable' : ''}`}
                 onClick={() => puedeEditar && abrirModalPartida(partida)}
-                style={{
-                    border: `2px solid ${estaConfirmado ? '#4caf50' : '#ff9800'}`,
-                    background: estaConfirmado ? '#e8f5e9' : '#fff',
-                    cursor: puedeEditar ? 'pointer' : 'default'
-                }}
-            >
-                {puedeEditar && (
-                    <div className="etiqueta-editar">
-                        👆 Click para editar
-                    </div>
-                )}
+                style={{ border: `2px solid ${estaConfirmado ? '#4caf50' : '#ff9800'}`, background: estaConfirmado ? '#e8f5e9' : '#fff', cursor: puedeEditar ? 'pointer' : 'default' }}>
+
+                {/* FIX: eliminar guion de 'click_editar-' */}
+                {puedeEditar && <div className="etiqueta-editar">👆 {t('vista_emp.click_editar')}</div>}
 
                 {!esVistaPublica && esOrganizador && esRondaActual && (
-                    <button
-                        className={`boton-confirmar ${estaConfirmado ? 'confirmado' :  (tieneDatos(partida) ? 'por-confirmar' : 'pendiente' )}`}
+                    <button className={`boton-confirmar ${estaConfirmado ? 'confirmado' : (tieneDatos(partida) ? 'por-confirmar' : 'pendiente')}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (window.confirm(
-                                estaConfirmado 
-                                    ? '¿Desconfirmar este resultado?\n\nLos puntos se restarán de la clasificación.'
-                                    : (esBye(partida) 
-                                        ? '⭐ ¿Confirmar este BYE?\n\nSe sumarán 10 Puntos de Torneo a la clasificación.'
-                                        : '¿Confirmar este resultado?\n\nLos puntos se sumarán a la clasificación.')
-                            )) {
-                                confirmarPartida(partida.id, !estaConfirmado);
-                            }
-                        }}
-                    >
-                        {estaConfirmado ? '✅ CONFIRMADO' : (tieneDatos(partida) ? 'POR CONFIRMAR' : 'PENDIENTE' ) }
+                                estaConfirmado
+                                    ? t('vista_emp.confirm_desconfirmar')
+                                    : esBye(partida) ? t('vista_emp.confirm_bye') : t('vista_emp.confirm_resultado')
+                            )) confirmarPartida(partida.id, !estaConfirmado);
+                        }}>
+                        {estaConfirmado
+                            ? `✅ ${t('vista_emp.estado_confirmado')}`
+                            : tieneDatos(partida) ? t('vista_emp.estado_por_confirmar') : t('comun.pendiente').toUpperCase()}
                     </button>
                 )}
 
                 <div className={`mesa-numero ${estaConfirmado ? 'confirmado' : 'pendiente'} ${esOrganizador && esRondaActual ? 'con-margen' : ''}`}>
-                    Mesa {partida.mesa || index + 1}
+                    {t('vista_emp.mesa')} {partida.mesa || index + 1}
                     {esBye(partida) ? ' ⭐ BYE' : ''}
-                    {partida.epoca && ` - 📅 ${partida.epoca}`}
-                    {partida.nombre_partida && (
-                        <div className="escenario-partida">
-                            📋 {partida.nombre_partida}
-                        </div>
-                    )}
+                    {partida.epoca && ` - 📅 ${getEpoca(partida.epoca)}`}
+                    {partida.nombre_partida && <div className="escenario-partida">📋 {getEscenario(partida.nombre_partida)}</div>}
                 </div>
 
                 <div className="enfrentamiento">
                     <div className="jugador">
-                        <div className="nombre">
-                            {partida.jugador1_nombre}
-                            {partida.jugador1?.nombre_alias && ` "${partida.jugador1?.nombre_alias}"`}
-                        </div>
-                        {partida.jugador1?.equipo_nombre && (
-                            <div className="equipo">🏆 {partida.jugador1.equipo_nombre}</div>
-                        )}
-                        {partida.jugador1?.faccion && (
-                            <div className="faccion">⚔️ {partida.jugador1.faccion}</div>
-                        )}
+                        <div className="nombre">{partida.jugador1_nombre}{partida.jugador1?.nombre_alias && ` "${partida.jugador1?.nombre_alias}"`}</div>
+                        {partida.jugador1?.equipo_nombre && <div className="equipo">🏆 {partida.jugador1.equipo_nombre}</div>}
+                        {partida.jugador1?.faccion && 
+                        <div className="faccion">⚔️ {getBanda(partida.jugador1.faccion)}</div>}
                         <div className="stats">
-                            PV: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} |
-                            PP: {parseFloat(partida.puntos_partida_j1 || 0).toFixed(1)} |
-                            PT: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)} | 
-                            PM: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)}
+                            ${t('vista_clasificacion.pv')}: {parseFloat(partida.puntos_victoria_j1 || 0).toFixed(1)} | 
+                            ${t('vista_clasificacion.puntos_partida')}: {parseFloat(partida.puntos_partida_j1 || 0).toFixed(1)} |
+                            ${t('vista_clasificacion.pm')}: {parseFloat(partida.puntos_masacre_j1 || 0).toFixed(1)} |
+                            ${t('vista_clasificacion.pt')}: {parseFloat(partida.puntos_torneo_j1 || 0).toFixed(1)} 
                         </div>
                     </div>
-
                     <div className="vs">VS</div>
-
                     {partida.jugador2_nombre ? (
                         <div className="jugador">
-                            <div className="nombre">
-                                {partida.jugador2_nombre}
-                                {partida.jugador2?.nombre_alias && ` "${partida.jugador2?.nombre_alias}"`}
-                            </div>
-                            {partida.jugador2?.equipo_nombre && (
-                                <div className="equipo">🏆 {partida.jugador2.equipo_nombre}</div>
-                            )}
-                            {partida.jugador2?.faccion && (
-                                <div className="faccion">⚔️ {partida.jugador2.faccion}</div>
-                            )}
+                            <div className="nombre">{partida.jugador2_nombre}{partida.jugador2?.nombre_alias && ` "${partida.jugador2?.nombre_alias}"`}</div>
+                            {partida.jugador2?.equipo_nombre && <div className="equipo">🏆 {partida.jugador2.equipo_nombre}</div>}
+                            {partida.jugador2?.faccion && 
+                            <div className="faccion">⚔️ {getBanda(partida.jugador2.faccion)}</div>}
                             <div className="stats">
-                                PV: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} | 
-                                PP: {parseFloat(partida.puntos_partida_j2 || 0).toFixed(1)} |
-                                PT: {parseFloat(partida.puntos_torneo_j2 || 0).toFixed(1)} | 
-                                PM: {parseFloat(partida.puntos_masacre_j2 || 0).toFixed(1)}
+                                ${t('vista_clasificacion.pv')}: {parseFloat(partida.puntos_victoria_j2 || 0).toFixed(1)} | 
+                                ${t('vista_clasificacion.puntos_partida')}: {parseFloat(partida.puntos_partida_j2 || 0).toFixed(1)} |
+                                ${t('vista_clasificacion.pm')}: {parseFloat(partida.puntos_masacre_j2 || 0).toFixed(1)} |
+                                ${t('vista_clasificacion.pt')}: {parseFloat(partida.puntos_torneo_j2 || 0).toFixed(1)}
                             </div>
                         </div>
                     ) : (
                         <div className="jugador bye">
                             <div>⭐ BYE</div>
-                            <div>Victoria automática</div>
-                            <div>10 PT clasificacion Individual</div>
+                            <div>{t('vista_emp.victoria_automatica')}</div>
+                            <div>{t('vista_emp.bye_pts')}</div>
                         </div>
                     )}
                 </div>
@@ -1113,46 +525,24 @@ useEffect(() => {
     };
 
     const renderPartidas = (partidas, esRondaActual = false) => {
-        if (!esTorneoEquipos()) {
-            return partidas.map((partida, index) => 
-                renderPartidaIndividual(partida, index, esRondaActual)
-            );
-        }
-
+        if (!esTorneoEquipos()) return partidas.map((p, i) => renderPartidaIndividual(p, i, esRondaActual));
         const grupos = agruparPartidasPorEquipos(partidas);
-        
         return Object.entries(grupos).map(([claveGrupo, grupo]) => (
             <div key={claveGrupo} className="enfrentamiento-equipos">
-                {/* HEADER DEL ENFRENTAMIENTO */}
                 <div className="header-equipos">
-                    <h4>
-                        ⚔️ {grupo.equipo1_nombre} 
-                        {grupo.equipo2_nombre ? ` vs ${grupo.equipo2_nombre}` : ' (BYE)'}
-                    </h4>
+                    <h4>⚔️ {grupo.equipo1_nombre}{grupo.equipo2_nombre ? ` vs ${grupo.equipo2_nombre}` : ' (BYE)'}</h4>
                     <span className="total-partidas">
-                        {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? 'partida' : 'partidas'}
+                        {grupo.todasLasPartidas.length} {grupo.todasLasPartidas.length === 1 ? t('vista_emp.partida') : t('vista_emp.partidas')}
                     </span>
-                    {/* 🎯 MOSTRAR ESCENARIO SOLO SI EL TORNEO ESTÁ EN CURSO */}
                 </div>
-
-                {/* PARTIDAS AGRUPADAS POR ÉPOCA */}
                 <div className="contenedor-epocas">
                     {Object.entries(grupo.partidasPorEpoca).map(([epoca, partidasEpoca]) => (
                         <div key={epoca} className="grupo-epoca">
-                            {/* HEADER DE LA ÉPOCA */}
                             <div className="epoca-header">
-                                <span className="epoca-badge-grande">📅 {epoca}</span>
-                                <span className="cantidad-partidas">
-                                    ({partidasEpoca.length} {partidasEpoca.length === 1 ? 'partida' : 'partidas'})
-                                </span>
+                                <span className="epoca-badge-grande">📅 {getEpoca(epoca)}</span>
+                                <span className="cantidad-partidas">({partidasEpoca.length} {partidasEpoca.length === 1 ? t('vista_emp.partida') : t('vista_emp.partidas')})</span>
                             </div>
-
-                            {/* PARTIDAS DE ESTA ÉPOCA */}
-                            <div className="partidas-epoca">
-                                {partidasEpoca.map((partida, index) => 
-                                    renderPartidaIndividual(partida, index, esRondaActual)
-                                )}
-                            </div>
+                            <div className="partidas-epoca">{partidasEpoca.map((p, i) => renderPartidaIndividual(p, i, esRondaActual))}</div>
                         </div>
                     ))}
                 </div>
@@ -1160,28 +550,12 @@ useEffect(() => {
         ));
     };
 
-    if (loading) {
-        return (
-            <div className="vista-emparejamientos">
-                <div className="loading-message">
-                    ⏳ Cargando emparejamientos...
-                </div>
-            </div>
-        );
-    }
-
-    if (error && !torneo) {
-        return (
-            <div className="vista-emparejamientos">
-                <div className="error-message">
-                    ⚠️ {error}
-                    <button onClick={cargarDatos} className="btn-secondary">
-                        🔄 Reintentar
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className="vista-emparejamientos"><div className="loading-message">⏳ {t('comun.cargando')}</div></div>;
+    if (error && !torneo) return (
+        <div className="vista-emparejamientos">
+            <div className="error-message">⚠️ {error}<button onClick={cargarDatos} className="btn-secondary">{t('botones.reintentar')}</button></div>
+        </div>
+    );
 
     const grupos = partidasPorRonda();
     const rondasAnteriores = Object.keys(grupos).filter(r => parseInt(r) < torneo.ronda_actual).sort((a, b) => b - a);
@@ -1189,412 +563,217 @@ useEffect(() => {
 
     return (
         <div className="vista-emparejamientos">
-            {/* 🎯 SELECTOR DE ESCENARIOS - DEBE IR AQUÍ AL PRINCIPIO */}
-            {mostrarSelectorEscenarios && esTorneoEquipos() && (
-                <div className="modal-overlay" onClick={() => {
-                    setMostrarSelectorEscenarios(false);
-                    setGuardando(false);
-                }}>
-                    <div className="selector-escenarios-epoca" onClick={(e) => e.stopPropagation()}>
-                        <div className="selector-header">
-                            <h3>📋 Asignar Escenarios por Época</h3>
-                            <p>Ronda {torneo.ronda_actual} - Selecciona el escenario para cada época</p>
-                        </div>
 
+            {/* SELECTOR DE ESCENARIOS */}
+            {mostrarSelectorEscenarios && esTorneoEquipos() && (
+                <div className="modal-overlay" onClick={() => { setMostrarSelectorEscenarios(false); setGuardando(false); }}>
+                    <div className="selector-escenarios-epoca" onClick={e => e.stopPropagation()}>
+                        <div className="selector-header">
+                            <h3>📋 {t('vista_emp.asignar_titulo')}</h3>
+                            <p>{t('vista_emp.asignar_subtitulo', { n: torneo.ronda_actual })}</p>
+                        </div>
                         <div className="escenarios-disponibles">
-                            <strong>Escenarios de esta ronda:</strong>
+                            <strong>{t('vista_emp.escenarios_ronda')}:</strong>
                             <div className="badges-escenarios">
-                                {(() => {
-                                    const rondas = [
-                                        torneo.partida_ronda_1,
-                                        torneo.partida_ronda_2,
-                                        torneo.partida_ronda_3,
-                                        torneo.partida_ronda_4,
-                                        torneo.partida_ronda_5
-                                    ].filter(Boolean);
-                                    
-                                    const escenarios = rondas.flatMap(r => r.split('/')).map(e => e.trim());
-                                    
-                                    return escenarios.map((esc, idx) => (
-                                        <span key={idx} className="badge-escenario">{esc}</span>
-                                    ));
-                                })()}
+                                {[torneo.partida_ronda_1, torneo.partida_ronda_2, torneo.partida_ronda_3, torneo.partida_ronda_4, torneo.partida_ronda_5].filter(Boolean).flatMap(r => r.split('/')).map(e => e.trim()).map((esc, idx) => <span key={idx} className="badge-escenario">{getEscenario(esc)}</span>)}
                             </div>
                         </div>
-
                         <div className="asignaciones-lista">
                             {obtenerEpocasDisponibles().map(epoca => {
-                                const escenarios = (() => {
-                                    const rondas = [
-                                        torneo.partida_ronda_1,
-                                        torneo.partida_ronda_2,
-                                        torneo.partida_ronda_3,
-                                        torneo.partida_ronda_4,
-                                        torneo.partida_ronda_5
-                                    ].filter(Boolean);
-                                    
-                                    return rondas.flatMap(r => r.split('/')).map(e => e.trim());
-                                })();
-
+                                const escenarios = [torneo.partida_ronda_1, torneo.partida_ronda_2, torneo.partida_ronda_3, torneo.partida_ronda_4, torneo.partida_ronda_5].filter(Boolean).flatMap(r => r.split('/')).map(e => e.trim());
                                 return (
                                     <div key={epoca} className="asignacion-row">
-                                        <span className="epoca-nombre">📅 {epoca}:</span>
-                                        <select
-                                            value={asignacionesEscenarios[epoca] || ''}
-                                            onChange={(e) => handleAsignarEscenario(epoca, e.target.value)}
-                                            className={asignacionesEscenarios[epoca] ? 'seleccionado' : ''}
-                                        >
-                                            <option value="">-- Seleccionar --</option>
-                                            {escenarios.map((esc, idx) => (
-                                                <option key={idx} value={esc}>{esc}</option>
-                                            ))}
+                                        <span className="epoca-nombre">📅 {getEpoca(epoca)}:</span>
+                                        <select value={asignacionesEscenarios[epoca] || ''} onChange={e => handleAsignarEscenario(epoca, e.target.value)} className={asignacionesEscenarios[epoca] ? 'seleccionado' : ''}>
+                                            <option value="">{t('insc_equipo.seleccionar')}</option>
+                                            {escenarios.map((esc, idx) => <option key={idx} value={esc}>{getEscenario(esc)}</option>)}
                                         </select>
-                                        {asignacionesEscenarios[epoca] && (
-                                            <span className="check-ok">✅</span>
-                                        )}
+                                        {asignacionesEscenarios[epoca] && <span className="check-ok">✅</span>}
                                     </div>
                                 );
                             })}
                         </div>
-
                         <div className="selector-footer">
-                            <button 
-                                onClick={() => {
-                                    setMostrarSelectorEscenarios(false);
-                                    setGuardando(false);
-                                    setAsignacionesEscenarios({});
-                                }}
-                                className="btn-cancelar"
-                            >
-                                ❌ Cancelar
-                            </button>
-                            <button 
-                                onClick={confirmarAsignaciones}
-                                className="btn-confirmar-asignacion"
-                                disabled={!todasLasEpocasAsignadas()}
-                            >
-                                ✅ Confirmar y Guardar
-                            </button>
+                            <button onClick={() => { setMostrarSelectorEscenarios(false); setGuardando(false); setAsignacionesEscenarios({}); }} className="btn-cancelar">❌ {t('botones.cancelar')}</button>
+                            <button onClick={confirmarAsignaciones} className="btn-confirmar-asignacion" disabled={!todasLasEpocasAsignadas()}>✅ {t('vista_emp.confirmar_asignacion')}</button>
                         </div>
                     </div>
                 </div>
             )}
+
             <div className="section-header">
                 <div>
                     <div>
-                        <h2>🎲 Emparejamientos {esTorneoEquipos() ? '(Por Equipos)' : '(Individuales)'}</h2>
-                        <p>Ronda {torneo.ronda_actual} de {torneo.rondas_max}</p>
-                        
+                        <h2>🎲 {esTorneoEquipos() ? t('vista_emp.titulo_equipos') : t('vista_emp.titulo_individuales')}</h2>
+                        <p>{t('vista_emp.ronda_de', { actual: torneo.ronda_actual, max: torneo.rondas_max })}</p>
                         {(torneo.estado === 'en_curso' || torneo.estado === 'finalizado') && (
-                            <>
-                                {esTorneoEquipos() ? (
-                                    // Para equipos: mostrar TODOS los escenarios
-                                    (() => {
-                                        const rondas = [
-                                            torneo.partida_ronda_1,
-                                            torneo.partida_ronda_2,
-                                            torneo.partida_ronda_3,
-                                            torneo.partida_ronda_4,
-                                            torneo.partida_ronda_5
-                                        ].filter(Boolean);
-                                        
-                                        return rondas.length > 0 ? (
-                                            <p>📋 Escenarios: {rondas.join(' / ')}</p>
-                                        ) : (
-                                            <p>⚠️ No hay escenarios configurados</p>
-                                        );
-                                    })()
-                                ) : (
-                                    // Para individuales: mostrar solo el escenario de la ronda actual
-                                    torneo[`partida_ronda_${torneo.ronda_actual}`] && (
-                                        <p>📋 {torneo[`partida_ronda_${torneo.ronda_actual}`]}</p>
-                                    )
-                                )}
-                            </>
+                            esTorneoEquipos() ? (() => {
+                                const rondas = [torneo.partida_ronda_1, torneo.partida_ronda_2, torneo.partida_ronda_3, torneo.partida_ronda_4, torneo.partida_ronda_5].filter(Boolean);
+                                return rondas.length > 0
+                                    ? <p>📋 {t('vista_emp.escenarios_label')}: {rondas.map(r => getEscenario(r)).join(' / ')}</p>
+                                    : <p>⚠️ {t('vista_emp.sin_escenarios')}</p>;
+                            })() : (
+                                torneo[`partida_ronda_${torneo.ronda_actual}`] && <p>📋 {getEscenario(torneo[`partida_ronda_${torneo.ronda_actual}`])}</p>
+                            )
                         )}
-                        {/* CUANDO TORNEO NO INICIADO */}
-                        {torneo.estado === 'pendiente' && (
-                            <p>⏳ Los escenarios se mostrarán cuando el torneo esté en curso</p>
-                        )}
+                        {torneo.estado === 'pendiente' && <p>⏳ {t('vista_emp.escenarios_pendientes')}</p>}
                     </div>
-                    
-                    {!esVistaPublica && esOrganizador && (
-                    <div className="botones-grupo">
-                        <button 
-                            onClick={handleGenerarEmparejamientos}
-                            className="btn-primary"
-                            disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || modoEdicion || torneo.estado !=='en_curso'}
-                        >
-                            🎲 Generar Ronda
-                        </button>
 
-                        {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
-                            <>
-                                {!modoEdicion ? (
+                    {!esVistaPublica && esOrganizador && (
+                        <div className="botones-grupo">
+                            <button onClick={handleGenerarEmparejamientos} className="btn-primary"
+                                disabled={minParticipantes < 2 || guardando || partidasGuardadas.length > 0 || modoEdicion || torneo.estado !== 'en_curso'}>
+                                🎲 {t('vista_emp.btn_generar')}
+                            </button>
+                            {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
+                                !modoEdicion ? (
                                     <>
-                                        <button 
-                                            onClick={() => setModoEdicion(true)}
-                                            className="btn-warning"
-                                        >
-                                            ✏️ Editar Emparejamientos
-                                        </button>
-                                        
-                                        <button 
-                                            onClick={guardarResultados}
-                                            className="btn-success"
-                                            disabled={guardando}
-                                        >
-                                            {guardando ? '⏳ Guardando...' : '💾 Guardar en BD'}
+                                        <button onClick={() => setModoEdicion(true)} className="btn-warning">✏️ {t('vista_emp.btn_editar_emp')}</button>
+                                        <button onClick={guardarResultados} className="btn-success" disabled={guardando}>
+                                            {guardando ? `⏳ ${t('perfil.guardando')}` : `💾 ${t('vista_emp.btn_guardar_bd')}`}
                                         </button>
                                     </>
                                 ) : (
-                                    <button 
-                                        onClick={() => {
-                                            setModoEdicion(false);
-                                            alert('✅ Modo edición desactivado. Ahora puedes guardar los emparejamientos.');
-                                        }}
-                                        className="btn-success"
-                                    >
-                                        ✅ Finalizar Edición
+                                    <button onClick={() => { setModoEdicion(false); alert(`✅ ${t('vista_emp.fin_edicion')}`); }} className="btn-success">
+                                        ✅ {t('vista_emp.btn_finalizar_edicion')}
                                     </button>
-                                )}
-                            </>
-                        )}
-
-                        {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
-                            <button 
-                                onClick={generarSiguienteRonda}
-                                disabled={torneo.ronda_actual >= torneo.rondas_max}
-                                className="btn-warning"
-                            >
-                                ⏭️ Generar Ronda {torneo.ronda_actual + 1}
+                                )
+                            )}
+                            {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
+                                <button onClick={generarSiguienteRonda} disabled={torneo.ronda_actual >= torneo.rondas_max} className="btn-warning">
+                                    ⏭️ {t('vista_emp.btn_siguiente_ronda', { n: torneo.ronda_actual + 1 })}
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {(emparejamientos.length > 0 || partidasGuardadas.length > 0) && (
+                        <div className="botones-grupo" style={{ marginTop: esOrganizador ? '0' : '20px' }}>
+                            <button onClick={compartirEmparejamientos} className="btn-success" disabled={guardando}>
+                                📤 {t('vista_emp.btn_compartir')}
                             </button>
-                        )}
-                    </div>
-                )}
-                {/* 🆕 BOTÓN COMPARTIR - PARA TODOS */}
-                {(emparejamientos.length > 0 || partidasGuardadas.length > 0) && (
-                    <div className="botones-grupo" style={{ marginTop: esOrganizador ? '0' : '20px' }}>
-                        <button
-                            onClick={compartirEmparejamientos}
-                            className="btn-success"
-                            title="Compartir emparejamientos en WhatsApp, Telegram, etc."
-                            disabled={guardando}
-                        >
-                            📤 Compartir Emparejamientos
-                        </button>
-                    </div>
-                )}
+                        </div>
+                    )}
                 </div>
             </div>
 
-          {partidasGuardadas.length > 0 && torneo?.estado === 'en_curso' && !esOrganizador && !esParticipante && (
-                <div className="alerta-estado">
-                    <p>⚠️ Solo los participantes pueden editar sus partidas cuando el torneo está en curso</p>
-                </div>
+            {partidasGuardadas.length > 0 && torneo?.estado === 'en_curso' && !esOrganizador && !esParticipante && (
+                <div className="alerta-estado"><p>⚠️ {t('vista_emp.solo_participantes')}</p></div>
             )}
 
             {partidasGuardadas.length > 0 && (
                 <div className={`info-partidas ${todasLasPartidasCompletas() ? 'completadas' : 'pendientes'}`}>
                     <p>
-                        {todasLasPartidasCompletas() ? (
-                            <>✅ Todas las partidas completadas ({partidasGuardadas.length}/{partidasGuardadas.length})</>
-                        ) : (
-                            <>⏳ Partidas completadas: {partidasGuardadas.filter(p => p.resultado_ps && p.resultado_ps !== 'pendiente').length}/{partidasGuardadas.length}</>
-                        )}
+                        {todasLasPartidasCompletas()
+                            ? `✅ ${t('vista_emp.todas_completadas', { n: partidasGuardadas.length })}`
+                            : `⏳ ${t('vista_emp.partidas_completadas', { done: partidasGuardadas.filter(p => p.resultado_ps && p.resultado_ps !== 'pendiente').length, total: partidasGuardadas.length })}`}
                     </p>
                 </div>
             )}
 
-            {error && (
-                <div className="error-message">
-                    <p>❌ {error}</p>
-                </div>
-            )}
-
-            {cargandoPartidas && (
-                <div className="loading-message">
-                    ⏳ Cargando partidas...
-                </div>
-            )}
+            {error && <div className="error-message"><p>❌ {error}</p></div>}
+            {cargandoPartidas && <div className="loading-message">⏳ {t('vista_emp.cargando_partidas')}</div>}
 
             {minParticipantes < 2 ? (
                 <div className="empty-message">
-                    <p>⚠️ Se necesitan al menos 2 {esTorneoEquipos() ? 'equipos' : 'jugadores'} para generar emparejamientos</p>
+                    <p>⚠️ {t('vista_emp.min_participantes', { tipo: esTorneoEquipos() ? t('vgs.equipos') : t('tabla.jugadores') })}</p>
                 </div>
             ) : (
                 <>
                     {!puedeVerPartidas() ? (
                         <div className="empty-message">
-                            <p>🔒 El torneo aún no ha comenzado</p>
-                            <p style={{marginTop: '10px', fontSize: '0.9em', color: '#666'}}>
-                                Los emparejamientos se mostrarán cuando el torneo esté en curso
-                            </p>
+                            <p>🔒 {t('vista_emp.torneo_no_iniciado')}</p>
+                            <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>{t('vista_emp.torneo_no_iniciado_hint')}</p>
                         </div>
                     ) : (
                         <>
-                            {/* Mostrar mensaje informativo si no hay partidas cargadas pero sí permisos para ver */}
                             {partidasGuardadas.length === 0 && todasLasPartidas.length === 0 && !cargandoPartidas && (
                                 <div className="info-message">
-                                    {torneo?.ronda_actual && torneo.ronda_actual > 0 ? (
-                                        <p>ℹ️ Aún no se han generado emparejamientos para esta ronda</p>
-                                    ) : (
-                                        <p>ℹ️ El torneo está en preparación. Los emparejamientos aparecerán pronto.</p>
-                                    )}
+                                    {torneo?.ronda_actual && torneo.ronda_actual > 0
+                                        ? <p>ℹ️ {t('vista_emp.sin_emparejamientos_ronda')}</p>
+                                        : <p>ℹ️ {t('vista_emp.torneo_preparacion')}</p>}
                                 </div>
                             )}
-
-                            {/* Mensaje específico para participantes */}
-                           {partidasGuardadas.length > 0 && !todasLasPartidasCompletas() && (esOrganizador || esParticipante) && (
+                            {partidasGuardadas.length > 0 && !todasLasPartidasCompletas() && (esOrganizador || esParticipante) && (
                                 <div className="info-box">
-                                    {esOrganizador ? (
-                                        <p>📝 Como organizador, puedes editar cualquier partida haciendo clic en ella</p>
-                                    ) : (
-                                        <p>📝 Puedes editar tus propias partidas haciendo clic en ellas</p>
-                                    )}
+                                    <p>📝 {esOrganizador ? t('vista_emp.info_org_editar') : t('vista_emp.info_part_editar')}</p>
                                 </div>
                             )}
-
-                            {/* Mensaje para visitantes */}
                             {partidasGuardadas.length > 0 && !usuarioActual && (
-                                <div className="info-box" style={{background: '#e3f2fd', borderColor: '#2196f3'}}>
-                                    <p>👁️ Estás viendo los emparejamientos como visitante. Inicia sesión si eres participante para registrar resultados.</p>
+                                <div className="info-box" style={{ background: '#e3f2fd', borderColor: '#2196f3' }}>
+                                    <p>👁️ {t('vista_emp.info_visitante')}</p>
                                 </div>
                             )}
 
                             {partidasGuardadas.length === 0 && emparejamientos.length === 0 ? (
                                 esOrganizador && (
                                     <div className="empty-message">
-                                        <p>Haz clic en "Generar Emparejamientos" para crear los enfrentamientos de la ronda {torneo.ronda_actual}</p>
+                                        <p>{t('vista_emp.hint_generar_emp', { n: torneo.ronda_actual })}</p>
                                     </div>
                                 )
                             ) : (
                                 <>
                                     {emparejamientos.length > 0 && partidasGuardadas.length === 0 && (
                                         <div className="info-box">
-                                            <p>
-                                                ℹ️ <strong>{emparejamientos.length} emparejamientos generados.</strong> 
-                                                {' '}Haz clic en "Guardar en BD" para crear las partidas en la base de datos.
-                                            </p>
+                                            <p>ℹ️ <strong>{t('vista_emp.hint_guardar_bd', { n: emparejamientos.length })}</strong></p>
                                         </div>
                                     )}
-
-                                   <div className={`emparejamientos-grid ${esTorneoEquipos() ? 'equipos-layout' : ''}`}>
-                                        {partidasGuardadas.length > 0 ? (
-                                            renderPartidas(partidasGuardadas, true)
-                                        ) : (
+                                    <div className={`emparejamientos-grid ${esTorneoEquipos() ? 'equipos-layout' : ''}`}>
+                                        {partidasGuardadas.length > 0 ? renderPartidas(partidasGuardadas, true) : (
                                             emparejamientos.map((emp, index) => {
                                                 const esEquipos = esTorneoEquipos();
-                                                
-                                                // 🎯 PARA TORNEOS DE EQUIPOS
                                                 if (esEquipos && emp.jugadores_equipo1) {
                                                     return (
                                                         <div key={index} className="enfrentamiento-equipos-preview">
-                                                            {/* 🆕 BOTONES DE EDICIÓN PARA EQUIPOS */}
                                                             {modoEdicion && (
                                                                 <div className="botones-edicion">
-                                                                    <button
-                                                                        onClick={() => abrirEdicion(emp, index)}
-                                                                        className="btn-editar-small"
-                                                                        title="Editar emparejamiento"
-                                                                    >
-                                                                        ✏️
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => eliminarEmparejamiento(index)}
-                                                                        className="btn-eliminar-small"
-                                                                        title="Eliminar emparejamiento"
-                                                                    >
-                                                                        🗑️
-                                                                    </button>
+                                                                    <button onClick={() => abrirEdicion(emp, index)} className="btn-editar-small" title={t('botones.administrar')}>✏️</button>
+                                                                    <button onClick={() => eliminarEmparejamiento(index)} className="btn-eliminar-small" title={t('botones.eliminar')}>🗑️</button>
                                                                 </div>
                                                             )}
-                                                            
                                                             <div className="header-equipos-preview">
                                                                 <h4>⚔️ {emp.equipo1_nombre} {emp.equipo2_nombre ? `vs ${emp.equipo2_nombre}` : '(BYE)'}</h4>
                                                             </div>
-                                                            
-                                                            {/* PARTIDAS de los equipos */}
                                                             {emp.partidas && emp.partidas.length > 0 && (
                                                                 <div className="partidas-preview">
-                                                                    <h6>Partidas de los Equipos ({emp.partidas.length}):</h6>
+                                                                    <h6>{t('vista_emp.partidas_equipo', { n: emp.partidas.length })}:</h6>
                                                                     <div className="lista-partidas-preview">
-                                                                        {emp.partidas.map((partida, pIndex) => {
-                                                                            const jugador1Alias = partida.jugador1_alias;
-                                                                            const jugador2Alias = partida.jugador2_alias;
-                                                                            
-                                                                            return (
-                                                                                <div key={pIndex} className="partida-individual-preview">
-                                                                                    <span className="epoca-badge">{partida.epoca || 'Sin época'}</span>
-                                                                                    <div>
-                                                                                        <span className="jugadores-partida">
-                                                                                            {partida.jugador1_nombre}
-                                                                                            {jugador1Alias && ` "${jugador1Alias}"`}
-                                                                                            <strong> vs </strong> 
-                                                                                            {partida.jugador2_nombre || '⭐ BYE'}
-                                                                                            {jugador2Alias && ` "${jugador2Alias}"`}
-                                                                                        </span>
-                                                                                    </div>
+                                                                        {emp.partidas.map((partida, pIndex) => (
+                                                                            <div key={pIndex} className="partida-individual-preview">
+                                                                                <span className="epoca-badge">{getEpoca(partida.epoca) || t('vista_emp.sin_epocas')}</span>
+                                                                                <div>
+                                                                                    <span className="jugadores-partida">
+                                                                                        {partida.jugador1_nombre}{partida.jugador1_alias && ` "${partida.jugador1_alias}"`}
+                                                                                        <strong> vs </strong>
+                                                                                        {partida.jugador2_nombre || '⭐ BYE'}{partida.jugador2_alias && ` "${partida.jugador2_alias}"`}
+                                                                                    </span>
                                                                                 </div>
-                                                                            );
-                                                                        })}
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
                                                                 </div>
                                                             )}
                                                         </div>
                                                     );
                                                 }
-                            
-                                                // 🎯 PARA TORNEOS INDIVIDUALES
-                                                const jugador1Nombre = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
-                                                const jugador1Alias = emp.jugador1?.nombre_alias;
-                                                const jugador2Nombre = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
-                                                const jugador2Alias = emp.jugador2?.nombre_alias;
-
+                                                const j1n = emp.jugador1?.nombre || emp.jugador1?.jugador_nombre;
+                                                const j1a = emp.jugador1?.nombre_alias;
+                                                const j2n = emp.jugador2 ? (emp.jugador2?.nombre || emp.jugador2?.jugador_nombre) : null;
+                                                const j2a = emp.jugador2?.nombre_alias;
                                                 return (
                                                     <div key={index} className="emparejamiento-card">
-                                                        {/* 🆕 BOTONES DE EDICIÓN PARA INDIVIDUALES */}
                                                         {modoEdicion && (
                                                             <div className="botones-edicion">
-                                                                <button
-                                                                    onClick={() => abrirEdicion(emp, index)}
-                                                                    className="btn-editar-small"
-                                                                    title="Editar emparejamiento"
-                                                                >
-                                                                    ✏️
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => eliminarEmparejamiento(index)}
-                                                                    className="btn-eliminar-small"
-                                                                    title="Eliminar emparejamiento"
-                                                                >
-                                                                    🗑️
-                                                                </button>
+                                                                <button onClick={() => abrirEdicion(emp, index)} className="btn-editar-small" title={t('botones.administrar')}>✏️</button>
+                                                                <button onClick={() => eliminarEmparejamiento(index)} className="btn-eliminar-small" title={t('botones.eliminar')}>🗑️</button>
                                                             </div>
                                                         )}
-                                                        
                                                         <div className="mesa-numero preview">
-                                                            Mesa {emp.mesa || index + 1} 
-                                                            {emp.es_bye === 1 && ' ⭐ BYE'}
+                                                            {t('vista_emp.mesa')} {emp.mesa || index + 1} {emp.es_bye === 1 && ' ⭐ BYE'}
                                                         </div>
                                                         <div className="enfrentamiento">
-                                                            <div className="jugador">
-                                                                <div className="nombre">
-                                                                    {jugador1Nombre}
-                                                                    {jugador1Alias && ` "${jugador1Alias}"`}
-                                                                </div>
-                                                            </div>
+                                                            <div className="jugador"><div className="nombre">{j1n}{j1a && ` "${j1a}"`}</div></div>
                                                             <div className="vs">VS</div>
-                                                            <div className="jugador">
-                                                                <div className="nombre">
-                                                                    {emp.es_bye ? '⭐ BYE' : (
-                                                                        <>
-                                                                            {jugador2Nombre}
-                                                                            {jugador2Alias && ` "${jugador2Alias}"`}
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                            <div className="jugador"><div className="nombre">{emp.es_bye ? '⭐ BYE' : <>{j2n}{j2a && ` "${j2a}"`}</>}</div></div>
                                                         </div>
                                                     </div>
                                                 );
@@ -1604,33 +783,24 @@ useEffect(() => {
                                 </>
                             )}
 
-                            {/* Rondas anteriores también protegidas */}
                             {rondasAnteriores.length > 0 && (
                                 <div className="rondas-anteriores">
-                                    <h3>📜 Rondas Anteriores</h3>
-                                    
+                                    <h3>📜 {t('vista_emp.rondas_anteriores')}</h3>
                                     {rondasAnteriores.map(ronda => {
                                         const partidasRonda = grupos[ronda] || [];
                                         const expandida = rondasExpandidas[ronda];
-                                        
                                         return (
                                             <div key={ronda} className="acordeon-ronda">
-                                                <div 
-                                                    className="acordeon-header"
-                                                    onClick={() => toggleRonda(ronda)}
-                                                >
+                                                <div className="acordeon-header" onClick={() => toggleRonda(ronda)}>
                                                     <div className="titulo">
-                                                        <strong>Ronda {ronda}</strong>
-                                                        <span>{partidasRonda.length} partidas</span>
+                                                        <strong>{t('crear_torneo_general.ronda_n', { n: ronda })}</strong>
+                                                        <span>{partidasRonda.length} {partidasRonda.length === 1 ? t('vista_emp.partida') : t('vista_emp.partidas')}</span>
                                                     </div>
-                                                    <div className="icono">
-                                                        {expandida ? '▼' : '▶'}
-                                                    </div>
+                                                    <div className="icono">{expandida ? '▼' : '▶'}</div>
                                                 </div>
-                                                
                                                 {expandida && (
                                                     <div className="acordeon-body">
-                                                         <div className={`emparejamientos-grid ${esTorneoEquipos ? 'equipos-layout' : ''}`}>
+                                                        <div className={`emparejamientos-grid ${esTorneoEquipos() ? 'equipos-layout' : ''}`}>
                                                             {renderPartidas(partidasRonda, false)}
                                                         </div>
                                                     </div>
@@ -1646,35 +816,31 @@ useEffect(() => {
             )}
 
             {modalAbierto && partidaSeleccionada && (
-                <ModalRegistroPartida
-                    partida={partidaSeleccionada}
-                    torneo={torneo}
+                <ModalRegistroPartida 
+                    partida={partidaSeleccionada} 
+                    torneo={torneo} 
                     esOrganizador={esOrganizador}
-                    onClose={() => {
-                        setModalAbierto(false);
-                        setPartidaSeleccionada(null);
+                    onClose={() => { 
+                        setModalAbierto(false); 
+                        setPartidaSeleccionada(null); 
                     }}
-                    onGuardar={() => {
-                        cargarPartidasRonda();
-                        cargarTodasLasPartidas();
-                        setModalAbierto(false);
-                        setPartidaSeleccionada(null);
-                    }}
-                />
+                    onGuardar={() => { cargarPartidasRonda(); 
+                        cargarTodasLasPartidas(); 
+                        setModalAbierto(false); 
+                        setPartidaSeleccionada(null); 
+                    }} />
             )}
-
             {modalEdicionAbierto && emparejamientoEditando && (
-                <ModalEdicionEmparejamientos
-                    emparejamiento={emparejamientoEditando}
-                    jugadores={jugadores}
+                <ModalEdicionEmparejamientos 
+                    emparejamiento={emparejamientoEditando} 
+                    jugadores={jugadores} 
                     equipos={equipos}
                     esTorneoEquipos={esTorneoEquipos()}
-                    onClose={() => {
-                        setModalEdicionAbierto(false);
-                        setEmparejamientoEditando(null);
+                    onClose={() => { 
+                        setModalEdicionAbierto(false); 
+                        setEmparejamientoEditando(null); 
                     }}
-                    onGuardar={guardarEdicion}
-                />
+                    onGuardar={guardarEdicion} />
             )}
         </div>
     );

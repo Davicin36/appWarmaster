@@ -1048,7 +1048,7 @@ router.get('/:torneoId/verificar-organizador', verificarToken, async (req, res) 
 
 router.post('/recuperar-password', async (req, res) => {
   
-  const { email } = req.body;
+  const { email, lang } = req.body;
 
   try {
     // 👇 AÑADIR ESTA LÍNEA AL PRINCIPIO
@@ -1122,7 +1122,8 @@ router.post('/recuperar-password', async (req, res) => {
     const resultadoEmail = await emailRecuperar.enviarRecuperacionPassword({
       email: usuario.email,
       nombre: usuario.nombre,
-      resetUrl: resetUrl
+      resetUrl: resetUrl,
+      lang
     });
 
     console.log('✅ Email enviado:', resultadoEmail);
@@ -1183,7 +1184,7 @@ router.get('/verificar-token/:token', async (req, res) => {
 //======RESET PASSWORD=======
 
 router.post('/reset-password', async (req, res) => {
-  const { token, password } = req.body;
+  const { token, password, lang} = req.body;
 
   try {
     const [tokens] = await pool.execute(
@@ -1232,7 +1233,8 @@ router.post('/reset-password', async (req, res) => {
         // Enviar email de confirmación
         await emailRecuperar.enviarConfirmacionCambioPassword({
           email: usuario.email,
-          nombre: usuario.nombre
+          nombre: usuario.nombre,
+          lang
         });
         console.log('✅ Email de confirmación enviado a:', usuario.email);
       } catch (emailError) {

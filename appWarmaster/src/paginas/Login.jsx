@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../servicios/AuthContext";
+import { useTranslation } from 'react-i18next';
 
 import RecuperarPassword from '@/paginas/loginRecuperacion/RecuperarPassword.jsx'
 
 import '../estilos/login.css';
 
 function Login({ isOpen, onClose }) {
+    const { t } = useTranslation();
+
     const [formData, setFormData] = useState({
         email: "",
         password: ""
@@ -136,7 +139,7 @@ function Login({ isOpen, onClose }) {
                         ✕
                     </button>
 
-                    <h2 className="modal-title">Iniciar Sesión</h2>
+                    <h2 className="modal-title">{t('login.titulo')}</h2>
                     
                     <form className="login-form-modal" onSubmit={handleSubmit}>
                         {error && (
@@ -146,14 +149,14 @@ function Login({ isOpen, onClose }) {
                         )}
                         
                         <div className="form-group">
-                            <label htmlFor="email">Email:</label>
+                            <label htmlFor="email">{t('login.email')}</label>
                             <input 
                                 type="email" 
                                 id="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                placeholder="Introduce tu email"
+                                placeholder={t('login.email_placeholder')}
                                 required
                                 disabled={loading}
                                 autoComplete="email"
@@ -161,14 +164,14 @@ function Login({ isOpen, onClose }) {
                         </div>
                         
                         <div className="form-group">
-                            <label htmlFor="password">Contraseña:</label>
+                            <label htmlFor="password">{t('login.password')}</label>
                             <input 
                                 type={showPassword ? "text" : "password"}
                                 id="password"
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                placeholder="Introduce tu contraseña" 
+                                placeholder={t('login.password_placeholder')}
                                 required
                                 disabled={loading}
                                 autoComplete="current-password"
@@ -183,7 +186,7 @@ function Login({ isOpen, onClose }) {
                                 onChange={togglePasswordVisibility}
                                 disabled={loading}
                             />
-                            <label htmlFor="showPassword">Mostrar contraseña</label>
+                            <label htmlFor="showPassword">{t('login.mostrar_password')}</label>
                         </div>
 
                         <div className ="forgot-passaword-link">
@@ -193,7 +196,7 @@ function Login({ isOpen, onClose }) {
                                 className="link-button"
                                 disabled={loading}
                             >
-                                Olvidaste tu contraseña?
+                                {t('login.olvidaste')}
                             </button>
                         </div>
                         
@@ -202,11 +205,11 @@ function Login({ isOpen, onClose }) {
                             className="btn-primary"
                             disabled={loading}
                         >
-                            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                            {loading ? t('login.iniciando') : t('login.boton')}
                         </button>
                         
                         <p className="register-link">
-                            ¿No tienes cuenta? <Link to="/registrarse" onClick={onClose}>Regístrate aquí</Link>
+                            {t('login.no_tienes_cuenta')} <Link to="/registrarse" onClick={onClose}>{t('login.registrate')}</Link>
                         </p>
                     </form>
                 </div>

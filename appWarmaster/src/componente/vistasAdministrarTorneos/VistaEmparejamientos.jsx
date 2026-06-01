@@ -1,27 +1,21 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { obtenerVistaJuego } from '@/funciones/registroVistasTorneos';
 
-/**
- * PORTAL de Vista General
- * Este componente actúa como router y carga dinámicamente
- * la vista general específica del sistema de juego
- */
 function VistaEmparejamientos({ tipoJuego, ...props }) {
-    // Obtener el componente específico del juego
-    const ComponenteVista = obtenerVistaJuego(tipoJuego,  'emparejamientos');
+    const { t } = useTranslation();
+    const ComponenteVista = obtenerVistaJuego(tipoJuego, 'emparejamientos');
 
-    // Si no existe componente para ese juego, mostrar error
     if (!ComponenteVista) {
         return (
             <div className="vista-general">
                 <div className="error-message">
-                    ⚠️ No existe vista general para el juego "{tipoJuego}"
+                    ⚠️ {t('vistas_general.sin_emparejamientos', { juego: tipoJuego })}
                 </div>
             </div>
         );
     }
 
-    // Renderizar el componente específico del juego
     return <ComponenteVista {...props} />;
 }
 

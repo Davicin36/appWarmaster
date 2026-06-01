@@ -65,16 +65,18 @@ class TorneosSagaApi {
   }
 
   async crearTorneo(torneoData) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request('/creandoTorneo', {
       method: 'POST',
-      body: torneoData,
+      body: {...torneoData, lang } 
     });
   }
 
   async actualizarTorneo(torneoId, torneoData) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';  
     return this.request(`/${torneoId}/actualizarTorneo`, {
       method: 'PUT',
-      body: torneoData,
+      body: {...torneoData, lang },
     });
   }
 
@@ -85,9 +87,10 @@ class TorneosSagaApi {
 
   // Agregar organizador
   async agregarOrganizador(torneoId, datos) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`/${torneoId}/organizadores`, {
       method: 'POST',
-      body: JSON.stringify(datos)
+      body: {...datos, lang }
     });
   }
 
@@ -100,8 +103,10 @@ class TorneosSagaApi {
   }
 
   async reenviarInvitacion(torneoId, organizadorId) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`${torneoId}/organizadores/${organizadorId}/reenviar`, {
-      method: 'POST'
+      method: 'POST',
+      body: { lang }
     });
   }
 
@@ -149,21 +154,26 @@ class TorneosSagaApi {
   }
 
   async añadirJugadorIndividual(torneoId, participante) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`/${torneoId}/add-individual-participant`, {
       method: 'POST',
-      body: { participante }
+      body: { participante, lang}
     });
   }
 
   async reenviarInscripcionTodosJugadores (torneoId) {
-    return this.request (`/${torneoId}/reenviarInscripciontodosIndividual`, {
-      method: 'POST'
+    const lang = localStorage.getItem('i18nextLng') || 'es';
+    return this.request (`/${torneoId}/reenviarTodosJugadores`, {
+      method: 'POST',
+      body: { lang }
     })
   }
 
   async reenviarInscripcionIndivivual (torneoId, jugadorId) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
       return this.request(`/${torneoId}/jugadores/${jugadorId}/reenviarInvitacionInd`, {
-        method: 'POST'
+        method: 'POST',
+        body: { lang }
       })
     }
 
@@ -186,28 +196,34 @@ class TorneosSagaApi {
   }
 
   async actualizarInscripcionEquipos(torneoId, datosInscripcion) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
       return this.request(`/${torneoId}/actualizarInscripcionEquipo`, {
           method: 'PUT',
-          body: datosInscripcion
+          body: { datosInscripcion, lang }
       });
   }
 
   async añadirEquipo(torneoId, equipo) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`/${torneoId}/add-team`, {
       method: 'POST',
-      body:  equipo 
+      body:  { equipo, lang }
     });
   }
 
   async reenviarInscripcionEquipo (torneoId, equipoId) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`/${torneoId}/equipos/${equipoId}/reenviarInvitacionEq`, {
-      method: 'POST'
+      method: 'POST',
+      body: { lang }
     })
   }
 
   async reenviarInscripcionTodosEquipos (torneoId) {
+    const lang = localStorage.getItem('i18nextLng') || 'es';
     return this.request(`/${torneoId}/reenviarTodasInvitaciones`, {
-      method: 'POST'
+      method: 'POST',
+      body: { lang }
     })
   }
 
@@ -386,9 +402,10 @@ async obtenerCapitanesCorreos(torneoId) {
 
 // Enviar correos a participantes
 async enviarCorreoParticipantes(torneoId, datos) {
+  const lang = localStorage.getItem('i18nextLng') || 'es';
   return this.request(`/${torneoId}/enviar-correo`, {
     method: 'POST',
-    body: datos
+    body: { ...datos, lang }
   });
 }
 

@@ -1,221 +1,145 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import '../estilos/seleccionJuegos.css';
 
-import logoSaga from '../assets/logoSaga.webp'
-import logoWarmaster from '../assets/logoWarmaster.webp'
-import logoFow from '../assets/logoFow.webp'
-import logoBolt from '../assets/logoBolt.webp'
-import logoEpic from '../assets/logoEpic.webp'
-import logoDracula from '../assets/logoDraculas.webp'
+import logoSaga     from '../assets/logoSaga.webp';
+import logoWarmaster from '../assets/logoWarmaster.webp';
+import logoFow      from '../assets/logoFow.webp';
+import logoBolt     from '../assets/logoBolt.webp';
+import logoEpic     from '../assets/logoEpic.webp';
+import logoDracula  from '../assets/logoDraculas.webp';
 
-import Footer from '@/paginas/Footer.jsx'
+import Footer from '@/paginas/Footer.jsx';
 
-/**
- * Componente para seleccionar tipo de juego y modalidad antes de crear un torneo
- * Navega a rutas específicas según el juego y modalidad seleccionados
- */
 function SeleccionJuego() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
-    // Estados
-    const [tiposJuego, setTiposJuego] = useState([]);
     const [juegoSeleccionado, setJuegoSeleccionado] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // ==========================================
-    // CARGAR TIPOS DE JUEGO
-    // ==========================================
-    useEffect(() => {
-        cargarTiposJuego();
-    }, []);
-
-    const cargarTiposJuego = () => {
-        try {
-            setLoading(true);
-            setError('');
-            
-            // Configuración de juegos con rutas específicas
-            const juegosDisponibles = [
-                {
-                    id: 1,
-                    nombre: 'Warmaster',
-                    descripcion: 'Juego de estrategia con miniaturas a escala 10mm',
-                    imagen:  logoWarmaster,
-                    soportaIndividual: true,
-                    soportaEquipos: false,
-                    ruta: '/crearTorneo/warmaster',
-                    activo: true
-                },
-                {
-                    id: 2,
-                    nombre: 'SAGA',
-                    descripcion: 'Juego de bandas ambientado en las diferentes épocas de la historia',
-                    imagen:  logoSaga,
-                    soportaIndividual: true,
-                    soportaEquipos: true,
-                    ruta: '/crearTorneo/saga',
-                    activo: true
-                },
-                {
-                    id: 3,
-                    nombre: 'Flames of War',
-                    descripcion: 'Juego de batallas de la II Guerra Mundial con miniaturas a escala 15mm',
-                    imagen: logoFow,
-                    soportaIndividual: true,
-                    soportaEquipos: false,
-                    ruta: '/crearTorneo/fow',
-                    activo: true
-                },
-                {
-                    id: 4,
-                    nombre: 'Bolt Action',
-                    descripcion: 'Juego de batallas de la II Guerra Mundial con miniaturas a escala 28mm',
-                    imagen: logoBolt,
-                    soportaIndividual: true,
-                    soportaEquipos: false,
-                    ruta: '/crearTorneo/bolt',
-                    activo: false
-                },
-                 {
-                    id: 5,
-                    nombre: 'Epic Armageddon',
-                    descripcion: 'Juego de batallas épicas en el universo de Warhammer 40K con miniaturas a escala 6mm',
-                    imagen: logoEpic,
-                    soportaIndividual: true,
-                    soportaEquipos: false,
-                    ruta: '/crearTorneo/epic',
-                    activo: true
-                },
-                {
-                    id: 6,
-                    nombre: 'Dracula',
-                    descripcion: 'Juego de escaramuzas a 28mm ambientado en la América Western Sobrenatural',
-                    imagen: logoDracula,
-                    soportaIndividual: true,
-                    soportaEquipos: false,
-                    ruta: '/crearTorneo/dracula',
-                    activo: true
-                }
-            ];
-            
-            setTiposJuego(juegosDisponibles);
-            
-        } catch (err) {
-            console.error('Error al cargar tipos de juego:', err);
-            setError('Error al cargar los tipos de juego');
-        } finally {
-            setLoading(false);
+    // Se recalcula en cada render → se traduce automáticamente al cambiar idioma
+    const tiposJuego = [
+        {
+            id: 1,
+            nombre: 'Warmaster',
+            descripcion: t('seleccion_juego.desc_warmaster'),
+            imagen: logoWarmaster,
+            ruta: '/crearTorneo/warmaster',
+            activo: true
+        },
+        {
+            id: 2,
+            nombre: 'SAGA',
+            descripcion: t('seleccion_juego.desc_saga'),
+            imagen: logoSaga,
+            ruta: '/crearTorneo/saga',
+            activo: true
+        },
+        {
+            id: 3,
+            nombre: 'Flames of War',
+            descripcion: t('seleccion_juego.desc_fow'),
+            imagen: logoFow,
+            ruta: '/crearTorneo/fow',
+            activo: true
+        },
+        {
+            id: 4,
+            nombre: 'Bolt Action',
+            descripcion: t('seleccion_juego.desc_bolt'),
+            imagen: logoBolt,
+            ruta: '/crearTorneo/bolt',
+            activo: false
+        },
+        {
+            id: 5,
+            nombre: 'Epic Armageddon',
+            descripcion: t('seleccion_juego.desc_epic'),
+            imagen: logoEpic,
+            ruta: '/crearTorneo/epic',
+            activo: true
+        },
+        {
+            id: 6,
+            nombre: "Dracula's America",
+            descripcion: t('seleccion_juego.desc_dracula'),
+            imagen: logoDracula,
+            ruta: '/crearTorneo/dracula',
+            activo: true
         }
-    };
-
-    // ==========================================
-    // HANDLERS
-    // ==========================================
+    ];
 
     const handleSeleccionarJuego = (juego) => {
-        // Si ya está seleccionado, deseleccionar
-        if (juegoSeleccionado?.id === juego.id) {
-            setJuegoSeleccionado(null);
-        } else {
-            setJuegoSeleccionado(juego);
-        }
+        setJuegoSeleccionado(juegoSeleccionado?.id === juego.id ? null : juego);
         setError('');
     };
 
     const handleCrearTorneo = () => {
         if (!juegoSeleccionado) {
-            setError('Debes seleccionar un tipo de juego');
+            setError(t('seleccion_juego.error_sin_seleccion'));
             return;
         }
-
-        // Navegar a la ruta específica del juego con la modalidad como state
         navigate(juegoSeleccionado.ruta, {
-            state: {
-                nombreJuego: juegoSeleccionado.nombre
-            }
+            state: { nombreJuego: juegoSeleccionado.nombre }
         });
     };
-
-    // ==========================================
-    // RENDER
-    // ==========================================
-
-    if (loading) {
-        return (
-            <div className="seleccion-juego-container">
-                <div className="loading">Cargando tipos de juego...</div>
-            </div>
-        );
-    }
 
     return (
         <div className="seleccion-juego-container">
             <header className="seleccion-header">
-                <h1>🎮 Crear Nuevo Torneo</h1>
-                <p className="subtitle">Selecciona el tipo de juego para tu torneo</p>
+                <h1>🎮 {t('seleccion_juego.titulo')}</h1>
+                <p className="subtitle">{t('seleccion_juego.subtitulo')}</p>
             </header>
 
-            {error && (
-                <div className="error-banner">
-                    ⚠️ {error}
-                </div>
-            )}
+            {error && <div className="error-banner">⚠️ {error}</div>}
 
-            {/* SELECCIÓN DE TIPO DE JUEGO */}
             <section className="seccion-paso">
                 <div className="paso-header">
-                    <h2>1. Selecciona el Tipo de Juego</h2>
+                    <h2>{t('seleccion_juego.paso1')}</h2>
                 </div>
 
                 <div className="juegos-grid">
-                    {tiposJuego.filter(juego => juego.activo).map((juego) => (
+                    {tiposJuego.filter(j => j.activo).map((juego) => (
                         <div
                             key={juego.id}
                             className={`juego-card ${juegoSeleccionado?.id === juego.id ? 'selected' : ''}`}
                             onClick={() => handleSeleccionarJuego(juego)}
                         >
                             <div className="juego-icon">
-                                <img src={juego.imagen} alt={`logo de ${juego.nombre}`} />
+                                <img src={juego.imagen} alt={`logo ${juego.nombre}`} />
                             </div>
                             <h3>{juego.nombre}</h3>
                             <p>{juego.descripcion}</p>
-
                             {juegoSeleccionado?.id === juego.id && (
                                 <div className="check-selected">✓</div>
                             )}
                         </div>
                     ))}
                 </div>
-            </section> 
+            </section>
 
-            {/* RESUMEN Y BOTÓN CREAR TORNEO */}
-            {juegoSeleccionado  && (
+            {juegoSeleccionado && (
                 <div className="acciones-container">
                     <div className="juego-seleccionado-info">
                         <div className="info-item">
                             <span className="info-icon">🎮</span>
                             <span className="info-text">
-                                Juego: <strong>{juegoSeleccionado.nombre}</strong>
+                                {t('seleccion_juego.juego_label')}: <strong>{juegoSeleccionado.nombre}</strong>
                             </span>
                         </div>
                     </div>
-                    
-                    <button 
-                        className="btn-crear-torneo"
-                        onClick={handleCrearTorneo}
-                    >
-                        Crear Torneo →
+                    <button className="btn-crear-torneo" onClick={handleCrearTorneo}>
+                        {t('seleccion_juego.btn_crear')}
                     </button>
-                </div>   
+                </div>
             )}
 
-        <Footer />
+            <Footer />
         </div>
     );
-
 }
 
 export default SeleccionJuego;

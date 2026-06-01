@@ -1,15 +1,17 @@
 import React from 'react';
 import { obtenerVistaPublica } from '@/funciones/registroVistasTorneos';
+import { useTranslation } from 'react-i18next';
 
 /**
  * PORTAL: Vista Información Pública
  */
 function VistaInformacion({ tipoJuego, ...props }) {
+    const { t } = useTranslation();
     if (!tipoJuego) {
         return (
             <div className="vista-informacion">
                 <div className="empty-message">
-                    ⏳ Cargando información...
+                    ⏳  {t('vistas_publica.cargando_info')}
                 </div>
             </div>
         );
@@ -21,7 +23,7 @@ function VistaInformacion({ tipoJuego, ...props }) {
         return (
             <div className="vista-informacion">
                 <div className="error-message">
-                    ⚠️ No existe vista de información para "{tipoJuego}"
+                    ⚠️  {t('vistas_general.sin_informacion', { juego: tipoJuego })}
                 </div>
             </div>
         );
