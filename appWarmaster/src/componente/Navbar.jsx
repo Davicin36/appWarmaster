@@ -28,7 +28,6 @@ function Navbar({ onOpenLogin }) {
 
                 <div className="navbar-right">
                     {/* BOTÓN DE IDIOMA — siempre visible */}
-                    <BotonIdioma />
 
                     {isAuthenticated ? (
                         <>
@@ -55,7 +54,11 @@ function Navbar({ onOpenLogin }) {
                                     {t('navbar.cerrar_sesion')}
                                 </button>
                             </div>
-                            <NavbarLogin />
+                            <div className="navbar-login-container">
+                                <BotonIdioma />
+                                
+                                <NavbarLogin />
+                            </div>
                         </>
                     ) : (
                         <div className="auth-links">

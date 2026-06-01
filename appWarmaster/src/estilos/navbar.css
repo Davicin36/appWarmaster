@@ -68,6 +68,12 @@
   flex-shrink: 0;
 }
 
+.navbar-login-container {
+    display: grid;
+    justify-items: center;
+    margin: 10px;
+}
+
 /* ===== SECCIÓN DE USUARIO AUTENTICADO ===== */
 .user-section {
   display: flex;
@@ -78,7 +84,7 @@
   border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
-  min-width: 500px;
+  min-width: 300px;
   box-sizing: border-box;
   flex-shrink: 0;
 }
