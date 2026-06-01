@@ -121,12 +121,6 @@ function Principal({ onOpenLogin }) {
                         <h3>{t('novedades.escenarios_titulo')}</h3>
                         <p>{t('novedades.escenarios_texto')}</p>
                     </div>
-                    <div className="novedad-contenido">
-                        <h3>📕 TRADUCCIÓN AL INGLES</h3>
-                        <p>
-                            Se podrá disfrutar de la aplicación, en ingles y en castellano. Hagamos que el Hobby crezca
-                        </p>
-                    </div>
                 </div>
             </section>
 
