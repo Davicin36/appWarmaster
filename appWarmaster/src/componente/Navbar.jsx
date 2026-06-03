@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from "../servicios/AuthContext";
 
 import NavbarLogin from "./NavbarLogin";
-import BotonIdioma from "@/i18n/componentes/BotonIdioma";
 
 import '../estilos/navbar.css';
 
@@ -55,7 +54,7 @@ function Navbar({ onOpenLogin }) {
                                 </button>
                             </div>
                             <div className="navbar-login-container">
-                                <BotonIdioma />
+                            
                                 
                                 <NavbarLogin />
                             </div>
