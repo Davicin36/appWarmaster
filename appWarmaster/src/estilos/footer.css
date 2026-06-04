@@ -1,93 +1,98 @@
-/* Footer.css */
+/* footer.css */
+
 .main-footer {
-  background-color: #2c3e50;
-  color: #ecf0f1;
-  padding: 30px 20px;
-  margin-top: 50px;
   width: 100%;
+  background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+  border-top: 4px solid var(--color-naranja);
+  margin-top: auto;
 }
 
 .footer-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 2rem 5%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 1.5rem;
 }
 
 .legal-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 20px;
-  padding: 0;
-  margin: 0;
+  gap: 0.5rem 2rem;
 }
 
 .legal-links a {
-  color: #ecf0f1;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  font-weight: 600;
   text-decoration: none;
-  font-size: 14px;
-  transition: color 0.3s ease;
-  position: relative;
+  transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .legal-links a:hover {
-  color: #3498db;
-}
-
-.legal-links a::after {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 2px;
-  bottom: -4px;
-  left: 0;
-  background-color: #3498db;
-  transition: width 0.3s ease;
-}
-
-.legal-links a:hover::after {
-  width: 100%;
+  color: var(--color-naranja);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .footer-divider {
-  width: 100%;
-  max-width: 600px;
+  width: 60%;
   height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .copyright {
-  font-size: 14px;
-  color: #bdc3c7;
-  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
   text-align: center;
+  margin: 0;
 }
 
-/* Responsive */
+/* ===== RESPONSIVE ===== */
+
 @media (max-width: 768px) {
-  .main-footer {
-    padding: 25px 15px;
+  .footer-content {
+    padding: 1.5rem 4%;
+    gap: 1.2rem;
+  }
+
+  .legal-links {
+    gap: 0.5rem 1.5rem;
+  }
+
+  .legal-links a {
+    font-size: 0.9rem;
+  }
+
+  .footer-divider {
+    width: 80%;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-content {
+    padding: 1.2rem 4%;
+    gap: 1rem;
   }
 
   .legal-links {
     flex-direction: column;
-    gap: 12px;
-    text-align: center;
+    align-items: center;
+    gap: 0.6rem;
   }
 
   .legal-links a {
-    font-size: 13px;
+    font-size: 0.85rem;
+  }
+
+  .footer-divider {
+    width: 90%;
   }
 
   .copyright {
-    font-size: 12px;
+    font-size: 0.8rem;
   }
 }

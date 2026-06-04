@@ -24,10 +24,10 @@ function Navbar({ onOpenLogin }) {
                 <div className="navbar-left">
                     <Link to="/" className="navbar-home">🏠</Link>
                     <h1 className="navbar-title">{t('navbar.titulo')}</h1>
+                    <BotonIdioma />
                 </div>
 
                 <div className="navbar-right">
-                    {/* BOTÓN DE IDIOMA — siempre visible */}
 
                     {isAuthenticated ? (
                         <>
@@ -55,8 +55,6 @@ function Navbar({ onOpenLogin }) {
                                 </button>
                             </div>
                             <div className="navbar-login-container">
-                                <BotonIdioma />
-                                
                                 <NavbarLogin />
                             </div>
                         </>
@@ -68,6 +66,8 @@ function Navbar({ onOpenLogin }) {
                             <Link to="/registrarse" className="nav-link register-link">
                                 {t('navbar.registrarse')}
                             </Link>
+                            <div className="navbar-idioma-container">
+                            </div>
                         </div>
                     )}
                 </div>
