@@ -204,8 +204,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo, listasOc
                                     </div>
                                     <div className="banda-info">
                                         <p><strong>{t('vista_info_saga.epoca')}:</strong> {inscrito.epoca ? getEpoca(inscrito.epoca) : t('vista_info_saga.sin_definir')}</p>
-                                        <p>
-                                            <strong>{t('vista_info_saga.faccion')}:</strong>{' '}
+                                        <p><strong>{t('vista_info_saga.faccion')}:</strong>{' '}
                                             {listasOcultas
                                                 ? '-'
                                                 : inscrito.faccion
@@ -214,7 +213,7 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo, listasOc
                                                         {warlord?.bandaDesbloqueada && (
                                                             <span className="banda-desbloqueada-small">✨ {getBanda(warlord.bandaDesbloqueada)}</span>
                                                         )}
-                                                    </>
+                                                        </>
                                                     : t('vista_info_saga.sin_definir')
                                             }
                                         </p>
