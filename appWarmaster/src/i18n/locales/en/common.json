@@ -707,7 +707,7 @@
         "err_size_servidor": "⚠️ One of the files exceeds the maximum allowed size."
     },
     "crear_torneo_saga": {
-        "titulo":                "Create SAGA Tournament",
+        "titulo": "Create SAGA Tournament",
         "titulo_saga": "Create SAGA Tournament",
         "fieldset_basico":       "Basic Information",
         "fieldset_fechas":       "Dates and Location",
@@ -1223,6 +1223,12 @@
     "bye_pts": "10 TP Individual standings",
     "partidas_equipo": "Team Matches ({{n}})",
     "rondas_anteriores":  "Previous Rounds",
+    "confirmar_eliminar_ronda": "Delete ALL matches from round {{n}}?",
+    "eliminar_ronda_aviso": "This action cannot be undone. You will be able to generate the pairings again.",
+    "no_partidas_eliminar": "No saved matches found for this round.",
+    "partidas_eliminadas": "{{n}} matches deleted successfully.",
+    "btn_eliminar_ronda": "Delete round",
+    "btn_eliminar_ronda_title": "Delete all matches from the current round",
     "compatir":{
         "no_compartir_emp":"There are no pairings to share",
         "emparejamientos":"ROUND PAIRINGS",

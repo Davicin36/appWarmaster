@@ -432,6 +432,38 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
         }
     };
 
+    const eliminarTodasLasPartidas = async () => {
+        if (!window.confirm(
+            `⚠️ ${t('vista_emp.confirmar_eliminar_ronda', { n: torneo.ronda_actual })}\n\n${t('vista_emp.eliminar_ronda_aviso')}`
+        )) return;
+
+        try {
+            setGuardando(true);
+            const partidas = partidasGuardadas.length > 0 ? partidasGuardadas : todasLasPartidas.filter(p => p.ronda === torneo.ronda_actual);
+
+            if (partidas.length === 0) {
+                alert(`⚠️ ${t('vista_emp.no_partidas_eliminar')}`);
+                return;
+            }
+
+            await Promise.all(
+                partidas.map(p =>
+                    torneosSagaApi.eliminarPartida(p.id, torneo.id,)
+                )
+            );
+
+            alert(`✅ ${t('vista_emp.partidas_eliminadas', { n: partidas.length })}`);
+            setPartidasGuardadas([]);
+            setEmparejamientos([]);
+            await cargarTodasLasPartidas();
+        } catch (err) {
+            console.error('Error al eliminar partidas:', err);
+            alert(`❌ ${t('comun.error')} ${err.message}`);
+        } finally {
+            setGuardando(false);
+        }
+    };
+
     const agruparPartidasPorEquipos = (partidas) => {
         if (!esTorneoEquipos()) return partidas;
         const grupos = {};
@@ -642,6 +674,16 @@ function VistaEmparejamientosSaga({ torneoId: propTorneoId, esVistaPublica = fal
                             {partidasGuardadas.length > 0 && todasLasPartidasCompletas() && (
                                 <button onClick={generarSiguienteRonda} disabled={torneo.ronda_actual >= torneo.rondas_max} className="btn-warning">
                                     ⏭️ {t('vista_emp.btn_siguiente_ronda', { n: torneo.ronda_actual + 1 })}
+                                </button>
+                            )}
+                            {partidasGuardadas.length > 0 && (
+                                <button
+                                    onClick={eliminarTodasLasPartidas}
+                                    className="btn-danger"
+                                    disabled={guardando}
+                                    title={t('vista_emp.btn_eliminar_ronda_title')}
+                                >
+                                    🗑️ {t('vista_emp.btn_eliminar_ronda')}
                                 </button>
                             )}
                         </div>
