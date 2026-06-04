@@ -204,15 +204,20 @@ function VistaInformacionSaga({ inscritos, equipos, tipoTorneo, torneo, listasOc
                                     </div>
                                     <div className="banda-info">
                                         <p><strong>{t('vista_info_saga.epoca')}:</strong> {inscrito.epoca ? getEpoca(inscrito.epoca) : t('vista_info_saga.sin_definir')}</p>
-                                            <p>
-                                                <strong>{t('vista_info_saga.faccion')}:</strong> {inscrito.faccion ? getBanda(inscrito.faccion) : t('vista_info_saga.sin_definir')}
-                                                {warlord?.bandaDesbloqueada && (
-                                                    <span className="banda-desbloqueada-small">✨ {getBanda(warlord.bandaDesbloqueada)}</span>
-                                                )}
-                                            </p>
-                                        ) : (
-                                            <p><strong>{t('vista_info_saga.faccion')}:</strong> {'-'}</p>
-                                        )
+                                        <p>
+                                            <strong>{t('vista_info_saga.faccion')}:</strong>{' '}
+                                            {listasOcultas
+                                                ? '-'
+                                                : inscrito.faccion
+                                                    ? <>
+                                                        {getBanda(inscrito.faccion)}
+                                                        {warlord?.bandaDesbloqueada && (
+                                                            <span className="banda-desbloqueada-small">✨ {getBanda(warlord.bandaDesbloqueada)}</span>
+                                                        )}
+                                                    </>
+                                                    : t('vista_info_saga.sin_definir')
+                                            }
+                                        </p>
                                         <p><strong>{t('vista_info_saga.puntos_totales')}:</strong> {totalPuntos.toFixed(1)} pts</p>
                                     </div>
                                     {!listasOcultas && (
