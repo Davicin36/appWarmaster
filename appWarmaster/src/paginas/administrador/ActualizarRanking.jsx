@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import apiAdministrador from '@/servicios/apiAdmin.js';
 import apiRanking from '@/servicios/apiRanking.js';
-import BotonRecalcularRanking from '@/componente/rankings/botonRecalcularRanking.jsx';
+import BotonRecalcularRanking from '@/componente/rankings/BotonRecalcularRanking.jsx';
 
 import './estilosAdmin/adminPanel.css';
 
