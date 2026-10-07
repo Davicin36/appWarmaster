@@ -6,15 +6,26 @@ CREATE TABLE temporadas (
   id INT PRIMARY KEY AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   año INT NOT NULL,
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE NOT NULL,
+  fecha_inicio DATE  NULL,
+  fecha_fin DATE  NULL,
   activa BOOLEAN DEFAULT TRUE,
   elo_inicial INT DEFAULT 1500,
   sistema_juego VARCHAR(50) NOT NULL DEFAULT 'SAGA',
+  tipo ENUM('anual', 'general') NOT NULL DEFAULT 'anual' AFTER sistema_juego;
   UNIQUE KEY unique_año_sistema (año, sistema_juego),  
   INDEX idx_activa (activa),
-  INDEX idx_año (año)
+  INDEX idx_año (año),
+  INDEX idx_tipo_sistema (tipo, sistema_juego);
 )
+
+PARA CAMBIAR EN LA BASE DE DATOS EXISTENTE, SE PUEDEN USAR LOS SIGUIENTES COMANDOS:
+ALTER TABLE temporadas
+  ADD COLUMN tipo ENUM('anual', 'general') NOT NULL DEFAULT 'anual' AFTER sistema_juego;
+ALTER TABLE temporadas
+  MODIFY fecha_inicio DATE NULL,
+  MODIFY fecha_fin DATE NULL;
+ALTER TABLE temporadas
+  ADD INDEX idx_tipo_sistema (tipo, sistema_juego);
 
 CREATE TABLE elo_jugadores (
   id INT PRIMARY KEY AUTO_INCREMENT,

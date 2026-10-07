@@ -50,7 +50,7 @@ function CrearTorneoSaga() {
     const [partidaRonda3,        setPartidaRonda3]        = useState("");
     const [partidaRonda4,        setPartidaRonda4]        = useState("");
     const [partidaRonda5,        setPartidaRonda5]        = useState("");
-    const [organizadorAdicional, setOrganizadorAdicional] = useState("");
+    const [organizadorAdicional, setOrganizadorAdicional] = useState([]);
     const [emailOrganizador,     setEmailOrganizador]     = useState("");
 
     useEffect(() => {
@@ -157,19 +157,20 @@ function CrearTorneoSaga() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true); setError("");
+        setLoading(true); 
+        setError("");
 
-        if (!nombreTorneo.trim())                               { setError(t('crear_torneo_saga.val_nombre'));          setLoading(false); return; }
-        if (epocasSeleccionadas.length === 0)                   { setError(t('crear_torneo_saga.val_epoca'));           setLoading(false); return; }
+        if (!nombreTorneo.trim()) {setError(t('crear_torneo_saga.val_nombre')); setLoading(false); return; }
+        if (epocasSeleccionadas.length === 0) { setError(t('crear_torneo_saga.val_epoca')); setLoading(false); return; }
         if (tipoTorneo === "Individual" && epocasSeleccionadas.length !== 1) { setError(t('crear_torneo_saga.val_epoca_individual')); setLoading(false); return; }
         if (tipoTorneo === "Por equipos" && epocasSeleccionadas.length < numJugadoresEquipo) {
             setError(t('crear_torneo_saga.val_epocas_equipo', { n: numJugadoresEquipo }));
             setLoading(false); return;
         }
-        if (!fechaInicio)                                       { setError(t('crear_torneo_saga.val_fecha'));           setLoading(false); return; }
-        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) { setError(t('crear_torneo_saga.val_escenarios'));      setLoading(false); return; }
-        if (rondasMax >= 4 && !partidaRonda4)                   { setError(t('crear_torneo_saga.val_ronda4'));          setLoading(false); return; }
-        if (rondasMax >= 5 && !partidaRonda5)                   { setError(t('crear_torneo_saga.val_ronda5'));          setLoading(false); return; }
+        if (!fechaInicio) { setError(t('crear_torneo_saga.val_fecha')); setLoading(false); return; }
+        if (!partidaRonda1 || !partidaRonda2 || !partidaRonda3) { setError(t('crear_torneo_saga.val_escenarios')); setLoading(false); return; }
+        if (rondasMax >= 4 && !partidaRonda4) { setError(t('crear_torneo_saga.val_ronda4')); setLoading(false); return; }
+        if (rondasMax >= 5 && !partidaRonda5) { setError(t('crear_torneo_saga.val_ronda5')); setLoading(false); return; }
         if (participantesMax < PARTICIPANTES_RANGO.min || participantesMax > PARTICIPANTES_RANGO.max) {
             setError(t('crear_torneo_saga.val_participantes', { min: PARTICIPANTES_RANGO.min, max: PARTICIPANTES_RANGO.max }));
             setLoading(false); return;
@@ -180,60 +181,33 @@ function CrearTorneoSaga() {
         }
 
         try {
-            let torneoData;
 
-            if (archivoPDF || imagenCartel) {
-                torneoData = new FormData();
-                torneoData.append('nombre_torneo',          nombreTorneo);
-                torneoData.append('tipo_torneo',            tipoTorneo);
-                if (tipoTorneo === "Por equipos") torneoData.append('num_jugadores_equipo', parseInt(numJugadoresEquipo));
-                torneoData.append('rondas_max',             parseInt(rondasMax));
-                torneoData.append('epocas_disponibles',     JSON.stringify(epocasSeleccionadas));
-                torneoData.append('fecha_inicio',           fechaInicio);
-                torneoData.append('fecha_fin',              fechaFin || '');
-                torneoData.append('ubicacion',              ubicacion || '');
-                torneoData.append('puntos_banda',           parseInt(puntosBanda));
-                torneoData.append('unidades_legendarias',   unidadesLegendarias   ? '1' : '0');
-                torneoData.append('modelo_gakis',           modeloGakis           ? '1' : '0');
-                torneoData.append('warlord_punto_victoria', warlordPuntoVictoria  ? '1' : '0');
-                torneoData.append('puntosDeTorneo',         puntosDeTorneo        ? '1' : '0');
-                torneoData.append('misiones_secundarias',   misionesSecundarias   ? '1' : '0');
-                torneoData.append('participantes_max',      parseInt(participantesMax));
-                torneoData.append('equipos_max',            parseInt(equiposMax));
-                torneoData.append('partida_ronda_1',        partidaRonda1);
-                torneoData.append('partida_ronda_2',        partidaRonda2);
-                torneoData.append('partida_ronda_3',        partidaRonda3);
-                torneoData.append('partida_ronda_4',        rondasMax >= 4 ? partidaRonda4 : '');
-                torneoData.append('partida_ronda_5',        rondasMax >= 5 ? partidaRonda5 : '');
-                torneoData.append('organizadores_adicionales', JSON.stringify(organizadorAdicional));
-                if (archivoPDF)    torneoData.append('bases_pdf',     archivoPDF);
-                if (imagenCartel)  torneoData.append('imagen_cartel', imagenCartel);
-            } else {
-                torneoData = {
-                    nombre_torneo:          nombreTorneo,
-                    tipo_torneo:            tipoTorneo,
-                    num_jugadores_equipo:   tipoTorneo === "Por equipos" ? parseInt(numJugadoresEquipo) : null,
-                    rondas_max:             parseInt(rondasMax),
-                    epocas_disponibles:     epocasSeleccionadas,
-                    fecha_inicio:           fechaInicio,
-                    fecha_fin:              fechaFin  || null,
-                    ubicacion:              ubicacion || null,
-                    puntos_banda:           parseInt(puntosBanda),
-                    unidades_legendarias:   unidadesLegendarias   ? '1' : '0',
-                    modelo_gakis:           modeloGakis           ? '1' : '0',
-                    warlord_punto_victoria: warlordPuntoVictoria  ? '1' : '0',
-                    puntosDeTorneo:         puntosDeTorneo        ? '1' : '0',
-                    misiones_secundarias:   misionesSecundarias   ? '1' : '0',
-                    participantes_max:      parseInt(participantesMax),
-                    equipos_max:            parseInt(equiposMax),
-                    partida_ronda_1:        partidaRonda1,
-                    partida_ronda_2:        partidaRonda2,
-                    partida_ronda_3:        partidaRonda3,
-                    partida_ronda_4:        rondasMax >= 4 ? partidaRonda4 : null,
-                    partida_ronda_5:        rondasMax >= 5 ? partidaRonda5 : null,
-                    organizadores_emails:   organizadorAdicional
-                };
-            }
+            const torneoData = new FormData();
+            torneoData.append('nombre_torneo', nombreTorneo);
+            torneoData.append('tipo_torneo', tipoTorneo);
+            if (tipoTorneo === "Por equipos") torneoData.append('num_jugadores_equipo', numJugadoresEquipo);
+            torneoData.append('rondas_max', rondasMax);
+            torneoData.append('epocas_disponibles',     JSON.stringify(epocasSeleccionadas));
+            torneoData.append('fecha_inicio', fechaInicio);
+            torneoData.append('fecha_fin', fechaFin || '');
+            torneoData.append('ubicacion', ubicacion || '');
+            torneoData.append('puntos_banda', puntosBanda);
+            torneoData.append('unidades_legendarias', unidadesLegendarias ? '1' : '0');
+            torneoData.append('modelo_gakis', modeloGakis ? '1' : '0');
+            torneoData.append('warlord_punto_victoria', warlordPuntoVictoria ? '1' : '0');
+            torneoData.append('puntosDeTorneo', puntosDeTorneo ? '1' : '0');
+            torneoData.append('misiones_secundarias', misionesSecundarias ? '1' : '0');
+            torneoData.append('participantes_max', participantesMax);
+            torneoData.append('equipos_max', equiposMax);
+            torneoData.append('partida_ronda_1', partidaRonda1);
+            torneoData.append('partida_ronda_2', partidaRonda2);
+            torneoData.append('partida_ronda_3', partidaRonda3);
+            torneoData.append('partida_ronda_4', rondasMax >= 4 ? partidaRonda4 : '');
+            torneoData.append('partida_ronda_5', rondasMax >= 5 ? partidaRonda5 : '');
+            torneoData.append('organizadores_emails', JSON.stringify(organizadorAdicional));
+
+            if (archivoPDF)   torneoData.append('bases_pdf', archivoPDF);
+            if (imagenCartel) torneoData.append('imagen_cartel', imagenCartel);
 
             const result = await torneosSagaApi.crearTorneo(torneoData);
 
@@ -244,21 +218,21 @@ function CrearTorneoSaga() {
                     imagenCartel ? t('crear_torneo_saga.exito_imagen') : '',
                     t('crear_torneo_saga.exito_organizador')
                 ].filter(Boolean);
+
                 alert(partes.join('\n'));
                 await refrescarUsuario();
                 navigate("/perfil");
             } else {
                 throw new Error(result.error || t('errores.generico'));
             }
-
         } catch (err) {
             console.error("❌ Error completo:", err);
             let msg = t('crear_torneo_saga.err_crear');
             if (err.message) {
-                if      (err.message.includes('max_allowed_packet')) msg = t('crear_torneo_saga.err_archivos_grandes');
-                else if (err.message.includes('LIMIT_FILE_SIZE'))    msg = t('crear_torneo_saga.err_size_servidor');
+                if (err.message.includes('max_allowed_packet')) msg = t('crear_torneo_saga.err_archivos_grandes');
+                else if (err.message.includes('LIMIT_FILE_SIZE')) msg = t('crear_torneo_saga.err_size_servidor');
                 else if (err.message.includes('Network') || err.message.includes('fetch')) msg = t('errores.conexion');
-                else if (err.message.includes('timeout'))            msg = t('errores.timeout');
+                else if (err.message.includes('timeout')) msg = t('errores.timeout');
                 else msg = `⚠️ ${err.message}`;
             }
             setError(msg);

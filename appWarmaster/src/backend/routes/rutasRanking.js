@@ -3,13 +3,16 @@ import express from 'express';
 import { pool, poolRanking, executeCrossTransaction } from '../config/bd.js';
 import { verificarToken, verificarSuperAdmin } from '../middleware/auth.js';
 import { 
-    obtenerTablas, 
     validarSistemaJuego, 
-    obtenerSistemasDisponibles, 
-    obtenerJugadorIdDesdeParticipacion 
+    obtenerSistemasDisponibles
 } from '../utilsRanking/tablasJuegos.js';
+import {
+  obtenerOCrearTemporada,
+  obtenerAñoTemporada
+} from '../utilsRanking/temporadas.js';
 
 import { actualizarEloAutomatico } from '../utilsRanking/calculoAutoRanking.js';
+import { obtenerSistemasActivos, rankingActivo } from '../utilsRanking/configRanking.js';
 
 const router = express.Router();
 
@@ -29,9 +32,11 @@ function obtenerCategoria(elo) {
 
 router.get('/sistemas-juego', async (req, res) => {
   try {
-    const sistemas = await obtenerSistemasDisponibles(pool);
+     const todos = await obtenerSistemasDisponibles(pool);
+    const activos = await obtenerSistemasActivos(poolRanking);
+    const sistemas = todos.filter(s => validarSistemaJuego(s) && activos.includes(s.toLowerCase()));
     
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     const sistemasConStats = await Promise.all(
       sistemas.map(async (sistema) => {
@@ -67,38 +72,14 @@ router.get('/sistemas-juego', async (req, res) => {
 router.get('/temporada-actual/:sistemaJuego', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
-    
+
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
-    
-    const añoActual = new Date().getFullYear();
-    
-    let [temporada] = await poolRanking.query(
-      'SELECT * FROM temporadas WHERE año = ? AND sistema_juego = ? LIMIT 1',
-      [añoActual, sistemaJuego]
-    );
-    
-    if (temporada.length === 0) {
-      const [result] = await poolRanking.query(
-        `INSERT INTO temporadas (nombre, año, sistema_juego, fecha_inicio, fecha_fin, activa, elo_inicial)
-         VALUES (?, ?, ?, ?, ?, TRUE, 1500)`,
-        [
-          `${sistemaJuego.toUpperCase()} - Temporada ${añoActual}`,
-          añoActual,
-          sistemaJuego,
-          `${añoActual}-01-01`,
-          `${añoActual}-12-31`
-        ]
-      );
-      
-      [temporada] = await poolRanking.query(
-        'SELECT * FROM temporadas WHERE id = ?',
-        [result.insertId]
-      );
-    }
-    
-    res.json(temporada[0]);
+
+    const temporada = await obtenerOCrearTemporada(poolRanking, sistemaJuego);
+
+    res.json(temporada);
   } catch (error) {
     console.error('Error obteniendo temporada actual:', error);
     res.status(500).json({ error: 'Error al obtener temporada actual' });
@@ -133,64 +114,61 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
     const { limit = 100, año } = req.query;
-    const minPartidas = sistemaJuego === 'saga' ? 6 : 0;
-    const añoActual = año || new Date().getFullYear();
-    
+    const minPartidas = sistemaJuego === 'saga' ? 3 : 0;
+
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
     }
-    
-    // PASO 1: Obtener datos de ranking
+
+    // ?año=general → histórico | ?año=2025 → esa temporada | sin año → temporada actual
+    const esGeneral = año === 'general';
+    const filtroTemporada = esGeneral
+      ? `t.tipo = 'general'`
+      : `t.tipo = 'anual' AND t.año = ?`;
+    const params = esGeneral
+      ? [sistemaJuego, parseInt(minPartidas), parseInt(limit)]
+      : [parseInt(año || obtenerAñoTemporada()), sistemaJuego, parseInt(minPartidas), parseInt(limit)];
+
+    // PASO 1: Datos de ranking
     const [rankingData] = await poolRanking.query(`
-      SELECT 
-        e.jugador_id,
-        e.elo_actual,
-        e.elo_maximo,
-        e.elo_minimo,
-        e.partidas_jugadas,
-        e.victorias,
-        e.derrotas,
-        e.empates,
-        e.warlords_muertos,
-        e.sistema_juego,
+      SELECT
+        e.jugador_id, e.elo_actual, e.elo_maximo, e.elo_minimo,
+        e.partidas_jugadas, e.victorias, e.derrotas, e.empates,
+        e.warlords_muertos, e.sistema_juego,
         ROUND((e.victorias * 100.0 / NULLIF(e.partidas_jugadas, 0)), 2) as porcentaje_victorias,
         t.nombre as temporada_nombre,
         t.año as temporada_año,
-        RANK() OVER (
-          ORDER BY e.elo_actual DESC
-        ) as posicion,
+        t.tipo as temporada_tipo,
+        RANK() OVER (ORDER BY e.elo_actual DESC) as posicion,
         est.epoca_favorita,
         est.faccion_favorita
       FROM elo_jugadores e
       JOIN temporadas t ON e.temporada_id = t.id
-      LEFT JOIN estadisticas_jugador est ON e.jugador_id = est.jugador_id 
-        AND e.temporada_id = est.temporada_id 
+      LEFT JOIN estadisticas_jugador est ON e.jugador_id = est.jugador_id
+        AND e.temporada_id = est.temporada_id
         AND e.sistema_juego = est.sistema_juego
-      WHERE t.año = ? AND e.sistema_juego = ? AND e.partidas_jugadas >= ?
+      WHERE ${filtroTemporada} AND e.sistema_juego = ? AND e.partidas_jugadas >= ?
       ORDER BY e.elo_actual DESC
       LIMIT ?
-    `, [parseInt(añoActual), sistemaJuego, parseInt(minPartidas), parseInt(limit)]);
-    
+    `, params);
+
     if (rankingData.length === 0) {
       return res.json([]);
     }
-    
-    // PASO 2: Obtener datos de usuarios
+
+    // PASO 2: Datos de usuarios
     const jugadorIds = rankingData.map(r => r.jugador_id);
     const placeholders = jugadorIds.map(() => '?').join(',');
     const [usuarios] = await pool.query(
-      `SELECT id, nombre, apellidos, nombre_alias, email, club 
-       FROM usuarios 
-       WHERE id IN (${placeholders})`,
+      `SELECT id, nombre, apellidos, nombre_alias, email, club
+       FROM usuarios WHERE id IN (${placeholders})`,
       jugadorIds
     );
-    
-    // PASO 3: Combinar datos
+
+    // PASO 3: Combinar
     const usuariosMap = {};
-    usuarios.forEach(u => {
-      usuariosMap[u.id] = u;
-    });
-    
+    usuarios.forEach(u => { usuariosMap[u.id] = u; });
+
     const ranking = rankingData.map(jugador => {
       const usuario = usuariosMap[jugador.jugador_id] || {};
       return {
@@ -203,11 +181,107 @@ router.get('/ranking/:sistemaJuego', async (req, res) => {
         categoria: obtenerCategoria(jugador.elo_actual)
       };
     });
-    
+
     res.json(ranking);
   } catch (error) {
     console.error('Error obteniendo ranking:', error);
     res.status(500).json({ error: 'Error al obtener ranking' });
+  }
+});
+
+// ============================================
+// RECALCULAR TODO EL RANKING
+// ============================================
+
+router.post('/recalcular-todo', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const resultado = await executeCrossTransaction(async (connTorneos, connRanking) => {
+      const activos = await obtenerSistemasActivos(connRanking);
+
+      if (activos.length === 0) {
+        throw new Error('No hay ningún sistema con el ranking activo');
+      }
+
+      const ph = activos.map(() => '?').join(',');
+
+      // 1. Vaciar SOLO los sistemas activos (el orden importa por las FK)
+      await connRanking.query(`DELETE FROM elo_historial WHERE sistema_juego IN (${ph})`, activos);
+      await connRanking.query(`DELETE FROM estadisticas_jugador WHERE sistema_juego IN (${ph})`, activos);
+      await connRanking.query(`DELETE FROM elo_jugadores WHERE sistema_juego IN (${ph})`, activos);
+      await connRanking.query(`DELETE FROM temporadas WHERE sistema_juego IN (${ph})`, activos);
+
+      // 2. Marcar sus torneos como no procesados
+      await connTorneos.query(
+        `UPDATE torneos_sistemas SET elo_procesado = FALSE WHERE LOWER(sistema) IN (${ph})`,
+        activos
+      );
+
+      // 3. Reprocesar en orden cronológico
+      const [torneos] = await connTorneos.query(
+        `SELECT id, nombre_torneo
+         FROM torneos_sistemas
+         WHERE estado = 'finalizado' AND LOWER(sistema) IN (${ph})
+         ORDER BY COALESCE(fecha_fin, fecha_inicio) ASC, id ASC`,
+        activos
+      );
+
+      const procesados = [];
+      const errores = [];
+
+      for (const t of torneos) {
+        try {
+          const r = await actualizarEloAutomatico(connTorneos, connRanking, t.id);
+          procesados.push({ torneoId: t.id, nombre: t.nombre_torneo, ...r });
+        } catch (e) {
+          errores.push({ torneoId: t.id, nombre: t.nombre_torneo, error: e.message });
+        }
+      }
+
+      return { sistemas: activos, total: torneos.length, procesados, errores };
+    });
+
+    res.json({ mensaje: 'Ranking recalculado', ...resultado });
+  } catch (error) {
+    console.error('Error recalculando ranking:', error);
+    res.status(500).json({ error: error.message || 'Error al recalcular ranking' });
+  }
+});
+
+// ============================================
+// CONFIGURACIÓN DEL RANKING (superadmin)
+// ============================================
+
+router.get('/config', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const [rows] = await poolRanking.query(
+      'SELECT sistema_juego, activo, updated_at FROM configuracion_ranking ORDER BY sistema_juego'
+    );
+    res.json(rows.map(r => ({ ...r, activo: !!r.activo })));
+  } catch (error) {
+    console.error('Error obteniendo configuración del ranking:', error);
+    res.status(500).json({ error: 'Error al obtener la configuración del ranking' });
+  }
+});
+
+router.put('/config/:sistemaJuego', verificarToken, verificarSuperAdmin, async (req, res) => {
+  try {
+    const sistemaJuego = req.params.sistemaJuego.toLowerCase();
+    const { activo } = req.body;
+
+    if (!validarSistemaJuego(sistemaJuego)) {
+      return res.status(400).json({ error: 'Sistema de juego no válido' });
+    }
+
+    await poolRanking.query(
+      `INSERT INTO configuracion_ranking (sistema_juego, activo) VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE activo = VALUES(activo)`,
+      [sistemaJuego, !!activo]
+    );
+
+    res.json({ sistema_juego: sistemaJuego, activo: !!activo });
+  } catch (error) {
+    console.error('Error actualizando configuración del ranking:', error);
+    res.status(500).json({ error: 'Error al actualizar la configuración del ranking' });
   }
 });
 
@@ -219,7 +293,7 @@ router.get('/ranking-global', async (req, res) => {
   try {
     const { limit = 100 } = req.query;
     const minPartidas = 6
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     // PASO 1: Obtener datos de ranking
     const [rankingData] = await poolRanking.query(`
@@ -293,7 +367,7 @@ router.get('/ranking-global', async (req, res) => {
 router.get('/jugador/:jugadorId', async (req, res) => {
   try {
     const { jugadorId } = req.params;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     // PASO 1: Obtener datos de ELO
     const [datosElo] = await poolRanking.query(`
@@ -349,7 +423,7 @@ router.get('/jugador/:jugadorId', async (req, res) => {
 router.get('/jugador/:jugadorId/:sistemaJuego', async (req, res) => {
   try {
     const { jugadorId, sistemaJuego } = req.params;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
@@ -411,7 +485,7 @@ router.get('/jugador/:jugadorId/:sistemaJuego/historial', async (req, res) => {
   try {
     const { jugadorId, sistemaJuego } = req.params;
     const { limit = 50 } = req.query;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
@@ -522,6 +596,10 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
       if (!validarSistemaJuego(sistemaJuego)) {
         throw new Error(`Sistema de juego "${sistemaJuego}" no es válido`);
       }
+
+      if (!(await rankingActivo(connRanking, sistemaJuego))) {
+        throw new Error(`El ranking de ${sistemaJuego.toUpperCase()} está en standby`);
+      }
       
       // Llamar a función de actualización automática
       const resultadoElo = await actualizarEloAutomatico(
@@ -555,7 +633,7 @@ router.post('/actualizar-torneo/:torneoId', verificarToken, verificarSuperAdmin,
 router.get('/estadisticas/:sistemaJuego', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
@@ -584,7 +662,7 @@ router.get('/estadisticas/:sistemaJuego', async (req, res) => {
 
 router.get('/estadisticas-globales', async (req, res) => {
   try {
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     const [stats] = await poolRanking.query(`
       SELECT 
@@ -614,7 +692,7 @@ router.get('/estadisticas-globales', async (req, res) => {
 router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (req, res) => {
   try {
     const { jugadorId, sistemaJuego } = req.params;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
@@ -717,7 +795,7 @@ router.get('/jugador/:jugadorId/:sistemaJuego/estadisticas-completas', async (re
 router.get('/estadisticas/:sistemaJuego/epocas-populares', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
@@ -747,7 +825,7 @@ router.get('/estadisticas/:sistemaJuego/epocas-populares', async (req, res) => {
 router.get('/estadisticas/:sistemaJuego/facciones-populares', async (req, res) => {
   try {
     const { sistemaJuego } = req.params;
-    const añoActual = new Date().getFullYear();
+    const añoActual = obtenerAñoTemporada();
     
     if (!validarSistemaJuego(sistemaJuego)) {
       return res.status(400).json({ error: 'Sistema de juego no válido' });
@@ -803,6 +881,16 @@ router.post('/:torneoId/finalizar', verificarToken, async (req, res) => {
       );
       
       console.log(`✅ Torneo ${torneoId} finalizado`);
+
+      // ⏸️ NUEVO: si el ranking de este sistema está en standby, no se calcula ELO
+      if (!(await rankingActivo(connRanking, torneo[0].sistema))) {
+        console.log(`⏸️ Ranking en standby para ${torneo[0].sistema}: no se calcula ELO`);
+        return {
+          mensaje: 'Torneo finalizado correctamente',
+          torneoId,
+          advertencia: 'Ranking en standby: no se ha calculado el ELO'
+        };
+      }
       
       // Calcular ELO automáticamente
       try {

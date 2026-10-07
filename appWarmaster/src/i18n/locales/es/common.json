@@ -431,7 +431,11 @@
       "elo_promedio":      "ELO Promedio",
       "mostrar":           "Mostrar:",
       "sin_jugadores":     "No hay jugadores con los filtros seleccionados",
-      "sin_jugadores_hint":"Intenta reducir el mínimo de partidas o aumentar el límite"
+      "sin_jugadores_hint":"Intenta reducir el mínimo de partidas o aumentar el límite",
+      "vista_anual": "Temporada",
+     "vista_general": "General",
+     "temporada": "Temporada ",
+     "temporada_actual": "Temporada Actual"
   },
   "selector_sistema": {
       "titulo":        "Sistema de Juego",

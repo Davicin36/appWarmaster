@@ -53,8 +53,7 @@ const Ranking = () => {
         <h1>🏆 {t('ranking_page.titulo')}</h1>
         {temporada && (
           <div className="temporada-info">
-            <span className="temporada-nombre">{t('ranking_page.temporada')}</span>
-            <span className="temporada-año">{t('ranking_page.temporada')} {temporada.año}</span>
+            <span className="temporada-nombre">{temporada.nombre}</span>
           </div>
         )}
       </header>

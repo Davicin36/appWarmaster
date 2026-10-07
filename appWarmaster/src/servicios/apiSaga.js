@@ -66,17 +66,26 @@ class TorneosSagaApi {
 
   async crearTorneo(torneoData) {
     const lang = localStorage.getItem('i18nextLng') || 'es';
+    torneoData.set ('lang', lang);
     return this.request('/creandoTorneo', {
       method: 'POST',
-      body: {...torneoData, lang } 
+      body:  torneoData, 
     });
   }
 
   async actualizarTorneo(torneoId, torneoData) {
     const lang = localStorage.getItem('i18nextLng') || 'es';  
+    
+    let body;
+    if (torneoData instanceof FormData) {
+      torneoData.append('lang', lang);
+      body = torneoData;
+    } else {
+      body = { ...torneoData, lang };
+    }
     return this.request(`/${torneoId}/actualizarTorneo`, {
       method: 'PUT',
-      body: {...torneoData, lang },
+      body,
     });
   }
 

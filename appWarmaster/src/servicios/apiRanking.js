@@ -115,8 +115,9 @@ class RankingApi {
   // ESTADÍSTICAS
   // ====================
 
-  async obtenerEstadisticasSistema(sistemaJuego) {
-    return this.request(`/estadisticas/${sistemaJuego}`);
+  async obtenerEstadisticasSistema(sistemaJuego, año) {
+    const qs = año ? `?año=${año}` : '';
+    return this.request(`/estadisticas/${sistemaJuego}${qs}`);
   }
 
   async obtenerEstadisticasGlobales() {
@@ -148,6 +149,28 @@ class RankingApi {
       method: 'POST'
     });
   }
+
+  async recalcularTodo() {
+    return this.request('/recalcular-todo', {
+      method: 'POST'
+    });
+  }
+
+  // ====================
+  // ADMIN - CONFIGURACIÓN
+  // ====================
+
+  async obtenerConfigRanking() {
+    return this.request('/config');
+  }
+
+  async actualizarConfigRanking(sistemaJuego, activo) {
+    return this.request(`/config/${sistemaJuego}`, {
+      method: 'PUT',
+      body: { activo }
+    });
+  }
+
 }
 
 // Exportar instancia única
@@ -170,5 +193,8 @@ export const {
   actualizarEloTorneo,
   obtenerEstadisticasCompletas,
   obtenerEpocasPopulares,
-  obtenerFaccionesPopulares
+  obtenerFaccionesPopulares,
+  recalcularTodo,
+  actualizarConfigRanking,
+  obtenerConfigRanking
 } = apiRanking;

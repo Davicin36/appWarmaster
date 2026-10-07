@@ -425,11 +425,15 @@
       "faccion_favorita": "Favourite faction"
   },
   "ranking_sistema": {
-      "cargando":          "Loading {{sistema}} ranking...",
-      "error_carga":       "Could not load the ranking. Please try again later.",
-      "elo_promedio":      "Average ELO",
-      "mostrar":           "Show:",
-      "sin_jugadores":     "No players match the selected filters",
+      "cargando": "Loading {{sistema}} ranking...",
+      "error_carga": "Could not load the ranking. Please try again later.",
+      "elo_promedio": "Average ELO",
+      "mostrar": "Show:",
+      "vista_anual": "Season",
+      "vista_general": "General",
+      "temporada": "Season ",
+      "temporada_actual": "Current Season",
+      "sin_jugadores": "No players match the selected filters",
       "sin_jugadores_hint":"Try reducing the minimum number of games or increasing the limit"
   },
   "selector_sistema": {
