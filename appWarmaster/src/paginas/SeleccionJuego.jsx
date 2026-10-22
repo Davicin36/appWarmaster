@@ -10,6 +10,7 @@ import logoFow      from '../assets/logoFow.webp';
 import logoBolt     from '../assets/logoBolt.webp';
 import logoEpic     from '../assets/logoEpic.webp';
 import logoDracula  from '../assets/logoDraculas.webp';
+import logoMorheim  from '../assets/logoMorheim.webp';
 
 import Footer from '@/paginas/Footer.jsx';
 
@@ -69,6 +70,14 @@ function SeleccionJuego() {
             imagen: logoDracula,
             ruta: '/crearTorneo/dracula',
             activo: true
+        },
+        {
+            id: 7,
+            nombre:"Morheim",
+            descripcion: t('seleccion_juego.desc_morheim'),
+            imagen: logoMorheim,
+            ruta: '/crearTorneo/morheim',
+            activo: false
         }
     ];
 

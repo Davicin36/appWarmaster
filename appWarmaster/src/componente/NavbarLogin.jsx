@@ -21,6 +21,7 @@ function NavbarLogin() {
                     className="menu-hamburguesa"
                     onClick={alternarMenu}
                     aria-label={t('navbar_login.menu')}
+                    aria-expanded={menuAbierto}
                 >
                     <MenuNavBar />
                 </button>

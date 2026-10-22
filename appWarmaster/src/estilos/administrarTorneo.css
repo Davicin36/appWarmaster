@@ -3,7 +3,7 @@
    ========================================== */
 
 .administrar-torneo-container {
-    max-width: 1400px;  /* ← CORREGIDO: volver a limitar el ancho */
+    max-width: 2800px;  /* ← CORREGIDO: volver a limitar el ancho */
     margin: 0 auto;
     padding: 20px;
     min-height: 100vh;

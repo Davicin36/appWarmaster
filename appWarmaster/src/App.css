@@ -51,7 +51,6 @@
 
 /* ===== SECCIONES ===== */
 section {
-  width: 100%;
   padding: 3rem 5%;
   background: white;
   border-bottom: 3px solid var(--color-beige);
@@ -63,7 +62,7 @@ body > #root section:nth-child(even) {
 
 /* Solo afecta a imágenes directas de section, no a las de tarjetas */
 section > img {
-  max-width: 200px;
+  max-width: 500px;
   height: auto;
   margin: 0 auto 1.5rem;
   display: block;

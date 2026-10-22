@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import rankingApi from '@/servicios/apiRanking';
 import TarjetaJugador from './TarjetaJugador';
+import PodioRanking from './PodioRanking';
+
 import '@/estilos/ranking.css';
 
 const RankingPorSistema = ({ sistema }) => {
@@ -18,6 +20,12 @@ const RankingPorSistema = ({ sistema }) => {
     limit: 50,
     minPartidas: sistema?.toLowerCase() === 'saga' ? 3 : 0
   });
+
+  // Podio: los 3 primeros que no sean provisionales
+const oficiales = ranking.filter(j => !j.provisional);
+const podio = oficiales.slice(0, 3);
+const idsPodio = new Set(podio.map(j => j.jugador_id));
+const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
 
   // Al cambiar de sistema: cargar sus temporadas y volver a la actual
   useEffect(() => {
@@ -176,8 +184,7 @@ const RankingPorSistema = ({ sistema }) => {
             </button>
           </div>
 
-          {/* Lista de jugadores */}
-          <div className="ranking-lista">
+            {/* Lista de jugadores */}
             {ranking.length === 0 ? (
               <div className="ranking-vacio">
                 <p>📊 {t('ranking_sistema.sin_jugadores')}</p>
@@ -188,14 +195,21 @@ const RankingPorSistema = ({ sistema }) => {
                 </p>
               </div>
             ) : (
-              ranking.map((jugador) => (
-                <TarjetaJugador
-                  key={`${jugador.jugador_id}-${jugador.sistema_juego}`}
-                  jugador={jugador}
-                />
-              ))
+              <>
+                <PodioRanking jugadores={podio} />
+
+                {resto.length > 0 && (
+                  <div className="ranking-lista">
+                    {resto.map((jugador) => (
+                      <TarjetaJugador
+                        key={`${jugador.jugador_id}-${jugador.sistema_juego}`}
+                        jugador={jugador}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
-          </div>
         </>
       )}
     </div>

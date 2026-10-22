@@ -6,6 +6,7 @@ import { AuthProvider } from './servicios/AuthContext.jsx';
 
 import Login from './paginas/Login.jsx';
 import Principal from './paginas/Principal.jsx';
+import Novedades from './paginas/novedades.jsx';
 import Registrarse from './paginas/Registrarse.jsx';
 import CrearTorneo from './paginas/CrearTorneo.jsx';
 import Perfil from './paginas/Perfil.jsx';
@@ -51,6 +52,10 @@ function App() {
         <Route 
             path='/registrarse' 
             element={<Registrarse onOpenLogin={() => setIsLoginOpen(true)} />} 
+        />
+        <Route
+            path='/novedades'
+            element={<Novedades />}
         />
         <Route 
             path="/reset-password" 

@@ -18,7 +18,8 @@
     "warmaster": "WARMASTER",
     "fow":       "FLAMES OF WAR",
     "epic":      "EPIC ARMAGEDDON",
-    "dracula":   "DRACULA'S AMERICA"
+    "dracula":   "DRACULA'S AMERICA",
+    "novedades": "What's new"
   },
   "navbar_login": {
       "menu":           "Menu",
@@ -48,7 +49,16 @@
     "gakis_boton":        "Create SAGA Tournament →",
     "dracula_titulo":     "⚔️ New game system: DRACULA'S AMERICA",
     "dracula_texto":      "You can now create tournaments for the DRACULA'S AMERICA wargame.",
-    "dracula_boton":      "Create DRACULA'S AMERICA Tournament →"
+    "dracula_boton":      "Create DRACULA'S AMERICA Tournament →",
+    "pagina_titulo": "What's new",
+    "pagina_subtitulo": "Everything new and coming soon to GestionaTusTorneos",
+    "filtro_todas": "All",
+    "filtro_nuevo": "New",
+    "filtro_proximamente": "Coming soon",
+    "ninguna": "No news in this category",
+    "teaser_titulo": "What's new?",
+    "teaser_texto": "Gakis system for SAGA, Dracula tournaments, new scenarios and much more.",
+    "ver_todas": "See what's new"
   },
   "ranking": {
     "titulo":            "ELO Ranking System",
@@ -116,7 +126,8 @@
     "añadir":           " Add",
     "pagado": "Paid",
     "reenviar_invitacion": "Resend Invitation",
-    "pendiente": "Pending"
+    "pendiente": "Pending",
+    "volver": " Back"
   },
   "paginacion": {
     "anterior":  "← Previous",

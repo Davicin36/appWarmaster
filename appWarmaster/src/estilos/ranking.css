@@ -1,5 +1,5 @@
 /* ============================================
-   RANKING.CSS — Reescrito desde cero
+   RANKING.CSS
    ============================================ */
 
 /* ── VARIABLES ── */
@@ -14,9 +14,9 @@
 }
 
 /* ── ANIMACIONES ── */
-@keyframes spin       { to { transform: rotate(360deg); } }
-@keyframes fadeIn     { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fadeInUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin     { to { transform: rotate(360deg); } }
+@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ============================================
    SPINNERS
@@ -34,7 +34,7 @@
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255,255,255,0.35);
+  border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -43,13 +43,15 @@
 }
 
 /* ============================================
-   PÁGINA PRINCIPAL
+   PÁGINA
    ============================================ */
 .ranking-page {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1600px;            /* más ancho: caben dos tarjetas alargadas por fila */
   margin: 0 auto;
   padding: 2rem 1rem;
   min-height: 100vh;
+  box-sizing: border-box;
   animation: fadeIn 0.4s ease;
 }
 
@@ -65,7 +67,7 @@
 }
 
 /* ============================================
-   HEADER
+   CABECERA
    ============================================ */
 .ranking-header {
   text-align: center;
@@ -82,7 +84,7 @@
   font-weight: 800;
   margin: 0 0 0.75rem;
   color: white;
-  text-shadow: 1px 2px 4px rgba(0,0,0,0.18);
+  text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.18);
 }
 
 .temporada-info {
@@ -95,25 +97,19 @@
 }
 
 .temporada-nombre {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   padding: 0.4rem 1rem;
   border-radius: 8px;
   backdrop-filter: blur(8px);
 }
 
-.temporada-año {
-  font-size: 1.3rem;
-  opacity: 0.85;
-  font-weight: 500;
-}
-
 /* ============================================
-   SELECTOR DE SISTEMA
+   SELECTOR DE SISTEMA (todos en una fila)
    ============================================ */
 .selector-sistema {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .selector-sistema h3 {
@@ -126,7 +122,7 @@
 
 .sistema-buttons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
 }
 
@@ -134,38 +130,36 @@
   background: white;
   border: 2px solid var(--color-beige-oscuro);
   border-radius: 12px;
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem 1rem;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
 }
 
 .sistema-btn:hover {
   border-color: var(--color-verde-oscuro);
   transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(98,129,65,0.22);
+  box-shadow: 0 6px 16px rgba(98, 129, 65, 0.22);
 }
 
 .sistema-btn.active {
   background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
   border-color: var(--color-verde-oscuro);
   color: white;
-  box-shadow: 0 6px 18px rgba(98,129,65,0.35);
+  box-shadow: 0 6px 18px rgba(98, 129, 65, 0.35);
 }
 
 .sistema-nombre {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--color-verde-oscuro);
-}
-
-.sistema-btn.active .sistema-nombre,
-.sistema-btn.active .sistema-stats {
-  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .sistema-stats {
@@ -177,7 +171,17 @@
   opacity: 0.85;
 }
 
-.stat-item { display: flex; align-items: center; gap: 0.25rem; }
+.sistema-btn.active .sistema-nombre,
+.sistema-btn.active .sistema-stats {
+  color: white;
+  opacity: 1;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
 
 /* Estados del selector */
 .selector-loading {
@@ -188,7 +192,7 @@
   padding: 2rem;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
   color: var(--color-verde-oscuro);
   font-weight: 600;
 }
@@ -217,21 +221,170 @@
 .selector-error button:hover { background: #c0392b; }
 
 /* ============================================
-   ESTADÍSTICAS GLOBALES (STAT CARDS)
+   FILTRO POR ZONA (país / comunidad / provincia)
+   ============================================ */
+.filtro-zona {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  background: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid var(--color-naranja);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.5rem;
+}
+
+.filtro-zona-titulo {
+  font-weight: 700;
+  color: var(--color-verde-oscuro);
+  white-space: nowrap;
+}
+
+.filtro-zona-selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  flex: 1;
+  align-items: center;
+}
+
+.filtro-zona-selects select {
+  padding: 0.5rem 0.85rem;
+  border: 2px solid var(--color-beige-oscuro);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-texto-principal);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 180px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filtro-zona-selects select:hover,
+.filtro-zona-selects select:focus {
+  border-color: var(--color-verde-oscuro);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(98, 129, 65, 0.1);
+}
+
+.filtro-zona-limpiar {
+  background: transparent;
+  border: 2px solid var(--color-beige-oscuro);
+  color: var(--color-texto-principal);
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filtro-zona-limpiar:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+/* ============================================
+   PESTAÑAS TEMPORADA / GENERAL
+   ============================================ */
+.ranking-container { animation: fadeInUp 0.4s ease-out; }
+
+.ranking-vistas {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ranking-vista-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-beige-oscuro);
+  background: white;
+  color: var(--color-verde-oscuro);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.ranking-vista-btn:hover:not(:disabled) {
+  border-color: var(--color-verde-oscuro);
+  transform: translateY(-2px);
+}
+
+.ranking-vista-btn.activa {
+  background: linear-gradient(135deg, var(--color-verde-oscuro), var(--color-verde-claro));
+  border-color: var(--color-verde-oscuro);
+  color: white;
+  box-shadow: 0 4px 12px rgba(98, 129, 65, 0.3);
+}
+
+.ranking-vista-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Selector de temporada */
+.ranking-selector-temporada {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.ranking-selector-temporada label {
+  font-weight: 700;
+  color: var(--color-verde-oscuro);
+}
+
+.ranking-selector-temporada select {
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--color-beige-oscuro);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-texto-principal);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ranking-selector-temporada select:hover,
+.ranking-selector-temporada select:focus {
+  border-color: var(--color-verde-oscuro);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(98, 129, 65, 0.1);
+}
+
+.ranking-temporada-nombre {
+  text-align: center;
+  font-style: italic;
+  color: var(--color-verde-oscuro);
+  margin-bottom: 1rem;
+  opacity: 0.85;
+}
+
+/* ============================================
+   ESTADÍSTICAS DEL SISTEMA (STAT CARDS)
    ============================================ */
 .ranking-estadisticas {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   margin-bottom: 1.75rem;
-  flex-wrap: wrap;
 }
 
 .stat-card {
   background: white;
   padding: 1.25rem 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   gap: 0.85rem;
@@ -239,22 +392,28 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
-.stat-card > div { display: flex; flex-direction: column; }
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
 
-.stat-numero { font-size: 1.8rem; font-weight: 700; color: var(--color-verde-oscuro); line-height: 1; }
-.stat-texto  { font-size: 0.85rem; color: #7F8C8D; margin-top: 0.2rem; }
+.stat-card > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card .stat-icono  { font-size: 2rem; }
+.stat-card .stat-numero { font-size: 1.8rem; font-weight: 700; color: var(--color-verde-oscuro); line-height: 1; }
+.stat-card .stat-texto  { font-size: 0.85rem; color: #7F8C8D; margin-top: 0.2rem; }
 
 /* ============================================
    FILTROS
    ============================================ */
-.ranking-container { animation: fadeInUp 0.4s ease-out; }
-
 .ranking-filtros {
   background: white;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 1.5rem;
   display: flex;
   gap: 1rem;
@@ -262,8 +421,18 @@
   flex-wrap: wrap;
 }
 
-.filtro { display: flex; align-items: center; gap: 0.5rem; }
-.filtro label { font-weight: 600; color: var(--color-verde-oscuro); white-space: nowrap; font-size: 0.9rem; }
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filtro label {
+  font-weight: 600;
+  color: var(--color-verde-oscuro);
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
 
 .filtro select {
   padding: 0.45rem 0.85rem;
@@ -281,7 +450,7 @@
 .filtro select:focus {
   border-color: var(--color-verde-oscuro);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(98,129,65,0.1);
+  box-shadow: 0 0 0 3px rgba(98, 129, 65, 0.1);
 }
 
 .btn-actualizar {
@@ -289,23 +458,32 @@
   background: linear-gradient(135deg, var(--color-naranja), var(--color-naranja-hover));
   color: white;
   border: none;
-  padding: 0.5rem 1.4rem;
+  padding: 0.55rem 1.4rem;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 6px rgba(230,126,34,0.3);
+  box-shadow: 0 2px 6px rgba(230, 126, 34, 0.3);
   font-size: 0.9rem;
 }
 
-.btn-actualizar:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(230,126,34,0.4); }
+.btn-actualizar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4);
+}
 
 /* ============================================
    LISTA
    ============================================ */
-.ranking-lista { display: flex; flex-direction: column; gap: 0.85rem; }
+.ranking-lista {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);   /* dos jugadores por fila */
+  gap: 1rem;
+  align-items: stretch;
+}
 
 .ranking-vacio {
+  grid-column: 1 / -1;                     /* el mensaje vacío ocupa toda la fila */
   text-align: center;
   padding: 3rem 2rem;
   background: white;
@@ -314,7 +492,7 @@
 }
 
 .ranking-vacio p                 { color: var(--color-texto-principal); font-size: 1rem; margin: 0.4rem 0; }
-.ranking-vacio .texto-secundario { color: #7F8C8D; font-size: 0.88rem; }
+.ranking-vacio .texto-secundario { color: #7F8C8D; font-size: 0.9rem; }
 
 .ranking-loading,
 .ranking-error {
@@ -326,6 +504,8 @@
   gap: 1rem;
   font-weight: 600;
 }
+
+.ranking-loading { color: var(--color-verde-oscuro); }
 
 .ranking-error {
   background: #FADBD8;
@@ -354,7 +534,7 @@
   background: white;
   border-radius: 12px;
   border-left: 5px solid transparent;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   overflow: hidden;
@@ -364,7 +544,7 @@
 
 .tarjeta-jugador:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.13);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.13);
 }
 
 /* Colores por categoría */
@@ -384,7 +564,6 @@
   padding: 1.25rem 1.5rem;
 }
 
-/* Posición */
 .jugador-posicion {
   font-size: 1.9rem;
   font-weight: 800;
@@ -395,7 +574,6 @@
   line-height: 1;
 }
 
-/* Nombre + club */
 .jugador-info {
   flex: 1;
   min-width: 0;
@@ -405,7 +583,7 @@
 }
 
 .jugador-nombre {
-  font-size: 1,5rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--color-texto-principal);
   margin: 0;
@@ -416,7 +594,7 @@
 }
 
 .jugador-club {
-  font-size: 0.90rem;
+  font-size: 0.9rem;
   color: #7F8C8D;
   margin: 0;
 }
@@ -471,14 +649,29 @@
   flex-shrink: 0;
 }
 
-.categoria-icono  { font-size: 1.6rem; line-height: 1; }
-.categoria-nombre { font-size: 0.75rem; font-weight: 700; color: var(--color-verde-oscuro); text-align: center; }
+.jugador-categoria .categoria-icono  { font-size: 1.6rem; line-height: 1; }
+.jugador-categoria .categoria-nombre { font-size: 0.75rem; font-weight: 700; color: var(--color-verde-oscuro); text-align: center; }
 
-/* ── FILA INFERIOR: ESTADÍSTICAS ── */
+/* Jugador provisional (no llega al mínimo de partidas) */
+.badge-provisional {
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  background: #f0ad4e;
+  color: #fff;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.tarjeta-jugador.tarjeta-provisional {
+  opacity: 0.75;
+}
+
+/* ── FILA INFERIOR: ESTADÍSTICAS (todas en una fila) ── */
 .jugador-estadisticas {
   display: flex;
   border-top: 1px solid var(--color-beige);
   background: #fafaf8;
+  margin-top: auto;                        /* pegadas abajo: tarjetas de la misma fila alineadas */
 }
 
 .stat {
@@ -582,19 +775,213 @@
   border-radius: 22px;
   background: white;
   border: 2px solid var(--color-beige-oscuro);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
 }
 
 .stat-inline-chip.chip-grande .chip-label { font-size: 0.78rem; }
 .stat-inline-chip.chip-grande .chip-valor { font-size: 0.95rem; }
 
 /* ============================================
+   PODIO (1º centro, 2º izquierda, 3º derecha)
+   ============================================ */
+.podio-ranking {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 1.5rem;
+  align-items: end;                        /* bases alineadas abajo, como un podio */
+  margin: 1rem 0 2.5rem;
+}
+
+.podio-card {
+  background: white;
+  border-radius: 16px;
+  border-top: 6px solid transparent;
+  padding: 1.5rem 1.25rem 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.podio-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+}
+
+.podio-1 { border-top-color: var(--elo-gran-maestro); padding-top: 2rem; box-shadow: 0 10px 28px rgba(255, 215, 0, 0.35); }
+.podio-2 { border-top-color: var(--elo-maestro); }
+.podio-3 { border-top-color: var(--elo-experto); }
+
+.podio-medalla { font-size: 3rem; line-height: 1; }
+.podio-1 .podio-medalla { font-size: 4.2rem; }
+
+.podio-nombre {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-texto-principal);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.podio-1 .podio-nombre { font-size: 1.55rem; }
+
+.podio-club {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #7F8C8D;
+}
+
+.podio-elo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  margin-top: 0.25rem;
+}
+
+.podio-elo-valor {
+  font-size: 2.3rem;
+  font-weight: 800;
+  color: var(--color-naranja);
+}
+
+.podio-1 .podio-elo-valor { font-size: 3rem; }
+
+.podio-elo-label {
+  font-size: 0.7rem;
+  color: #7F8C8D;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+}
+
+.podio-elo-max {
+  font-size: 0.78rem;
+  color: #27AE60;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+.podio-categoria {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 20px;
+  background: var(--color-beige);
+  color: var(--color-verde-oscuro);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.podio-categoria-icono { font-size: 1.1rem; line-height: 1; }
+
+/* Estadísticas: 3 por fila; las líneas de separación salen del hueco de 1px del grid */
+.podio-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  width: calc(100% + 2.5rem);
+  margin: 0.75rem -1.25rem 0;
+  background: var(--color-beige);
+  border-top: 1px solid var(--color-beige);
+}
+
+.podio-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem 0.4rem;
+  background: #fafaf8;
+  min-width: 0;
+}
+
+.podio-stat-valor {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-verde-oscuro);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.podio-stat-valor.podio-stat-texto {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.podio-stat-valor .victoria { color: #27AE60; }
+.podio-stat-valor .derrota  { color: var(--color-error); }
+.podio-stat-valor .empate   { color: #95a5a6; }
+
+.podio-stat-label {
+  font-size: 0.62rem;
+  color: #9B9B9B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Escalón del podio */
+.podio-base {
+  width: calc(100% + 2.5rem);
+  margin: 0 -1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.podio-1 .podio-base { height: 80px; font-size: 2.2rem; background: linear-gradient(135deg, #f7d43a, #d4a017); }
+.podio-2 .podio-base { height: 56px; font-size: 1.7rem; background: linear-gradient(135deg, #d9d9d9, #a8a8a8); }
+.podio-3 .podio-base { height: 40px; font-size: 1.4rem; background: linear-gradient(135deg, #d99a5b, #a8692b); }
+
+/* Hueco vacío cuando hay menos de 3 jugadores */
+.podio-hueco { min-height: 1px; }
+
+/* Título del resto de la clasificación */
+.ranking-resto-titulo {
+  text-align: center;
+  font-size: 1.3rem;
+  color: var(--color-verde-oscuro);
+  margin: 0 0 1.25rem;
+}
+
+/* ============================================
+   RESPONSIVE — PANTALLAS MEDIANAS
+   ============================================ */
+@media (max-width: 1300px) {
+  .ranking-lista { grid-template-columns: 1fr; }   /* una tarjeta alargada por fila */
+}
+
+/* ============================================
    RESPONSIVE — TABLET
    ============================================ */
 @media (max-width: 900px) {
-  .tarjeta-top-row { gap: 1rem; padding: 1rem 1.25rem; }
-  .jugador-nombre  { font-size: 0.98rem; }
-  .elo-valor       { font-size: 1.7rem; }
+  /* Podio apilado: 1º arriba, luego 2º y 3º */
+  .podio-ranking {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .podio-1   { order: -1; }
+  .podio-hueco { display: none; }
+  .podio-base  { height: 36px !important; font-size: 1.3rem !important; }
+
+  .tarjeta-top-row   { gap: 1rem; padding: 1rem 1.25rem; }
+  .jugador-nombre    { font-size: 1rem; }
+  .elo-valor         { font-size: 1.7rem; }
   .jugador-categoria { min-width: 88px; }
 }
 
@@ -602,15 +989,32 @@
    RESPONSIVE — MÓVIL
    ============================================ */
 @media (max-width: 640px) {
-  .ranking-header h1     { font-size: 1.8rem; }
-  .selector-sistema h3   { font-size: 1.3rem; }
-  .sistema-buttons       { grid-template-columns: 1fr; }
-  .ranking-filtros       { flex-direction: column; padding: 1rem; }
-  .filtro                { width: 100%; justify-content: space-between; }
-  .filtro select         { flex: 1; }
-  .btn-actualizar        { width: 100%; margin-left: 0; }
+  .ranking-header h1   { font-size: 1.8rem; }
+  .selector-sistema h3 { font-size: 1.3rem; }
 
-  /* Top row: posición + info en primera línea, elo+categoria en segunda */
+  .sistema-buttons {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .ranking-vista-btn { font-size: 0.9rem; padding: 0.6rem 0.5rem; }
+
+  .filtro-zona { padding: 1rem; }
+  .filtro-zona-selects { flex-direction: column; align-items: stretch; width: 100%; }
+  .filtro-zona-selects select { min-width: 0; width: 100%; }
+
+  .ranking-selector-temporada {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .ranking-selector-temporada select { width: 100%; }
+
+  .ranking-filtros { flex-direction: column; padding: 1rem; }
+  .filtro          { width: 100%; justify-content: space-between; }
+  .filtro select   { flex: 1; }
+  .btn-actualizar  { width: 100%; margin-left: 0; }
+
+  /* Top row: posición + info en primera línea, ELO + categoría en segunda */
   .tarjeta-top-row {
     flex-wrap: wrap;
     padding: 1rem;
@@ -635,53 +1039,26 @@
     padding: 0.5rem 0.75rem;
   }
 
-  /* Estadísticas: 3 por fila en móvil */
-  .stat { padding: 0.7rem 0.25rem; }
-  .stat-label { font-size: 0.6rem; }
-  .stat-valor { font-size: 0.88rem; }
+  .stat                  { padding: 0.7rem 0.25rem; }
+  .stat-label            { font-size: 0.6rem; }
+  .stat-valor            { font-size: 0.88rem; }
   .stat-valor.epoca-stat { font-size: 0.75rem; }
 }
 
 @media (max-width: 420px) {
   .tarjeta-top-row { padding: 0.85rem; }
 
-  /* 2 stats por fila en pantallas muy pequeñas */
+  /* 2 estadísticas por fila */
   .jugador-estadisticas { flex-wrap: wrap; }
+
   .stat {
     flex: 1 1 calc(50% - 1px);
     border-right: none;
     border-bottom: 1px solid var(--color-beige);
   }
-  .stat:nth-child(odd)  { border-right: 1px solid var(--color-beige); }
-  .stat:last-child, 
+
+  .stat:nth-child(odd) { border-right: 1px solid var(--color-beige); }
+
+  .stat:last-child,
   .stat:nth-last-child(2):nth-child(odd) { border-bottom: none; }
-}
-
-.ranking-vistas {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.ranking-vista-btn {
-  flex: 1;
-  padding: 0.6rem 1rem;
-  border: 2px solid var(--color-borde, #ccc);
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.ranking-vista-btn.activa {
-  background: var(--color-primario, #8b0000);
-  border-color: var(--color-primario, #8b0000);
-  color: #fff;
-}
-
-.ranking-temporada-nombre {
-  text-align: center;
-  font-style: italic;
-  margin-bottom: 1rem;
-  opacity: 0.8;
 }

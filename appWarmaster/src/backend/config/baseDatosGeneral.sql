@@ -22,7 +22,10 @@ CREATE TABLE usuarios (
   rol ENUM('organizador', 'jugador', 'superadmin') DEFAULT 'jugador',
   localidad VARCHAR(200),
   pais VARCHAR(200),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_usuarios_pais ON usuarios (pais),
+  INDEX idx_usuarios_cp ON usuarios (codigo_postal);
 );
 
 CREATE TABLE torneos_sistemas (

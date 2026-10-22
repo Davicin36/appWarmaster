@@ -15,9 +15,8 @@ import Footer from '@/paginas/Footer.jsx';
 import vikingo from '../assets/vikingo.png';
 
 import '../estilos/principal.css';
-import '../estilos/novedades.css';
 
-const TORNEOS_POR_PAGINA = 5;
+const TORNEOS_POR_PAGINA = 6;
 
 function Principal({ onOpenLogin }) {
     const { t, i18n } = useTranslation();
@@ -113,69 +112,6 @@ function Principal({ onOpenLogin }) {
                 <img src={vikingo} alt="logo de Web" />
             </section>
 
-            {/* PRÓXIMAMENTE */}
-            <section className="seccion-novedad">
-                <span className="novedad-badge">{t('novedades.proximamente_label')}</span>
-                <div className="novedad-banner">
-                    <div className="novedad-contenido">
-                        <h3>{t('novedades.escenarios_titulo')}</h3>
-                        <p>{t('novedades.escenarios_texto')}</p>
-                    </div>
-                </div>
-            </section>
-
-            {/* NOVEDAD: SISTEMA GAKIS + DRACULAS */}
-            <section className="seccion-novedad">
-                <span className="novedad-badge">{t('novedades.nuevo_label')}</span>
-                <div className="novedad-banner">
-                    <div className="novedad-banner">
-                            <div className="novedad-contenido">
-                            <h3>{t('novedades.escenarios_titulo2')}</h3>
-                            <p>{t('novedades.escenarios_texto2')}</p>
-                        </div>
-                    </div>
-                    
-                    <div className="novedad-banner">
-                        <div className="novedad-contenido">
-                            <h3>{t('novedades.gakis_titulo')}</h3>
-                            <p><strong>{t('novedades.gakis_subtitulo')}</strong></p>
-                            <p>{t('novedades.gakis_intro')}</p>
-                            <ul className="gakis-features">
-                                <li>
-                                    <strong>{t('novedades.gakis_f1_titulo')}</strong>
-                                    <p>{t('novedades.gakis_f1_texto')}</p>
-                                </li>
-                                <li>
-                                    <strong>{t('novedades.gakis_f2_titulo')}</strong>
-                                    <p>{t('novedades.gakis_f2_texto')}</p>
-                                </li>
-                                <li>
-                                    <strong>{t('novedades.gakis_f3_titulo')}</strong>
-                                    <p>{t('novedades.gakis_f3_texto')}</p>
-                                </li>
-                                <li>
-                                    <strong>{t('novedades.gakis_f4_titulo')}</strong>
-                                    <p>{t('novedades.gakis_f4_texto')}</p>
-                                </li>
-                            </ul>
-                        </div>
-                        <button className="btn-ver-saga" onClick={() => navigate('/crearTorneo/saga')}>
-                            {t('novedades.gakis_boton')}
-                        </button>
-                        </div>
-
-                        <div className="novedad-banner">
-                            <div className="novedad-contenido">
-                                <h3>{t('novedades.dracula_titulo')}</h3>
-                                <p>{t('novedades.dracula_texto')}</p>
-                            </div>
-                            <button className="btn-ver-saga" onClick={() => navigate('/crearTorneo/dracula')}>
-                                    {t('novedades.dracula_boton')}
-                            </button>
-                        </div>
-                </div>
-            </section>
-
             {/* RANKING */}
             <section className="seccion-ranking-destacada">
                 <div className="ranking-hero">
@@ -209,6 +145,13 @@ function Principal({ onOpenLogin }) {
                         </div>
                     </div>
                 </div>
+                <div className="novedades-web">
+                    <h3 className="novedades-web-titulo">✨ {t('novedades.teaser_titulo')}</h3>
+                    <button className="btn-nav-novedades" onClick={() => navigate('/novedades')}>
+                        ✨ {t('nav.novedades')}
+                    </button>
+                </div>
+                
             </section>
 
             {/* NAVEGACIÓN */}

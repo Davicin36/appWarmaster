@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import { pool } from '../config/bd.js';
 import { validarCodigoPostal } from '../utils/validaciones.js';
 import emailRecuperar  from '../utils/emailRecuperar.js';
+import { normalizarPais, nombrePais } from '../utilsRanking/paises.js';
 import { 
   validarEmail, 
   validarCamposRequeridos, 
@@ -76,6 +77,8 @@ router.post('/registro', async (req, res) => {
       aceptaTerminos
     } = req.body;
 
+    const paisCodigo = normalizarPais(pais);
+
     await connection.beginTransaction();
 
     if (!aceptaTerminos) {
@@ -118,7 +121,7 @@ router.post('/registro', async (req, res) => {
             club || null,
             codigo_postal || null,
             localidad || null,
-            pais || null,
+            paisCodigo,
             hashedPassword,
             aceptaTerminos,
             usuario.id
@@ -177,7 +180,7 @@ router.post('/registro', async (req, res) => {
         email.toLowerCase().trim(),
         codigo_postal || null,
         localidad || null,
-        pais || null,
+        paisCodigo,
         hashedPassword,
         aceptaTerminos,
         'activo'
@@ -293,7 +296,8 @@ router.post('/login', async (req, res) => {
           email: usuario.email,
           rol: usuario.rol,
           localidad: usuario.localidad,
-          pais: usuario.pais
+          pais: usuario.pais,
+          codigo_postal: usuario.codigo_postal
         }
       }
     });
@@ -340,7 +344,7 @@ router.get('/verificar', async (req, res) => {
     
     // Buscar usuario en la base de datos
     const [usuarios] = await pool.execute(
-      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol, localidad, pais
+      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol, localidad, pais, codigo_postal
        FROM usuarios WHERE id = ?`,
       [decoded.userId]
     );
@@ -365,7 +369,8 @@ router.get('/verificar', async (req, res) => {
           email: usuario.email,
           rol: usuario.rol,
           localidad: usuario.localidad,
-          pais: usuario.pais
+          pais: usuario.pais,
+          codigo_postal: usuario.codigo_postal
         }
       })
     );
@@ -419,7 +424,7 @@ router.put('/actualizarPerfil', async (req, res) => {
     club = club?.trim() || null;
     email = email?.trim().toLowerCase();
     localidad = localidad?.trim();
-    pais = pais?.trim();
+    pais = normalizarPais(pais);
     codigo_postal = codigo_postal?.trim()
     
     //validar campor requeridos
@@ -453,13 +458,13 @@ router.put('/actualizarPerfil', async (req, res) => {
       );
     }
 
-    if (!pais || pais.length < 2) {
+    if (!pais) {
       return res.status(400).json(
         errorResponse('Debes seleccionar un país válido')
       );
     }
 
-    const validacionCP = validarCodigoPostal(codigo_postal, pais);
+    const validacionCP = validarCodigoPostal(codigo_postal, nombrePais(pais, 'es'));
     
     if (!validacionCP.valido) {
       return res.status(400).json(
@@ -664,7 +669,7 @@ router.post('/convertirOrganizador', async (req, res) => {
     
     // Obtener datos actualizados del usuario
     const [usuarios] = await pool.execute(
-      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol 
+      `SELECT id, nombre, apellidos, nombre_alias, club, email, rol, localidad, pais, codigo_postal
        FROM usuarios WHERE id = ?`,
       [decoded.userId]
     );
@@ -689,7 +694,8 @@ router.post('/convertirOrganizador', async (req, res) => {
           email: usuario.email,
           rol: usuario.rol,
           localidad: usuario.localidad,
-          pais: usuario.pais
+          pais: usuario.pais,
+          codigo_postal: usuario.codigo_postal
         }
       })
     );

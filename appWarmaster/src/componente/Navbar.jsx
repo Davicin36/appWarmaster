@@ -27,10 +27,11 @@ function Navbar({ onOpenLogin }) {
                     <BotonIdioma />
                 </div>
 
-                <div className="navbar-right">
+                <div className={`navbar-right ${isAuthenticated ? '' : 'navbar-right-invitado'}`}>
 
                     {isAuthenticated ? (
                         <>
+                            {/* En pantalla estrecha se oculta y su contenido pasa al menú */}
                             <div className="user-section">
                                 <div className="user-info">
                                     <span className="welcome-message">
@@ -54,7 +55,8 @@ function Navbar({ onOpenLogin }) {
                                     {t('navbar.cerrar_sesion')}
                                 </button>
                             </div>
-                            <div className="navbar-login-container">
+
+                            <div className="navbar-hamburguesa">
                                 <NavbarLogin />
                             </div>
                         </>

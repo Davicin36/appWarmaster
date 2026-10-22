@@ -9,7 +9,8 @@
     "warmaster": "WARMASTER",
     "fow": "FLAMES OF WAR",
     "epic": "EPIC ARMAGEDÓN",
-    "dracula": "DRACULA'S AMÉRICA"
+    "dracula": "DRACULA'S AMÉRICA",
+    "novedades": "Novedades"
   },
    "navbar": {
       "titulo": "Gestión de Torneos WARGAMES",
@@ -48,7 +49,16 @@
     "gakis_boton":        "Crear Torneo SAGA →",
     "dracula_titulo":     "⚔️ Nuevo sistema de juego DRACULA'S AMERICA",
     "dracula_texto":      "Ya puedes crear torneos del WARGAME DRACULA'S AMERICA.",
-    "dracula_boton":      "Crear Torneo DRACULA'S AMERICA →"
+    "dracula_boton":      "Crear Torneo DRACULA'S AMERICA →",
+    "pagina_titulo": "Novedades",
+    "pagina_subtitulo": "Todo lo nuevo y lo que está por llegar a GestionaTusTorneos",
+    "filtro_todas": "Todas",
+    "filtro_nuevo": "Nuevo",
+    "filtro_proximamente": "Próximamente",
+    "ninguna": "No hay novedades en esta categoría",
+    "teaser_titulo": "¿Qué hay de nuevo?",
+    "teaser_texto": "Sistema Gakis para SAGA, torneos de Dracula, nuevos escenarios y mucho más.",
+    "ver_todas": "Ver novedades"
   },
   "ranking": {
     "titulo":            "Sistema de Ranking ELO",
@@ -102,21 +112,22 @@
     "finalizado": "✅ Finalizado"
   },
   "botones": {
-    "reintentar":      "🔄 Reintentar",
+    "reintentar":      " Reintentar",
     "administrar":     "Administrar",
     "inscribirse":     " Inscribirse",
     "adm_inscripcion": " Administrar mi Inscripción",
     "ver_detalles":    "Ver Detalles",
-    "actualizar":      "🔄 Actualizar",
-    "compartir":       "📤 Compartir",
+    "actualizar":      " Actualizar",
+    "compartir":       " Compartir",
     "cancelar":        "Cancelar",
-    "guardar":         "💾 Guardar",
+    "guardar":         " Guardar",
     "confirmar":       "Confirmar",
     "eliminar":        " Eliminar",
     "añadir":           "Añadir",
     "pagado":            "Pagado",
     "pendiente":         "Pendiente",
-    "reenviar_invitacion": "Reenviar"
+    "reenviar_invitacion": "Reenviar",
+    "volver":            "Volver"
 
   },
   "paginacion": {

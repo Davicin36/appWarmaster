@@ -70,13 +70,16 @@ class RankingApi {
   // ====================
 
   async obtenerRanking(sistemaJuego, params = {}) {
-    const { limit = 100, minPartidas = 0, año } = params;
+    const { limit = 100, minPartidas = 0, año, pais, comunidad, provincia } = params;
     const queryParams = new URLSearchParams({
       limit: limit.toString(),
       minPartidas: minPartidas.toString(),
-      ...(año && { año: año.toString() })
+      ...(año && { año: año.toString() }),
+      ...(pais && { pais }),
+      ...(comunidad && { comunidad }),
+      ...(provincia && { provincia }),
     });
-    
+
     return this.request(`/ranking/${sistemaJuego}?${queryParams}`);
   }
 
@@ -92,6 +95,10 @@ class RankingApi {
 
   async obtenerRankingPorCategoria(sistemaJuego) {
     return this.request(`/ranking-por-categoria/${sistemaJuego}`);
+  }
+
+  async obtenerPaisesDisponibles() {
+    return this.request('/paises-disponibles');
   }
 
   // ====================
