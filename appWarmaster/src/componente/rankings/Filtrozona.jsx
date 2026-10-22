@@ -11,10 +11,10 @@ import { listaPaises } from '@/funciones/paises';
  *   zona:              { pais, comunidad, provincia }
  *   onCambiar:         (nuevaZona) => void
  */
-function FiltroZona({ paisesDisponibles = [], zona, onCambiar }) {
+function Filtrozona({ paisesDisponibles = [], zona, onCambiar }) {
   const { t, i18n } = useTranslation();
   const idioma = i18n.language?.slice(0, 2) || 'es';
-  const { pais, comunidad, provincia } = zona;
+  const { pais, comunidad, provincia } = zona;  
 
   // Si nadie ha indicado su país todavía, no tiene sentido mostrar el filtro
   if (paisesDisponibles.length === 0) return null;
@@ -66,4 +66,4 @@ function FiltroZona({ paisesDisponibles = [], zona, onCambiar }) {
   );
 }
 
-export default FiltroZona;
+export default Filtrozona;
