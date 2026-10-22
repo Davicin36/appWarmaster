@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import SelectorSistema from '../componente/rankings/SelectorSistema';
 import RankingPorSistema from '../componente/rankings/RankingPorSistema';
-import FiltroZona from '../componente/rankings/FiltroZona';
+import FiltroZona from '../componente/rankings/Filtrozona';
 
 import apiRanking from '../servicios/apiRanking';
 import '@/estilos/ranking.css';

@@ -1,4 +1,4 @@
-// componente/rankings/FiltroZona.jsx
+// componente/rankings/Filtrozona.jsx
 import { useTranslation } from 'react-i18next';
 import { listaComunidades } from '@/funciones/provinciasES';
 import { listaPaises } from '@/funciones/paises';
