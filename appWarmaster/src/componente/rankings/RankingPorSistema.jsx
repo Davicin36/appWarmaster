@@ -7,7 +7,7 @@ import PodioRanking from './PodioRanking';
 
 import '@/estilos/ranking.css';
 
-const RankingPorSistema = ({ sistema }) => {
+const RankingPorSistema = ({ sistema, zona = {} }) => {
   const { t } = useTranslation();
   const [ranking, setRanking] = useState([]);
   const [estadisticas, setEstadisticas] = useState(null);
@@ -21,11 +21,13 @@ const RankingPorSistema = ({ sistema }) => {
     minPartidas: sistema?.toLowerCase() === 'saga' ? 3 : 0
   });
 
+  const hayFiltroZona = !!(zona.pais || zona.comunidad || zona.provincia);
+
   // Podio: los 3 primeros que no sean provisionales
-const oficiales = ranking.filter(j => !j.provisional);
-const podio = oficiales.slice(0, 3);
-const idsPodio = new Set(podio.map(j => j.jugador_id));
-const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
+  const oficiales = ranking.filter(j => !j.provisional);
+  const podio = oficiales.slice(0, 3);
+  const idsPodio = new Set(podio.map(j => j.jugador_id));
+  const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
 
   // Al cambiar de sistema: cargar sus temporadas y volver a la actual
   useEffect(() => {
@@ -33,7 +35,10 @@ const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
     cargarTemporadas();
   }, [sistema]);
 
-  useEffect(() => { cargarDatos(); }, [sistema, filtros, vista, añoSeleccionado]);
+  // Recargar cuando cambie cualquier filtro, incluida la zona
+  useEffect(() => {
+    cargarDatos();
+  }, [sistema, filtros, vista, añoSeleccionado, zona.pais, zona.comunidad, zona.provincia]);
 
   const cargarTemporadas = async () => {
     try {
@@ -52,9 +57,16 @@ const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
     // general → 'general' | anual → año elegido, o vacío para la actual
     const año = vista === 'general' ? 'general' : (añoSeleccionado || undefined);
 
+    // Zona: comunidad y provincia solo existen en España
+    const filtroZona = {
+      pais: zona.pais || undefined,
+      comunidad: zona.pais === 'ES' && !zona.provincia ? (zona.comunidad || undefined) : undefined,
+      provincia: zona.pais === 'ES' ? (zona.provincia || undefined) : undefined,
+    };
+
     try {
       const [rankingData, statsData] = await Promise.all([
-        rankingApi.obtenerRanking(sistema, { ...filtros, año }),
+        rankingApi.obtenerRanking(sistema, { ...filtros, año, ...filtroZona }),
         rankingApi.obtenerEstadisticasSistema(sistema, año)
       ]);
       setRanking(rankingData);
@@ -72,6 +84,13 @@ const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
   };
 
   const nombreTemporada = ranking[0]?.temporada_nombre;
+
+  // Mensaje cuando no hay jugadores, según el motivo
+  const mensajeVacio = () => {
+    if (hayFiltroZona) return t('ranking_zona.sin_jugadores_zona', 'No hay jugadores de esta zona en el ranking');
+    if (vista === 'anual' && !añoSeleccionado) return t('ranking_sistema.temporada_sin_partidas');
+    return t('ranking_sistema.sin_jugadores_hint');
+  };
 
   return (
     <div className="ranking-container">
@@ -129,7 +148,7 @@ const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
         </div>
       ) : (
         <>
-          {/* Estadísticas */}
+          {/* Estadísticas del sistema (totales, sin filtro de zona) */}
           {estadisticas && estadisticas.total_jugadores > 0 && (
             <div className="ranking-estadisticas">
               <div className="stat-card">
@@ -184,32 +203,28 @@ const resto = ranking.filter(j => !idsPodio.has(j.jugador_id));
             </button>
           </div>
 
-            {/* Lista de jugadores */}
-            {ranking.length === 0 ? (
-              <div className="ranking-vacio">
-                <p>📊 {t('ranking_sistema.sin_jugadores')}</p>
-                <p className="texto-secundario">
-                  {vista === 'anual' && !añoSeleccionado
-                    ? t('ranking_sistema.temporada_sin_partidas')
-                    : t('ranking_sistema.sin_jugadores_hint')}
-                </p>
-              </div>
-            ) : (
-              <>
-                <PodioRanking jugadores={podio} />
+          {/* Lista de jugadores */}
+          {ranking.length === 0 ? (
+            <div className="ranking-vacio">
+              <p>📊 {t('ranking_sistema.sin_jugadores')}</p>
+              <p className="texto-secundario">{mensajeVacio()}</p>
+            </div>
+          ) : (
+            <>
+              <PodioRanking jugadores={podio} />
 
-                {resto.length > 0 && (
-                  <div className="ranking-lista">
-                    {resto.map((jugador) => (
-                      <TarjetaJugador
-                        key={`${jugador.jugador_id}-${jugador.sistema_juego}`}
-                        jugador={jugador}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+              {resto.length > 0 && (
+                <div className="ranking-lista">
+                  {resto.map((jugador) => (
+                    <TarjetaJugador
+                      key={`${jugador.jugador_id}-${jugador.sistema_juego}`}
+                      jugador={jugador}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
     </div>
