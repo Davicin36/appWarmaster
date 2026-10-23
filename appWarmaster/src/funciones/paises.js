@@ -23,6 +23,15 @@ export const CODIGOS_PAISES = [
   'VN','VU','WF','WS','YE','YT','ZA','ZM','ZW',
 ];
 
+/**
+ * Países que se ofrecen en los formularios de registro y perfil
+ * (el resto se puede añadir aquí cuando haga falta).
+ */
+export const PAISES_FORMULARIO = [
+  'ES', 'PT', 'FR', 'IT', 'DE', 'GB', 'NL', 'BE', 'CH', 'AT',
+  'US', 'CA', 'MX', 'AR', 'BR',
+];
+
 /** ¿Es un código de país válido? */
 export function esPaisValido(codigo) {
   return CODIGOS_PAISES.includes(String(codigo || '').toUpperCase());
@@ -46,6 +55,38 @@ export function nombrePais(codigo, idioma = 'es') {
   } catch {
     return String(codigo).toUpperCase();
   }
+}
+
+/**
+ * Convierte lo que venga (código o nombre) a código ISO:
+ *   'ES' → 'ES' | 'es' → 'ES' | 'España' → 'ES' | 'españa' → 'ES' | 'Spain' → 'ES'
+ * Sirve para datos antiguos guardados como nombre. Devuelve null si no lo reconoce.
+ */
+export function normalizarPais(valor) {
+  if (!valor) return null;
+  const texto = String(valor).trim();
+
+  if (esPaisValido(texto)) return texto.toUpperCase();
+
+  const buscado = texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // quita tildes: "españa" → "espana"
+
+  for (const idioma of ['es', 'en']) {
+    for (const codigo of CODIGOS_PAISES) {
+      const nombre = nombrePais(codigo, idioma)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      if (nombre === buscado) return codigo;
+    }
+  }
+
+  // Variantes mal escritas de España ("españ", "espa")
+  if (/^espa/.test(buscado)) return 'ES';
+
+  return null;
 }
 
 /**

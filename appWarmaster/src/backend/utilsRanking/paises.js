@@ -23,6 +23,15 @@ export const CODIGOS_PAISES = [
   'VN','VU','WF','WS','YE','YT','ZA','ZM','ZW',
 ];
 
+/**
+ * Países que se ofrecen en los formularios de registro y perfil
+ * (el resto se puede añadir aquí cuando haga falta).
+ */
+export const PAISES_FORMULARIO = [
+  'ES', 'PT', 'FR', 'IT', 'DE', 'GB', 'NL', 'BE', 'CH', 'AT',
+  'US', 'CA', 'MX', 'AR', 'BR',
+];
+
 /** ¿Es un código de país válido? */
 export function esPaisValido(codigo) {
   return CODIGOS_PAISES.includes(String(codigo || '').toUpperCase());

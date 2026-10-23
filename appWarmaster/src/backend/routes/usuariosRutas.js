@@ -61,151 +61,126 @@ router.get('/', async (req, res) => {
 // ======REGISTRO DE USUARIO=======
 
 router.post('/registro', async (req, res) => {
+  // ── 1. Limpiar y validar ANTES de tocar la base de datos ──
+  const nombre        = req.body.nombre?.trim();
+  const apellidos     = req.body.apellidos?.trim();
+  const nombre_alias  = req.body.nombre_alias?.trim() || null;
+  const club          = req.body.club?.trim() || null;
+  const email         = req.body.email?.trim().toLowerCase();
+  const codigo_postal = req.body.codigo_postal?.trim().toUpperCase();
+  const localidad     = req.body.localidad?.trim();
+  const paisCodigo    = normalizarPais(req.body.pais);   // 'España' o 'ES' → 'ES'
+  const { password, aceptaTerminos } = req.body;
+
+  if (!aceptaTerminos) {
+    return res.status(400).json(errorResponse('Debes aceptar los Términos y Condiciones'));
+  }
+
+  if (!nombre || !apellidos || !email || !password) {
+    return res.status(400).json(errorResponse('Nombre, apellidos, email y contraseña son obligatorios'));
+  }
+
+  if (!validarEmail(email)) {
+    return res.status(400).json(errorResponse('Formato de email no válido'));
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json(errorResponse('La contraseña debe tener al menos 6 caracteres'));
+  }
+
+  if (!paisCodigo) {
+    return res.status(400).json(errorResponse('Debes seleccionar un país válido'));
+  }
+
+  if (!codigo_postal) {
+    return res.status(400).json(errorResponse('El código postal es obligatorio'));
+  }
+
+  const validacionCP = validarCodigoPostal(codigo_postal, nombrePais(paisCodigo, 'es'));
+  if (!validacionCP.valido) {
+    return res.status(400).json(errorResponse(validacionCP.mensaje || 'Código postal inválido'));
+  }
+
+  if (!localidad || localidad.length < 2 || localidad.length > 100) {
+    return res.status(400).json(errorResponse('La localidad debe tener entre 2 y 100 caracteres'));
+  }
+
+  // ── 2. Guardar ──
   const connection = await pool.getConnection();
-  
+
   try {
-    const {
-      nombre,
-      apellidos,
-      nombre_alias,
-      club,
-      email,
-      codigo_postal,
-      localidad,
-      pais,
-      password,
-      aceptaTerminos
-    } = req.body;
-
-    const paisCodigo = normalizarPais(pais);
-
     await connection.beginTransaction();
 
-    if (!aceptaTerminos) {
-      await connection.rollback();
-      return res.status(400).json(
-        errorResponse('Debes aceptar los Términos y Condiciones')
-      );
-    }
-
-    // VERIFICAR SI YA EXISTE UN USUARIO PENDIENTE
     const [usuarioExistente] = await connection.execute(
       'SELECT id, estado_cuenta FROM usuarios WHERE email = ?',
-      [email.toLowerCase().trim()]
+      [email]
     );
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    let usuarioId;
+    let codigoRespuesta = 201;
+    let mensaje = 'Usuario registrado exitosamente';
 
     if (usuarioExistente.length > 0) {
       const usuario = usuarioExistente[0];
 
-      // ✅ SI ESTÁ PENDIENTE, ACTUALIZAR
-      if (usuario.estado_cuenta === 'pendiente_registro') {
-        await connection.execute(
-          `UPDATE usuarios 
-           SET nombre = ?,
-               apellidos = ?,
-               nombre_alias = ?,
-               club = ?,
-               codigo_postal = ?,
-               localidad = ?,
-               pais = ?,
-               password = ?,
-               acepta_terminos = ?,
-               estado_cuenta = 'activo'
-           WHERE id = ?`,
-          [
-            nombre,
-            apellidos || null,
-            nombre_alias || null,
-            club || null,
-            codigo_postal || null,
-            localidad || null,
-            paisCodigo,
-            hashedPassword,
-            aceptaTerminos,
-            usuario.id
-          ]
-        );
-
-        await connection.commit();
-
-        // Generar token
-        const token = jwt.sign(
-          { userId: usuario.id, email: email },
-          process.env.JWT_SECRET,
-          { expiresIn: '7d' }
-        );
-
-        return res.status(200).json(
-          successResponse('Registro completado exitosamente', {
-            token,
-            usuario: {
-              id: usuario.id,
-              nombre,
-              apellidos,
-              email: email.toLowerCase()
-            }
-          })
-        );
-      } else {
-        // ❌ Si ya está activo, error de email duplicado
+      // Ya registrado y activo → error
+      if (usuario.estado_cuenta !== 'pendiente_registro') {
         await connection.rollback();
-        return res.status(400).json(
-          errorResponse('Este email ya está registrado')
-        );
+        return res.status(400).json(errorResponse('Este email ya está registrado'));
       }
+
+      // Estaba pendiente (invitado como organizador) → completar su registro
+      await connection.execute(
+        `UPDATE usuarios
+         SET nombre = ?, apellidos = ?, nombre_alias = ?, club = ?,
+             codigo_postal = ?, localidad = ?, pais = ?,
+             password = ?, acepta_terminos = ?, estado_cuenta = 'activo'
+         WHERE id = ?`,
+        [nombre, apellidos, nombre_alias, club,
+         codigo_postal, localidad, paisCodigo,
+         hashedPassword, 1, usuario.id]
+      );
+
+      usuarioId = usuario.id;
+      codigoRespuesta = 200;
+      mensaje = 'Registro completado exitosamente';
+    } else {
+      // Usuario nuevo
+      const [resultado] = await connection.execute(
+        `INSERT INTO usuarios
+           (nombre, apellidos, nombre_alias, club, email,
+            codigo_postal, localidad, pais, password, acepta_terminos, estado_cuenta)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo')`,
+        [nombre, apellidos, nombre_alias, club, email,
+         codigo_postal, localidad, paisCodigo, hashedPassword, 1]
+      );
+
+      usuarioId = resultado.insertId;
     }
-
-    // ✅ SI NO EXISTE, CREAR NUEVO USUARIO
-    const [resultado] = await connection.execute(
-      `INSERT INTO usuarios (
-        nombre,
-        apellidos,
-        nombre_alias,
-        club,
-        email,
-        codigo_postal,
-        localidad,
-        pais,
-        password,
-        acepta_terminos,
-        estado_cuenta
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        nombre,
-        apellidos || null,
-        nombre_alias || null,
-        club || null,
-        email.toLowerCase().trim(),
-        codigo_postal || null,
-        localidad || null,
-        paisCodigo,
-        hashedPassword,
-        aceptaTerminos,
-        'activo'
-      ]
-    );
-
-    const nuevoUserId = resultado.insertId;
 
     await connection.commit();
 
-    // Generar token
     const token = jwt.sign(
-      { userId: nuevoUserId, email: email },
+      { userId: usuarioId, email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.status(201).json(
-      successResponse('Usuario registrado exitosamente', {
+    return res.status(codigoRespuesta).json(
+      successResponse(mensaje, {
         token,
         usuario: {
-          id: nuevoUserId,
+          id: usuarioId,
           nombre,
           apellidos,
-          email: email.toLowerCase()
+          nombre_alias,
+          club,
+          email,
+          localidad,
+          pais: paisCodigo,
+          codigo_postal
         }
       })
     );
@@ -215,14 +190,10 @@ router.post('/registro', async (req, res) => {
     console.error('❌ Error en registro:', error);
 
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json(
-        errorResponse('Este email ya está registrado')
-      );
+      return res.status(400).json(errorResponse('Este email ya está registrado'));
     }
 
-    res.status(500).json(
-      errorResponse('Error al registrar usuario')
-    );
+    return res.status(500).json(errorResponse('Error al registrar usuario'));
   } finally {
     connection.release();
   }
@@ -412,7 +383,7 @@ router.put('/actualizarPerfil', async (req, res) => {
       decoded = await verifyToken (token, process.env.JWT_SECRET)
     }catch (error) {
       return res.status(401).json(
-        errorResponse('Token inválido o expirado')
+        errorResponse(error, 'Token inválido o expirado')
       )
     }
 
@@ -425,7 +396,7 @@ router.put('/actualizarPerfil', async (req, res) => {
     email = email?.trim().toLowerCase();
     localidad = localidad?.trim();
     pais = normalizarPais(pais);
-    codigo_postal = codigo_postal?.trim()
+    codigo_postal = codigo_postal?.trim().toUpperCase();
     
     //validar campor requeridos
     const camposFaltantes = validarCamposRequeridos(
@@ -441,7 +412,7 @@ router.put('/actualizarPerfil', async (req, res) => {
 
     //validar email
     if (!validarEmail(email)){
-      return res.status(401).json(
+      return res.status(400).json(
         errorResponse('Formato email no válido')
       )
     }
@@ -479,7 +450,7 @@ router.put('/actualizarPerfil', async (req, res) => {
     )
 
     if (existeEmail.length >0){
-      return res.status(401).json(
+      return res.status(409).json(
         errorResponse('El email ya esta en uso por otro usuario')
       )
     }

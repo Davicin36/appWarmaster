@@ -4,16 +4,18 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from "../servicios/AuthContext";
 import { validarCodigoPostal } from "../servicios/validaciones";
+import { PAISES_FORMULARIO, listaPaises, nombrePais } from '@/funciones/paises';
 import Footer from '@/paginas/Footer.jsx'
 
 import '../estilos/registrarse.css'
 
-function Registrarse({ onOpenLogin }) { 
+function Registrarse({ onOpenLogin }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { registro } = useAuth();
-    const { t } = useTranslation();
-    
+    const { t, i18n } = useTranslation();
+    const idioma = i18n.language?.slice(0, 2) || 'es';
+
     const [formData, setFormData] = useState({
         nombre: "",
         apellidos: "",
@@ -22,7 +24,7 @@ function Registrarse({ onOpenLogin }) {
         email: "",
         codigo_postal: "",
         localidad: "",
-        pais: "",
+        pais: "",            // código ISO: 'ES', 'PT', 'FR'...
         password: "",
         confirmPassword: ""
     });
@@ -35,24 +37,11 @@ function Registrarse({ onOpenLogin }) {
     const [success, setSuccess] = useState("");
     const [showPasswords, setShowPasswords] = useState(false);
 
-    const paises = [
-        { value: "",               label: t('registro.pais_selecciona'),  codigo: "" },
-        { value: "España",         label: "España 🇪🇸",                    codigo: "ES" },
-        { value: "Francia",        label: "Francia 🇫🇷",                   codigo: "FR" },
-        { value: "Portugal",       label: "Portugal 🇵🇹",                  codigo: "PT" },
-        { value: "Reino Unido",    label: "Reino Unido 🇬🇧",               codigo: "GB" },
-        { value: "Alemania",       label: "Alemania 🇩🇪",                  codigo: "DE" },
-        { value: "Italia",         label: "Italia 🇮🇹",                    codigo: "IT" },
-        { value: "Países Bajos",   label: "Países Bajos 🇳🇱",              codigo: "NL" },
-        { value: "Bélgica",        label: "Bélgica 🇧🇪",                   codigo: "BE" },
-        { value: "Suiza",          label: "Suiza 🇨🇭",                     codigo: "CH" },
-        { value: "Austria",        label: "Austria 🇦🇹",                   codigo: "AT" },
-        { value: "Estados Unidos", label: "Estados Unidos 🇺🇸",            codigo: "US" },
-        { value: "Canadá",         label: "Canadá 🇨🇦",                    codigo: "CA" },
-        { value: "México",         label: "México 🇲🇽",                    codigo: "MX" },
-        { value: "Argentina",      label: "Argentina 🇦🇷",                  codigo: "AR" },
-        { value: "Brasil",         label: "Brasil 🇧🇷",                    codigo: "BR" }
-    ];
+    // Lista de países: se guarda el código, se muestra el nombre en el idioma de la web
+    const paises = listaPaises(idioma, PAISES_FORMULARIO);
+
+    // Tu validador espera el nombre en español ("España", "Francia"...)
+    const validarCP = (cp, codigoPais) => validarCodigoPostal(cp, nombrePais(codigoPais, 'es'));
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -62,107 +51,100 @@ function Registrarse({ onOpenLogin }) {
         }
     }, [location]);
 
+    const limpiarError = (campo) => {
+        setErrors(prev => { const n = { ...prev }; delete n[campo]; return n; });
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
 
         if (name === 'pais') {
-            setFormData(prev => ({ ...prev, codigo_postal: "", localidad: "" }));
+            // Al cambiar de país, el código postal y la localidad anteriores ya no valen
+            setFormData(prev => ({ ...prev, pais: value, codigo_postal: "", localidad: "" }));
+            limpiarError('codigo_postal');
+            limpiarError('localidad');
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
         }
 
-        if (errors[name]) {
-            setErrors(prev => { const n = {...prev}; delete n[name]; return n; });
-        }
-
+        if (errors[name]) limpiarError(name);
         if (error) setError("");
         if (success) setSuccess("");
     };
 
-    const buscarLocalidadCP = async (codigoPostal, paisNombre) => {
-        if (!codigoPostal || !paisNombre) return;
-        const paisObjetivo = paises.find(p => p.value === paisNombre);
-        if (!paisObjetivo?.codigo) return;
+    const buscarLocalidadCP = async (codigoPostal, codigoPais) => {
+        if (!codigoPostal || !codigoPais) return;
 
         try {
             setLoadingCP(true);
-            const response = await fetch(`https://api.zippopotam.us/${paisObjetivo.codigo}/${codigoPostal}`);
+            const response = await fetch(
+                `https://api.zippopotam.us/${codigoPais}/${encodeURIComponent(codigoPostal)}`
+            );
             if (!response.ok) throw new Error('Código postal no encontrado');
             const data = await response.json();
             if (data.places?.length > 0) {
                 const lugar = data.places[0];
                 setFormData(prev => ({ ...prev, localidad: lugar['place name'] || lugar.state || '' }));
-                setErrors(prev => { const n = {...prev}; delete n.localidad; return n; });
+                limpiarError('localidad');
             }
-        } catch (error) {
-            console.error('No se pudo obtener la localidad', error.message);
+        } catch (err) {
+            // No es un error grave: el usuario puede escribir la localidad a mano
+            console.error('No se pudo obtener la localidad', err.message);
         } finally {
             setLoadingCP(false);
         }
     };
 
     const handleCodigoPostalChange = (e) => {
-        const codigoPostal = e.target.value;
-        setFormData(prev => ({ ...prev, codigo_postal: codigoPostal }));
-        if (errors.codigo_postal) {
-            setErrors(prev => { const n = {...prev}; delete n.codigo_postal; return n; });
-        }
+        setFormData(prev => ({ ...prev, codigo_postal: e.target.value }));
+        if (errors.codigo_postal) limpiarError('codigo_postal');
     };
 
     const handleCPBlur = async () => {
-        if (formData.codigo_postal && formData.pais) {
-            const validacion = validarCodigoPostal(formData.codigo_postal, formData.pais);
-            if (!validacion.valido) {
-                setErrors(prev => ({ ...prev, codigo_postal: validacion.mensaje }));
-                return;
-            }
-            await buscarLocalidadCP(formData.codigo_postal, formData.pais);
+        const cp = formData.codigo_postal.trim();
+        if (!cp || !formData.pais) return;
+
+        const validacion = validarCP(cp, formData.pais);
+        if (!validacion.valido) {
+            setErrors(prev => ({ ...prev, codigo_postal: validacion.mensaje }));
+            return;
         }
+        await buscarLocalidadCP(cp, formData.pais);
     };
 
     const validarFormulario = () => {
         const nuevosErrores = {};
 
-        if (!formData.nombre || !formData.apellidos || !formData.email || !formData.password) {
-            setError(t('registro.errores.campos_requeridos'));
-            return false;
-        }
+        if (!formData.nombre.trim())    nuevosErrores.nombre    = t('registro.errores.campos_requeridos');
+        if (!formData.apellidos.trim()) nuevosErrores.apellidos = t('registro.errores.campos_requeridos');
 
         if (!formData.email.trim()) {
             nuevosErrores.email = t('registro.errores.email_requerido');
-        } else {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(formData.email)) {
-                nuevosErrores.email = t('registro.errores.email_invalido');
-            }
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            nuevosErrores.email = t('registro.errores.email_invalido');
         }
 
         if (!formData.pais) {
             nuevosErrores.pais = t('registro.errores.pais_requerido');
         }
 
+        if (!formData.codigo_postal.trim()) {
+            nuevosErrores.codigo_postal = t('registro.errores.cp_requerido');
+        } else if (formData.pais) {
+            const validacion = validarCP(formData.codigo_postal.trim(), formData.pais);
+            if (!validacion.valido) nuevosErrores.codigo_postal = validacion.mensaje;
+        }
+
         if (!formData.localidad.trim()) {
             nuevosErrores.localidad = t('registro.errores.localidad_requerida');
         }
 
-        if (!formData.codigo_postal.trim()) {
-            nuevosErrores.codigo_postal = t('registro.errores.cp_requerido');
-        } else if (formData.pais) {
-            const validacion = validarCodigoPostal(formData.codigo_postal, formData.pais);
-            if (!validacion.valido) {
-                nuevosErrores.codigo_postal = validacion.mensaje;
-            }
-        }
-
         if (!formData.password) {
             nuevosErrores.password = t('registro.errores.password_requerida');
-        } else {
-            if (formData.password.length < 6) {
-                nuevosErrores.password = t('registro.errores.password_corta');
-            }
-            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{6,}$/;
-            if (!passwordRegex.test(formData.password)) {
-                nuevosErrores.password = t('registro.errores.password_formato');
-            }
+        } else if (formData.password.length < 6) {
+            nuevosErrores.password = t('registro.errores.password_corta');
+        } else if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{6,}$/.test(formData.password)) {
+            nuevosErrores.password = t('registro.errores.password_formato');
         }
 
         if (formData.password !== formData.confirmPassword) {
@@ -191,14 +173,14 @@ function Registrarse({ onOpenLogin }) {
 
         try {
             const datosRegistro = {
-                nombre: formData.nombre,
-                apellidos: formData.apellidos,
-                nombre_alias: formData.nombre_alias,
-                club: formData.club,
-                email: formData.email,
-                codigo_postal: formData.codigo_postal,
-                localidad: formData.localidad,
-                pais: formData.pais,
+                nombre: formData.nombre.trim(),
+                apellidos: formData.apellidos.trim(),
+                nombre_alias: formData.nombre_alias.trim(),
+                club: formData.club.trim(),
+                email: formData.email.trim().toLowerCase(),
+                codigo_postal: formData.codigo_postal.trim().toUpperCase(),
+                localidad: formData.localidad.trim(),
+                pais: formData.pais,               // 'ES', 'PT'...
                 password: formData.password,
                 aceptaTerminos: true
             };
@@ -226,7 +208,7 @@ function Registrarse({ onOpenLogin }) {
         <div className="register-container">
             <h1>{t('registro.titulo_app')}</h1>
 
-            <form className="register-form" onSubmit={handleSubmit}>
+            <form className="register-form" onSubmit={handleSubmit} noValidate>
                 <h2>{t('registro.crear_cuenta')}</h2>
 
                 {error   && <div className="error-message">{error}</div>}
@@ -235,23 +217,25 @@ function Registrarse({ onOpenLogin }) {
                 {/* NOMBRE Y APELLIDOS */}
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="nombre">{t('registro.nombre')}</label>
+                        <label htmlFor="nombre">{t('registro.nombre')} <span className="required">*</span></label>
                         <input
                             type="text" id="nombre" name="nombre"
                             value={formData.nombre} onChange={handleChange}
                             placeholder={t('registro.nombre_placeholder')}
                             required disabled={loading}
+                            autoComplete="given-name"
                             className={errors.nombre ? 'input-error' : ''}
                         />
                         {errors.nombre && <span className="field-error">{errors.nombre}</span>}
                     </div>
                     <div className="form-group">
-                        <label htmlFor="apellidos">{t('registro.apellidos')}</label>
+                        <label htmlFor="apellidos">{t('registro.apellidos')} <span className="required">*</span></label>
                         <input
                             type="text" id="apellidos" name="apellidos"
                             value={formData.apellidos} onChange={handleChange}
                             placeholder={t('registro.apellidos_placeholder')}
                             required disabled={loading}
+                            autoComplete="family-name"
                             className={errors.apellidos ? 'input-error' : ''}
                         />
                         {errors.apellidos && <span className="field-error">{errors.apellidos}</span>}
@@ -290,8 +274,9 @@ function Registrarse({ onOpenLogin }) {
                             required disabled={loading}
                             className={errors.pais ? 'input-error' : ''}
                         >
-                            {paises.map((pais, index) => (
-                                <option key={index} value={pais.value}>{pais.label}</option>
+                            <option value="">{t('registro.pais_selecciona')}</option>
+                            {paises.map(p => (
+                                <option key={p.codigo} value={p.codigo}>{p.bandera} {p.nombre}</option>
                             ))}
                         </select>
                         {errors.pais && <span className="field-error">{errors.pais}</span>}
@@ -310,6 +295,9 @@ function Registrarse({ onOpenLogin }) {
                                 onBlur={handleCPBlur}
                                 placeholder={formData.pais ? t('registro.cp_placeholder') : t('registro.cp_placeholder_sin_pais')}
                                 required disabled={loading || !formData.pais}
+                                autoComplete="postal-code"
+                                inputMode={formData.pais === 'ES' ? 'numeric' : 'text'}
+                                maxLength={15}
                                 className={errors.codigo_postal ? 'input-error' : ''}
                             />
                             {loadingCP && <span className="input-loader">🔍</span>}
@@ -327,6 +315,8 @@ function Registrarse({ onOpenLogin }) {
                             value={formData.localidad} onChange={handleChange}
                             placeholder={t('registro.localidad_placeholder')}
                             required disabled={loading}
+                            autoComplete="address-level2"
+                            maxLength={100}
                             className={errors.localidad ? 'input-error' : ''}
                         />
                         {errors.localidad && <span className="field-error">{errors.localidad}</span>}
@@ -402,9 +392,7 @@ function Registrarse({ onOpenLogin }) {
                             checked={aceptaTerminos}
                             onChange={(e) => {
                                 setAceptaTerminos(e.target.checked);
-                                if (e.target.checked && errors.terminos) {
-                                    setErrors(prev => { const n = {...prev}; delete n.terminos; return n; });
-                                }
+                                if (e.target.checked && errors.terminos) limpiarError('terminos');
                             }}
                             required disabled={loading}
                             className="terms-checkbox-input"
